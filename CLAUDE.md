@@ -1,0 +1,154 @@
+# CLAUDE.md
+
+雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
+
+- 長期目標：**Typst 負責排版與 PDF 輸出，Konva.js 做前端自由拖放編輯器**（類似 Canva）。
+- 目前階段：前端編輯器 v1。實作計畫在 `../../3_系統設計文件/imp-ui-homepage.md`。
+- Bundle identifier：`com.mycompany.magazineeditor`
+- 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
+
+## Tech Stack
+
+| 層 | 技術 |
+|---|---|
+| Desktop shell | Tauri v2（`tauri-plugin-opener`） |
+| Frontend | React 19 · TypeScript ~6.0（strict）· Vite 8 |
+| 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
+| Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
+| UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · Geist Variable font · sonner |
+| 測試 | vitest 5（node 環境，只測 `src/lib/editor` 的純邏輯） |
+| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde |
+
+## Commands
+
+套件管理器是 **npm**（專案已有 `package-lock.json`，不要混用 pnpm）。
+
+```powershell
+npm run tauri dev      # 開發（Vite dev server :1420 + Tauri 視窗）
+npm run dev            # 只跑前端（瀏覽器，沒有 Tauri IPC；編輯器可完整操作）
+npm run build          # tsc + vite build（前端型別檢查 + 打包）
+npm test               # vitest run（src/**/__tests__/*.test.ts）
+npx vitest run src/lib/editor/__tests__/editor-reducer.test.ts   # 只跑單一測試檔
+npm run tauri build    # 打包 Windows installer / .exe
+cargo check --manifest-path src-tauri/Cargo.toml    # Rust 型別檢查
+cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試
+npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（鎖定和 scaffold 相同的版本）
+```
+
+目前沒有設定 ESLint / Prettier。
+
+## 目錄結構
+
+```
+src/
+  App.tsx                         # TooltipProvider + Toaster + lazy 載入 HomePage（不再使用 app-sidebar）
+  pages/home-page.tsx             # EditorProvider + UI-01 Grid 版面；openPanel 狀態放在這裡
+  components/
+    app/app-siderbutton.tsx       # 左側按鈕列；SIDER_BUTTONS 是按鈕的單一資料來源，SiderButtonId 由它推導
+    app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
+    editor/
+      editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
+      canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
+      text-editor-overlay.tsx     # 雙擊文字時疊在畫布上的 textarea（處理輸入法選字）
+      selection-toolbar.tsx       # 選取物件後的屬性工具列
+      editor-top-bar.tsx          # 系統控制項：文件名稱、復原/重做、縮放、匯出 PDF（停用）
+      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
+      sider-panel.tsx             # 面板外框（標題、ScrollArea、右緣「<」收合）
+      panels/index.ts             # PANELS：SiderButtonId → 面板元件（satisfies Record，缺項會編譯失敗）
+      panels/*.tsx                # 9 個面板；draw / resize 目前是佔位
+      icon-button.tsx · color-input.tsx · inline-name-input.tsx   # 共用小元件
+    ui/                           # shadcn 產生的元件（視為 vendor code）
+  lib/
+    utils.ts                      # re-export `cn`（來自 `cn` 套件，不是 clsx + tailwind-merge）
+    editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
+      types.ts                    # 文件模型（CanvasElement discriminated union）
+      editor-reducer.ts           # 純 reducer + selectors + undo/redo
+      editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
+      element-factory.ts          # 建立物件/頁面/範例文件、describeElement
+      geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算
+      viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
+      units.ts                    # mm ↔ pt、頁面尺寸 preset
+      validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證
+      image.ts                    # loadImageSize()
+      use-editor-shortcuts.ts     # 全域快捷鍵
+      __tests__/                  # vitest
+  assets/photos/*.svg             # 相片面板的佔位範例圖（可以直接換成真實照片）
+src-tauri/
+  src/lib.rs                      # Builder：setup DB、註冊 plugin 與 commands
+  src/db/mod.rs                   # DbState / DbError / migrate()
+  src/commands/                   # #[tauri::command]，每個領域一個檔案
+  capabilities/default.json       # IPC 權限（core:default、opener:default）
+  tauri.conf.json                 # 視窗、CSP、bundle 設定
+```
+
+`@/*` alias 指向 `src/*`，`tsconfig.json` 的 paths 和 `vite.config.ts` 的 resolve.alias 兩處必須一致。
+
+## 編輯器架構
+
+### 文件模型（`lib/editor/types.ts`）
+
+- **長度單位一律是 pt（1/72 inch）**，和 Typst 一致。座標原點是頁面左上角；zoom 1 時 1pt = 1 CSS px。
+- `x` / `y` 沿用 Konva 的定義：`text` / `rect` / `image` 是左上角，`ellipse` / `polygon` / `star` 是中心點。
+- **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height` / `radius`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
+- `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
+- 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、物件沒有 dragBoundFunc；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
+- 新增物件類型時要改的地方：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`selection-toolbar` 的 `TYPE_LABELS`、`layers-panel` 的 `TYPE_ICONS`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
+
+### 狀態（`lib/editor/editor-reducer.ts`）
+
+- 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
+- `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
+- **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
+- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`uploads`。面板開關（`openPanel`）放在 `home-page.tsx` 的 local state。
+- undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
+- 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
+- `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。顏色選擇器聽原生 `change` 事件（`ColorInput`），避免 React `onChange` 連續寫入歷史。
+- reducer 內部會驗證名稱與顏色，非法輸入直接 no-op；UI 端的錯誤訊息用 sonner `toast`。
+
+### 畫布捲動與縮放（`editor-canvas.tsx` + `viewport.ts`）
+
+- Stage 只有視窗大小，放在 `sticky` 容器裡；外層 `overflow-scroll` 內放一個 `contentWidth × contentHeight` 的空 div 撐出捲軸。捲動時只改 Layer 位移，不建立超大 canvas。
+- 內容範圍 = 頁面 ∪ 所有物件外框，再加上 200px 邊距（`getContentBounds` + `WORKSPACE_MARGIN_PX`），確保拖到遠處的物件仍可以捲過去。
+- 換算公式：螢幕像素 = pt × zoom + `layout.offset` − scroll。縮放或內容範圍改變時，用錨點（Ctrl+滾輪時是游標，其他情況是畫面中心）重新計算 scroll，讓錨點下的內容保持不動。
+- 「符合畫面」以 `view/fit` 遞增 `fitRequest` 觸發，因為只有 canvas 知道 viewport 大小。
+- 兩個 `useLayoutEffect`（捲動校正 → fit）的**宣告順序不能對調**：fit 設定的錨點必須留到下一次 commit 才處理。
+- 從圖層面板選取完全不在畫面內的物件時，會自動捲動到該物件。
+
+### 其他注意事項
+
+- 字型：canvas 必須等 Geist 載入後才建立 Stage（`useFontsReady`），否則換行寬度會算錯。預設 fontFamily 是 `"Geist Variable", "Microsoft JhengHei", sans-serif`。
+- 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
+- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Esc / 方向鍵）焦點在 input、textarea、dialog、menu 內時不觸發。
+- 上傳圖片使用 `blob:` URL，工作階段內不 revoke（undo 可能讓刪除的圖片回來）。只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼。
+- `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，上傳面板的拖放區需要這個設定。**不可移除**。
+- 目前**沒有持久化**：文件只存在記憶體，關閉 App 就消失。啟動時載入 `createSampleDocument()` 的示範內容。
+
+## Rust ↔ Frontend IPC
+
+- 資料庫路徑：`%APPDATA%\com.mycompany.magazineeditor\app.db`（`app_data_dir()`；安裝在 Program Files 時 exe 目錄不可寫）。
+- 單一 `Connection` 包在 `DbState(Mutex<Connection>)`，command 內用 `state.conn()?` 取得連線，不要直接 `.lock().unwrap()`。
+- Schema 變更寫在 `db::migrate()`（目前只有 `CREATE TABLE IF NOT EXISTS`；需要 ALTER 時再引入 `PRAGMA user_version`）。
+- Command 一律回傳 `DbResult<T>`；`DbError` 序列化為 `{ kind, message }`，`kind` ∈ `"sqlite" | "lockPoisoned" | "invalidInput"`。前端依 `kind` 判斷錯誤類型，不要解析 message 字串。
+- IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
+- 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
+- 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
+- 現有 commands：`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+
+## CSP
+
+`tauri.conf.json` 設定嚴格 CSP，並以 `dangerousDisableAssetCspModification: ["style-src"]` 允許 `'unsafe-inline'`：Radix 和 sonner 會在 runtime 注入 `<style>`，而 Tauri 預設加的 nonce 會讓 `'unsafe-inline'` 失效。**不可移除此設定**。
+
+圖片只允許 `'self'`、`data:`、`blob:`、`asset:`。Vite 會把小於 4KB 的 SVG 內嵌成 `data:` URI。載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則會被靜默阻擋。
+
+## 慣例
+
+- `src/components/ui/` 由 shadcn CLI 管理，客製化時優先在外層包裝；直接修改會在 `add --overwrite` 時被覆蓋。
+- 顏色使用 design tokens（`bg-background`、`bg-muted`、`text-muted-foreground`…）。Dark mode 用 `.dark` class 切換（`@custom-variant dark`），目前還沒有切換入口。
+- Tailwind v4 的漸層寫法是 `bg-linear-to-*`（不是 `bg-gradient-to-*`）；動態 class 必須以完整字串出現在原始碼中，才會被掃描到。
+- 錯誤處理使用 `Result<T>`（`{ data, error }`，定義在 `lib/editor/validation.ts`）或 toast，不要直接 throw 未型別化的錯誤。Context hook 在 Provider 外使用時才 throw。
+- `shadcn` 必須留在 `dependencies`：`index.css` 會 `@import "shadcn/tailwind.css"`。
+- TypeScript 6：**不要**在 `tsconfig.json` 加 `baseUrl`（已 deprecated，會讓 `tsc` 失敗）。
+- `tsconfig` 開啟了 `noUnusedLocals` / `noUnusedParameters`，未使用的 import 會讓 `npm run build` 失敗。
+- lucide-react 1.x 的 icon 名稱和舊版不同（例如 `Trash`、`TextAlignStart`，而不是 `Trash2`、`AlignLeft`），使用前先確認 `node_modules/lucide-react/dist/lucide-react.d.ts`。
+- 用 PowerShell 5.1 讀寫含中文的檔案時，務必明確指定 UTF-8 編碼。
+- 本目錄目前不是 git repository。
