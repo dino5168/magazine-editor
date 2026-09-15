@@ -151,4 +151,5 @@ src-tauri/
 - `tsconfig` 開啟了 `noUnusedLocals` / `noUnusedParameters`，未使用的 import 會讓 `npm run build` 失敗。
 - lucide-react 1.x 的 icon 名稱和舊版不同（例如 `Trash`、`TextAlignStart`，而不是 `Trash2`、`AlignLeft`），使用前先確認 `node_modules/lucide-react/dist/lucide-react.d.ts`。
 - 用 PowerShell 5.1 讀寫含中文的檔案時，務必明確指定 UTF-8 編碼。
-- 本目錄目前不是 git repository。
+- Git：remote 是 `https://github.com/dino5168/magazine-editor`（**public**），預設分支 `main`。`.gitattributes` 設定 `text=auto`，repo 內一律以 LF 儲存。
+- 本 repo 只包含 `magazine-editor/`。上層的設計文件（`../../3_系統設計文件/`）與 scaffold 腳本（`../setup-tauri-reactv3.ps1`）不在 repo 內。
