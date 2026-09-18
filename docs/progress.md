@@ -4,7 +4,7 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-09-17
+最後更新:2026-09-18
 
 ---
 
@@ -27,6 +27,7 @@
 | 2026-09-17 | 建立 `docs/` 第一批:`README.md`、`01-overview.md`、`02-architecture.md` |
 | 2026-09-17 | `CLAUDE.md` 加一行指向 `docs/` |
 | 2026-09-17 | 建立 `docs/progress.md`,並在 `CLAUDE.md` 要求開始工作前先讀、完成後更新 |
+| 2026-09-18 | 新增選單列(檔案 / 設定):`components/app/app-menubar.tsx`、`lib/menu/`。所有指令目前是佔位(只跳 toast),規則寫在 `CLAUDE.md`「選單列與指令」一節 |
 
 ---
 
@@ -63,6 +64,7 @@
   - `06-rust-ipc.md`:SQLite、commands、`DbError`
   - `07-dev-workflow.md`:測試、hooks、`permissions.deny`、Claude Code 使用流程
 - [ ] 每寫完一份,更新 `docs/README.md` 的進度表和這份檔案
+- [ ] `02-architecture.md` 的目錄表與閱讀順序補上 `lib/menu/`、`app-menubar.tsx`(`home-page.tsx` 也因此從約 60 行變長)
 
 ---
 
