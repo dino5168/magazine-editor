@@ -33,6 +33,13 @@ export interface RecoveryEntry {
   readonly projectRoot: string;
 }
 
+/** Result of `export_pdf` (`ExportResult` in Rust). */
+export interface ExportResult {
+  readonly pages: number;
+  /** Images left out because their file no longer exists in the project. */
+  readonly skippedImages: number;
+}
+
 /** `kind` values of `AppError` in `src-tauri/src/error.rs`. */
 export const ERROR_KINDS = [
   "sqlite",
@@ -42,6 +49,7 @@ export const ERROR_KINDS = [
   "invalidProject",
   "unsupportedVersion",
   "noProject",
+  "export",
   "tauri",
 ] as const;
 

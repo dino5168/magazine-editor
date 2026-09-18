@@ -20,7 +20,7 @@ export const COMMANDS = {
   "file.importPages": { label: "其他專案的頁面...", title: "匯入其他專案的頁面" },
   "file.exportPng": { label: "PNG...", title: "匯出為 PNG" },
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
-  "file.exportPdf": { label: "PDF...", title: "匯出為 PDF", disabledReason: "待 Typst 整合" },
+  "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "settings.page": { label: "頁面設定..." },
   "settings.preferences": { label: "偏好設定...", shortcut: { ctrl: true, code: "Comma", keyLabel: "," } },
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },

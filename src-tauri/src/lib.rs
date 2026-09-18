@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod export;
 mod project;
 
 use std::sync::Mutex;
@@ -25,6 +26,7 @@ pub fn run() {
             let conn = db::open(&data_dir.join("app.db"))?;
             app.manage(db::DbState(Mutex::new(conn)));
             app.manage(project::ProjectState::default());
+            app.manage(commands::export::ExportState::default());
             commands::project::clear_untitled(app.handle());
             Ok(())
         })
@@ -43,6 +45,9 @@ pub fn run() {
             commands::recovery::recovery_discard,
             commands::recovery::recovery_write,
             commands::recovery::recovery_clear,
+            commands::export::export_pdf_choose_path,
+            commands::export::export_pdf,
+            commands::export::export_open_last,
         ])
         // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
         .on_window_event(|window, event| {

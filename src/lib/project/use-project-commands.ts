@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import { buildExportRequest } from "@/lib/export/export-request";
+import { measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
 
@@ -16,12 +18,14 @@ export interface ProjectCommands {
   readonly saveAs: () => Promise<boolean>;
   /** Handles unsaved changes before the window closes; true means it may close. */
   readonly confirmClose: () => Promise<boolean>;
+  /** Exports every page of the current (possibly unsaved) content to PDF. */
+  readonly exportPdf: () => Promise<boolean>;
 }
 
 const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri dev）";
 
 /**
- * Builds the file commands (new / open / save / save as / close).
+ * Builds the file commands (new / open / save / save as / close / export PDF).
  *
  * Args:
  *   confirmUnsaved: Shows the "save changes?" prompt; injected so this hook stays UI-free.
@@ -104,6 +108,31 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
     return true;
   }, [loadOpened, resolveUnsaved]);
 
+  const exportImpl = useCallback(async (): Promise<boolean> => {
+    // 匯出的是目前畫面上的內容（包含未存檔的修改）；對話框開著時使用者無法編輯，先取快照即可
+    const { document } = getSnapshot().content;
+    const chosen = await projectApi.chooseExportPath(document.name);
+    if (chosen.error) {
+      toast.error(`無法匯出 PDF：${describeCommandError(chosen.error)}`);
+      return false;
+    }
+    if (chosen.data === null) return false;
+    const toastId = toast.loading(`正在匯出「${chosen.data}」…`);
+    const exported = await projectApi.exportPdf(buildExportRequest(document, measureTextLayout));
+    if (exported.error) {
+      toast.error(`匯出 PDF 失敗：${describeCommandError(exported.error)}`, { id: toastId });
+      return false;
+    }
+    toast.success(`已匯出「${chosen.data}」（${exported.data.pages} 頁）`, {
+      id: toastId,
+      action: { label: "開啟", onClick: () => void projectApi.openLastExport() },
+    });
+    if (exported.data.skippedImages > 0) {
+      toast.warning(`有 ${exported.data.skippedImages} 張圖片在專案資料夾中找不到，已略過`);
+    }
+    return true;
+  }, [getSnapshot]);
+
   return useMemo(
     () => ({
       newProject: exclusive(newImpl),
@@ -111,7 +140,8 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
       save: exclusive(saveImpl),
       saveAs: exclusive(saveAsImpl),
       confirmClose: exclusive(resolveUnsaved),
+      exportPdf: exclusive(exportImpl),
     }),
-    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved],
+    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved, exportImpl],
   );
 }

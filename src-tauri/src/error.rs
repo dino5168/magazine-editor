@@ -17,6 +17,9 @@ pub enum AppError {
     UnsupportedVersion(u32),
     #[error("no project is open")]
     NoProject,
+    /// PDF export failed; the message is user-facing Chinese.
+    #[error("{0}")]
+    Export(String),
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
 }
@@ -31,6 +34,7 @@ impl AppError {
             Self::InvalidProject(_) => "invalidProject",
             Self::UnsupportedVersion(_) => "unsupportedVersion",
             Self::NoProject => "noProject",
+            Self::Export(_) => "export",
             Self::Tauri(_) => "tauri",
         }
     }

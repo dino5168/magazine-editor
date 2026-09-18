@@ -1,9 +1,11 @@
 import { invoke, isTauri, type InvokeArgs } from "@tauri-apps/api/core";
 import type { Result } from "@/lib/editor/validation";
+import type { ExportRequest } from "@/lib/export/export-request";
 import {
   CommandError,
   ERROR_KINDS,
   type AppErrorKind,
+  type ExportResult,
   type OpenedProject,
   type ProjectContent,
   type ProjectInfo,
@@ -59,6 +61,10 @@ export const projectApi = {
   discardRecovery: (id: string) => call<null>("recovery_discard", { id }),
   writeRecovery: (content: ProjectContent) => call<null>("recovery_write", { content }),
   clearRecovery: () => call<null>("recovery_clear"),
+  /** Shows the save dialog; resolves to the chosen file name, or null when cancelled. */
+  chooseExportPath: (suggestedName: string) => call<string | null>("export_pdf_choose_path", { suggestedName }),
+  exportPdf: (request: ExportRequest) => call<ExportResult>("export_pdf", { request }),
+  openLastExport: () => call<null>("export_open_last"),
 };
 
 /**
@@ -74,7 +80,8 @@ export function describeCommandError(error: Error): string {
   if (!(error instanceof CommandError)) return error.message;
   switch (error.kind) {
     case "invalidInput":
-      // 約定：Rust 端 AppError::InvalidInput 的訊息一律是給使用者看的中文
+    case "export":
+      // 約定：Rust 端 InvalidInput / Export 的訊息一律是給使用者看的中文
       return error.message;
     case "unsupportedVersion":
       return "這個專案由較新版本的軟體建立，請更新軟體後再開啟";

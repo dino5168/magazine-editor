@@ -68,7 +68,7 @@ pub fn clear_untitled(app: &AppHandle) {
 }
 
 // 對話框的預設位置：文件\雜誌編輯軟體（不存在就建立；失敗時退回文件資料夾）
-fn default_projects_dir(app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn default_projects_dir(app: &AppHandle) -> Option<PathBuf> {
     let documents = app.path().document_dir().ok()?;
     let dir = documents.join(DEFAULT_PROJECTS_DIR);
     Some(if std::fs::create_dir_all(&dir).is_ok() { dir } else { documents })

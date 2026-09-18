@@ -43,6 +43,7 @@ function EditorLayout() {
       "file.open": () => void project.openProject(),
       "file.save": () => void project.save(),
       "file.saveAs": () => void project.saveAs(),
+      "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": () =>
         void (async () => {
           const assets = await importFiles(await pickImageFiles());
@@ -63,7 +64,7 @@ function EditorLayout() {
         activeId={openPanel}
         onToggle={(id) => setOpenPanel((current) => (current === id ? null : id))}
       />
-      <EditorTopBar />
+      <EditorTopBar onExportPdf={() => void project.exportPdf()} />
       <div className="flex min-h-0 min-w-0">
         {openPanel && Panel && (
           <SiderPanel title={getSiderButtonLabel(openPanel)} onCollapse={() => setOpenPanel(null)}>

@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { DOCUMENT_NAME_MAX_LENGTH } from "@/lib/editor/validation";
@@ -21,18 +20,20 @@ const ZOOM_PRESETS = [0.5, 1, 1.5, 2] as const;
 
 interface EditorTopBarProps {
   readonly className?: string;
+  readonly onExportPdf: () => void;
 }
 
 /**
- * System controls: document name, undo/redo, zoom and (disabled) PDF export.
+ * System controls: document name, undo/redo, zoom and PDF export.
  *
  * Args:
  *   props.className: Extra classes for grid placement.
+ *   props.onExportPdf: Runs the "export PDF" command (same as the File menu).
  *
  * Returns:
  *   Header bar.
  */
-export function EditorTopBar({ className }: EditorTopBarProps) {
+export function EditorTopBar({ className, onExportPdf }: EditorTopBarProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const [renaming, setRenaming] = useState(false);
@@ -106,18 +107,10 @@ export function EditorTopBar({ className }: EditorTopBarProps) {
         </IconButton>
 
         <Separator orientation="vertical" className="mx-2 h-6" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {/* disabled 按鈕不觸發 pointer 事件，外包一層才能顯示 tooltip */}
-            <span tabIndex={0} className="rounded-lg">
-              <Button size="sm" disabled>
-                <FileDown />
-                匯出 PDF
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>待 Typst 整合</TooltipContent>
-        </Tooltip>
+        <Button size="sm" onClick={onExportPdf}>
+          <FileDown />
+          匯出 PDF
+        </Button>
       </div>
     </header>
   );
