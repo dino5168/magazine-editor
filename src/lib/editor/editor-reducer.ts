@@ -33,6 +33,8 @@ export interface EditorState {
   readonly view: EditorView;
   /** Images stored in the project; saved with it but not part of undo history. */
   readonly assets: readonly AssetInfo[];
+  /** Document as last saved / loaded; null when it must be saved (e.g. opened from a backup). */
+  readonly savedDocument: EditorDocument | null;
 }
 
 export type EditorAction =
@@ -56,7 +58,10 @@ export type EditorAction =
       readonly type: "document/load";
       readonly document: EditorDocument;
       readonly assets: readonly AssetInfo[];
-    };
+      /** False when the loaded content differs from what is on disk and should be saved. */
+      readonly saved: boolean;
+    }
+  | { readonly type: "document/markSaved"; readonly document: EditorDocument };
 
 type ActionOf<T extends EditorAction["type"]> = Extract<EditorAction, { readonly type: T }>;
 type ActionHandler<T extends EditorAction["type"]> = (state: EditorState, action: ActionOf<T>) => EditorState;
@@ -81,7 +86,22 @@ export function createInitialState(
     selectedId: null,
     view: { zoom: 1, fitRequest: 1 },
     assets,
+    savedDocument: document,
   };
+}
+
+/**
+ * Whether the document differs from the last saved version.
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   True when there are unsaved changes.
+ */
+export function selectIsDirty(state: EditorState): boolean {
+  // 文件是不可變資料：比較參考即可；復原到存檔時的版本會自動變回「未修改」
+  return state.history.present !== state.savedDocument;
 }
 
 /**
@@ -288,8 +308,16 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   // 開啟 / 新增專案：換掉整份文件並清空復原歷史（不能復原到另一個專案的內容）
   "document/load": (state, action) => {
     const initial = createInitialState(action.document, action.assets);
-    return { ...initial, view: { zoom: state.view.zoom, fitRequest: state.view.fitRequest + 1 } };
+    return {
+      ...initial,
+      view: { zoom: state.view.zoom, fitRequest: state.view.fitRequest + 1 },
+      savedDocument: action.saved ? action.document : null,
+    };
   },
+
+  // 存檔期間若又有修改，present 已經不是存下的那份文件，仍會是「未存檔」
+  "document/markSaved": (state, action) =>
+    state.savedDocument === action.document ? state : { ...state, savedDocument: action.document },
 };
 
 /**

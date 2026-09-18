@@ -5,6 +5,7 @@ import {
   createInitialState,
   editorReducer,
   selectActivePage,
+  selectIsDirty,
   selectSelectedElement,
   type EditorAction,
   type EditorState,
@@ -211,7 +212,7 @@ describe("editorReducer / project", () => {
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
     };
 
-    const loaded = editorReducer(edited, { type: "document/load", document, assets: [asset] });
+    const loaded = editorReducer(edited, { type: "document/load", document, assets: [asset], saved: true });
 
     expect(loaded.history).toEqual({ past: [], present: document, future: [] });
     // reducer 必須保存同一個參考，ProjectProvider 才能用 === 判斷是否修改
@@ -222,5 +223,31 @@ describe("editorReducer / project", () => {
     expect(loaded.view.zoom).toBe(2);
     expect(loaded.view.fitRequest).toBe(edited.view.fitRequest + 1);
     expect(run(loaded, { type: "history/undo" })).toBe(loaded);
+    expect(selectIsDirty(loaded)).toBe(false);
+  });
+
+  it("tracks unsaved changes by document reference", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const initial = blankState();
+    const edited = run(initial, { type: "element/add", element });
+    expect(selectIsDirty(initial)).toBe(false);
+    expect(selectIsDirty(edited)).toBe(true);
+    // 復原回存檔時的版本會自動變回未修改
+    expect(selectIsDirty(run(edited, { type: "history/undo" }))).toBe(false);
+
+    const saved = run(edited, { type: "document/markSaved", document: edited.history.present });
+    expect(selectIsDirty(saved)).toBe(false);
+    expect(run(saved, { type: "document/markSaved", document: edited.history.present })).toBe(saved);
+  });
+
+  it("loads unsaved content (e.g. from a backup) as dirty", () => {
+    const loaded = run(blankState(), {
+      type: "document/load",
+      document: blankState().history.present,
+      assets: [],
+      saved: false,
+    });
+    expect(loaded.savedDocument).toBeNull();
+    expect(selectIsDirty(loaded)).toBe(true);
   });
 });

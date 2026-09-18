@@ -4,6 +4,7 @@ import { Ellipse, Image as KonvaImage, Rect, RegularPolygon, Star, Text } from "
 import useImage from "use-image";
 import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
 import type { CanvasElement, ElementId, ElementPatch, ImageElement } from "@/lib/editor/types";
+import { useProject } from "@/lib/project/project-context";
 
 /** Smallest width/height (pt) an element can be resized to. */
 const MIN_SIZE_PT = 4;
@@ -16,8 +17,6 @@ export interface ElementNodeProps {
   readonly onSelect: (id: ElementId) => void;
   readonly onChange: (id: ElementId, patch: ElementPatch) => void;
   readonly onEditText: (id: ElementId) => void;
-  /** Maps a model `src` to a loadable URL (see `resolveAssetUrl`). */
-  readonly resolveSrc: (src: string) => string;
 }
 
 interface CommonNodeProps {
@@ -84,16 +83,10 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
   }
 }
 
-function ImageNode({
-  element,
-  common,
-  url,
-}: {
-  readonly element: ImageElement;
-  readonly common: CommonNodeProps;
-  readonly url: string;
-}) {
-  const [image, status] = useImage(url);
+function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps }) {
+  // react-konva 的 Stage 會橋接 React context，Konva 子樹內可以直接讀取專案 context
+  const { resolveSrc } = useProject();
+  const [image, status] = useImage(resolveSrc(element.src));
   if (status !== "loaded") {
     // 載入中或失敗時以灰框佔位，物件仍可選取與移動
     return <Rect {...common} width={element.width} height={element.height} fill="#e5e5e5" dash={[6, 4]} stroke="#a3a3a3" />;
@@ -110,7 +103,7 @@ function ImageNode({
  * Returns:
  *   Konva node.
  */
-export function ElementNode({ element, hidden, onSelect, onChange, onEditText, resolveSrc }: ElementNodeProps) {
+export function ElementNode({ element, hidden, onSelect, onChange, onEditText }: ElementNodeProps) {
   const common: CommonNodeProps = {
     id: element.id,
     name: ELEMENT_NODE_NAME,
@@ -172,7 +165,7 @@ export function ElementNode({ element, hidden, onSelect, onChange, onEditText, r
         />
       );
     case "image":
-      return <ImageNode element={element} common={common} url={resolveSrc(element.src)} />;
+      return <ImageNode element={element} common={common} />;
     default: {
       const exhaustive: never = element;
       return exhaustive;

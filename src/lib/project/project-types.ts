@@ -23,15 +23,18 @@ export interface OpenedProject {
 }
 
 /** `kind` values of `AppError` in `src-tauri/src/error.rs`. */
-export type AppErrorKind =
-  | "sqlite"
-  | "lockPoisoned"
-  | "invalidInput"
-  | "io"
-  | "invalidProject"
-  | "unsupportedVersion"
-  | "noProject"
-  | "tauri";
+export const ERROR_KINDS = [
+  "sqlite",
+  "lockPoisoned",
+  "invalidInput",
+  "io",
+  "invalidProject",
+  "unsupportedVersion",
+  "noProject",
+  "tauri",
+] as const;
+
+export type AppErrorKind = (typeof ERROR_KINDS)[number];
 
 /** Error returned by a Tauri command, narrowed by `kind`. */
 export class CommandError extends Error {

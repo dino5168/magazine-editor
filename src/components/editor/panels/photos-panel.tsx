@@ -31,7 +31,7 @@ export function PhotosPanel() {
   // 先複製進專案的 assets/，專案資料夾才能自給自足（搬到別台電腦也看得到）
   const handleAdd = async (url: string): Promise<void> => {
     const image = await importBundled(url);
-    if (image) addImage(image.src, image.size);
+    if (image) addImage(image.src, image);
   };
 
   return (

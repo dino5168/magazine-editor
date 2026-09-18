@@ -13,8 +13,8 @@ import { useAddImage } from "@/components/editor/panels/use-add-image";
 import { EditorProvider } from "@/lib/editor/editor-context";
 import { createInitialState } from "@/lib/editor/editor-reducer";
 import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-factory";
+import { pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
-import { ALLOWED_IMAGE_TYPES } from "@/lib/editor/validation";
 import { createPlaceholderHandlers, type CommandHandlers } from "@/lib/menu/commands";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
@@ -22,23 +22,6 @@ import { useCloseGuard } from "@/lib/project/use-close-guard";
 import { useImageImport } from "@/lib/project/use-image-import";
 import { useProjectCommands } from "@/lib/project/use-project-commands";
 
-/**
- * Opens the system file picker for images.
- *
- * Returns:
- *   Selected files; empty when the user cancels.
- */
-function pickImageFiles(): Promise<File[]> {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.accept = ALLOWED_IMAGE_TYPES.join(",");
-    input.addEventListener("change", () => resolve(Array.from(input.files ?? [])));
-    input.addEventListener("cancel", () => resolve([]));
-    input.click();
-  });
-}
 
 function EditorLayout() {
   // 對照 UI-01 預設展開範本面板
@@ -47,7 +30,7 @@ function EditorLayout() {
 
   const { dialog: unsavedDialog, confirm: confirmUnsaved } = useUnsavedChangesDialog();
   const project = useProjectCommands(confirmUnsaved);
-  useCloseGuard(confirmUnsaved, project.save);
+  useCloseGuard(project.confirmClose);
   const { importFiles } = useImageImport();
   const addImage = useAddImage();
 

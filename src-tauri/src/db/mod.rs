@@ -49,23 +49,26 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 /// Number of entries kept in `recent_projects`.
-pub const RECENT_LIMIT: i64 = 10;
+const RECENT_LIMIT: i64 = 10;
 
 /// Records (or refreshes) a project in the recent list and trims old entries.
 ///
 /// # Errors
 /// Returns `AppError::Sqlite` on database failure.
 pub fn touch_recent(conn: &Connection, path: &str, name: &str, opened_at: &str) -> AppResult<()> {
-    conn.execute(
+    // 兩個寫入放在同一個 transaction：只需一次 fsync，也不會只做一半
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO recent_projects (path, name, opened_at) VALUES (?1, ?2, ?3)
          ON CONFLICT(path) DO UPDATE SET name = excluded.name, opened_at = excluded.opened_at",
         params![path, name, opened_at],
     )?;
-    conn.execute(
+    tx.execute(
         "DELETE FROM recent_projects WHERE id NOT IN
          (SELECT id FROM recent_projects ORDER BY opened_at DESC, id DESC LIMIT ?1)",
         params![RECENT_LIMIT],
     )?;
+    tx.commit()?;
     Ok(())
 }
 

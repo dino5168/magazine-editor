@@ -160,46 +160,33 @@ pub struct ProjectContent {
     pub assets: Vec<AssetInfo>,
 }
 
-/// Parses and validates a project file, upgrading older schema versions.
+/// Only the fields needed to decide whether the rest of the file can be read.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Header {
+    format: Option<String>,
+    schema_version: Option<u32>,
+}
+
+/// Parses and validates a project file.
 ///
 /// # Errors
 /// - `AppError::UnsupportedVersion` when the file is newer than this app.
 /// - `AppError::InvalidProject` when the JSON is malformed or fails validation.
 pub fn parse_project(json: &str) -> AppResult<ProjectFile> {
-    let mut value: Value = serde_json::from_str(json)?;
-    let format = value.get("format").and_then(Value::as_str);
-    if format != Some(FORMAT_ID) {
+    let header: Header = serde_json::from_str(json)?;
+    if header.format.as_deref() != Some(FORMAT_ID) {
         return Err(AppError::invalid_project("not a magazine-editor project file"));
     }
-    let version = value
-        .get("schemaVersion")
-        .and_then(Value::as_u64)
-        .and_then(|v| u32::try_from(v).ok())
-        .ok_or_else(|| AppError::invalid_project("missing schemaVersion"))?;
-    if version > SCHEMA_VERSION {
-        return Err(AppError::UnsupportedVersion(version));
+    match header.schema_version {
+        Some(version) if version > SCHEMA_VERSION => return Err(AppError::UnsupportedVersion(version)),
+        // v1 是第一版，沒有舊版需要升級。發布 v2 時在此把舊版 JSON（serde_json::Value）升級後再轉換
+        Some(SCHEMA_VERSION) => {}
+        _ => return Err(AppError::invalid_project("missing or unknown schemaVersion")),
     }
-    migrate(&mut value, version)?;
-    let project: ProjectFile = serde_json::from_value(value)?;
+    let project: ProjectFile = serde_json::from_str(json)?;
     validate_content(&project.document, &project.assets)?;
     Ok(project)
-}
-
-// 依序把舊版 JSON 升級到 SCHEMA_VERSION。v1 是第一版，目前沒有升級步驟；
-// 發布 v2 時在此加上 `if from < 2 { upgrade_1_to_2(value)?; }` 並把 schemaVersion 改寫為新版
-fn migrate(_value: &mut Value, from: u32) -> AppResult<()> {
-    if from < 1 {
-        return Err(AppError::invalid_project(format!("unknown schema version {from}")));
-    }
-    Ok(())
-}
-
-/// Serializes a project file as pretty-printed JSON (readable in a text editor, diff-friendly).
-///
-/// # Errors
-/// Returns `AppError::InvalidProject` if serialization fails.
-pub fn to_json(project: &ProjectFile) -> AppResult<String> {
-    Ok(serde_json::to_string_pretty(project)?)
 }
 
 /// Validates document content received from the frontend or read from disk.
@@ -227,32 +214,19 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
 }
 
 fn validate_element(element: &Element) -> AppResult<()> {
-    match element {
-        Element::Text(e) => {
-            require_id(&e.base.id)?;
-            require_color(&e.fill)
-        }
-        Element::Rect(e) => {
-            require_id(&e.base.id)?;
-            require_color(&e.fill)
-        }
-        Element::Ellipse(e) => {
-            require_id(&e.base.id)?;
-            require_color(&e.fill)
-        }
-        Element::Polygon(e) => {
-            require_id(&e.base.id)?;
-            require_color(&e.fill)
-        }
-        Element::Star(e) => {
-            require_id(&e.base.id)?;
-            require_color(&e.fill)
-        }
+    let (base, fill) = match element {
+        Element::Text(e) => (&e.base, &e.fill),
+        Element::Rect(e) => (&e.base, &e.fill),
+        Element::Ellipse(e) => (&e.base, &e.fill),
+        Element::Polygon(e) => (&e.base, &e.fill),
+        Element::Star(e) => (&e.base, &e.fill),
         Element::Image(e) => {
             require_id(&e.base.id)?;
-            validate_asset_path(&e.src)
+            return validate_asset_path(&e.src);
         }
-    }
+    };
+    require_id(&base.id)?;
+    require_color(fill)
 }
 
 fn require_id(id: &str) -> AppResult<()> {
@@ -322,7 +296,7 @@ mod tests {
     #[test]
     fn fixture_round_trips_without_losing_fields() {
         let project = parse_project(FIXTURE).unwrap();
-        let written: Value = serde_json::from_str(&to_json(&project).unwrap()).unwrap();
+        let written: Value = serde_json::from_str(&serde_json::to_string_pretty(&project).unwrap()).unwrap();
         let original: Value = serde_json::from_str(FIXTURE).unwrap();
         assert_eq!(normalize(written), normalize(original));
     }
@@ -344,7 +318,7 @@ mod tests {
         value["futureField"] = Value::from("kept");
         let project = parse_project(&value.to_string()).unwrap();
         assert_eq!(project.extra.get("futureField"), Some(&Value::from("kept")));
-        assert!(to_json(&project).unwrap().contains("futureField"));
+        assert!(serde_json::to_string(&project).unwrap().contains("futureField"));
     }
 
     #[test]
@@ -359,6 +333,9 @@ mod tests {
     fn rejects_foreign_or_malformed_files() {
         assert!(matches!(parse_project("{"), Err(AppError::InvalidProject(_))));
         assert!(matches!(parse_project(r#"{"format":"other"}"#), Err(AppError::InvalidProject(_))));
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(0);
+        assert!(matches!(parse_project(&value.to_string()), Err(AppError::InvalidProject(_))));
         let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
         value["document"]["pages"][0]["elements"][0]["type"] = Value::from("video");
         assert!(matches!(parse_project(&value.to_string()), Err(AppError::InvalidProject(_))));

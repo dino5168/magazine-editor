@@ -1,5 +1,5 @@
-/** Prefix of project-relative image paths stored in `ImageElement.src` / `AssetInfo.src`. */
-export const PROJECT_ASSET_PREFIX = "assets/";
+/** Folder of project images; same as `ASSET_DIR` in `src-tauri/src/project/format.rs`. */
+export const PROJECT_ASSET_PREFIX = "assets/images/";
 
 /**
  * Turns a model `src` into a URL the WebView can load.

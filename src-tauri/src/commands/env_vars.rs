@@ -14,10 +14,10 @@ pub struct EnvVar {
 // IPC 參數來自 WebView，不可信任，寫入前驗證
 fn validate_key(key: &str) -> AppResult<()> {
     if key.trim().is_empty() {
-        return Err(AppError::invalid_input("key must not be empty"));
+        return Err(AppError::invalid_input("名稱不可為空白"));
     }
     if key.len() > MAX_KEY_LEN {
-        return Err(AppError::invalid_input("key is too long"));
+        return Err(AppError::invalid_input("名稱太長"));
     }
     Ok(())
 }

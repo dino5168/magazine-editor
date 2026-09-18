@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { createBlankDocument } from "@/lib/editor/element-factory";
-import { notifyIfRecoveredFromBackup, useProject } from "./project-context";
-import { describeCommandError, projectApi } from "./project-api";
+import { useProject } from "./project-context";
+import { describeCommandError, isDesktop, projectApi } from "./project-api";
 
 export type UnsavedChoice = "save" | "discard" | "cancel";
 
@@ -15,12 +14,14 @@ export interface ProjectCommands {
   readonly openProject: () => Promise<boolean>;
   readonly save: () => Promise<boolean>;
   readonly saveAs: () => Promise<boolean>;
+  /** Handles unsaved changes before the window closes; true means it may close. */
+  readonly confirmClose: () => Promise<boolean>;
 }
 
 const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri dev）";
 
 /**
- * Builds the file commands (new / open / save / save as).
+ * Builds the file commands (new / open / save / save as / close).
  *
  * Args:
  *   confirmUnsaved: Shows the "save changes?" prompt; injected so this hook stays UI-free.
@@ -29,13 +30,13 @@ const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri 
  *   Command functions; they read the latest state when invoked.
  */
 export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectCommands {
-  const { desktop, ready, getSnapshot, load, markSaved } = useProject();
-  // 連按 Ctrl+S 或在對話框開啟時再觸發指令，會造成兩個寫入同時進行
+  const { ready, getSnapshot, createNew, loadOpened, markSaved } = useProject();
+  // 連按 Ctrl+S、或對話框開著時又觸發指令（包括關閉視窗），會造成兩個寫入同時進行
   const busyRef = useRef(false);
 
   const exclusive = useCallback(
     (run: () => Promise<boolean>) => async (): Promise<boolean> => {
-      if (!desktop) {
+      if (!isDesktop) {
         toast.info(DESKTOP_ONLY_MESSAGE);
         return false;
       }
@@ -47,7 +48,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
         busyRef.current = false;
       }
     },
-    [desktop, ready],
+    [ready],
   );
 
   const saveAsImpl = useCallback(async (): Promise<boolean> => {
@@ -72,13 +73,12 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
       toast.error(`儲存失敗：${describeCommandError(result.error)}`);
       return false;
     }
-    // 存檔期間若又有修改，present 已經不是這份文件，仍會顯示為未存檔
     markSaved(info, content.document);
     toast.success("已儲存");
     return true;
   }, [getSnapshot, markSaved, saveAsImpl]);
 
-  // 回傳 true 表示可以繼續（已存檔或使用者選擇不儲存）
+  // 回傳 true 表示可以繼續（沒有未存檔的變更、已存檔，或使用者選擇不儲存）
   const resolveUnsaved = useCallback(async (): Promise<boolean> => {
     if (!getSnapshot().dirty) return true;
     const choice = await confirmUnsaved();
@@ -87,16 +87,10 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
     return true;
   }, [confirmUnsaved, getSnapshot, saveImpl]);
 
-  const newImpl = useCallback(async (): Promise<boolean> => {
-    if (!(await resolveUnsaved())) return false;
-    const created = await projectApi.create();
-    if (created.error) {
-      toast.error(`無法建立新專案：${describeCommandError(created.error)}`);
-      return false;
-    }
-    load(created.data, { document: createBlankDocument(), assets: [] });
-    return true;
-  }, [load, resolveUnsaved]);
+  const newImpl = useCallback(
+    async (): Promise<boolean> => (await resolveUnsaved()) && createNew(),
+    [createNew, resolveUnsaved],
+  );
 
   const openImpl = useCallback(async (): Promise<boolean> => {
     if (!(await resolveUnsaved())) return false;
@@ -106,10 +100,9 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
       return false;
     }
     if (opened.data === null) return false;
-    load(opened.data.info, opened.data.content, { dirty: opened.data.recoveredFromBackup });
-    notifyIfRecoveredFromBackup(opened.data);
+    loadOpened(opened.data);
     return true;
-  }, [load, resolveUnsaved]);
+  }, [loadOpened, resolveUnsaved]);
 
   return useMemo(
     () => ({
@@ -117,7 +110,8 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
       openProject: exclusive(openImpl),
       save: exclusive(saveImpl),
       saveAs: exclusive(saveAsImpl),
+      confirmClose: exclusive(resolveUnsaved),
     }),
-    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl],
+    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved],
   );
 }

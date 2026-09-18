@@ -1,5 +1,23 @@
-import type { Result } from "./validation";
+import { ALLOWED_IMAGE_TYPES, type Result } from "./validation";
 import type { Size } from "./types";
+
+/**
+ * Opens the system file picker for images.
+ *
+ * Returns:
+ *   Selected files; empty when the user cancels.
+ */
+export function pickImageFiles(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = ALLOWED_IMAGE_TYPES.join(",");
+    input.addEventListener("change", () => resolve(Array.from(input.files ?? [])));
+    input.addEventListener("cancel", () => resolve([]));
+    input.click();
+  });
+}
 
 /**
  * Loads an image URL to read its intrinsic size.

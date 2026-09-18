@@ -72,7 +72,7 @@ src/
       project-types.ts            # ProjectInfo / ProjectContent / OpenedProject / CommandError（對應 Rust）
       project-api.ts              # invoke 包裝（回傳 Result）、isDesktop、describeCommandError
       asset-url.ts                # resolveAssetUrl：專案相對路徑 → asset protocol URL
-      project-context.tsx         # ProjectProvider：啟動載入、dirty 判斷、視窗標題、resolveSrc
+      project-context.tsx         # ProjectProvider：啟動載入、createNew / loadOpened / markSaved、視窗標題、resolveSrc
       use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存（confirm 由 UI 注入）
       use-image-import.ts         # 圖片複製進專案 assets/（上傳檔案與內建相片）
       use-close-guard.ts          # 關閉視窗前提示未存檔
@@ -125,7 +125,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`uploads`。面板開關（`openPanel`）放在 `home-page.tsx` 的 local state。
+- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。面板開關（`openPanel`）放在 `home-page.tsx` 的 local state。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
 - `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。顏色選擇器聽原生 `change` 事件（`ColorInput`），避免 React `onChange` 連續寫入歷史。
@@ -179,9 +179,10 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用）。
 - 另存對話框：使用者輸入的名稱（去掉 `.magproj`）就是新的專案資料夾名稱，檔案固定叫 `project.magproj`；目標資料夾已存在而且不是空的會拒絕。對話框預設位置是「文件\雜誌編輯軟體」。
 - asset protocol 的 scope 在 `tauri.conf.json` 是空的，開啟專案時由 Rust `asset_protocol_scope().allow_directory()` 動態開放。
-- **dirty 判斷**：`history.present !== savedDocument`（比較參考）。`document/load` 會保存同一個 document 參考並清空復原歷史；改變這個行為會讓 dirty 判斷失效。
+- **dirty 判斷**：reducer 的 `selectIsDirty`＝`history.present !== savedDocument`（比較參考）。`document/load`（清空復原歷史，`saved: false` 時 `savedDocument` 設為 null）與 `document/markSaved` 負責設定 `savedDocument`；`ProjectProvider` 只在有開啟專案時才回報 dirty。
 - 視窗標題：`● 文件名稱 — 雜誌編輯軟體`（`●` 表示未存檔），由 `ProjectProvider` 呼叫 `setTitle`。
-- 新增 / 開啟 / 關閉視窗前，有未存檔的變更時會詢問「儲存 / 不儲存 / 取消」。`useProjectCommands` 以 `busyRef` 防止同時執行兩個檔案操作。
+- 新增 / 開啟 / 關閉視窗前，有未存檔的變更時會詢問「儲存 / 不儲存 / 取消」；三者共用 `useProjectCommands` 的同一段流程（關閉視窗走 `confirmClose`）。`busyRef` 防止同時執行兩個檔案操作（包括對話框開著時關閉視窗）。
+- 圖片的選檔對話框統一用 `lib/editor/image.ts` 的 `pickImageFiles()`（上傳面板與「匯入圖片」共用）。
 - **尚未實作**（見 `0-Task/plan-filesystem.md`）：第二階段自動備份（`%LOCALAPPDATA%\...\recovery\`）、第三階段系統素材庫與範本、匯入其他專案的頁面、「最近開啟」選單。
 
 ## Rust ↔ Frontend IPC
@@ -194,7 +195,8 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
 - 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`、`asset_import`（raw binary body）；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
-- 有對話框（blocking API）的 command 必須是 `async fn`，才不會卡住主執行緒。
+- 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
+- `AppError::InvalidInput` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 
 ## CSP
 

@@ -4,12 +4,11 @@ use super::format::ASSET_DIR;
 use super::io::asset_dir;
 use crate::error::{AppError, AppResult};
 use sha2::{Digest, Sha256};
-use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
 /// Same limit as the frontend upload validation.
-pub const MAX_ASSET_BYTES: usize = 20 * 1024 * 1024;
+const MAX_ASSET_BYTES: usize = 20 * 1024 * 1024;
 /// Hex characters of the SHA-256 digest used as the file name (128 bits is ample for dedupe).
 const HASH_HEX_LEN: usize = 32;
 const SVG_SNIFF_BYTES: usize = 4096;
@@ -18,7 +17,7 @@ const SVG_SNIFF_BYTES: usize = 4096;
 ///
 /// SVG is accepted because the bundled sample photos are SVG. It is only ever rendered through
 /// `<img>` / canvas, where scripts inside the SVG do not run.
-pub fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
+fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return Some("png");
     }
@@ -39,14 +38,6 @@ pub fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
     None
 }
 
-fn content_hash(bytes: &[u8]) -> String {
-    let digest = Sha256::digest(bytes);
-    let mut hex = String::with_capacity(HASH_HEX_LEN);
-    for byte in &digest[..HASH_HEX_LEN / 2] {
-        let _ = write!(hex, "{byte:02x}");
-    }
-    hex
-}
 
 /// Stores an image in the project, named by content hash so identical images are stored once.
 /// Existing files are never rewritten, which keeps undo history and backups valid.
@@ -65,7 +56,8 @@ pub fn import_bytes(root: &Path, bytes: &[u8]) -> AppResult<String> {
         return Err(AppError::invalid_input("圖片超過 20 MB 上限"));
     }
     let extension = detect_extension(bytes).ok_or_else(|| AppError::invalid_input("不是支援的圖片格式"))?;
-    let file_name = format!("{}.{extension}", content_hash(bytes));
+    // GenericArray 的 LowerHex 支援 precision：輸出摘要的前 HASH_HEX_LEN 個 hex 字元
+    let file_name = format!("{:.*x}.{extension}", HASH_HEX_LEN, Sha256::digest(bytes));
     let dir = asset_dir(root);
     fs::create_dir_all(&dir)?;
     let target = dir.join(&file_name);

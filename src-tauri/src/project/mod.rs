@@ -139,7 +139,7 @@ fn build_file(project: &OpenProject, content: ProjectContent) -> ProjectFile {
 /// Returns `AppError::InvalidProject` for invalid content, `AppError::Io` on write failure.
 pub fn save(project: &OpenProject, content: ProjectContent) -> AppResult<()> {
     format::validate_content(&content.document, &content.assets)?;
-    let json = format::to_json(&build_file(project, content))?;
+    let json = serde_json::to_string_pretty(&build_file(project, content))?;
     io::write_project_atomic(&project.root, &json)
 }
 

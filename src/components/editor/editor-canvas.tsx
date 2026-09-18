@@ -3,7 +3,6 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Layer, Rect, Stage, Transformer } from "react-konva";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
-import { useProject } from "@/lib/project/project-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import {
   boundsCenter,
@@ -78,7 +77,6 @@ function useFontsReady(): boolean {
 export function EditorCanvas() {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
-  const { resolveSrc } = useProject();
   const page = selectActivePage(state);
   const selected = selectSelectedElement(state);
   const { zoom, fitRequest } = state.view;
@@ -276,7 +274,6 @@ export function EditorCanvas() {
                     onSelect={handleSelect}
                     onChange={handleChange}
                     onEditText={handleEditText}
-                    resolveSrc={resolveSrc}
                   />
                 ))}
                 {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}

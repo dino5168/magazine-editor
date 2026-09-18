@@ -2,22 +2,16 @@ import { invoke, isTauri, type InvokeArgs } from "@tauri-apps/api/core";
 import type { Result } from "@/lib/editor/validation";
 import {
   CommandError,
+  ERROR_KINDS,
   type AppErrorKind,
   type OpenedProject,
   type ProjectContent,
   type ProjectInfo,
 } from "./project-types";
 
-const ERROR_KINDS: readonly AppErrorKind[] = [
-  "sqlite",
-  "lockPoisoned",
-  "invalidInput",
-  "io",
-  "invalidProject",
-  "unsupportedVersion",
-  "noProject",
-  "tauri",
-];
+function isErrorKind(value: string): value is AppErrorKind {
+  return (ERROR_KINDS as readonly string[]).includes(value);
+}
 
 /**
  * Converts whatever `invoke` rejected with into a `CommandError`.
@@ -31,8 +25,8 @@ const ERROR_KINDS: readonly AppErrorKind[] = [
 export function toCommandError(error: unknown): CommandError {
   if (typeof error === "object" && error !== null && "kind" in error && "message" in error) {
     const { kind, message } = error;
-    if (typeof kind === "string" && typeof message === "string" && (ERROR_KINDS as readonly string[]).includes(kind)) {
-      return new CommandError(kind as AppErrorKind, message);
+    if (typeof kind === "string" && typeof message === "string" && isErrorKind(kind)) {
+      return new CommandError(kind, message);
     }
   }
   return new CommandError("tauri", error instanceof Error ? error.message : String(error));
@@ -74,7 +68,7 @@ export function describeCommandError(error: Error): string {
   if (!(error instanceof CommandError)) return error.message;
   switch (error.kind) {
     case "invalidInput":
-      // Rust 端的 InvalidInput 訊息本身就是給使用者看的中文
+      // 約定：Rust 端 AppError::InvalidInput 的訊息一律是給使用者看的中文
       return error.message;
     case "unsupportedVersion":
       return "這個專案由較新版本的軟體建立，請更新軟體後再開啟";
