@@ -44,8 +44,9 @@ npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（�
 ```
 src/
   App.tsx                         # TooltipProvider + Toaster + lazy 載入 HomePage（不再使用 app-sidebar）
-  pages/home-page.tsx             # EditorProvider + UI-01 Grid 版面；openPanel 狀態放在這裡
+  pages/home-page.tsx             # EditorProvider + Grid 版面（選單列 / UI-01）；openPanel 狀態與選單 handlers 放在這裡
   components/
+    app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 設定(S)），依 MENUS 渲染
     app/app-siderbutton.tsx       # 左側按鈕列；SIDER_BUTTONS 是按鈕的單一資料來源，SiderButtonId 由它推導
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     editor/
@@ -62,6 +63,12 @@ src/
     ui/                           # shadcn 產生的元件（視為 vendor code）
   lib/
     utils.ts                      # re-export `cn`（來自 `cn` 套件，不是 clsx + tailwind-merge）
+    menu/                         # 選單與全域指令（不含 UI）
+      commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
+      menu-structure.ts           # MENUS 結構（item / separator / submenu / radio）、助記鍵
+      shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
+      use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
+      __tests__/
     editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
       types.ts                    # 文件模型（CanvasElement discriminated union）
       editor-reducer.ts           # 純 reducer + selectors + undo/redo
@@ -124,6 +131,26 @@ src-tauri/
 - 上傳圖片使用 `blob:` URL，工作階段內不 revoke（undo 可能讓刪除的圖片回來）。只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼。
 - `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，上傳面板的拖放區需要這個設定。**不可移除**。
 - 目前**沒有持久化**：文件只存在記憶體，關閉 App 就消失。啟動時載入 `createSampleDocument()` 的示範內容。
+
+## 選單列與指令（`lib/menu`）
+
+- 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
+- **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
+- **目前所有指令都是佔位**（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），在 `home-page.tsx` 建立。實作檔案管理時，把這裡換成真正的 handlers；handler 需要編輯器狀態，所以必須在 `EditorProvider` 內建立。
+- 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
+- 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
+- `use-menu-shortcuts` 在 `window` capture 階段註冊：
+  - 在輸入框與文字編輯中也生效，並呼叫 `preventDefault()`，避免 WebView2 預設的 Ctrl+S / Ctrl+O 行為。
+  - 例外：輸入法選字中（`isComposing`）或焦點在 dialog / alertdialog 內時不觸發。
+- 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
+- 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
+
+| 快捷鍵 | 指令 |
+|--------|------|
+| Ctrl+N / Ctrl+O | 新增 / 開啟... |
+| Ctrl+S / Ctrl+Shift+S | 儲存 / 另存新檔... |
+| Ctrl+, | 偏好設定... |
+| Alt+F / Alt+S | 開啟「檔案」/「設定」選單 |
 
 ## Rust ↔ Frontend IPC
 
