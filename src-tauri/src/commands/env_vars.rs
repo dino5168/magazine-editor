@@ -1,4 +1,5 @@
-use crate::db::{DbError, DbResult, DbState};
+use crate::db::DbState;
+use crate::error::{AppError, AppResult};
 use rusqlite::params;
 use serde::Serialize;
 
@@ -11,19 +12,19 @@ pub struct EnvVar {
 }
 
 // IPC 參數來自 WebView，不可信任，寫入前驗證
-fn validate_key(key: &str) -> DbResult<()> {
+fn validate_key(key: &str) -> AppResult<()> {
     if key.trim().is_empty() {
-        return Err(DbError::InvalidInput("key must not be empty"));
+        return Err(AppError::invalid_input("key must not be empty"));
     }
     if key.len() > MAX_KEY_LEN {
-        return Err(DbError::InvalidInput("key is too long"));
+        return Err(AppError::invalid_input("key is too long"));
     }
     Ok(())
 }
 
 /// Lists all stored environment variables in insertion order.
 #[tauri::command]
-pub fn get_env_vars(state: tauri::State<'_, DbState>) -> DbResult<Vec<EnvVar>> {
+pub fn get_env_vars(state: tauri::State<'_, DbState>) -> AppResult<Vec<EnvVar>> {
     let conn = state.conn()?;
     let mut stmt = conn.prepare("SELECT key, value FROM env_vars ORDER BY rowid")?;
     let vars = stmt
@@ -34,7 +35,7 @@ pub fn get_env_vars(state: tauri::State<'_, DbState>) -> DbResult<Vec<EnvVar>> {
 
 /// Inserts or updates an environment variable.
 #[tauri::command]
-pub fn upsert_env_var(state: tauri::State<'_, DbState>, key: String, value: String) -> DbResult<()> {
+pub fn upsert_env_var(state: tauri::State<'_, DbState>, key: String, value: String) -> AppResult<()> {
     validate_key(&key)?;
     let conn = state.conn()?;
     conn.execute(
@@ -47,7 +48,7 @@ pub fn upsert_env_var(state: tauri::State<'_, DbState>, key: String, value: Stri
 
 /// Deletes an environment variable; no-op if the key does not exist.
 #[tauri::command]
-pub fn delete_env_var(state: tauri::State<'_, DbState>, key: String) -> DbResult<()> {
+pub fn delete_env_var(state: tauri::State<'_, DbState>, key: String) -> AppResult<()> {
     validate_key(&key)?;
     let conn = state.conn()?;
     conn.execute("DELETE FROM env_vars WHERE key = ?1", params![key])?;

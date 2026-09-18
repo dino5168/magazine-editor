@@ -189,3 +189,38 @@ describe("editorReducer / document", () => {
     expect(run(blankState(), { type: "view/setZoom", zoom: 99 }).view.zoom).toBe(4);
   });
 });
+
+describe("editorReducer / project", () => {
+  const asset = { src: "assets/images/abc.png", name: "封面.png", width: 1600, height: 900 };
+
+  it("adds an asset once per src", () => {
+    const once = run(blankState(), { type: "asset/add", asset });
+    const twice = editorReducer(once, { type: "asset/add", asset: { ...asset, name: "另一個名稱.png" } });
+
+    expect(once.assets).toEqual([asset]);
+    expect(twice).toBe(once);
+    // 素材清單不屬於文件，不進入復原歷史
+    expect(once.history.past).toHaveLength(0);
+  });
+
+  it("loads a document, clearing history and selection but keeping zoom", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const edited = run(blankState(), { type: "element/add", element }, { type: "view/setZoom", zoom: 2 });
+    const document: EditorDocument = {
+      name: "另一個專案",
+      pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
+    };
+
+    const loaded = editorReducer(edited, { type: "document/load", document, assets: [asset] });
+
+    expect(loaded.history).toEqual({ past: [], present: document, future: [] });
+    // reducer 必須保存同一個參考，ProjectProvider 才能用 === 判斷是否修改
+    expect(loaded.history.present).toBe(document);
+    expect(loaded.activePageId).toBe(document.pages[0].id);
+    expect(loaded.selectedId).toBeNull();
+    expect(loaded.assets).toEqual([asset]);
+    expect(loaded.view.zoom).toBe(2);
+    expect(loaded.view.fitRequest).toBe(edited.view.fitRequest + 1);
+    expect(run(loaded, { type: "history/undo" })).toBe(loaded);
+  });
+});

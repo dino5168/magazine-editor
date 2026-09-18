@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**Typst 負責排版與 PDF 輸出，Konva.js 做前端自由拖放編輯器**（類似 Canva）。
-- 目前階段：前端編輯器 v1。實作計畫在 `../../3_系統設計文件/imp-ui-homepage.md`。
+- 目前階段：前端編輯器 v1 + 檔案系統第一階段（專案存檔 / 開啟）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`（本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -17,13 +17,13 @@
 
 | 層 | 技術 |
 |---|---|
-| Desktop shell | Tauri v2（`tauri-plugin-opener`） |
+| Desktop shell | Tauri v2（`protocol-asset` feature）· `tauri-plugin-opener` · `tauri-plugin-dialog`（只在 Rust 端呼叫）· `tauri-plugin-single-instance` |
 | Frontend | React 19 · TypeScript ~6.0（strict）· Vite 8 |
 | 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · Geist Variable font · sonner |
-| 測試 | vitest 5（node 環境，只測 `src/lib/editor` 的純邏輯） |
-| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde |
+| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`）· 共用 fixture `tests/fixtures/sample.magproj` |
+| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` |
 
 ## Commands
 
@@ -48,9 +48,10 @@ npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（�
 ```
 src/
   App.tsx                         # TooltipProvider + Toaster + lazy 載入 HomePage（不再使用 app-sidebar）
-  pages/home-page.tsx             # EditorProvider + Grid 版面（選單列 / UI-01）；openPanel 狀態與選單 handlers 放在這裡
+  pages/home-page.tsx             # EditorProvider → ProjectProvider → Grid 版面（選單列 / UI-01）；openPanel、選單 handlers、關閉提示放在這裡
   components/
     app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 設定(S)），依 MENUS 渲染
+    app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/app-siderbutton.tsx       # 左側按鈕列；SIDER_BUTTONS 是按鈕的單一資料來源，SiderButtonId 由它推導
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     editor/
@@ -67,6 +68,15 @@ src/
     ui/                           # shadcn 產生的元件（視為 vendor code）
   lib/
     utils.ts                      # re-export `cn`（來自 `cn` 套件，不是 clsx + tailwind-merge）
+    project/                      # 專案檔案存取（不含 UI）
+      project-types.ts            # ProjectInfo / ProjectContent / OpenedProject / CommandError（對應 Rust）
+      project-api.ts              # invoke 包裝（回傳 Result）、isDesktop、describeCommandError
+      asset-url.ts                # resolveAssetUrl：專案相對路徑 → asset protocol URL
+      project-context.tsx         # ProjectProvider：啟動載入、dirty 判斷、視窗標題、resolveSrc
+      use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存（confirm 由 UI 注入）
+      use-image-import.ts         # 圖片複製進專案 assets/（上傳檔案與內建相片）
+      use-close-guard.ts          # 關閉視窗前提示未存檔
+      __tests__/
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
       menu-structure.ts           # MENUS 結構（item / separator / submenu / radio）、助記鍵
@@ -87,11 +97,14 @@ src/
       __tests__/                  # vitest
   assets/photos/*.svg             # 相片面板的佔位範例圖（可以直接換成真實照片）
 src-tauri/
-  src/lib.rs                      # Builder：setup DB、註冊 plugin 與 commands
-  src/db/mod.rs                   # DbState / DbError / migrate()
-  src/commands/                   # #[tauri::command]，每個領域一個檔案
-  capabilities/default.json       # IPC 權限（core:default、opener:default）
-  tauri.conf.json                 # 視窗、CSP、bundle 設定
+  src/lib.rs                      # Builder：single-instance（最先註冊）、setup DB / ProjectState、清除上次的未命名專案、註冊 commands
+  src/error.rs                    # AppError / AppResult（所有 command 共用）
+  src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
+  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）
+  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs）
+  capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
+  tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（含六種物件）
 ```
 
 `@/*` alias 指向 `src/*`，`tsconfig.json` 的 paths 和 `vite.config.ts` 的 resolve.alias 兩處必須一致。
@@ -132,15 +145,15 @@ src-tauri/
 - 字型：canvas 必須等 Geist 載入後才建立 Stage（`useFontsReady`），否則換行寬度會算錯。預設 fontFamily 是 `"Geist Variable", "Microsoft JhengHei", sans-serif`。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
 - 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Esc / 方向鍵）焦點在 input、textarea、dialog、menu 內時不觸發。
-- 上傳圖片使用 `blob:` URL，工作階段內不 revoke（undo 可能讓刪除的圖片回來）。只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼。
+- 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
 - `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，上傳面板的拖放區需要這個設定。**不可移除**。
-- 目前**沒有持久化**：文件只存在記憶體，關閉 App 就消失。啟動時載入 `createSampleDocument()` 的示範內容。
+- 桌面版啟動時開啟上次的專案，沒有就建立空白 A4 的未命名專案；瀏覽器模式（`npm run dev`）沒有檔案存取，只載入 `createSampleDocument()` 的示範內容，檔案指令會提示「僅在桌面版可用」。
 
 ## 選單列與指令（`lib/menu`）
 
 - 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
 - **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
-- **目前所有指令都是佔位**（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），在 `home-page.tsx` 建立。實作檔案管理時，把這裡換成真正的 handlers；handler 需要編輯器狀態，所以必須在 `EditorProvider` 內建立。
+- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片已實作；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
 - 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
 - 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
@@ -156,22 +169,38 @@ src-tauri/
 | Ctrl+, | 偏好設定... |
 | Alt+F / Alt+S | 開啟「檔案」/「設定」選單 |
 
+## 檔案系統（`lib/project` + `src-tauri/src/project`）
+
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 1）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
+- **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION` 並在 `migrate()` 加升級步驟；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
+- **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
+- 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的）。
+- 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用）。
+- 另存對話框：使用者輸入的名稱（去掉 `.magproj`）就是新的專案資料夾名稱，檔案固定叫 `project.magproj`；目標資料夾已存在而且不是空的會拒絕。對話框預設位置是「文件\雜誌編輯軟體」。
+- asset protocol 的 scope 在 `tauri.conf.json` 是空的，開啟專案時由 Rust `asset_protocol_scope().allow_directory()` 動態開放。
+- **dirty 判斷**：`history.present !== savedDocument`（比較參考）。`document/load` 會保存同一個 document 參考並清空復原歷史；改變這個行為會讓 dirty 判斷失效。
+- 視窗標題：`● 文件名稱 — 雜誌編輯軟體`（`●` 表示未存檔），由 `ProjectProvider` 呼叫 `setTitle`。
+- 新增 / 開啟 / 關閉視窗前，有未存檔的變更時會詢問「儲存 / 不儲存 / 取消」。`useProjectCommands` 以 `busyRef` 防止同時執行兩個檔案操作。
+- **尚未實作**（見 `0-Task/plan-filesystem.md`）：第二階段自動備份（`%LOCALAPPDATA%\...\recovery\`）、第三階段系統素材庫與範本、匯入其他專案的頁面、「最近開啟」選單。
+
 ## Rust ↔ Frontend IPC
 
 - 資料庫路徑：`%APPDATA%\com.mycompany.magazineeditor\app.db`（`app_data_dir()`；安裝在 Program Files 時 exe 目錄不可寫）。
 - 單一 `Connection` 包在 `DbState(Mutex<Connection>)`，command 內用 `state.conn()?` 取得連線，不要直接 `.lock().unwrap()`。
-- Schema 變更寫在 `db::migrate()`（目前只有 `CREATE TABLE IF NOT EXISTS`；需要 ALTER 時再引入 `PRAGMA user_version`）。
-- Command 一律回傳 `DbResult<T>`；`DbError` 序列化為 `{ kind, message }`，`kind` ∈ `"sqlite" | "lockPoisoned" | "invalidInput"`。前端依 `kind` 判斷錯誤類型，不要解析 message 字串。
+- Schema 變更：在 `db::MIGRATIONS` **尾端**新增一個 SQL 步驟（依 `PRAGMA user_version` 執行，已發布的步驟不可修改）。目前是 v2（`env_vars`、`recent_projects`）。
+- Command 一律回傳 `AppResult<T>`；`AppError` 序列化為 `{ kind, message }`，`kind` ∈ `"sqlite" | "lockPoisoned" | "invalidInput" | "io" | "invalidProject" | "unsupportedVersion" | "noProject" | "tauri"`（前端對應 `AppErrorKind`）。前端依 `kind` 判斷錯誤類型，不要解析 message 字串；`invalidInput` 的 message 是給使用者看的中文，其他 kind 由 `describeCommandError` 翻成中文。使用者取消對話框不是錯誤，command 回傳 `null`。
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`、`asset_import`（raw binary body）；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 有對話框（blocking API）的 command 必須是 `async fn`，才不會卡住主執行緒。
 
 ## CSP
 
 `tauri.conf.json` 設定嚴格 CSP，並以 `dangerousDisableAssetCspModification: ["style-src"]` 允許 `'unsafe-inline'`：Radix 和 sonner 會在 runtime 注入 `<style>`，而 Tauri 預設加的 nonce 會讓 `'unsafe-inline'` 失效。**不可移除此設定**。
 
-圖片只允許 `'self'`、`data:`、`blob:`、`asset:`。Vite 會把小於 4KB 的 SVG 內嵌成 `data:` URI。載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則會被靜默阻擋。
+圖片只允許 `'self'`、`data:`、`blob:`、`asset:`（專案圖片走 asset protocol，即 `http://asset.localhost`）。Vite 會把小於 4KB 的 SVG 內嵌成 `data:` URI。載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則會被靜默阻擋。
 
 ## 慣例
 

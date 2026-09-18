@@ -5,6 +5,7 @@ import photoDesert from "@/assets/photos/photo-desert.svg";
 import photoForest from "@/assets/photos/photo-forest.svg";
 import photoMountain from "@/assets/photos/photo-mountain.svg";
 import photoOcean from "@/assets/photos/photo-ocean.svg";
+import { useImageImport } from "@/lib/project/use-image-import";
 import { useAddImage } from "./use-add-image";
 
 // 內建佔位圖（CSP 不允許載入外部圖片）；替換成實際照片時只需更換 src/assets/photos/ 內的檔案
@@ -25,6 +26,13 @@ const PHOTOS: readonly { readonly id: string; readonly label: string; readonly s
  */
 export function PhotosPanel() {
   const addImage = useAddImage();
+  const { importBundled } = useImageImport();
+
+  // 先複製進專案的 assets/，專案資料夾才能自給自足（搬到別台電腦也看得到）
+  const handleAdd = async (url: string): Promise<void> => {
+    const image = await importBundled(url);
+    if (image) addImage(image.src, image.size);
+  };
 
   return (
     <Card size="sm">
@@ -38,7 +46,7 @@ export function PhotosPanel() {
             key={photo.id}
             type="button"
             title={photo.label}
-            onClick={() => void addImage(photo.src)}
+            onClick={() => void handleAdd(photo.src)}
             className="group overflow-hidden rounded-lg border bg-muted transition-shadow hover:ring-2 hover:ring-primary/40"
           >
             <img src={photo.src} alt={photo.label} className="aspect-4/3 w-full object-cover" draggable={false} />

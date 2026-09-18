@@ -1,46 +1,30 @@
 import { useRef, useState, type DragEvent } from "react";
 import { CloudUpload } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
-import { createId } from "@/lib/editor/element-factory";
-import { loadImageSize } from "@/lib/editor/image";
-import { ALLOWED_IMAGE_TYPES, validateImageFile } from "@/lib/editor/validation";
+import { useEditorState } from "@/lib/editor/editor-context";
+import { ALLOWED_IMAGE_TYPES } from "@/lib/editor/validation";
+import { useProject } from "@/lib/project/project-context";
+import { useImageImport } from "@/lib/project/use-image-import";
 import { useAddImage } from "./use-add-image";
 
 /**
  * Panel for uploading local images and adding them to the page.
  *
  * Returns:
- *   Drop zone, file picker and the list of images uploaded this session.
+ *   Drop zone, file picker and the list of images stored in the project.
  */
 export function UploadPanel() {
-  const { uploads } = useEditorState();
-  const dispatch = useEditorDispatch();
+  const { assets } = useEditorState();
+  const { desktop, resolveSrc } = useProject();
+  const { importFiles } = useImageImport();
   const addImage = useAddImage();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const handleFiles = async (files: readonly File[]): Promise<void> => {
-    for (const file of files) {
-      const checked = validateImageFile(file);
-      if (checked.error) {
-        toast.error(checked.error.message);
-        continue;
-      }
-      // blob URL 在本工作階段內不 revoke：undo 可能讓已刪除的圖片物件回來
-      const src = URL.createObjectURL(checked.data);
-      // MIME 由副檔名推斷，實際解碼成功才接受，避免改副檔名的非圖片檔
-      const size = await loadImageSize(src);
-      if (size.error) {
-        URL.revokeObjectURL(src);
-        toast.error(`「${file.name}」${size.error.message}`);
-        continue;
-      }
-      dispatch({ type: "upload/add", image: { id: createId(), name: file.name, src, ...size.data } });
-    }
+    await importFiles(files);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>): void => {
@@ -93,22 +77,31 @@ export function UploadPanel() {
 
       <Card size="sm">
         <CardHeader>
-          <CardTitle>本次上傳</CardTitle>
+          <CardTitle>專案圖片</CardTitle>
           <CardDescription>
-            {uploads.length === 0 ? "尚未上傳圖片。" : "點擊加入頁面中央（關閉程式後不會保留）。"}
+            {assets.length === 0
+              ? "尚未上傳圖片。"
+              : desktop
+                ? "點擊加入頁面中央。圖片存放在專案資料夾內，隨專案保存。"
+                : "點擊加入頁面中央（瀏覽器模式，關閉後不會保留）。"}
           </CardDescription>
         </CardHeader>
-        {uploads.length > 0 && (
+        {assets.length > 0 && (
           <CardContent className="grid grid-cols-2 gap-2">
-            {uploads.map((upload) => (
+            {assets.map((asset) => (
               <button
-                key={upload.id}
+                key={asset.src}
                 type="button"
-                title={upload.name}
-                onClick={() => void addImage(upload.src, upload)}
+                title={asset.name}
+                onClick={() => addImage(asset.src, asset)}
                 className="overflow-hidden rounded-lg border bg-muted transition-shadow hover:ring-2 hover:ring-primary/40"
               >
-                <img src={upload.src} alt={upload.name} className="aspect-4/3 w-full object-contain" draggable={false} />
+                <img
+                  src={resolveSrc(asset.src)}
+                  alt={asset.name}
+                  className="aspect-4/3 w-full object-contain"
+                  draggable={false}
+                />
               </button>
             ))}
           </CardContent>

@@ -2,13 +2,13 @@ import { createPage, createSampleDocument } from "./element-factory";
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, isHexColor, validateName } from "./validation";
 import { clampZoom } from "./viewport";
 import type {
+  AssetInfo,
   CanvasElement,
   EditorDocument,
   ElementId,
   ElementPatch,
   Page,
   PageId,
-  UploadedImage,
 } from "./types";
 
 export const HISTORY_LIMIT = 100;
@@ -31,7 +31,8 @@ export interface EditorState {
   readonly activePageId: PageId;
   readonly selectedId: ElementId | null;
   readonly view: EditorView;
-  readonly uploads: readonly UploadedImage[];
+  /** Images stored in the project; saved with it but not part of undo history. */
+  readonly assets: readonly AssetInfo[];
 }
 
 export type EditorAction =
@@ -50,7 +51,12 @@ export type EditorAction =
   | { readonly type: "selection/set"; readonly id: ElementId | null }
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
-  | { readonly type: "upload/add"; readonly image: UploadedImage };
+  | { readonly type: "asset/add"; readonly asset: AssetInfo }
+  | {
+      readonly type: "document/load";
+      readonly document: EditorDocument;
+      readonly assets: readonly AssetInfo[];
+    };
 
 type ActionOf<T extends EditorAction["type"]> = Extract<EditorAction, { readonly type: T }>;
 type ActionHandler<T extends EditorAction["type"]> = (state: EditorState, action: ActionOf<T>) => EditorState;
@@ -60,17 +66,21 @@ type ActionHandler<T extends EditorAction["type"]> = (state: EditorState, action
  *
  * Args:
  *   document: Initial document; defaults to the sample document.
+ *   assets: Images stored with the document.
  *
  * Returns:
  *   Editor state with the first page active.
  */
-export function createInitialState(document: EditorDocument = createSampleDocument()): EditorState {
+export function createInitialState(
+  document: EditorDocument = createSampleDocument(),
+  assets: readonly AssetInfo[] = [],
+): EditorState {
   return {
     history: { past: [], present: document, future: [] },
     activePageId: document.pages[0].id,
     selectedId: null,
     view: { zoom: 1, fitRequest: 1 },
-    uploads: [],
+    assets,
   };
 }
 
@@ -269,7 +279,17 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   "view/fit": (state) => ({ ...state, view: { ...state.view, fitRequest: state.view.fitRequest + 1 } }),
 
-  "upload/add": (state, action) => ({ ...state, uploads: [...state.uploads, action.image] }),
+  // 圖片以內容 hash 命名，同一張圖再次匯入會得到相同的 src，不重複列出
+  "asset/add": (state, action) =>
+    state.assets.some((asset) => asset.src === action.asset.src)
+      ? state
+      : { ...state, assets: [...state.assets, action.asset] },
+
+  // 開啟 / 新增專案：換掉整份文件並清空復原歷史（不能復原到另一個專案的內容）
+  "document/load": (state, action) => {
+    const initial = createInitialState(action.document, action.assets);
+    return { ...initial, view: { zoom: state.view.zoom, fitRequest: state.view.fitRequest + 1 } };
+  },
 };
 
 /**

@@ -60,7 +60,10 @@ export interface StarElement extends BaseElement {
 
 export interface ImageElement extends BaseElement {
   readonly type: "image";
-  /** Bundled asset URL or session-scoped `blob:` URL. */
+  /**
+   * Desktop: project-relative path such as `assets/images/<hash>.png` (resolved by `resolveAssetUrl`).
+   * Browser-only dev mode (no project): a bundled asset or `blob:` URL used as-is.
+   */
   readonly src: string;
   readonly width: number;
   readonly height: number;
@@ -96,10 +99,13 @@ export interface EditorDocument {
   readonly pages: readonly Page[];
 }
 
-export interface UploadedImage {
-  readonly id: string;
-  readonly name: string;
+/** An image stored in the project (`assets/images/`), listed in the upload panel. */
+export interface AssetInfo {
+  /** Same value an `ImageElement.src` uses to show this image. */
   readonly src: string;
+  /** Original file name. */
+  readonly name: string;
+  /** Intrinsic size in pixels. */
   readonly width: number;
   readonly height: number;
 }

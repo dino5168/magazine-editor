@@ -144,7 +144,20 @@ export function createPage(name: string, size: Size, background: string): Page {
 }
 
 /**
- * Creates the demo document shown on startup: one A4 page with sample elements.
+ * Creates the document for a new project: one blank A4 portrait page.
+ *
+ * Returns:
+ *   Blank document.
+ */
+export function createBlankDocument(): EditorDocument {
+  return {
+    name: "未命名文件",
+    pages: [createPage("Page-1", presetToPt(PAGE_SIZE_PRESETS.a4), DEFAULT_PAGE_BACKGROUND)],
+  };
+}
+
+/**
+ * Creates the demo document shown in browser-only dev mode: one A4 page with sample elements.
  *
  * Returns:
  *   Sample document.
