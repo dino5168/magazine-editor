@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（commit <code>cd46d73</code>，2026-09-15）· 本頁更新於 2026-09-18
+  對應原始檔 <code>src/lib/editor/types.ts</code>（commit <code>c81404e</code>，2026-09-18）· 本頁更新於 2026-09-18
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -177,7 +177,7 @@
   <text class="mult" x="341" y="88" text-anchor="end">1..*</text>
   <polygon class="diamond" points="100,186 94,198 100,210 106,198"/>
   <line class="edge" x1="100" y1="210" x2="100" y2="250"/>
-  <text class="elabel" x="110" y="228">uploads</text>
+  <text class="elabel" x="110" y="228">assets</text>
   <text class="mult" x="110" y="244">0..*</text>
   <polygon class="diamond" points="545,110 557,104 569,110 557,116"/>
   <line class="edge" x1="569" y1="110" x2="600" y2="110"/>
@@ -214,21 +214,20 @@
       <text class="field" x="25" y="114">activePageId<tspan class="ft">: PageId</tspan></text>
       <text class="field" x="25" y="134">selectedId<tspan class="ft">: ElementId | null</tspan></text>
       <text class="field" x="25" y="154">view<tspan class="ft">: EditorView</tspan></text>
-      <text class="field" x="25" y="174">uploads<tspan class="ft">: readonly UploadedImage[]</tspan></text>
+      <text class="field" x="25" y="174">assets<tspan class="ft">: readonly AssetInfo[]</tspan></text>
   </a>
-  <a href="#t-UploadedImage" class="node ui">
-    <title>UploadedImage：點擊查看說明</title>
-    <rect class="body" x="15" y="250" width="200" height="156" rx="6"/>
+  <a href="#t-AssetInfo" class="node ui">
+    <title>AssetInfo：點擊查看說明</title>
+    <rect class="body" x="15" y="250" width="200" height="136" rx="6"/>
     <path class="hdr" d="M15 294 V256 a6 6 0 0 1 6 -6 H209 a6 6 0 0 1 6 6 V294 Z"/>
     <line class="sep" x1="15" y1="294" x2="215" y2="294"/>
-    <rect class="frame" x="15" y="250" width="200" height="156" rx="6"/>
+    <rect class="frame" x="15" y="250" width="200" height="136" rx="6"/>
     <text class="st" x="115" y="267">«interface»</text>
-    <text class="nm" x="115" y="285">UploadedImage</text>
-      <text class="field" x="25" y="314">id<tspan class="ft">: string</tspan></text>
+    <text class="nm" x="115" y="285">AssetInfo</text>
+      <text class="field" x="25" y="314">src<tspan class="ft">: string</tspan></text>
       <text class="field" x="25" y="334">name<tspan class="ft">: string</tspan></text>
-      <text class="field" x="25" y="354">src<tspan class="ft">: string</tspan></text>
-      <text class="field" x="25" y="374">width<tspan class="ft">: number</tspan></text>
-      <text class="field" x="25" y="394">height<tspan class="ft">: number</tspan></text>
+      <text class="field" x="25" y="354">width<tspan class="ft">: number</tspan></text>
+      <text class="field" x="25" y="374">height<tspan class="ft">: number</tspan></text>
   </a>
   <a href="#t-EditorDocument" class="node doc">
     <title>EditorDocument：點擊查看說明</title>
@@ -516,7 +515,7 @@
     <tr><td><code>name</code></td><td><code>string</code></td><td>文件名稱，顯示在上方控制列</td></tr>
     <tr><td><code>pages</code></td><td><code>readonly Page[]</code></td><td>所有頁面，依頁籤順序排列。型別允許空陣列，但 reducer 的 <code>page/delete</code> 會擋住刪除最後一頁，所以實際上至少有 1 頁</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code></p>
+  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/project/project-context.tsx</code> · <code>lib/project/project-types.ts</code></p>
 </section>
 
 <section class="card doc" id="t-Page">
@@ -634,7 +633,7 @@
   <p>圖片。<code>x</code> / <code>y</code> 是左上角。和其他物件不同，<strong>沒有 <code>fill</code></strong>。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
-    <tr><td><code>src</code></td><td><code>string</code></td><td>打包在 App 內的圖片網址，或上傳圖片的 <code>blob:</code> 網址。<code>blob:</code> 只在這次執行期間有效，關閉 App 就失效</td></tr>
+    <tr><td><code>src</code></td><td><code>string</code></td><td><strong>專案內的相對路徑</strong>，例如 <code>assets/images/3f2a…e1.png</code>（檔名是內容的 SHA-256）。顯示時由 <code>resolveSrc()</code> 換成 asset protocol 網址。上傳的圖片和內建相片都會先複製進專案資料夾，所以整個資料夾搬到別的位置也能正常顯示。只有瀏覽器模式（<code>npm run dev</code>，沒有專案）才會存 <code>blob:</code> 或打包的網址</td></tr>
     <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>顯示尺寸（pt）。新增時由 <code>createImageElement()</code> 依原始尺寸換算，並縮小到頁面範圍內</td></tr>
   </table></div>
   <p class="uses">使用位置：<code>components/editor/canvas-elements.tsx</code> · <code>lib/editor/element-factory.ts</code></p>
@@ -652,23 +651,22 @@
     <tr><td><code>activePageId</code></td><td><code>PageId</code></td><td>目前顯示的頁面</td></tr>
     <tr><td><code>selectedId</code></td><td><code>ElementId | null</code></td><td>目前選取的物件，沒有選取時是 <code>null</code></td></tr>
     <tr><td><code>view</code></td><td><code>EditorView</code></td><td>縮放倍率等檢視設定</td></tr>
-    <tr><td><code>uploads</code></td><td><code>readonly UploadedImage[]</code></td><td>上傳面板裡的圖片</td></tr>
+    <tr><td><code>assets</code></td><td><code>readonly AssetInfo[]</code></td><td>上傳面板列出的專案圖片。會跟著專案存檔，但<strong>不進入</strong>復原歷史</td></tr>
   </table></div>
   <p>只有 <code>history</code> 裡的東西會被復原 / 重做影響。</p>
 </section>
 
-<section class="card ui" id="t-UploadedImage">
+<section class="card ui" id="t-AssetInfo">
   <a class="back" href="#diagram">↑ 回到圖</a>
-  <h4><code>UploadedImage</code><span class="badge">interface</span></h4>
-  <p>上傳面板裡的一張圖片。它<strong>還不是頁面上的物件</strong>：點擊後才會用它建立一個 <code>ImageElement</code> 放到頁面上。</p>
+  <h4><code>AssetInfo</code><span class="badge">interface</span></h4>
+  <p>存放在專案 <code>assets/images/</code> 裡的一張圖片，列在上傳面板中。它<strong>還不是頁面上的物件</strong>：點擊後才會用它建立一個 <code>ImageElement</code> 放到頁面上。清單會存進 <code>project.magproj</code>，下次開啟專案時還在。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
-    <tr><td><code>id</code></td><td><code>string</code></td><td>唯一識別碼</td></tr>
+    <tr><td><code>src</code></td><td><code>string</code></td><td>和 <code>ImageElement.src</code> 相同的專案相對路徑，也兼作識別碼（同一張圖重複上傳會得到相同的 <code>src</code>，不會重複列出）</td></tr>
     <tr><td><code>name</code></td><td><code>string</code></td><td>原始檔名</td></tr>
-    <tr><td><code>src</code></td><td><code>string</code></td><td><code>blob:</code> 網址</td></tr>
     <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>圖片的<strong>原始像素尺寸</strong>（不是 pt），由 <code>loadImageSize()</code> 實際解碼取得</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code></p>
+  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code> · <code>lib/project/project-types.ts</code> · <code>lib/project/use-image-import.ts</code></p>
 </section>
 
 <h3 class="group-title">別名與衍生型別</h3>
@@ -735,7 +733,7 @@
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>Size</code><span class="badge">interface</span></h4>
   <p>一組寬高 <code>{ width, height }</code>，例如頁面尺寸 preset、圖片原始尺寸、畫布可視區域大小。</p>
-  <p class="uses">使用位置：<code>components/editor/editor-canvas.tsx</code> · <code>components/editor/panels/use-add-image.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/editor/image.ts</code> · <code>lib/editor/units.ts</code> · <code>lib/editor/viewport.ts</code></p>
+  <p class="uses">使用位置：<code>components/editor/editor-canvas.tsx</code> · <code>components/editor/panels/use-add-image.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/editor/image.ts</code> · <code>lib/editor/units.ts</code> · <code>lib/editor/viewport.ts</code> · <code>lib/project/use-image-import.ts</code></p>
 </section>
 
 <section class="card value" id="t-Bounds">
@@ -766,7 +764,7 @@
   <dd>不會。<code>{ fontSize: 12, radiusX: 3 }</code> 也可以通過編譯。它只保證欄位名稱屬於某一種 Element，而且不包含 <code>id</code> / <code>type</code>。</dd>
 
   <dt>Q：<code>types.ts</code> 就是編輯器的全部狀態？</dt>
-  <dd>不是。<code>types.ts</code> 定義的是「文件」本身。選取了哪個物件、目前在哪一頁、縮放倍率、上傳面板的圖片，這些都放在 <code>editor-reducer.ts</code> 的 <code>EditorState</code>，而且<strong>不會</strong>被復原 / 重做影響。</dd>
+  <dd>不是。<code>types.ts</code> 定義的是「文件」本身。選取了哪個物件、目前在哪一頁、縮放倍率、上傳面板的圖片清單，這些都放在 <code>editor-reducer.ts</code> 的 <code>EditorState</code>，而且<strong>不會</strong>被復原 / 重做影響。</dd>
 </dl>
 
 <h2 id="check">自我檢查題</h2>
@@ -784,7 +782,7 @@
 
 <details>
   <summary>3. 上傳一張圖片（還沒放到頁面上），接著按 Ctrl+Z，圖片會從上傳面板消失嗎？</summary>
-  <p>不會。<code>UploadedImage</code> 存在 <code>EditorState.uploads</code>，不在 <code>EditorDocument</code> 裡，所以不會進入復原歷史。</p>
+  <p>不會。<code>AssetInfo</code> 存在 <code>EditorState.assets</code>，不在 <code>EditorDocument</code> 裡，所以不會進入復原歷史（但會跟著專案存檔）。</p>
 </details>
 
 <details>
