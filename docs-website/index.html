@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>magazine-editor 程式說明</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --fg: #1f1f1d;
+    --muted: #6a6862;
+    --border: #dddad3;
+    --code-bg: #efede8;
+    --accent: #2f62a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171716;
+      --surface: #22211f;
+      --fg: #e8e6e1;
+      --muted: #a3a09a;
+      --border: #3a3935;
+      --code-bg: #2c2b28;
+      --accent: #7fa8e6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-block: 40px 80px;
+    padding-inline: 20px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.7 "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.8rem; margin: 0 0 4px; }
+  h2 { font-size: 1.2rem; margin: 36px 0 12px; }
+  a { color: var(--accent); }
+  code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 0.9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .meta { color: var(--muted); margin: 0; }
+  .pages { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .pages a { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; text-decoration: none; color: inherit; }
+  .pages a:hover { border-color: var(--accent); }
+  .pages strong { color: var(--accent); }
+  .pages span { display: block; color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>magazine-editor 程式說明</h1>
+  <p class="meta">隨開發進度撰寫的系統與程式說明（HTML 版）。直接用瀏覽器開啟即可，不需要網路。</p>
+
+  <h2>頁面</h2>
+  <ul class="pages">
+    <li><a href="types.html">
+      <strong>文件模型型別圖</strong>
+      <span><code>src/lib/editor/types.ts</code> 的 interface / type 關係圖、欄位說明、常見誤解</span>
+    </a></li>
+  </ul>
+
+  <h2>和 <code>docs/</code> 的分工</h2>
+  <p><a href="../docs/README.md"><code>docs/</code></a> 是 Markdown 學習文件，著重「為什麼這樣設計」；這裡著重「結構與關係」，適合用圖說明的內容。兩邊互相連結，不重複撰寫。</p>
+</main>
+</body>
+</html>

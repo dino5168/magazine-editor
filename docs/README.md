@@ -31,3 +31,7 @@
 ## 專案進度
 
 整體進度、已做的決定和待辦事項記在 [progress.md](progress.md)。Claude 開始工作前會自動讀這份檔案(寫在 `CLAUDE.md`)。
+
+## HTML 版說明
+
+[`../docs-website/index.html`](../docs-website/index.html) 用圖說明「結構與關係」(例如 `types.ts` 的型別關係圖)。這裡負責「為什麼這樣設計」,兩邊互相連結、不重複撰寫。
