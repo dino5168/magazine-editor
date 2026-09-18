@@ -22,6 +22,17 @@ export interface OpenedProject {
   readonly recoveredFromBackup: boolean;
 }
 
+/** A crash-recovery file left by a previous session (`RecoveryEntry` in Rust). */
+export interface RecoveryEntry {
+  /** Project id; also the recovery file name. */
+  readonly id: string;
+  readonly documentName: string;
+  /** RFC 3339 UTC timestamp of the last automatic backup. */
+  readonly savedAt: string;
+  readonly untitled: boolean;
+  readonly projectRoot: string;
+}
+
 /** `kind` values of `AppError` in `src-tauri/src/error.rs`. */
 export const ERROR_KINDS = [
   "sqlite",

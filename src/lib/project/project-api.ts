@@ -7,6 +7,7 @@ import {
   type OpenedProject,
   type ProjectContent,
   type ProjectInfo,
+  type RecoveryEntry,
 } from "./project-types";
 
 function isErrorKind(value: string): value is AppErrorKind {
@@ -53,6 +54,11 @@ export const projectApi = {
     call<ProjectInfo | null>("project_save_as_dialog", { content, suggestedName }),
   // 以 raw body 傳送位元組，避免 JSON 陣列編碼讓 20 MB 的圖片膨脹數倍
   importAsset: (bytes: Uint8Array) => call<string>("asset_import", bytes),
+  listRecovery: () => call<RecoveryEntry[]>("recovery_list"),
+  restoreRecovery: (id: string) => call<OpenedProject>("recovery_restore", { id }),
+  discardRecovery: (id: string) => call<null>("recovery_discard", { id }),
+  writeRecovery: (content: ProjectContent) => call<null>("recovery_write", { content }),
+  clearRecovery: () => call<null>("recovery_clear"),
 };
 
 /**

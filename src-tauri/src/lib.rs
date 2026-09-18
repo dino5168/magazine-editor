@@ -38,7 +38,18 @@ pub fn run() {
             commands::project::project_save,
             commands::project::project_save_as_dialog,
             commands::project::asset_import,
+            commands::recovery::recovery_list,
+            commands::recovery::recovery_restore,
+            commands::recovery::recovery_discard,
+            commands::recovery::recovery_write,
+            commands::recovery::recovery_clear,
         ])
+        // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                commands::recovery::clear_current(window.app_handle());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

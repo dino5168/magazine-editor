@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppMenubar } from "@/components/app/app-menubar";
+import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
 import { AppSiderButton, getSiderButtonLabel, type SiderButtonId } from "@/components/app/app-siderbutton";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
@@ -92,10 +93,12 @@ export function HomePage() {
     () => createInitialState(isDesktop ? createBlankDocument() : createSampleDocument()),
     [],
   );
+  const { dialog: recoveryDialog, confirm: confirmRecovery } = useRecoveryDialog();
   return (
     <EditorProvider initialState={initialState}>
-      <ProjectProvider>
+      <ProjectProvider confirmRecovery={confirmRecovery}>
         <EditorLayout />
+        {recoveryDialog}
       </ProjectProvider>
     </EditorProvider>
   );

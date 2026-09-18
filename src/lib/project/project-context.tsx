@@ -18,7 +18,8 @@ import { createBlankDocument } from "@/lib/editor/element-factory";
 import type { EditorDocument } from "@/lib/editor/types";
 import { resolveAssetUrl } from "./asset-url";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
-import type { OpenedProject, ProjectContent, ProjectInfo } from "./project-types";
+import type { OpenedProject, ProjectContent, ProjectInfo, RecoveryEntry } from "./project-types";
+import { useAutosave } from "./use-autosave";
 
 export const APP_TITLE = "雜誌編輯軟體";
 
@@ -46,6 +47,18 @@ interface ProjectContextValue {
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 /**
+ * Answer to the startup "restore unsaved content?" prompt. There is deliberately no "later": the
+ * project would be edited meanwhile and the next autosave would overwrite the old backup anyway.
+ */
+export type RecoveryChoice = "restore" | "discard";
+
+interface ProjectProviderProps {
+  readonly children: ReactNode;
+  /** Shows the recovery prompt; injected so this provider stays UI-free. */
+  readonly confirmRecovery: (entry: RecoveryEntry) => Promise<RecoveryChoice>;
+}
+
+/**
  * Formats the window title.
  *
  * Args:
@@ -60,16 +73,18 @@ export function formatWindowTitle(name: string, dirty: boolean): string {
 }
 
 /**
- * Owns the open project: loads the last project at startup, reports unsaved changes and keeps the
- * window title in sync. Must be inside `EditorProvider`.
+ * Owns the open project: offers crash recovery and otherwise loads the last project at startup,
+ * writes automatic backups, reports unsaved changes and keeps the window title in sync.
+ * Must be inside `EditorProvider`.
  *
  * Args:
  *   props.children: Editor UI.
+ *   props.confirmRecovery: Asks whether to restore a backup found at startup.
  *
  * Returns:
  *   Context provider.
  */
-export function ProjectProvider({ children }: { readonly children: ReactNode }) {
+export function ProjectProvider({ children, confirmRecovery }: ProjectProviderProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const [info, setInfo] = useState<ProjectInfo | null>(null);
@@ -121,19 +136,46 @@ export function ProjectProvider({ children }: { readonly children: ReactNode }) 
     [dispatch],
   );
 
+  // 回傳 true 表示已經載入備份的內容
+  const offerRecovery = useCallback(async (): Promise<boolean> => {
+    const listed = await projectApi.listRecovery();
+    // 只處理最新的一份；正常情況下同時只會有一份（切換專案時會刪除前一個專案的備份）
+    const entry = listed.data?.[0];
+    if (!entry) return false;
+    if ((await confirmRecovery(entry)) === "discard") {
+      const discarded = await projectApi.discardRecovery(entry.id);
+      if (discarded.error) toast.error(`無法刪除備份：${describeCommandError(discarded.error)}`);
+      return false;
+    }
+    const restored = await projectApi.restoreRecovery(entry.id);
+    if (restored.error) {
+      toast.error(`無法復原：${describeCommandError(restored.error)}`);
+      return false;
+    }
+    load(restored.data.info, restored.data.content, false);
+    toast.success("已復原上次未儲存的內容，請記得存檔。");
+    return true;
+  }, [confirmRecovery, load]);
+
   // StrictMode 會執行兩次 effect；ref 在兩次之間保留，避免建立兩個專案
   const startedRef = useRef(false);
   useEffect(() => {
     if (!isDesktop || startedRef.current) return;
     startedRef.current = true;
     void (async () => {
+      if (await offerRecovery()) {
+        setReady(true);
+        return;
+      }
       const last = await projectApi.openLast();
       if (last.error) toast.error(`無法開啟上次的專案：${describeCommandError(last.error)}`);
       if (last.data) loadOpened(last.data);
       else await createNew();
       setReady(true);
     })();
-  }, [loadOpened, createNew]);
+  }, [offerRecovery, loadOpened, createNew]);
+
+  useAutosave(getSnapshot, ready);
 
   useEffect(() => {
     if (!isDesktop) return;

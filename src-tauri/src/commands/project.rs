@@ -4,12 +4,15 @@
 use crate::db::{self, DbState};
 use crate::error::{AppError, AppResult};
 use crate::project::format::ProjectContent;
-use crate::project::{self, assets, io, OpenProject, OpenedProject, ProjectInfo, ProjectState};
+use crate::project::{self, assets, io, recovery, OpenProject, OpenedProject, ProjectInfo, ProjectState};
+use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::{DialogExt, FileDialogBuilder, FilePath};
+
+use super::recovery::recovery_dir;
 
 const UNTITLED_DIR: &str = "untitled";
 const DEFAULT_PROJECTS_DIR: &str = "雜誌編輯軟體";
@@ -17,19 +20,41 @@ const PROJECT_EXTENSION: &str = "magproj";
 const PROJECT_FILTER_NAME: &str = "雜誌專案";
 const FALLBACK_PROJECT_NAME: &str = "未命名專案";
 
-fn untitled_base(app: &AppHandle) -> AppResult<PathBuf> {
+pub(crate) fn untitled_base(app: &AppHandle) -> AppResult<PathBuf> {
     Ok(app.path().app_local_data_dir()?.join(UNTITLED_DIR))
 }
 
-/// Deletes leftover untitled projects from previous sessions. Safe at startup because the
-/// single-instance plugin guarantees no other process is using them.
+/// Moves every untitled staging folder except those in `keep` (project ids) into `trash`.
+fn move_untitled_to_trash(untitled: &Path, trash: &Path, keep: &HashSet<String>) {
+    let Ok(entries) = std::fs::read_dir(untitled) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if keep.contains(entry.file_name().to_string_lossy().as_ref()) {
+            continue;
+        }
+        if std::fs::create_dir_all(trash).is_ok() {
+            let _ = std::fs::rename(entry.path(), trash.join(entry.file_name()));
+        }
+    }
+}
+
+/// Deletes leftover untitled projects from previous sessions, except those a recovery file still
+/// needs. Safe at startup because the single-instance plugin guarantees no other process uses them.
 pub fn clear_untitled(app: &AppHandle) {
     let Ok(local) = app.path().app_local_data_dir() else {
         return;
     };
-    // 先改名（瞬間完成）再於背景刪除：啟動不必等刪完大量圖片，稍後建立的新專案也不會被刪到
+    let keep: HashSet<String> = recovery::list(&local.join(recovery::RECOVERY_DIR))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|entry| entry.untitled)
+        .map(|entry| entry.id)
+        .collect();
+    // 先移到垃圾資料夾（rename 瞬間完成）再於背景刪除：啟動不必等刪完大量圖片，稍後建立的新專案也不會被刪到
     let trash_prefix = format!("{UNTITLED_DIR}.trash-");
-    let _ = std::fs::rename(local.join(UNTITLED_DIR), local.join(format!("{trash_prefix}{}", uuid::Uuid::new_v4())));
+    let trash = local.join(format!("{trash_prefix}{}", uuid::Uuid::new_v4()));
+    move_untitled_to_trash(&local.join(UNTITLED_DIR), &trash, &keep);
     std::thread::spawn(move || {
         let Ok(entries) = std::fs::read_dir(&local) else {
             return;
@@ -71,8 +96,9 @@ fn record_recent(db: &DbState, root: &Path, name: &str) -> AppResult<()> {
 }
 
 /// Makes `project` the current one: grants the asset protocol access to its folder and records
-/// it in the recent list.
-fn activate(
+/// it in the recent list. The replaced project's recovery file is deleted, because switching only
+/// happens after the user saved or chose to discard its changes.
+pub(crate) fn activate(
     app: &AppHandle,
     state: &ProjectState,
     db: &DbState,
@@ -85,7 +111,10 @@ fn activate(
         record_recent(db, &project.root, document_name)?;
     }
     let info = project.info();
-    *state.lock()? = Some(project);
+    let previous = state.lock()?.replace(project);
+    if let Some(previous) = previous.filter(|previous| previous.id != info.id) {
+        let _ = recovery::remove(&recovery_dir(app)?, &previous.id);
+    }
     Ok(info)
 }
 
@@ -152,12 +181,13 @@ pub async fn project_open_dialog(
     open_and_activate(&app, &state, &db, root).map(Some)
 }
 
-/// Saves to the current project's folder.
+/// Saves to the current project's folder and drops its recovery file.
 ///
 /// # Errors
 /// `AppError::InvalidInput` for an untitled project (the frontend must use save-as).
 #[tauri::command]
 pub async fn project_save(
+    app: AppHandle,
     state: State<'_, ProjectState>,
     db: State<'_, DbState>,
     content: ProjectContent,
@@ -168,6 +198,8 @@ pub async fn project_save(
     }
     let name = content.document.name.clone();
     project::save(&project, content)?;
+    // 存檔成功後備份就沒有用了；刪除失敗不影響存檔結果
+    let _ = recovery::remove(&recovery_dir(&app)?, &project.id);
     record_recent(&db, &project.root, &name)
 }
 
@@ -229,6 +261,20 @@ pub async fn asset_import(state: State<'_, ProjectState>, request: Request<'_>) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn untitled_folders_needed_by_recovery_are_kept() {
+        let base = tempfile::tempdir().unwrap();
+        let untitled = base.path().join(UNTITLED_DIR);
+        for id in ["keep-me", "old-1", "old-2"] {
+            std::fs::create_dir_all(untitled.join(id).join("assets")).unwrap();
+        }
+        let trash = base.path().join("trash");
+        move_untitled_to_trash(&untitled, &trash, &HashSet::from(["keep-me".to_owned()]));
+        let left: Vec<_> = std::fs::read_dir(&untitled).unwrap().flatten().map(|e| e.file_name()).collect();
+        assert_eq!(left, vec![std::ffi::OsString::from("keep-me")]);
+        assert_eq!(std::fs::read_dir(&trash).unwrap().count(), 2);
+    }
 
     #[test]
     fn save_path_becomes_project_folder() {

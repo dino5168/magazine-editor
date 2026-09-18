@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactElement } from "react";
+import { useCallback, type ReactElement } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,8 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type { ConfirmUnsaved, UnsavedChoice } from "@/lib/project/use-project-commands";
-
-type Resolver = (choice: UnsavedChoice) => void;
+import { usePendingChoice } from "./use-pending-choice";
 
 /**
  * Promise-based "save changes?" prompt.
@@ -22,21 +21,11 @@ type Resolver = (choice: UnsavedChoice) => void;
  *   user's choice (closing the dialog counts as cancel).
  */
 export function useUnsavedChangesDialog(): { readonly dialog: ReactElement; readonly confirm: ConfirmUnsaved } {
-  const [resolver, setResolver] = useState<Resolver | null>(null);
-
-  const confirm = useCallback<ConfirmUnsaved>(
-    // setState 收到函式時會當成 updater 執行，所以要再包一層
-    () => new Promise<UnsavedChoice>((resolve) => setResolver(() => resolve)),
-    [],
-  );
-
-  const choose = (choice: UnsavedChoice): void => {
-    resolver?.(choice);
-    setResolver(null);
-  };
+  const { pending, ask, choose } = usePendingChoice<null, UnsavedChoice>();
+  const confirm = useCallback<ConfirmUnsaved>(() => ask(null), [ask]);
 
   const dialog = (
-    <AlertDialog open={resolver !== null} onOpenChange={(open) => !open && choose("cancel")}>
+    <AlertDialog open={pending !== null} onOpenChange={(open) => !open && choose("cancel")}>
       <AlertDialogContent size="sm">
         <AlertDialogHeader>
           <AlertDialogTitle>要儲存目前的變更嗎？</AlertDialogTitle>
