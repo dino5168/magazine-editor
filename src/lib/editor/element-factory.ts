@@ -9,7 +9,7 @@ import type {
   TextElement,
 } from "./types";
 
-export const DEFAULT_FONT_FAMILY = '"Geist Variable", "Microsoft JhengHei", sans-serif';
+export const DEFAULT_FONT_FAMILY = '"Geist", "Noto Sans TC", sans-serif';
 export const DEFAULT_SHAPE_FILL = "#64748b";
 export const DEFAULT_TEXT_FILL = "#171717";
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";

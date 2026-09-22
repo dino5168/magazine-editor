@@ -48,12 +48,28 @@ pub struct ExportOutput {
     pub skipped_images: usize,
 }
 
-/// Maps a CSS `font-family` list to Typst family names ("Geist Variable" is bundled as "Geist").
+/// Families that older projects stored, mapped to the bundled font that replaces them. Projects
+/// saved before the fonts were bundled still carry these names, and there is no schema migration
+/// for them, so the mapping has to stay.
+const LEGACY_FAMILIES: &[(&str, &str)] = &[
+    // 舊的畫面字型是可變字型，內嵌的是靜態實例
+    ("Geist Variable", "Geist"),
+    // 舊版中文向系統借字型，現在一律用內嵌的 Noto Sans TC
+    ("Microsoft JhengHei", "Noto Sans TC"),
+    ("Microsoft JhengHei UI", "Noto Sans TC"),
+];
+
+/// Maps a CSS `font-family` list to the bundled Typst family names.
 fn font_families(css: &str) -> Vec<String> {
     css.split(',')
         .map(|family| family.trim().trim_matches(['"', '\'']).trim())
         .filter(|family| !family.is_empty() && !GENERIC_FAMILIES.contains(&family.to_ascii_lowercase().as_str()))
-        .map(|family| if family == "Geist Variable" { "Geist".to_owned() } else { family.to_owned() })
+        .map(|family| {
+            LEGACY_FAMILIES
+                .iter()
+                .find(|(from, _)| *from == family)
+                .map_or_else(|| family.to_owned(), |(_, to)| (*to).to_owned())
+        })
         .collect()
 }
 
@@ -201,16 +217,26 @@ mod tests {
     }
 
     fn fonts() -> Vec<Font> {
-        world::load_fonts(&world::system_font_dir()).expect("Microsoft JhengHei is installed on Windows")
+        world::load_fonts()
     }
 
     #[test]
     fn maps_css_font_families() {
+        assert_eq!(font_families(r#""Geist", "Noto Sans TC", sans-serif"#), vec!["Geist", "Noto Sans TC"]);
+        // 內嵌字型之前存檔的專案：兩個舊名稱都要對應到內嵌的字型
         assert_eq!(
             font_families(r#""Geist Variable", "Microsoft JhengHei", sans-serif"#),
-            vec!["Geist", "Microsoft JhengHei"]
+            vec!["Geist", "Noto Sans TC"]
         );
         assert!(font_families("sans-serif").is_empty());
+    }
+
+    #[test]
+    fn bundled_fonts_cover_latin_and_chinese() {
+        let families: Vec<String> = fonts().iter().map(|font| font.info().family.clone()).collect();
+        for expected in ["Geist", "Noto Sans TC"] {
+            assert!(families.iter().any(|family| family == expected), "missing {expected} in {families:?}");
+        }
     }
 
     #[test]

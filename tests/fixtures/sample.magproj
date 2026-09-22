@@ -24,7 +24,7 @@
             "text": "雜誌標題\n副標",
             "width": 420,
             "fontSize": 36,
-            "fontFamily": "\"Geist Variable\", \"Microsoft JhengHei\", sans-serif",
+            "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
             "fontStyle": "bold",
             "align": "center",
             "fill": "#171717"

@@ -55,8 +55,15 @@ function useFontsReady(): boolean {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    // canvas 量字寬需字型已載入，否則首次繪製會用 fallback 字型的寬度換行
-    Promise.all([document.fonts.load('16px "Geist Variable"'), document.fonts.load('bold 16px "Geist Variable"')])
+    // canvas 量字寬需字型已載入，否則首次繪製會用 fallback 字型的寬度換行。
+    // 中文字型也要等：一份中文雜誌的換行幾乎都由 Noto Sans TC 決定。
+    // load() 只在字型實際被用到時才抓檔案，所以要帶一個該字型涵蓋的字當樣本。
+    Promise.all([
+      document.fonts.load('16px "Geist"'),
+      document.fonts.load('bold 16px "Geist"'),
+      document.fonts.load('16px "Noto Sans TC"', '中'),
+      document.fonts.load('bold 16px "Noto Sans TC"', '中'),
+    ])
       .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setReady(true);

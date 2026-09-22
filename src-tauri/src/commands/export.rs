@@ -8,7 +8,7 @@ use crate::export::{self, world, ExportRequest};
 use crate::project::{io, ProjectState};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use tauri::{AppHandle, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
@@ -18,22 +18,16 @@ const FALLBACK_FILE_NAME: &str = "雜誌";
 
 #[derive(Default)]
 pub struct ExportState {
-    /// Loaded on the first export; reading the ~40 MB of Microsoft JhengHei again each time is wasteful.
-    fonts: Mutex<Option<Arc<Vec<Font>>>>,
+    /// Parsed on the first export; re-parsing the ~11 MB of Noto Sans TC each time is wasteful.
+    fonts: OnceLock<Arc<Vec<Font>>>,
     /// Chosen by `export_pdf_choose_path`, consumed by `export_pdf`.
     pending: Mutex<Option<PathBuf>>,
     last_export: Mutex<Option<PathBuf>>,
 }
 
 impl ExportState {
-    fn fonts(&self) -> AppResult<Arc<Vec<Font>>> {
-        let mut slot = self.fonts.lock().map_err(|_| AppError::LockPoisoned)?;
-        if let Some(fonts) = slot.as_ref() {
-            return Ok(Arc::clone(fonts));
-        }
-        let fonts = Arc::new(world::load_fonts(&world::system_font_dir())?);
-        *slot = Some(Arc::clone(&fonts));
-        Ok(fonts)
+    fn fonts(&self) -> Arc<Vec<Font>> {
+        Arc::clone(self.fonts.get_or_init(|| Arc::new(world::load_fonts())))
     }
 }
 
@@ -100,7 +94,7 @@ pub async fn export_pdf(
         .map_err(|_| AppError::LockPoisoned)?
         .take()
         .ok_or_else(|| AppError::invalid_input("請先選擇 PDF 的儲存位置"))?;
-    let fonts = exports.fonts()?;
+    let fonts = exports.fonts();
     let root = project.current()?.root;
     // Typst 排版是 CPU 密集工作，放到 blocking 執行緒，避免佔住 async runtime
     let output = tauri::async_runtime::spawn_blocking(move || export::render_pdf(&root, &request, fonts.to_vec()))

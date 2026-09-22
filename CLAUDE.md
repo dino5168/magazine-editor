@@ -21,9 +21,10 @@
 | Frontend | React 19 · TypeScript ~6.0（strict）· Vite 8 |
 | 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
-| UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · Geist Variable font · sonner |
+| UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` |
+| 字型 | 自備靜態字型，放在 `fonts/`（Geist + Noto Sans TC，Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
 ## Commands
@@ -113,10 +114,11 @@ src-tauri/
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）、recovery.rs（自動備份檔）
-  src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、字型）、template.typ（Typst 模板）、fonts/（內嵌 Geist + OFL）
+  src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）
   src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、recovery.rs、export.rs）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
+fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（含六種物件）
 ```
 
@@ -155,7 +157,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 
 ### 其他注意事項
 
-- 字型：canvas 必須等 Geist 載入後才建立 Stage（`useFontsReady`），否則換行寬度會算錯。預設 fontFamily 是 `"Geist Variable", "Microsoft JhengHei", sans-serif`。
+- 字型：canvas 必須等字型載入後才建立 Stage（`useFontsReady`，中文字型也要等，一份中文雜誌的換行幾乎都由 Noto Sans TC 決定），否則換行寬度會算錯。預設 fontFamily 是 `"Geist", "Noto Sans TC", sans-serif`。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
 - 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Esc / 方向鍵）焦點在 input、textarea、dialog、menu 內時不觸發。
 - 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
@@ -212,14 +214,17 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
 - **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`build_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
 - **`ExportWorld` 是沙箱**：只有 `main.typ`（內嵌模板）、`data.json` 與 `assets/images/*` 可讀，其他路徑一律 `AccessDenied`，圖片路徑還要過 `validate_asset_path`（和專案檔同一個檢查，擋 `../` 與絕對路徑）。
-- **字型**：Geist Regular / Bold 以 `include_bytes!` 內嵌（授權 `export/fonts/OFL.txt`，不可刪）；中文用系統的微軟正黑體（`%WINDIR%\Fonts\msjh.ttc`、`msjhbd.ttc`），讀不到就匯出失敗並說明原因，不產生缺字的 PDF。字型在第一次匯出時載入並快取在 `ExportState`（微軟正黑體約 40 MB，不重複讀）。
-  - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，`"Geist Variable"` 對應到內嵌的 `"Geist"`。開放使用者選字型時要一起擴充。
+- **字型**：畫面、PDF（之後還有 EPUB）**共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face`，Rust 用 `world.rs` 的 `include_bytes!`，**改一邊就要改另一邊**。細節見 `fonts/README.md`。
+  - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。
+  - 不讀系統字型，所以 `load_fonts()` 不會失敗，匯出結果在每台機器上都一樣。字型在第一次匯出時解析並快取在 `ExportState` 的 `OnceLock`。
+  - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，再套 `LEGACY_FAMILIES`（`"Geist Variable"` → `"Geist"`、`"Microsoft JhengHei"` → `"Noto Sans TC"`）。**這個對應表不能刪**：內嵌字型之前存檔的專案仍然帶著舊名稱，而且沒有 schema 遷移會改寫它。
+  - `font-display` 用 `block`：讓瀏覽器先以 fallback 畫再換字，會讓 Konva 已經量好的行寬失效。
 - **兩步 command**：`export_pdf_choose_path`（開儲存對話框，路徑存進 `ExportState.pending`，只回傳檔名）→ `export_pdf`（取出路徑、排版、寫檔）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的 PDF（成功 toast 的「開啟」按鈕）。
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
 - 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。`polygon` 與 `star` 都由 `regular_points()` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
 - 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
-- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB，沒有出血、裁切線與 CMYK；Geist + 微軟正黑體沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
+- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB，沒有出血、裁切線與 CMYK；Geist + Noto Sans TC 沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
 - **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
 
 ## Rust ↔ Frontend IPC

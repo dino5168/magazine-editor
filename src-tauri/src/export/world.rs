@@ -1,7 +1,6 @@
 //! The `typst::World` used for PDF export: an embedded template, a JSON data file and the
 //! project's images. Nothing else on disk is reachable from Typst.
 
-use crate::error::{AppError, AppResult};
 use crate::project::format::{validate_asset_path, ASSET_DIR};
 use std::path::{Path, PathBuf};
 use typst::diag::{FileError, FileResult};
@@ -14,32 +13,21 @@ use typst::{Library, LibraryExt, World};
 const TEMPLATE: &str = include_str!("template.typ");
 pub const DATA_FILE: &str = "data.json";
 
-static GEIST_REGULAR: &[u8] = include_bytes!("fonts/Geist-Regular.ttf");
-static GEIST_BOLD: &[u8] = include_bytes!("fonts/Geist-Bold.ttf");
-/// Microsoft JhengHei regular / bold in the Windows fonts folder.
-const SYSTEM_CJK_FONTS: &[&str] = &["msjh.ttc", "msjhbd.ttc"];
+/// The same four files `src/index.css` loads with `@font-face`; see `fonts/README.md` for why the
+/// canvas and the exporters must share them byte for byte.
+static BUNDLED_FONTS: &[&[u8]] = &[
+    include_bytes!("../../../fonts/Geist-Regular.ttf"),
+    include_bytes!("../../../fonts/Geist-Bold.ttf"),
+    include_bytes!("../../../fonts/NotoSansTC-Regular.otf"),
+    include_bytes!("../../../fonts/NotoSansTC-Bold.otf"),
+];
 
-/// Loads the fonts the editor uses: bundled Geist plus the system's Microsoft JhengHei.
+/// Loads the bundled fonts (Geist + Noto Sans TC, regular and bold).
 ///
-/// # Errors
-/// `AppError::Export` when a Microsoft JhengHei file is missing or unreadable.
-pub fn load_fonts(system_font_dir: &Path) -> AppResult<Vec<Font>> {
-    let mut fonts: Vec<Font> = [GEIST_REGULAR, GEIST_BOLD]
-        .into_iter()
-        .flat_map(|data| Font::iter(Bytes::new(data)))
-        .collect();
-    for name in SYSTEM_CJK_FONTS {
-        let path = system_font_dir.join(name);
-        let data = std::fs::read(&path)
-            .map_err(|_| AppError::Export(format!("找不到微軟正黑體（{}），無法輸出中文", path.display())))?;
-        fonts.extend(Font::iter(Bytes::new(data)));
-    }
-    Ok(fonts)
-}
-
-/// Windows fonts folder (`%WINDIR%\Fonts`).
-pub fn system_font_dir() -> PathBuf {
-    PathBuf::from(std::env::var_os("WINDIR").unwrap_or_else(|| "C:\\Windows".into())).join("Fonts")
+/// Nothing is read from the system, so this cannot fail and the exported files render the same on
+/// every machine.
+pub fn load_fonts() -> Vec<Font> {
+    BUNDLED_FONTS.iter().flat_map(|data| Font::iter(Bytes::new(*data))).collect()
 }
 
 fn file_id(path: &str) -> FileId {
