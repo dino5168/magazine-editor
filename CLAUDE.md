@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**Typst 負責排版與 PDF 輸出，Konva.js 做前端自由拖放編輯器**（類似 Canva）。
-- 目前階段：前端編輯器 v1 + 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`（本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1 + 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`（後兩份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -22,8 +22,9 @@
 | 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · Geist Variable font · sonner |
-| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`）· 共用 fixture `tests/fixtures/sample.magproj` |
+| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` |
+| PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
 ## Commands
 
@@ -39,6 +40,10 @@ npm run tauri build    # 打包 Windows installer / .exe
 cargo check --manifest-path src-tauri/Cargo.toml    # Rust 型別檢查
 cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試
 npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（鎖定和 scaffold 相同的版本）
+
+# 匯出 PDF 的疊圖比對：把每頁算成 PNG（2 px/pt）放到 <dir>，用來對照畫布
+$env:EXPORT_PREVIEW_DIR = "<dir>"
+cargo test --manifest-path src-tauri/Cargo.toml export_preview -- --ignored
 ```
 
 目前沒有設定 ESLint / Prettier。
@@ -61,7 +66,7 @@ src/
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
       text-editor-overlay.tsx     # 雙擊文字時疊在畫布上的 textarea（處理輸入法選字）
       selection-toolbar.tsx       # 選取物件後的屬性工具列
-      editor-top-bar.tsx          # 系統控制項：文件名稱、復原/重做、縮放、匯出 PDF（停用）
+      editor-top-bar.tsx          # 系統控制項：文件名稱、復原/重做、縮放、匯出 PDF
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
       sider-panel.tsx             # 面板外框（標題、ScrollArea、右緣「<」收合）
       panels/index.ts             # PANELS：SiderButtonId → 面板元件（satisfies Record，缺項會編譯失敗）
@@ -75,7 +80,7 @@ src/
       project-api.ts              # invoke 包裝（回傳 Result）、isDesktop、describeCommandError
       asset-url.ts                # resolveAssetUrl：專案相對路徑 → asset protocol URL
       project-context.tsx         # ProjectProvider：啟動載入、createNew / loadOpened / markSaved、視窗標題、resolveSrc
-      use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存（confirm 由 UI 注入）
+      use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存 / 匯出 PDF（confirm 由 UI 注入）
       use-image-import.ts         # 圖片複製進專案 assets/（上傳檔案與內建相片）
       use-close-guard.ts          # 關閉視窗前提示未存檔
       use-autosave.ts             # 每 60 秒把未存檔內容寫入備份（decideAutosave 是純函式）
@@ -85,6 +90,10 @@ src/
       menu-structure.ts           # MENUS 結構（item / separator / submenu / radio）、助記鍵
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
+      __tests__/
+    export/                       # 匯出 PDF 的前端部分
+      export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust）
+      text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行與基線
       __tests__/
     editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
       types.ts                    # 文件模型（CanvasElement discriminated union）
@@ -104,7 +113,8 @@ src-tauri/
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）、recovery.rs（自動備份檔）
-  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、recovery.rs）
+  src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、字型）、template.typ（Typst 模板）、fonts/（內嵌 Geist + OFL）
+  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、recovery.rs、export.rs）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（含六種物件）
@@ -121,7 +131,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height` / `radius`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
 - 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、物件沒有 dragBoundFunc；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
-- 新增物件類型時要改的地方：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`selection-toolbar` 的 `TYPE_LABELS`、`layers-panel` 的 `TYPE_ICONS`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
+- 新增物件類型時要改的地方：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`selection-toolbar` 的 `TYPE_LABELS`、`layers-panel` 的 `TYPE_ICONS`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。**匯出端還要改** `format.rs` 的 `Element`、`export/mod.rs` 的 `build_data`（exhaustive match，漏改會編譯失敗）、以及 `template.typ` 的 `draw`（Typst 腳本，漏改只會**靜默不畫**，要自己記得）。
 
 ### 狀態（`lib/editor/editor-reducer.ts`）
 
@@ -156,7 +166,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 
 - 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
 - **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
-- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片已實作；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
+- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF 已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
 - 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
 - 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
@@ -193,18 +203,37 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
   - 備份 id 只接受 UUID 字元（組成檔名）；`recovery_discard` 只刪除位於 `untitled\` 底下的暫存資料夾。
 - **尚未實作**（見 `0-Task/plan-filesystem.md`）：第三階段系統素材庫與範本、匯入其他專案的頁面、「最近開啟」選單；備份間隔目前固定 60 秒（`AUTOSAVE_INTERVAL_MS`），`settings` 資料表等偏好設定實作時再加。
 
+## 匯出 PDF（`lib/export` + `src-tauri/src/export`）
+
+- **Typst 以 crate 形式內嵌**（沒有外部執行檔、沒有 sidecar）：`typst` + `typst-layout` + `typst-pdf`，版本鎖 `=0.15.1`。升級時三個要一起改，而且 `World` trait 與 `RootedPath` / `VirtualRoot` 這些 API 每版都會變動。
+- **換行由編輯器決定，Typst 只負責定位**（所見即所得的關鍵）：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 畫的節點完全相同）取得 `lines` 與 `baseline`，`buildExportRequest()` 把每個 text 物件的結果放進 `ExportRequest.textLayouts`（以 element id 為 key）。模板逐行 `place`，不讓 Typst 再斷行。
+  - 因此 `measureTextLayout` **必須在字型載入後**呼叫（編輯器已顯示即符合），否則量出來的行寬是錯的。
+  - `TEXT_LINE_HEIGHT = 1.2` 在 `geometry.ts` 和 `export/mod.rs` 各有一份，**改一邊要改兩邊**。
+  - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
+- **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`build_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
+- **`ExportWorld` 是沙箱**：只有 `main.typ`（內嵌模板）、`data.json` 與 `assets/images/*` 可讀，其他路徑一律 `AccessDenied`，圖片路徑還要過 `validate_asset_path`（和專案檔同一個檢查，擋 `../` 與絕對路徑）。
+- **字型**：Geist Regular / Bold 以 `include_bytes!` 內嵌（授權 `export/fonts/OFL.txt`，不可刪）；中文用系統的微軟正黑體（`%WINDIR%\Fonts\msjh.ttc`、`msjhbd.ttc`），讀不到就匯出失敗並說明原因，不產生缺字的 PDF。字型在第一次匯出時載入並快取在 `ExportState`（微軟正黑體約 40 MB，不重複讀）。
+  - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，`"Geist Variable"` 對應到內嵌的 `"Geist"`。開放使用者選字型時要一起擴充。
+- **兩步 command**：`export_pdf_choose_path`（開儲存對話框，路徑存進 `ExportState.pending`，只回傳檔名）→ `export_pdf`（取出路徑、排版、寫檔）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的 PDF（成功 toast 的「開啟」按鈕）。
+- 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
+- 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
+- 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。`polygon` 與 `star` 都由 `regular_points()` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
+- 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
+- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB，沒有出血、裁切線與 CMYK；Geist + 微軟正黑體沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
+- **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
+
 ## Rust ↔ Frontend IPC
 
 - 資料庫路徑：`%APPDATA%\com.mycompany.magazineeditor\app.db`（`app_data_dir()`；安裝在 Program Files 時 exe 目錄不可寫）。
 - 單一 `Connection` 包在 `DbState(Mutex<Connection>)`，command 內用 `state.conn()?` 取得連線，不要直接 `.lock().unwrap()`。
 - Schema 變更：在 `db::MIGRATIONS` **尾端**新增一個 SQL 步驟（依 `PRAGMA user_version` 執行，已發布的步驟不可修改）。目前是 v2（`env_vars`、`recent_projects`）。
-- Command 一律回傳 `AppResult<T>`；`AppError` 序列化為 `{ kind, message }`，`kind` ∈ `"sqlite" | "lockPoisoned" | "invalidInput" | "io" | "invalidProject" | "unsupportedVersion" | "noProject" | "tauri"`（前端對應 `AppErrorKind`）。前端依 `kind` 判斷錯誤類型，不要解析 message 字串；`invalidInput` 的 message 是給使用者看的中文，其他 kind 由 `describeCommandError` 翻成中文。使用者取消對話框不是錯誤，command 回傳 `null`。
+- Command 一律回傳 `AppResult<T>`；`AppError` 序列化為 `{ kind, message }`，`kind` ∈ `"sqlite" | "lockPoisoned" | "invalidInput" | "io" | "invalidProject" | "unsupportedVersion" | "noProject" | "export" | "tauri"`（前端對應 `AppErrorKind`）。前端依 `kind` 判斷錯誤類型，不要解析 message 字串；`invalidInput` 與 `export` 的 message 是給使用者看的中文，其他 kind 由 `describeCommandError` 翻成中文。使用者取消對話框不是錯誤，command 回傳 `null`。
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`、`asset_import`（raw binary body）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`、`asset_import`（raw binary body）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
-- `AppError::InvalidInput` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
+- `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 
 ## CSP
 
