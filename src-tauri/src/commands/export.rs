@@ -100,7 +100,7 @@ pub async fn export_pdf(
     let output = tauri::async_runtime::spawn_blocking(move || export::render_pdf(&root, &request, fonts.to_vec()))
         .await
         .map_err(|error| AppError::Export(format!("匯出中斷：{error}")))??;
-    write_atomic(&path, &output.pdf)?;
+    write_atomic(&path, &output.bytes)?;
     *exports.last_export.lock().map_err(|_| AppError::LockPoisoned)? = Some(path);
     Ok(ExportResult { pages: output.pages, skipped_images: output.skipped_images })
 }
