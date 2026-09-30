@@ -23,32 +23,54 @@ flowchart LR
 flowchart TB
     subgraph Tauri["Tauri 桌面外殼"]
         subgraph Front["前端 (TypeScript)"]
-            Page["pages/home-page.tsx<br/>組合整個版面"]
+            Page["pages/home-page.tsx<br/>組合整個版面、選單指令"]
             Comp["components/editor/<br/>畫布、面板、工具列"]
+            AppUI["components/app/、components/dock/<br/>選單列、對話框、工具面板"]
             Core["lib/editor/<br/>編輯器核心:資料模型、reducer、計算<br/>(不含畫面)"]
+            Other["lib/menu/、lib/dock/<br/>選單指令、面板版面(不含畫面)"]
+            Proj["lib/project/、lib/export/<br/>存檔 / 開啟 / 備份、匯出前的量測"]
             UI["components/ui/<br/>shadcn 元件(外部程式碼)"]
             Page --> Comp
+            Page --> AppUI
+            Page --> Proj
             Comp --> Core
+            AppUI --> Other
+            Proj --> Core
             Comp --> UI
+            AppUI --> UI
         end
-        Rust["src-tauri/ (Rust)<br/>SQLite + 3 個指令<br/>(前端尚未使用)"]
+        subgraph Rust["src-tauri/ (Rust)"]
+            Cmd["commands/<br/>前端可以呼叫的指令"]
+            RP["project/<br/>專案檔格式、讀寫、備份"]
+            RE["export/<br/>PDF(Typst)、EPUB"]
+            DB["db/<br/>SQLite:最近開啟的專案"]
+            Cmd --> RP
+            Cmd --> RE
+            Cmd --> DB
+        end
+        Proj -- "invoke(指令)" --> Cmd
     end
 ```
+
+前端和 Rust 之間**只有一條路**:`lib/project/` 用 `invoke` 呼叫 Rust 的指令(command)。畫面元件不直接呼叫 Rust。
 
 ### 各資料夾要不要讀
 
 | 資料夾 | 行數 | 負責什麼 | 要讀嗎 |
 |---|---|---|---|
-| `src/lib/editor/` | 約 1,100 | **編輯器核心**:資料模型、狀態變化、幾何計算、驗證。不含任何畫面 | **最優先** |
-| `src/components/editor/` | 約 1,700 | 畫布、面板內容、工具列、頁籤列 | 需要 |
-| `src/pages/`、`src/App.tsx`、`src/main.tsx` | 約 100 | 程式進入點和版面組合 | 需要(很短) |
+| `src/lib/editor/` | 約 1,600 | **編輯器核心**:資料模型、狀態變化、幾何計算、驗證、畫布工具。不含任何畫面 | **最優先** |
+| `src/components/editor/` | 約 2,300 | 畫布、面板內容、上方與底部工具列、頁籤列 | 需要 |
+| `src/pages/`、`src/App.tsx`、`src/main.tsx` | 約 200 | 程式進入點、版面組合、選單指令接線 | 需要(很短) |
+| `src/lib/project/` | 約 750 | 新增 / 開啟 / 儲存 / 另存、匯入圖片、自動備份、關閉前提示;呼叫 Rust 的地方 | 之後再看(06 會講) |
+| `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
 | `src/components/dock/`、`src/lib/dock/` | 約 950 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
+| `src/lib/export/` | 約 80 | 匯出前用 Konva 量測每段文字的分行 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
-| `src/components/ui/` | 約 1,500 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
-| `src/lib/editor/__tests__/` | 約 300 | 測試 | 之後再看 |
-| `src-tauri/src/` | 約 140 | Rust 後端 | 之後再看(06 會講) |
+| `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
+| `src/**/__tests__/` | 約 1,200 | 測試 | 之後再看 |
+| `src-tauri/src/` | 約 3,800 | Rust 後端:專案檔、匯出 PDF / EPUB、SQLite(含 Rust 測試) | 之後再看(06 會講) |
 
-> 總共約 5,300 行,但**真正需要理解的約 3,500 行**。
+> 前端(不含測試)約 8,700 行,其中 shadcn 元件和舊側邊欄約 2,100 行可以跳過。**先讀懂 `lib/editor/`、`components/editor/` 和 `pages/`(約 4,100 行)**,其他資料夾等用到時再看。
 
 ---
 
@@ -60,7 +82,7 @@ flowchart TB
 
 - **容易測試:** 輸入資料、檢查輸出,不需要開瀏覽器。專案的測試全部集中在這裡。
 - **邏輯集中:** 「刪除頁面後要選哪一頁」這種規則只寫在一個地方,不會散落在各個按鈕裡。
-- **未來可以重用:** 之後接 Typst 匯出時,可以直接使用同一份資料模型。
+- **可以重用:** 存檔(`lib/project/`)和匯出(`lib/export/`)直接使用同一份資料模型,不需要另外轉換。
 
 **原則:** 新增邏輯時,優先放在 `lib/editor/` 並補測試;`components/` 只負責顯示和把使用者操作轉成 action。
 
@@ -77,12 +99,15 @@ EditorState
 │   ├── present  目前的文件(頁面、物件都在這裡)
 │   └── future   復原後可以重做的文件
 │
-├── activePageId           ← 以下是 UI 狀態,不會被復原/重做影響
+├── activePageId           ← 以下都不會被復原/重做影響
 ├── selectedId
 ├── view (zoom、fitRequest)
 ├── tool、shapeKind        ← 底部工具列目前的工具與圖形
-└── uploads
+├── assets                 ← 專案裡的圖片清單(會存檔,但不進復原歷史)
+└── savedDocument          ← 上次存檔時的文件,用來判斷「有沒有未存檔的修改」
 ```
+
+`savedDocument` 的用法很簡單:`present` 和 `savedDocument` 是**同一個物件**就代表沒有修改。修改後再復原回存檔時的樣子,兩者又變回同一個物件,視窗標題的 `●` 就自動消失。
 
 另外,**工具面板的版面** (`dockLayout`:哪些面板開著、在哪一側、寬度) 不在 `EditorState` 裡,而是 `home-page.tsx` 自己的 `useState`,因為只有版面需要知道;它也不會被復原,而是存在瀏覽器的 `localStorage`。
 
@@ -145,6 +170,9 @@ sequenceDiagram
 | `panels/index.ts` 的 `PANELS` | 每個工具面板都必須有對應的內容 |
 | `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式 |
 | `editor-canvas.tsx` 的 `TRANSFORMER_OPTIONS` | 每一種物件類型都必須設定縮放控制點 |
+| `panel-icons.ts` 的 `PANEL_ICONS` | 每個工具面板都必須有 icon |
+| `lib/menu/commands.ts` 的 `CommandHandlers` | 每個選單指令都必須有處理函式(還沒做的用佔位函式) |
+| Rust `export/render.rs` 的 `match` | 每一種物件類型都必須能轉成匯出用的資料 |
 
 **例子:** 在 `src/lib/dock/panels.ts` 的 `PANEL_DEFINITIONS` 加一個新面板 `"shapes"`,卻忘了在 `PANELS` 加內容,`npm run build` 就會失敗並指出缺少 `shapes`。
 
@@ -168,9 +196,19 @@ sequenceDiagram
 
 ## Rust 後端(簡介)
 
-- 啟動時在使用者的 AppData 資料夾建立 SQLite 資料庫 `app.db`。
-- 提供 3 個指令:`get_env_vars`、`upsert_env_var`、`delete_env_var`。
-- **前端目前沒有呼叫這些指令。** 細節在 06 說明。
+前端的 JavaScript 跑在 WebView 裡,不能直接讀寫硬碟。需要碰檔案的工作都交給 Rust:
+
+| 資料夾 | 負責什麼 |
+|---|---|
+| `commands/` | 前端可以呼叫的指令:專案(新增、開啟、儲存、另存、匯入圖片)、自動備份、匯出 PDF |
+| `project/` | 專案檔 `project.magproj` 的格式定義與驗證、安全寫入(先寫暫存檔再取代)、圖片複製、備份檔 |
+| `export/` | 把文件轉成匯出用的資料,再產生 PDF(內嵌 Typst)或 EPUB(EPUB 還沒有按鈕) |
+| `db/` | SQLite 資料庫 `app.db`,目前記錄最近開啟的專案 |
+
+兩個設計原則(06 詳細說明):
+
+- **前端不傳檔案路徑給 Rust。** 開啟 / 另存 / 匯出的對話框由 Rust 開,前端只說「存檔」,不說「存到哪裡」。
+- **檔案格式以 Rust 為準。** 讀檔和存檔時 Rust 都會檢查內容,外部檔案不可信任。
 
 ---
 
@@ -180,15 +218,17 @@ sequenceDiagram
 
 | 順序 | 檔案 | 行數 | 讀的時候注意 |
 |---|---|---|---|
-| 1 | `src/lib/editor/types.ts` | 約 120 | 文件、頁面、物件長什麼樣子 |
-| 2 | `src/lib/editor/editor-reducer.ts` | 約 290 | 所有 action 的清單、`commit` 如何記錄歷史 |
+| 1 | `src/lib/editor/types.ts` | 約 130 | 文件、頁面、物件長什麼樣子 |
+| 2 | `src/lib/editor/editor-reducer.ts` | 約 380 | 所有 action 的清單、`commit` 如何記錄歷史 |
 | 3 | `src/lib/editor/editor-context.tsx` | 約 80 | reducer 怎麼接到 React |
-| 4 | `src/pages/home-page.tsx` | 約 170 | 版面怎麼組合、`dockLayout` 在哪 |
+| 4 | `src/pages/home-page.tsx` | 約 180 | 版面怎麼組合、`dockLayout` 在哪、選單指令接到哪些函式 |
 | 5 | `src/components/editor/panels/text-panel.tsx` | 約 50 | 最簡單的「按按鈕 → dispatch」例子(範例 A) |
 | 6 | `src/components/editor/canvas-elements.tsx` | 約 170 | 物件怎麼畫成 Konva 節點、拖曳放開時送出什麼(範例 B) |
-| 7 | `src/components/editor/editor-canvas.tsx` | 約 320 | **先略過**捲動和縮放相關的 `useLayoutEffect`,05 再講 |
+| 7 | `src/components/editor/editor-canvas.tsx` | 約 380 | **先略過**捲動和縮放相關的 `useLayoutEffect`,05 再講 |
 
-**讀不懂時可以這樣問 Claude:**「解釋 `editor-reducer.ts` 第 105–109 行的 `commit` 函式,用具體例子說明 `past` 怎麼變化。」
+`home-page.tsx` 裡的 `ProjectProvider`、`useProjectCommands` 屬於存檔流程,第一次讀可以先當作「負責檔案的黑盒子」,06 再打開。
+
+**讀不懂時可以這樣問 Claude:**「解釋 `editor-reducer.ts` 的 `commit` 函式,用具體例子說明 `past` 怎麼變化。」
 
 ---
 

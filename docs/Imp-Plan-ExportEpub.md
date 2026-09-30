@@ -1,7 +1,7 @@
 # 匯出 EPUB 實作計畫
 
 > 對應任務：`docs/Task-Plan-ExportEpub.md`（`menu-structure.ts:48` 的 `file.exportEpub` 尚未實作）
-> 狀態：**階段 1、2 已完成**（2026-09-30），下一步是階段 3（封面）。原第 8 節的四個待決事項已於 2026-09-23 回覆，併入第 2 節
+> 狀態：**階段 1、2 已完成**（2026-09-30），**階段 3（封面）暫緩，待後續討論**（2026-09-30 使用者決定）。原第 8 節的四個待決事項已於 2026-09-23 回覆，併入第 2 節
 > 撰寫日期：2026-09-23
 
 ---
@@ -227,6 +227,8 @@ pub enum RenderKind { Text(RenderText), Rect(RenderRect), Ellipse(RenderEllipse)
 > 手動檢查用：`EXPORT_PREVIEW_DIR=<dir> cargo test epub_preview -- --ignored` 產生 `preview.epub`（可以再設 `EXPORT_REQUEST_JSON`，同 `export_preview`）。
 
 ### 階段 3：封面
+
+> **暫緩，待後續討論**（2026-09-30 使用者決定）。重新開始前先和使用者討論封面的做法，不要照下方原計畫直接實作。
 
 - `pdf.rs` 旁新增 `cover.rs`：重用階段 1 的 `RenderDocument` → Typst → `typst-render` 算出第 1 頁 PNG。
 - 只在有頁面時產生；失敗時**不讓整份匯出失敗**，改為略過封面（回報在結果裡）。
