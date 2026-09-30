@@ -10,11 +10,14 @@
 
 ## 目前階段
 
-**正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;**階段 3(封面)由使用者決定暫緩,待後續討論(2026-09-30),不要主動開始**;階段 4(command 與前端接線)也先不做,使用者要先處理其他事(2026-09-30)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
+**2026-09-30 工作段落結束:目前沒有進行中的工作,等使用者指定下一項。** 調色板已完成並推送(`c3ce372`、`d737844` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
+
+- **未 commit 的變更**:`docs/progress.md`(這份,補 commit 編號與本段);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
+- **匯出 EPUB**:計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;階段 3、4 暫緩(見上)。檔案系統第一、二階段與「匯出 PDF」已完成並推送。
 
 - **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
 - **底部工具列(2026-09-30,已完成)**:任務檔 `docs/04-tldraw.md`,計畫 `docs/imp-tldraw-bar.md`。參考 tldraw 在畫布下方加浮動工具列(工具模式:選取 / 手形 / 文字 / 圖形 / 圖片,點擊或拖曳建立)與動作列(復原 / 重做 / 刪除 / 複製 / ⋮),手形 / 空白鍵 / 中鍵平移。五個步驟全部完成,規則寫在 `CLAUDE.md`「底部工具列與畫布工具」一節。下一步回到匯出 EPUB 階段 3(封面)。
-- **調色板(2026-09-30 起)**:任務檔 `docs/05-調色板.md`,計畫 `docs/imp-color-picker.md`。把原生選色器換成 Tailwind 色票(22 色系 × 11 深淺 + 黑白)與透明度 slider;透明度存成 `#rrggbbaa`(檔案格式變更,`SCHEMA_VERSION` 升為 2);頁面背景也用調色板但不含透明度;不保留自訂顏色。六個步驟**全部完成,尚未 commit**;規則寫在 `CLAUDE.md`「調色板」一節。
+- **調色板(2026-09-30 起)**:任務檔 `docs/05-調色板.md`,計畫 `docs/imp-color-picker.md`。把原生選色器換成 Tailwind 色票(22 色系 × 11 深淺 + 黑白)與透明度 slider;透明度存成 `#rrggbbaa`(檔案格式變更,`SCHEMA_VERSION` 升為 2);頁面背景也用調色板但不含透明度;不保留自訂顏色。六個步驟**全部完成**,commit `c3ce372`(已推送);規則寫在 `CLAUDE.md`「調色板」一節。
 - **MCP server 評估(2026-09-30)**:`docs/eval-mcp-server.md`。結論:不需要先做腳本功能;先做「自動化指令層」,再在 Rust 端內嵌只接受本機連線的 MCP server。**只是評估,尚未排入實作**,等匯出 EPUB 告一段落後由使用者決定;文件第 9 節有待決定的問題。
 - 第一、二階段:存檔 / 開啟、自動備份與當機復原。第一階段的對話框流程(開啟 / 另存)還沒有正式的人工測試紀錄;使用者已經在實際使用(建立過自己的專案)。
 - **匯出 PDF(2026-09-18 實作)**:內嵌 Typst 把所有頁面排版成 PDF,換行位置由編輯器量測後交給 Typst,規則寫在 `CLAUDE.md`「匯出 PDF」一節。**人工驗證(字型嵌入、中文可搜尋、疊圖比對)還沒有紀錄**,見下方「待辦 → 使用者」。
@@ -76,6 +79,7 @@
 | 2026-09-30 | **調色板步驟 4**:shadcn `popover`、`slider`;`components/editor/color-picker.tsx`(色系 / 深淺 / 不透明度 slider,放開才寫入),取代選取工具列的文字顏色與填色。以無頭 Edge + CDP 讀畫布像素驗證選色、slider、Delete / Esc、復原。清除步驟 1 誤用 `tsc -b` 產生的建置檔 |
 | 2026-09-30 | **調色板步驟 5**:`color-picker.tsx` 拆成 `ColorPalette`(本體)與 `ColorPicker`(按鈕 + Popover);背景面板改成內嵌 `ColorPalette`(沒有不透明度),移除原本 12 個色票;刪除 `color-input.tsx`,`CLAUDE.md` 同步。以無頭 Edge + CDP 驗證背景選色、復原,並重跑工具列測試 |
 | 2026-09-30 | **調色板步驟 6**:`CLAUDE.md` 新增「調色板」一節、目錄結構加 `palette.ts`、修正不存在的 `migrate()` 說明、「匯出 PDF」補上半透明的處理 |
+| 2026-09-30 | 調色板 commit `c3ce372`、`02-architecture.md` 修正與 EPUB 階段 3 暫緩 commit `d737844`,一起推送到 `main` |
 
 ---
 
