@@ -1,16 +1,8 @@
-import { Circle, Square, SquareRoundCorner, Star, Triangle, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActivePage, useEditorDispatch } from "@/lib/editor/editor-context";
-import { createShapeElement, type ShapeKind } from "@/lib/editor/element-factory";
+import { createShapeElement } from "@/lib/editor/element-factory";
 import { pageCenter } from "@/lib/editor/geometry";
-
-const SHAPE_OPTIONS: readonly { readonly kind: ShapeKind; readonly label: string; readonly icon: LucideIcon }[] = [
-  { kind: "rect", label: "矩形", icon: Square },
-  { kind: "roundedRect", label: "圓角矩形", icon: SquareRoundCorner },
-  { kind: "ellipse", label: "圓形", icon: Circle },
-  { kind: "triangle", label: "三角形", icon: Triangle },
-  { kind: "star", label: "星形", icon: Star },
-];
+import { SHAPE_OPTIONS } from "../shape-options";
 
 /**
  * Panel for adding basic shapes.

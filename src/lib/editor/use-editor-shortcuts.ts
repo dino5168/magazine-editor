@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { selectSelectedElement } from "./editor-reducer";
 import { useEditorDispatch, useEditorState } from "./editor-context";
+import { createId } from "./element-factory";
+import { findToolShortcut } from "./tools";
+import { useChooseTool } from "./use-choose-tool";
 
 const NUDGE_PT = 1;
 const NUDGE_LARGE_PT = 10;
@@ -21,12 +24,15 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * Registers global keyboard shortcuts for the editor (delete, undo/redo, deselect, nudge).
+ * Registers global keyboard shortcuts for the editor (delete, undo/redo, duplicate, deselect, nudge,
+ * tool keys).
  */
 export function useEditorShortcuts(): void {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const selected = selectSelectedElement(state);
+  const { tool } = state;
+  const chooseTool = useChooseTool();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -42,6 +48,23 @@ export function useEditorShortcuts(): void {
       if (mod && key === "y") {
         event.preventDefault();
         dispatch({ type: "history/redo" });
+        return;
+      }
+      // Ctrl+D 以實體按鍵比對；WebView2 預設是「加入我的最愛」，一律攔下
+      if (mod && !event.shiftKey && !event.altKey && event.code === "KeyD") {
+        event.preventDefault();
+        if (selected) dispatch({ type: "element/duplicate", id: selected.id, newId: createId() });
+        return;
+      }
+      // 按住不放會連續觸發 keydown，工具鍵只處理第一次；選字中（isComposing）不當成快捷鍵
+      const toolShortcut = event.repeat || event.isComposing ? null : findToolShortcut(event);
+      if (toolShortcut) {
+        event.preventDefault();
+        chooseTool(toolShortcut.tool, toolShortcut.shape);
+        return;
+      }
+      if (event.key === "Escape" && !selected && tool !== "select") {
+        dispatch({ type: "tool/set", tool: "select" });
         return;
       }
       if (!selected) return;
@@ -60,5 +83,5 @@ export function useEditorShortcuts(): void {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch, selected]);
+  }, [dispatch, selected, tool, chooseTool]);
 }

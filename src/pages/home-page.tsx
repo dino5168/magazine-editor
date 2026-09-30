@@ -7,6 +7,7 @@ import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
+import { BottomToolbar } from "@/components/editor/bottom-toolbar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
@@ -58,6 +59,15 @@ function EditorLayout() {
       setDockLayout((layout) => update(layout, id)),
     [],
   );
+  // 「檔案 → 匯入 → 圖片」與底部工具列的圖片按鈕共用
+  const importImage = useCallback(
+    () =>
+      void (async () => {
+        const assets = await importFiles(await pickImageFiles());
+        for (const asset of assets) addImage(asset.src, asset);
+      })(),
+    [importFiles, addImage],
+  );
   const isChecked = useCallback(
     (command: CommandId) => PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
     [dockLayout],
@@ -72,15 +82,11 @@ function EditorLayout() {
       "file.save": () => void project.save(),
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
-      "file.importImage": () =>
-        void (async () => {
-          const assets = await importFiles(await pickImageFiles());
-          for (const asset of assets) addImage(asset.src, asset);
-        })(),
+      "file.importImage": importImage,
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
-    [project, importFiles, addImage, updateDock],
+    [project, importImage, updateDock],
   );
 
   const onDropPanel = useCallback(
@@ -123,7 +129,11 @@ function EditorLayout() {
         <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
           <EditorTopBar onExportPdf={() => void project.exportPdf()} />
           <SelectionToolbar />
-          <EditorCanvas />
+          {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <EditorCanvas />
+            <BottomToolbar onImportImage={importImage} className="absolute inset-x-0 bottom-6 z-10" />
+          </div>
         </div>
         <DockArea
           side="right"

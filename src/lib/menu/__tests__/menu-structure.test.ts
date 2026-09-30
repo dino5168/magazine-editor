@@ -16,7 +16,7 @@ function key(code: string, modifiers: Partial<Omit<KeyboardEventLike, "code">> =
 }
 
 // 編輯器既有快捷鍵（lib/editor/use-editor-shortcuts.ts），選單快捷鍵不可與之衝突
-const EDITOR_SHORTCUTS = ["Ctrl+Z", "Ctrl+Y", "Ctrl+Shift+Z"];
+const EDITOR_SHORTCUTS = ["Ctrl+Z", "Ctrl+Y", "Ctrl+Shift+Z", "Ctrl+D"];
 
 describe("menu structure", () => {
   it("places every command in the menus exactly once", () => {

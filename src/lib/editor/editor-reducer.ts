@@ -1,4 +1,5 @@
-import { createPage, createSampleDocument } from "./element-factory";
+import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
+import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, isHexColor, validateName } from "./validation";
 import { clampZoom } from "./viewport";
 import type {
@@ -12,6 +13,9 @@ import type {
 } from "./types";
 
 export const HISTORY_LIMIT = 100;
+
+/** How far a duplicated element is offset from the original, in pt. */
+export const DUPLICATE_OFFSET_PT = 10;
 
 export interface EditorHistory {
   readonly past: readonly EditorDocument[];
@@ -31,6 +35,10 @@ export interface EditorState {
   readonly activePageId: PageId;
   readonly selectedId: ElementId | null;
   readonly view: EditorView;
+  /** Active canvas tool (bottom toolbar). */
+  readonly tool: ToolId;
+  /** Shape the shape tool creates; also the last shape used, shown on the toolbar button. */
+  readonly shapeKind: ShapeKind;
   /** Images stored in the project; saved with it but not part of undo history. */
   readonly assets: readonly AssetInfo[];
   /** Document as last saved / loaded; null when it must be saved (e.g. opened from a backup). */
@@ -42,6 +50,8 @@ export type EditorAction =
   | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch }
   | { readonly type: "element/delete"; readonly id: ElementId }
   | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" }
+  /** `newId` comes from the caller so the reducer stays pure (React may run it twice). */
+  | { readonly type: "element/duplicate"; readonly id: ElementId; readonly newId: ElementId }
   | { readonly type: "page/add" }
   | { readonly type: "page/select"; readonly id: PageId }
   | { readonly type: "page/rename"; readonly id: PageId; readonly name: string }
@@ -53,6 +63,7 @@ export type EditorAction =
   | { readonly type: "selection/set"; readonly id: ElementId | null }
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
+  | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeKind }
   | { readonly type: "asset/add"; readonly asset: AssetInfo }
   | {
       readonly type: "document/load";
@@ -85,6 +96,8 @@ export function createInitialState(
     activePageId: document.pages[0].id,
     selectedId: null,
     view: { zoom: 1, fitRequest: 1 },
+    tool: DEFAULT_TOOL,
+    shapeKind: DEFAULT_SHAPE_KIND,
     assets,
     savedDocument: document,
   };
@@ -219,6 +232,26 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       return { ...page, elements };
     }),
 
+  // 複本放在原物件正上方一層（不是最上層），位移一點以便看出是新的物件
+  "element/duplicate": (state, action) => {
+    const page = selectActivePage(state);
+    const index = page.elements.findIndex((element) => element.id === action.id);
+    if (index === -1 || page.elements.some((element) => element.id === action.newId)) return state;
+    const original = page.elements[index];
+    const copy: CanvasElement = {
+      ...original,
+      id: action.newId,
+      x: original.x + DUPLICATE_OFFSET_PT,
+      y: original.y + DUPLICATE_OFFSET_PT,
+    };
+    const next = updateActivePage(state, (p) => {
+      const elements = [...p.elements];
+      elements.splice(index + 1, 0, copy);
+      return { ...p, elements };
+    });
+    return { ...next, selectedId: copy.id };
+  },
+
   "page/add": (state) => {
     const document = state.history.present;
     const active = selectActivePage(state);
@@ -299,6 +332,14 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   "view/fit": (state) => ({ ...state, view: { ...state.view, fitRequest: state.view.fitRequest + 1 } }),
 
+  // 切到建立工具（文字、圖形）時取消選取，建立前畫面上不留控制框；選取與手形保留原本的選取
+  "tool/set": (state, action) => {
+    const shapeKind = action.shape ?? state.shapeKind;
+    if (action.tool === state.tool && shapeKind === state.shapeKind) return state;
+    const creates = action.tool === "text" || action.tool === "shape";
+    return { ...state, tool: action.tool, shapeKind, selectedId: creates ? null : state.selectedId };
+  },
+
   // 圖片以內容 hash 命名，同一張圖再次匯入會得到相同的 src，不重複列出
   "asset/add": (state, action) =>
     state.assets.some((asset) => asset.src === action.asset.src)
@@ -311,6 +352,9 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     return {
       ...initial,
       view: { zoom: state.view.zoom, fitRequest: state.view.fitRequest + 1 },
+      // 工具是使用者的操作狀態，換專案時保留
+      tool: state.tool,
+      shapeKind: state.shapeKind,
       savedDocument: action.saved ? action.document : null,
     };
   },

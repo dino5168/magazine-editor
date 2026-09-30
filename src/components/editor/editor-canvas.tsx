@@ -23,6 +23,7 @@ import {
 } from "@/lib/editor/viewport";
 import { ElementNode } from "./canvas-elements";
 import { TextEditorOverlay } from "./text-editor-overlay";
+import { useCanvasPan } from "./use-canvas-pan";
 
 /** Extra scrollable space around the page and all elements, in screen pixels. */
 const WORKSPACE_MARGIN_PX = 200;
@@ -94,6 +95,7 @@ export function EditorCanvas() {
   const [viewport, setViewport] = useState<Size>({ width: 0, height: 0 });
   const [scroll, setScroll] = useState<Point>({ x: 0, y: 0 });
   const [editingId, setEditingId] = useState<ElementId | null>(null);
+  const pan = useCanvasPan(scrollRef, state.tool === "hand");
 
   // 物件可拖出頁面：捲動範圍涵蓋頁面與所有物件，確保拖到遠處的物件仍拿得回來
   const bounds = useMemo(() => expandBounds(getContentBounds(page), WORKSPACE_MARGIN_PX / zoom), [page, zoom]);
@@ -250,7 +252,9 @@ export function EditorCanvas() {
     <div
       ref={scrollRef}
       className="relative min-h-0 flex-1 overflow-scroll bg-muted"
+      style={{ cursor: pan.cursor }}
       onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
+      {...pan.handlers}
     >
       <div className="relative" style={{ width: layout.contentWidth, height: layout.contentHeight }}>
         {/* Stage 只有視窗大小並黏在可視範圍，捲動時改變 Layer 位移，避免建立超大 canvas */}

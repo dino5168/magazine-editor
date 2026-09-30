@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createPage, createShapeElement, createTextElement } from "../element-factory";
 import {
+  DUPLICATE_OFFSET_PT,
   HISTORY_LIMIT,
   createInitialState,
   editorReducer,
@@ -74,6 +75,72 @@ describe("editorReducer / elements", () => {
 
     expect(selectActivePage(state).elements.map((e) => e.id)).toEqual([b.id, a.id]);
     expect(editorReducer(state, { type: "element/reorder", id: a.id, direction: "up" })).toBe(state);
+  });
+});
+
+describe("editorReducer / duplicate", () => {
+  it("inserts an offset copy right above the original, selects it and records history", () => {
+    const below = createShapeElement("rect", { x: 100, y: 100 });
+    const original = createShapeElement("ellipse", { x: 200, y: 200 });
+    const above = createShapeElement("star", { x: 300, y: 300 });
+    const start = run(blankState(), ...[below, original, above].map((element) => ({ type: "element/add", element }) as const));
+    const state = run(start, { type: "element/duplicate", id: original.id, newId: "copy" });
+
+    const ids = selectActivePage(state).elements.map((element) => element.id);
+    expect(ids).toEqual([below.id, original.id, "copy", above.id]);
+    expect(selectSelectedElement(state)).toMatchObject({
+      type: "ellipse",
+      x: original.x + DUPLICATE_OFFSET_PT,
+      y: original.y + DUPLICATE_OFFSET_PT,
+    });
+    expect(state.history.past).toHaveLength(start.history.past.length + 1);
+    expect(run(state, { type: "history/undo" }).selectedId).toBeNull();
+  });
+
+  it("ignores unknown elements and ids that already exist", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+
+    expect(run(state, { type: "element/duplicate", id: "missing", newId: "copy" })).toBe(state);
+    expect(run(state, { type: "element/duplicate", id: element.id, newId: element.id })).toBe(state);
+  });
+});
+
+describe("editorReducer / tools", () => {
+  it("starts with the select tool and the rectangle shape", () => {
+    expect(blankState()).toMatchObject({ tool: "select", shapeKind: "rect" });
+  });
+
+  it("clears the selection when switching to a creation tool, but not to the hand tool", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const selected = run(blankState(), { type: "element/add", element });
+
+    expect(run(selected, { type: "tool/set", tool: "hand" }).selectedId).toBe(element.id);
+    expect(run(selected, { type: "tool/set", tool: "text" })).toMatchObject({ tool: "text", selectedId: null });
+    expect(run(selected, { type: "tool/set", tool: "shape", shape: "star" })).toMatchObject({
+      tool: "shape",
+      shapeKind: "star",
+      selectedId: null,
+    });
+  });
+
+  it("remembers the last shape and does not touch history", () => {
+    const state = run(blankState(), { type: "tool/set", tool: "shape", shape: "ellipse" }, { type: "tool/set", tool: "select" });
+
+    expect(state).toMatchObject({ tool: "select", shapeKind: "ellipse" });
+    expect(state.history.past).toHaveLength(0);
+    expect(run(state, { type: "tool/set", tool: "shape" }).shapeKind).toBe("ellipse");
+  });
+
+  it("returns the same state when nothing changes", () => {
+    const state = blankState();
+    expect(run(state, { type: "tool/set", tool: "select" })).toBe(state);
+  });
+
+  it("keeps the tool when a project is loaded", () => {
+    const state = run(blankState(), { type: "tool/set", tool: "hand" });
+    const loaded = run(state, { type: "document/load", document: state.history.present, assets: [], saved: true });
+    expect(loaded.tool).toBe("hand");
   });
 });
 
