@@ -1,8 +1,11 @@
-import type { CommandId } from "./commands";
+import { PANEL_IDS } from "@/lib/dock/panels";
+import { panelCommandId, type CommandId } from "./commands";
 import type { KeyboardEventLike } from "./shortcut";
 
 export type MenuNode =
   | { readonly kind: "item"; readonly command: CommandId }
+  /** Toggle item; its checked state comes from the menubar's `isChecked`, not from this static structure. */
+  | { readonly kind: "checkbox"; readonly command: CommandId }
   | { readonly kind: "separator" }
   | { readonly kind: "submenu"; readonly label: string; readonly children: readonly MenuNode[] }
   | { readonly kind: "radio"; readonly options: readonly CommandId[]; readonly selected: CommandId };
@@ -60,6 +63,15 @@ export const MENUS = [
       separator,
       {
         kind: "submenu",
+        label: "工具面板",
+        children: [
+          ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) }) as const),
+          separator,
+          { kind: "item", command: "panel.resetLayout" },
+        ],
+      },
+      {
+        kind: "submenu",
         label: "外觀",
         children: [
           {
@@ -89,6 +101,7 @@ export function collectCommands(nodes: readonly MenuNode[]): CommandId[] {
   return nodes.flatMap((node): CommandId[] => {
     switch (node.kind) {
       case "item":
+      case "checkbox":
         return [node.command];
       case "submenu":
         return collectCommands(node.children);

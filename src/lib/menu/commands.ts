@@ -1,3 +1,4 @@
+import { PANEL_DEFINITIONS, type PanelId } from "@/lib/dock/panels";
 import { matchesShortcut, type KeyboardEventLike, type Shortcut } from "./shortcut";
 
 export interface CommandDefinition {
@@ -9,6 +10,26 @@ export interface CommandDefinition {
   /** When set, the command is disabled and the reason is shown next to the label. */
   readonly disabledReason?: string;
 }
+
+export type PanelCommandId = `panel.${PanelId}`;
+
+/**
+ * Returns the menu command that shows or hides a tool panel.
+ *
+ * Args:
+ *   id: Panel id.
+ *
+ * Returns:
+ *   Command id.
+ */
+export function panelCommandId(id: PanelId): PanelCommandId {
+  return `panel.${id}`;
+}
+
+// 工具面板的開關指令由面板定義產生，新增面板不必改這裡
+const PANEL_COMMANDS = Object.fromEntries(
+  PANEL_DEFINITIONS.map(({ id, label }) => [panelCommandId(id), { label, title: `工具面板：${label}` }]),
+) as Record<PanelCommandId, CommandDefinition>;
 
 // 選單項目與快捷鍵的單一資料來源；新增指令時必須同時在 CommandHandlers 提供實作（mapped type 會檢查）
 export const COMMANDS = {
@@ -27,6 +48,8 @@ export const COMMANDS = {
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },
   "settings.themeDark": { label: "深色", title: "外觀：深色" },
   "settings.themeSystem": { label: "跟隨系統", title: "外觀：跟隨系統" },
+  ...PANEL_COMMANDS,
+  "panel.resetLayout": { label: "重設版面", title: "重設工具面板版面" },
 } as const satisfies Record<string, CommandDefinition>;
 
 export type CommandId = keyof typeof COMMANDS;

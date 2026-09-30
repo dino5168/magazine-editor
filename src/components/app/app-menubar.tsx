@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Menubar,
+  MenubarCheckboxItem,
   MenubarContent,
   MenubarItem,
   MenubarMenu,
@@ -14,7 +15,7 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { cn } from "@/lib/utils";
-import { getCommand, type CommandHandlers } from "@/lib/menu/commands";
+import { getCommand, type CommandHandlers, type CommandId } from "@/lib/menu/commands";
 import { MENUS, type MenuNode } from "@/lib/menu/menu-structure";
 import { formatShortcut } from "@/lib/menu/shortcut";
 import { useMenuShortcuts } from "@/lib/menu/use-menu-shortcuts";
@@ -22,9 +23,10 @@ import { useMenuShortcuts } from "@/lib/menu/use-menu-shortcuts";
 interface MenuNodesProps {
   readonly nodes: readonly MenuNode[];
   readonly handlers: CommandHandlers;
+  readonly isChecked: (command: CommandId) => boolean;
 }
 
-function MenuNodes({ nodes, handlers }: MenuNodesProps) {
+function MenuNodes({ nodes, handlers, isChecked }: MenuNodesProps) {
   return (
     <>
       {nodes.map((node, index) => {
@@ -47,6 +49,18 @@ function MenuNodes({ nodes, handlers }: MenuNodesProps) {
               </MenubarItem>
             );
           }
+          case "checkbox":
+            return (
+              // checked 由外部狀態決定，不接 onCheckedChange：handler 負責切換，選單只反映結果
+              <MenubarCheckboxItem
+                key={node.command}
+                checked={isChecked(node.command)}
+                disabled={getCommand(node.command).disabledReason !== undefined}
+                onSelect={() => handlers[node.command]()}
+              >
+                {getCommand(node.command).label}
+              </MenubarCheckboxItem>
+            );
           case "separator":
             return <MenubarSeparator key={`separator-${index}`} />;
           case "submenu":
@@ -54,7 +68,7 @@ function MenuNodes({ nodes, handlers }: MenuNodesProps) {
               <MenubarSub key={node.label}>
                 <MenubarSubTrigger>{node.label}</MenubarSubTrigger>
                 <MenubarSubContent className="min-w-44">
-                  <MenuNodes nodes={node.children} handlers={handlers} />
+                  <MenuNodes nodes={node.children} handlers={handlers} isChecked={isChecked} />
                 </MenubarSubContent>
               </MenubarSub>
             );
@@ -81,6 +95,8 @@ function MenuNodes({ nodes, handlers }: MenuNodesProps) {
 
 interface AppMenubarProps {
   readonly handlers: CommandHandlers;
+  /** Checked state of checkbox items (e.g. whether a tool panel is shown). */
+  readonly isChecked: (command: CommandId) => boolean;
   readonly className?: string;
 }
 
@@ -89,12 +105,13 @@ interface AppMenubarProps {
  *
  * Args:
  *   props.handlers: Command handlers invoked by menu items and shortcuts.
+ *   props.isChecked: Checked state of checkbox items.
  *   props.className: Extra classes for grid placement.
  *
  * Returns:
  *   Menubar with Alt+letter mnemonics and global shortcuts.
  */
-export function AppMenubar({ handlers, className }: AppMenubarProps) {
+export function AppMenubar({ handlers, isChecked, className }: AppMenubarProps) {
   // 受控 value 讓 Alt+F / Alt+S 能以程式開啟選單（Radix Menubar 不支援助記鍵）。
   // 焦點不需自行處理：Alt+F 是真實 keydown，Radix Menu 會標記為鍵盤操作，開啟時自動聚焦第一個項目
   const [openMenu, setOpenMenu] = useState("");
@@ -112,7 +129,7 @@ export function AppMenubar({ handlers, className }: AppMenubarProps) {
             {menu.label}(<span className="underline underline-offset-2">{menu.mnemonic.letter}</span>)
           </MenubarTrigger>
           <MenubarContent className="min-w-60" sideOffset={2} alignOffset={0}>
-            <MenuNodes nodes={menu.items} handlers={handlers} />
+            <MenuNodes nodes={menu.items} handlers={handlers} isChecked={isChecked} />
           </MenubarContent>
         </MenubarMenu>
       ))}

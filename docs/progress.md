@@ -4,7 +4,7 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-09-23
+最後更新:2026-09-30
 
 ---
 
@@ -12,6 +12,7 @@
 
 **正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)已完成,下一步是階段 2(EPUB 產生器)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
 
+- **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit,規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
 - 第一、二階段:存檔 / 開啟、自動備份與當機復原。第一階段的對話框流程(開啟 / 另存)還沒有正式的人工測試紀錄;使用者已經在實際使用(建立過自己的專案)。
 - **匯出 PDF(2026-09-18 實作)**:內嵌 Typst 把所有頁面排版成 PDF,換行位置由編輯器量測後交給 Typst,規則寫在 `CLAUDE.md`「匯出 PDF」一節。**人工驗證(字型嵌入、中文可搜尋、疊圖比對)還沒有紀錄**,見下方「待辦 → 使用者」。
 - **方向調整(2026-09-22)**:使用者決定把**排版與輸出的主軸改成 EPUB 3 固定版面**,PDF 降為衍生輸出。重構方案在 `0-Task/plan-epubv2.md`(不在 repo,目前這台機器上也沒有);**階段 0(字型自備化)已完成**。
@@ -48,6 +49,13 @@
 | 2026-09-23 | 從 GitHub pull 同步(`b7255ed..99cdfc3`:匯出 PDF、EPUB 選單項目、字型自備化);`CLAUDE.md` 的長期目標改寫成以 EPUB 3 固定版面為主 |
 | 2026-09-23 | **匯出 EPUB 實作計畫**(`docs/Imp-Plan-ExportEpub.md`)並經使用者檢核 |
 | 2026-09-23 | **匯出 EPUB 階段 1:`RenderModel` 抽出**。`src-tauri/src/export/` 拆成 `render.rs`(文件 → 可繪製元素,含分行、頂點、字型對應、圖片略過)、`pdf.rs`(render model → Typst 的 `data.json`)、`mod.rs`(共用型別);測試 fixture 抽到 `test_support.rs`。`ExportOutput.pdf` 改名 `bytes`。PDF 輸出未改變(以 `export_preview` 的點陣圖 hash 比對) |
+| 2026-09-30 | **工具面板步驟 1**:新增 `src/lib/dock/`(`panels.ts` 面板定義、`dock-layout.ts` 停靠版面純函式與 `parseDockLayout`、19 個測試);`SIDER_BUTTONS` 與 `PANELS` 改由 `PanelId` 推導。畫面不變 |
+| 2026-09-30 | **工具面板步驟 2**:`MenuNode` 新增 `checkbox`(勾選狀態由 `AppMenubar` 的 `isChecked` 傳入);`COMMANDS` 由面板定義產生 9 個 `panel.<id>`;`設定 → 工具面板` 子選單。暫時接到原本的單一面板(勾選 = 開啟該面板) |
+| 2026-09-30 | **工具面板步驟 3**:移除左側按鈕列(`AppSiderButton` 不再被引用,檔案保留到步驟 7 處置);新增 `components/dock/`(`DockArea`、`DockPanel`、`panel-icons.ts`),左右停靠區可同時開多個面板、上下堆疊、可收合 / 關閉,寬度暫時固定 320px;修正 ScrollArea 內長文字撐寬面板的問題(圖層面板的按鈕原本會被推出面板外) |
+| 2026-09-30 | **工具面板步驟 4**:`DockSplitter`(拖曳 / 雙擊還原 / 鍵盤 ←→),拖曳期間只改 `DockArea` 的 local state,放開才寫回版面;`resizeDockWidth` 純函式 + 4 個測試;畫布欄最小 480px。以無頭 Edge + CDP 實際拖曳驗證寬度、上限、雙擊、鍵盤與畫布尺寸,縮放不受影響 |
+| 2026-09-30 | **工具面板步驟 5**:拖曳標題列移動面板(`use-dock-drag.ts`、`DockDragGhost`、插入提示線、空白側放置區、Esc 取消);`dropPanel` / `insertionSlot` 純函式 + 4 個測試。以無頭 Edge + CDP 驗證跨側移動、拖到空白側、同側排序、原位放下、Esc、點擊收合 |
+| 2026-09-30 | **工具面板步驟 6**:`lib/dock/dock-storage.ts`(`localStorage`,損壞 / 無法存取時回到預設)+ 5 個測試;`panel.resetLayout`「重設版面」放在 `設定 → 工具面板` 最下方。以無頭 Edge 驗證重新整理後保留、選單重設、損壞資料回到預設 |
+| 2026-09-30 | **工具面板步驟 7**:刪除 `app-siderbutton.tsx`、`sider-panel.tsx`(使用者決定);`CLAUDE.md` 新增「工具面板」一節並更新目錄結構、狀態、選單列;`docs/01-overview.md` 的畫面對應圖、`docs/02-architecture.md` 的目錄表 / 例子 / 自我檢查題改成工具面板 |
 
 ---
 
@@ -90,6 +98,8 @@
 | 工具列**不做「匯出」下拉**,直接並排兩顆按鈕 | 兩個輸出都一鍵可及。使用者確認(2026-09-23) |
 | 語言碼這次固定 `zh-TW`,但**集中在單一常數** | 文件模型還沒有語言欄位;後續要做多語系,集中定義才不用全域搜尋替換 |
 | PDF 與 EPUB **共用 `RenderModel`**,格式專屬的細節不進模型 | 座標、旋轉、分行、字型對應、圖片略過只定義一次;媒體型別之類的打包細節留在各自的產生器 |
+| 工具面板:9 個工具**各自是獨立面板**,同側**上下堆疊**,三欄之間是**可拖曳的分隔條**(不是縮放滑桿),**自行實作不加套件** | 使用者確認(2026-09-30),見 `docs/imp-tool-bar.md` |
+| 工具面板版面記在 **`localStorage`**,不進專案檔、不進 SQLite | 是 App 偏好不是文件內容;SQLite 的 `settings` 資料表還沒做,等偏好設定實作時再搬。計畫中的建議值,使用者未提出異議(2026-09-30) |
 
 ---
 

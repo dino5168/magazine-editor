@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { SiderButtonId } from "@/components/app/app-siderbutton";
+import type { PanelId } from "@/lib/dock/panels";
 import { BackgroundPanel } from "./background-panel";
 import { ElementsPanel } from "./elements-panel";
 import { LayersPanel } from "./layers-panel";
@@ -9,7 +9,7 @@ import { TemplatesPanel } from "./templates-panel";
 import { TextPanel } from "./text-panel";
 import { UploadPanel } from "./upload-panel";
 
-/** Panel content for each sider button; a missing entry is a compile error. */
+/** Panel content for each tool panel; a missing entry is a compile error. */
 export const PANELS = {
   templates: TemplatesPanel,
   text: TextPanel,
@@ -20,4 +20,4 @@ export const PANELS = {
   background: BackgroundPanel,
   layers: LayersPanel,
   resize: ResizePanel,
-} as const satisfies Record<SiderButtonId, ComponentType>;
+} as const satisfies Record<PanelId, ComponentType>;

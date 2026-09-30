@@ -5,7 +5,9 @@ import {
   findCommandByEvent,
   getCommand,
   getCommandTitle,
+  panelCommandId,
 } from "../commands";
+import { PANEL_IDS } from "@/lib/dock/panels";
 import { MENUS, collectCommands, findMenuByMnemonic } from "../menu-structure";
 import { formatShortcut, type KeyboardEventLike } from "../shortcut";
 
@@ -30,6 +32,18 @@ describe("menu structure", () => {
 
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
     expect(shortcuts.filter((s) => EDITOR_SHORTCUTS.includes(s))).toEqual([]);
+  });
+
+  it("lists every tool panel as a checkbox under 設定 → 工具面板, then 重設版面", () => {
+    const settings = MENUS.find((menu) => menu.id === "settings")!;
+    const submenu = settings.items.find((node) => node.kind === "submenu" && node.label === "工具面板");
+
+    expect(submenu?.kind === "submenu" && submenu.children).toEqual([
+      ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) })),
+      { kind: "separator" },
+      { kind: "item", command: "panel.resetLayout" },
+    ]);
+    expect(getCommandTitle(panelCommandId("layers"))).toBe("工具面板：圖層");
   });
 
   it("uses unique mnemonics", () => {

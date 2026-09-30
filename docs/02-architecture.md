@@ -40,9 +40,9 @@ flowchart TB
 | 資料夾 | 行數 | 負責什麼 | 要讀嗎 |
 |---|---|---|---|
 | `src/lib/editor/` | 約 1,100 | **編輯器核心**:資料模型、狀態變化、幾何計算、驗證。不含任何畫面 | **最優先** |
-| `src/components/editor/` | 約 1,700 | 畫布、側邊面板、工具列、頁籤列 | 需要 |
+| `src/components/editor/` | 約 1,700 | 畫布、面板內容、工具列、頁籤列 | 需要 |
 | `src/pages/`、`src/App.tsx`、`src/main.tsx` | 約 100 | 程式進入點和版面組合 | 需要(很短) |
-| `src/components/app/app-siderbutton.tsx` | 約 90 | 左側按鈕列 | 需要 |
+| `src/components/dock/`、`src/lib/dock/` | 約 950 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,500 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
 | `src/lib/editor/__tests__/` | 約 300 | 測試 | 之後再看 |
@@ -83,7 +83,7 @@ EditorState
 └── uploads
 ```
 
-另外,**側邊面板開哪一個** (`openPanel`) 不在 `EditorState` 裡,而是 `home-page.tsx` 自己的 `useState`,因為只有版面需要知道。
+另外,**工具面板的版面** (`dockLayout`:哪些面板開著、在哪一側、寬度) 不在 `EditorState` 裡,而是 `home-page.tsx` 自己的 `useState`,因為只有版面需要知道;它也不會被復原,而是存在瀏覽器的 `localStorage`。
 
 **為什麼要分開?** 按 Ctrl+Z 時,使用者期待的是「剛才改的內容回來」,而不是「剛才的縮放比例或選取狀態回來」。所以只有文件內容 (`present`) 進入歷史紀錄。
 
@@ -141,11 +141,11 @@ sequenceDiagram
 | 位置 | 檢查什麼 |
 |---|---|
 | `editor-reducer.ts` 的 `HANDLERS` | 每一種 action 都必須有對應的處理函式 |
-| `panels/index.ts` 的 `PANELS` | 左側每個按鈕都必須有對應的面板 |
+| `panels/index.ts` 的 `PANELS` | 每個工具面板都必須有對應的內容 |
 | `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式 |
 | `editor-canvas.tsx` 的 `TRANSFORMER_OPTIONS` | 每一種物件類型都必須設定縮放控制點 |
 
-**例子:** 在 `app-siderbutton.tsx` 的 `SIDER_BUTTONS` 加一個新按鈕 `"shapes"`,卻忘了在 `PANELS` 加面板,`npm run build` 就會失敗並指出缺少 `shapes`。
+**例子:** 在 `src/lib/dock/panels.ts` 的 `PANEL_DEFINITIONS` 加一個新面板 `"shapes"`,卻忘了在 `PANELS` 加內容,`npm run build` 就會失敗並指出缺少 `shapes`。
 
 > 所以看到 `satisfies Record<...>`、`{ [T in ...]: ... }`、`const exhaustive: never = ...` 這類寫法時,它們的用途就是這種檢查。
 
@@ -182,7 +182,7 @@ sequenceDiagram
 | 1 | `src/lib/editor/types.ts` | 約 120 | 文件、頁面、物件長什麼樣子 |
 | 2 | `src/lib/editor/editor-reducer.ts` | 約 290 | 所有 action 的清單、`commit` 如何記錄歷史 |
 | 3 | `src/lib/editor/editor-context.tsx` | 約 80 | reducer 怎麼接到 React |
-| 4 | `src/pages/home-page.tsx` | 約 60 | 版面怎麼組合、`openPanel` 在哪 |
+| 4 | `src/pages/home-page.tsx` | 約 170 | 版面怎麼組合、`dockLayout` 在哪 |
 | 5 | `src/components/editor/panels/text-panel.tsx` | 約 50 | 最簡單的「按按鈕 → dispatch」例子(範例 A) |
 | 6 | `src/components/editor/canvas-elements.tsx` | 約 170 | 物件怎麼畫成 Konva 節點、拖曳放開時送出什麼(範例 B) |
 | 7 | `src/components/editor/editor-canvas.tsx` | 約 320 | **先略過**捲動和縮放相關的 `useLayoutEffect`,05 再講 |
@@ -196,7 +196,7 @@ sequenceDiagram
 1. 使用者點「標題」按鈕後,依序經過哪些檔案,畫布才出現新文字?
 2. 拖曳物件的過程中,為什麼不會一直 dispatch?
 3. 按 Ctrl+Z 後,縮放比例會不會跟著變回去?為什麼?
-4. 如果在 `SIDER_BUTTONS` 新增一個按鈕,但沒有加對應的面板,會發生什麼事?
+4. 如果在 `PANEL_DEFINITIONS` 新增一個面板,但沒有加對應的內容,會發生什麼事?
 5. 對物件送出 `element/update`,但 patch 的值和原本完全一樣,reducer 會怎麼做?有什麼好處?
 6. 新增一段「計算物件是否重疊」的邏輯,應該放在哪個資料夾?為什麼?
 
@@ -206,7 +206,7 @@ sequenceDiagram
 1. `text-panel.tsx`(按鈕)→ `element-factory.ts`(`createTextElement` 建立物件)→ `dispatch` 送到 `editor-reducer.ts`(`element/add` 把物件加入目前頁面並記入歷史)→ `EditorProvider` 提供新 state → `editor-canvas.tsx` 重新 render,由 `canvas-elements.tsx` 畫出文字。
 2. 每次修改文件的 dispatch 都會產生一筆復原紀錄。拖曳中一直 dispatch 會產生大量紀錄、畫面不斷重畫,所以只在放開 (dragend) 時送出一次。
 3. **不會。** 縮放比例在 `view` 裡,屬於 UI 狀態,不在 `history` 中;復原只影響文件內容 (`present`)。
-4. **編譯失敗。** `PANELS` 用 `satisfies Record<SiderButtonId, ComponentType>` 檢查,缺少任何一個按鈕的面板,`npm run build` 就會報錯。
+4. **編譯失敗。** `PANELS` 用 `satisfies Record<PanelId, ComponentType>` 檢查,缺少任何一個面板的內容,`npm run build` 就會報錯。
 5. reducer 發現沒有變化,會**回傳同一個 state 物件**。好處:不會產生一筆沒意義的復原紀錄,React 也不會重新 render。
 6. `src/lib/editor/`(例如 `geometry.ts`)。這是不含畫面的純邏輯,放在這裡容易寫測試,也方便其他地方重用。
 

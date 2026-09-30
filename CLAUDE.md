@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**Typst 負責排版與 PDF 輸出，Konva.js 做前端自由拖放編輯器**（類似 Canva）。
-- 目前階段：前端編輯器 v1 + 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`（後兩份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`（後兩份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -54,14 +54,20 @@ cargo test --manifest-path src-tauri/Cargo.toml export_preview -- --ignored
 ```
 src/
   App.tsx                         # TooltipProvider + Toaster + lazy 載入 HomePage（不再使用 app-sidebar）
-  pages/home-page.tsx             # EditorProvider → ProjectProvider → Grid 版面（選單列 / UI-01）；openPanel、選單 handlers、關閉提示放在這裡
+  pages/home-page.tsx             # EditorProvider → ProjectProvider → 版面（選單列 / 左停靠區｜中欄｜右停靠區 / 頁籤列）；dockLayout、選單 handlers、關閉提示放在這裡
   components/
     app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 設定(S)），依 MENUS 渲染
     app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（上面兩個對話框共用）
-    app/app-siderbutton.tsx       # 左側按鈕列；SIDER_BUTTONS 是按鈕的單一資料來源，SiderButtonId 由它推導
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
+    dock/                         # 工具面板（Krita 式停靠）的 UI
+      dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
+      dock-panel.tsx              # 面板外框：標題列（收合 / 拖曳 / 關閉）+ ScrollArea
+      dock-splitter.tsx           # size control bar：拖曳 / 雙擊還原 / 鍵盤 ←→ 調整停靠區寬度
+      use-dock-drag.ts            # 拖曳標題列移動面板（pointer events、命中判斷、Esc 取消）
+      dock-drag-ghost.tsx         # 拖曳時跟著游標的面板名稱
+      panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
@@ -69,8 +75,7 @@ src/
       selection-toolbar.tsx       # 選取物件後的屬性工具列
       editor-top-bar.tsx          # 系統控制項：文件名稱、復原/重做、縮放、匯出 PDF
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
-      sider-panel.tsx             # 面板外框（標題、ScrollArea、右緣「<」收合）
-      panels/index.ts             # PANELS：SiderButtonId → 面板元件（satisfies Record，缺項會編譯失敗）
+      panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
       panels/*.tsx                # 9 個面板；draw / resize 目前是佔位
       icon-button.tsx · color-input.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
@@ -88,9 +93,14 @@ src/
       __tests__/
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
-      menu-structure.ts           # MENUS 結構（item / separator / submenu / radio）、助記鍵
+      menu-structure.ts           # MENUS 結構（item / checkbox / separator / submenu / radio）、助記鍵
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
+      __tests__/
+    dock/                         # 工具面板版面（不含 UI）
+      panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide）：面板的單一資料來源，PanelId 由它推導
+      dock-layout.ts              # DockLayout 型別與純函式（開關 / 移動 / 拖放 / 收合 / 寬度）、parseDockLayout
+      dock-storage.ts             # 版面存取 localStorage（損壞時回到預設）
       __tests__/
     export/                       # 匯出 PDF 的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust）
@@ -140,7 +150,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。面板開關（`openPanel`）放在 `home-page.tsx` 的 local state。
+- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
 - `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。顏色選擇器聽原生 `change` 事件（`ColorInput`），避免 React `onChange` 連續寫入歷史。
@@ -176,6 +186,8 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
   - 例外：輸入法選字中（`isComposing`）或焦點在 dialog / alertdialog 內時不觸發。
 - 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
+- `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
+- `設定 → 工具面板`：9 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
 | 快捷鍵 | 指令 |
 |--------|------|
@@ -183,6 +195,20 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 | Ctrl+S / Ctrl+Shift+S | 儲存 / 另存新檔... |
 | Ctrl+, | 偏好設定... |
 | Alt+F / Alt+S | 開啟「檔案」/「設定」選單 |
+
+## 工具面板（`lib/dock` + `components/dock`）
+
+參考 Krita 的 Docker。計畫與決定：`docs/imp-tool-bar.md`。
+
+- **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 選取工具列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
+- **面板的單一資料來源**是 `lib/dock/panels.ts` 的 `PANEL_DEFINITIONS`；`PANELS`（內容）、`PANEL_ICONS`（icon）以 `satisfies Record<PanelId, …>` 檢查完整性，選單指令自動產生。**新增面板**：在 `PANEL_DEFINITIONS` 加一筆 → 補 `PANELS` 與 `PANEL_ICONS`（漏了會編譯失敗）。
+- `DockLayout`（左右各一個由上到下的面板清單 + 兩側寬度）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。
+- 同一側多個面板上下堆疊，展開的平分高度，收合只剩標題列。一個面板最多出現一次。
+- **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
+- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳；結束後吞掉下一次 click。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
+- **記憶**：`localStorage` key `magazine-editor.dockLayout.v1`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。`npm run dev` 與安裝版 origin 不同，各記一份。
+- Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockPanel` 用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正。
+- Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 

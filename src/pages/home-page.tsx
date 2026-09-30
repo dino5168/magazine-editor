@@ -1,22 +1,38 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppMenubar } from "@/components/app/app-menubar";
+import { DockArea } from "@/components/dock/dock-area";
+import { DockDragGhost } from "@/components/dock/dock-drag-ghost";
+import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
+import { useDockDrag } from "@/components/dock/use-dock-drag";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
-import { AppSiderButton, getSiderButtonLabel, type SiderButtonId } from "@/components/app/app-siderbutton";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
-import { PANELS } from "@/components/editor/panels";
 import { SelectionToolbar } from "@/components/editor/selection-toolbar";
-import { SiderPanel } from "@/components/editor/sider-panel";
 import { useAddImage } from "@/components/editor/panels/use-add-image";
+import {
+  CANVAS_MIN_WIDTH,
+  DEFAULT_DOCK_LAYOUT,
+  closePanel,
+  dropPanel,
+  isPanelVisible,
+  setDockWidth,
+  toggleCollapsed,
+  togglePanel,
+  type DockLayout,
+  type DockSide,
+  type DropTarget,
+} from "@/lib/dock/dock-layout";
+import { getBrowserStorage, loadDockLayout, saveDockLayout } from "@/lib/dock/dock-storage";
+import { PANEL_IDS, type PanelId } from "@/lib/dock/panels";
 import { EditorProvider } from "@/lib/editor/editor-context";
 import { createInitialState } from "@/lib/editor/editor-reducer";
 import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-factory";
 import { pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
-import { createPlaceholderHandlers, type CommandHandlers } from "@/lib/menu/commands";
+import { createPlaceholderHandlers, panelCommandId, type CommandHandlers, type CommandId } from "@/lib/menu/commands";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
@@ -25,8 +41,10 @@ import { useProjectCommands } from "@/lib/project/use-project-commands";
 
 
 function EditorLayout() {
-  // 對照 UI-01 預設展開範本面板
-  const [openPanel, setOpenPanel] = useState<SiderButtonId | null>("templates");
+  // 工具面板的停靠版面（App 偏好，不進復原歷史，也不存進專案檔）；記在 localStorage，重開 App 後還原
+  const [dockLayout, setDockLayout] = useState<DockLayout>(() => loadDockLayout(getBrowserStorage()));
+  // 版面只在放開拖曳、切換面板等確定時才改變，每次變化直接寫入即可
+  useEffect(() => saveDockLayout(getBrowserStorage(), dockLayout), [dockLayout]);
   useEditorShortcuts();
 
   const { dialog: unsavedDialog, confirm: confirmUnsaved } = useUnsavedChangesDialog();
@@ -34,6 +52,16 @@ function EditorLayout() {
   useCloseGuard(project.confirmClose);
   const { importFiles } = useImageImport();
   const addImage = useAddImage();
+
+  const updateDock = useCallback(
+    (update: (layout: DockLayout, id: PanelId) => DockLayout) => (id: PanelId) =>
+      setDockLayout((layout) => update(layout, id)),
+    [],
+  );
+  const isChecked = useCallback(
+    (command: CommandId) => PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
+    [dockLayout],
+  );
 
   // 匯出、頁面設定、偏好設定、匯入其他專案的頁面等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -49,34 +77,65 @@ function EditorLayout() {
           const assets = await importFiles(await pickImageFiles());
           for (const asset of assets) addImage(asset.src, asset);
         })(),
+      ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
+      "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
-    [project, importFiles, addImage],
+    [project, importFiles, addImage, updateDock],
   );
 
-  const Panel = openPanel ? PANELS[openPanel] : null;
+  const onDropPanel = useCallback(
+    (id: PanelId, target: DropTarget) => setDockLayout((layout) => dropPanel(layout, id, target)),
+    [],
+  );
+  const { drag, startDrag, ghostRef } = useDockDrag(onDropPanel);
+  // 放下後位置不變（例如拖到自己的上下緣）時不顯示提示線
+  const dropTarget = drag?.target && dropPanel(dockLayout, drag.id, drag.target) !== dockLayout ? drag.target : null;
+  const dropSlotOf = (side: DockSide) =>
+    dropTarget?.side === side ? dropTarget.slot : null;
+
+  // 參考固定，停靠區拖曳寬度時面板內容才不會重新 render
+  const dockProps = useMemo(
+    () => ({
+      onToggleCollapsed: updateDock(toggleCollapsed),
+      onClose: updateDock(closePanel),
+      onDragStart: startDrag,
+      draggingId: drag?.id ?? null,
+    }),
+    [updateDock, startDrag, drag?.id],
+  );
+  const resizeLeft = useCallback((px: number) => setDockLayout((l) => setDockWidth(l, "left", px)), []);
+  const resizeRight = useCallback((px: number) => setDockLayout((l) => setDockWidth(l, "right", px)), []);
 
   return (
-    // 選單列橫跨全寬；UI-01 版面：按鈕列貫穿系統控制項與工作區兩列、頁籤列橫跨全寬
-    <div className="grid h-full grid-cols-[84px_minmax(0,1fr)] grid-rows-[auto_auto_minmax(0,1fr)_auto] bg-background text-foreground">
-      <AppMenubar className="col-span-2" handlers={menuHandlers} />
-      <AppSiderButton
-        className="row-span-2"
-        activeId={openPanel}
-        onToggle={(id) => setOpenPanel((current) => (current === id ? null : id))}
-      />
-      <EditorTopBar onExportPdf={() => void project.exportPdf()} />
-      <div className="flex min-h-0 min-w-0">
-        {openPanel && Panel && (
-          <SiderPanel title={getSiderButtonLabel(openPanel)} onCollapse={() => setOpenPanel(null)}>
-            <Panel />
-          </SiderPanel>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col">
+    // 選單列與頁籤列橫跨全寬；中間是三欄：左停靠區｜系統控制列 + 畫布｜右停靠區
+    <div className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
+      <AppMenubar handlers={menuHandlers} isChecked={isChecked} />
+      {/* relative：空白側的放置區疊在這一列的左右邊緣 */}
+      <div className="relative flex min-h-0 min-w-0">
+        <DockArea
+          side="left"
+          panels={dockLayout.left}
+          width={dockLayout.width.left}
+          onResize={resizeLeft}
+          dropSlot={dropSlotOf("left")}
+          {...dockProps}
+        />
+        <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
+          <EditorTopBar onExportPdf={() => void project.exportPdf()} />
           <SelectionToolbar />
           <EditorCanvas />
         </div>
+        <DockArea
+          side="right"
+          panels={dockLayout.right}
+          width={dockLayout.width.right}
+          onResize={resizeRight}
+          dropSlot={dropSlotOf("right")}
+          {...dockProps}
+        />
       </div>
-      <EditorPageBar className="col-span-2" />
+      <EditorPageBar />
+      <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
     </div>
   );
