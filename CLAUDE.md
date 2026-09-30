@@ -2,8 +2,8 @@
 
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
-- 長期目標：**Typst 負責排版與 PDF 輸出，Konva.js 做前端自由拖放編輯器**（類似 Canva）。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`（後兩份本機限定，不在 repo）。
+- 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
