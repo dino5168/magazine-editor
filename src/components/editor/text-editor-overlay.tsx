@@ -50,6 +50,8 @@ export function TextEditorOverlay({ element, zoom, origin, onCommit, onCancel }:
     <textarea
       ref={ref}
       value={value}
+      // textarea 預設 rows=2，自動高度（scrollHeight）不會小於兩行；單行文字的編輯框會多出一行
+      rows={1}
       spellCheck={false}
       aria-label="編輯文字"
       onChange={(event) => setValue(event.target.value)}

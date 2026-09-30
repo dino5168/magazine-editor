@@ -25,9 +25,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
-import { createId } from "@/lib/editor/element-factory";
+import { createId, type ShapeKind } from "@/lib/editor/element-factory";
 import { getToolKeyLabel, getToolLabel, type ToolId } from "@/lib/editor/tools";
-import { useChooseTool } from "@/lib/editor/use-choose-tool";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./icon-button";
 import { SHAPE_OPTIONS, SHAPE_OPTION_BY_KIND } from "./shape-options";
@@ -161,7 +160,9 @@ interface BottomToolbarProps {
  */
 export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) {
   const { tool, shapeKind } = useEditorState();
-  const chooseTool = useChooseTool();
+  const dispatch = useEditorDispatch();
+  // 選了工具之後到畫布上點擊或拖曳建立（圖片除外：直接開選檔對話框）
+  const chooseTool = (id: ToolId, shape?: ShapeKind) => dispatch({ type: "tool/set", tool: id, shape });
   const shape = SHAPE_OPTION_BY_KIND[shapeKind];
 
   const toolButton = (id: ToolId, label: string, icon: LucideIcon, onClick: () => void, key: string | null) => {

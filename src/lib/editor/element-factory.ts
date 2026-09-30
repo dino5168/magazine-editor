@@ -1,5 +1,6 @@
 import { PAGE_SIZE_PRESETS, presetToPt } from "./units";
 import type {
+  Bounds,
   CanvasElement,
   EditorDocument,
   ImageElement,
@@ -92,6 +93,131 @@ const SHAPE_FACTORIES: { readonly [K in ShapeKind]: (id: string, center: Point) 
  */
 export function createShapeElement(kind: ShapeKind, center: Point): CanvasElement {
   return SHAPE_FACTORIES[kind](createId(), center);
+}
+
+/** Star inner / outer radius ratio, same as the elements panel's star. */
+const STAR_INNER_RATIO = 30 / 70;
+/** Text created by dragging is never narrower than this, in pt. */
+export const MIN_TEXT_WIDTH = 40;
+/** Style of text created with the text tool. */
+const TOOL_TEXT_PRESET: TextPreset = "subheading";
+
+/**
+ * Normalizes two drag corners into bounds.
+ *
+ * Args:
+ *   a: Drag start in pt.
+ *   b: Drag end in pt.
+ *
+ * Returns:
+ *   Bounds spanning both points.
+ */
+export function boundsFromPoints(a: Point, b: Point): Bounds {
+  return { minX: Math.min(a.x, b.x), minY: Math.min(a.y, b.y), maxX: Math.max(a.x, b.x), maxY: Math.max(a.y, b.y) };
+}
+
+// Konva 正多邊形 / 星形的頂點（外半徑 1、第一個頂點朝上）形成的外框
+function unitVertexBounds(radii: readonly number[], count: number): Bounds {
+  const points = Array.from({ length: count }, (_, n) => {
+    const radius = radii[n % radii.length];
+    const angle = (n * 2 * Math.PI) / count;
+    return { x: radius * Math.sin(angle), y: -radius * Math.cos(angle) };
+  });
+  return {
+    minX: Math.min(...points.map((p) => p.x)),
+    minY: Math.min(...points.map((p) => p.y)),
+    maxX: Math.max(...points.map((p) => p.x)),
+    maxY: Math.max(...points.map((p) => p.y)),
+  };
+}
+
+// 以中心為原點的圖形：算出放進 box 的最大外半徑，並讓頂點外框置中於 box
+function fitRegular(box: Bounds, radii: readonly number[], count: number): { center: Point; radius: number } {
+  const unit = unitVertexBounds(radii, count);
+  const radius = Math.min((box.maxX - box.minX) / (unit.maxX - unit.minX), (box.maxY - box.minY) / (unit.maxY - unit.minY));
+  const boxCenter = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  return {
+    center: {
+      x: boxCenter.x - ((unit.minX + unit.maxX) / 2) * radius,
+      y: boxCenter.y - ((unit.minY + unit.maxY) / 2) * radius,
+    },
+    radius,
+  };
+}
+
+/**
+ * Creates a shape that fills a dragged box (the shape tool's drag).
+ * Triangles and stars keep their proportions and are centred in the box.
+ *
+ * Args:
+ *   kind: Shape kind.
+ *   box: Dragged box in pt (non-empty).
+ *
+ * Returns:
+ *   New shape element.
+ */
+export function createShapeInBox(kind: ShapeKind, box: Bounds): CanvasElement {
+  const id = createId();
+  const width = box.maxX - box.minX;
+  const height = box.maxY - box.minY;
+  const base = { id, rotation: 0, fill: DEFAULT_SHAPE_FILL };
+  switch (kind) {
+    case "rect":
+    case "roundedRect":
+      return {
+        ...base,
+        type: "rect",
+        x: box.minX,
+        y: box.minY,
+        width,
+        height,
+        cornerRadius: kind === "roundedRect" ? Math.min(16, Math.min(width, height) / 2) : 0,
+      };
+    case "ellipse":
+      return { ...base, type: "ellipse", x: box.minX + width / 2, y: box.minY + height / 2, radiusX: width / 2, radiusY: height / 2 };
+    case "triangle": {
+      const { center, radius } = fitRegular(box, [1], 3);
+      return { ...base, type: "polygon", ...center, sides: 3, radius };
+    }
+    case "star": {
+      const { center, radius } = fitRegular(box, [1, STAR_INNER_RATIO], 10);
+      return { ...base, type: "star", ...center, numPoints: 5, innerRadius: radius * STAR_INNER_RATIO, outerRadius: radius };
+    }
+    default: {
+      const exhaustive: never = kind;
+      return exhaustive;
+    }
+  }
+}
+
+/**
+ * Creates the empty text the text tool edits in place. A click puts the first line's middle at
+ * the point; a drag sets the left edge, top and wrapping width.
+ *
+ * Args:
+ *   start: Click point, or drag start, in pt.
+ *   box: Dragged box, or null for a click.
+ *
+ * Returns:
+ *   Text element with empty text (added to the document only when the user types something).
+ */
+export function createToolText(start: Point, box: Bounds | null): TextElement {
+  const config = TEXT_PRESETS[TOOL_TEXT_PRESET];
+  const lineHeight = config.fontSize * 1.2;
+  return {
+    id: createId(),
+    type: "text",
+    x: box ? box.minX : start.x,
+    y: box ? box.minY : start.y - lineHeight / 2,
+    rotation: 0,
+    text: "",
+    width: box ? Math.max(MIN_TEXT_WIDTH, box.maxX - box.minX) : config.width,
+    fontSize: config.fontSize,
+    fontFamily: DEFAULT_FONT_FAMILY,
+    fontStyle: config.fontStyle,
+    align: "left",
+    fill: DEFAULT_TEXT_FILL,
+  };
 }
 
 /**

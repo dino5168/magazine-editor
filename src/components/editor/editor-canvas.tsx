@@ -12,7 +12,7 @@ import {
   getElementBounds,
   pageCenter,
 } from "@/lib/editor/geometry";
-import type { ElementId, ElementPatch, ElementType, Point, Size } from "@/lib/editor/types";
+import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
 import {
   clampZoom,
   computeLayout,
@@ -21,8 +21,10 @@ import {
   scrollForAnchor,
   type ViewportLayout,
 } from "@/lib/editor/viewport";
+import { cn } from "@/lib/utils";
 import { ElementNode } from "./canvas-elements";
 import { TextEditorOverlay } from "./text-editor-overlay";
+import { useCanvasCreate } from "./use-canvas-create";
 import { useCanvasPan } from "./use-canvas-pan";
 
 /** Extra scrollable space around the page and all elements, in screen pixels. */
@@ -95,6 +97,8 @@ export function EditorCanvas() {
   const [viewport, setViewport] = useState<Size>({ width: 0, height: 0 });
   const [scroll, setScroll] = useState<Point>({ x: 0, y: 0 });
   const [editingId, setEditingId] = useState<ElementId | null>(null);
+  // 文字工具剛建立、還沒輸入內容的文字：不在文件裡，輸入完成才 element/add（復原一次就撤銷）
+  const [draftText, setDraftText] = useState<TextElement | null>(null);
   const pan = useCanvasPan(scrollRef, state.tool === "hand");
 
   // 物件可拖出頁面：捲動範圍涵蓋頁面與所有物件，確保拖到遠處的物件仍拿得回來
@@ -104,6 +108,13 @@ export function EditorCanvas() {
   // 原生事件 handler 與 layout effect 需要讀到最新值
   const latest = useRef({ layout, zoom, scroll, viewport, selected });
   latest.current = { layout, zoom, scroll, viewport, selected };
+  const create = useCanvasCreate({
+    scrollRef,
+    tool: state.tool,
+    shapeKind: state.shapeKind,
+    toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
+    onTextDraft: setDraftText,
+  });
   const anchorRef = useRef<Anchor | null>(null);
   const prevLayoutRef = useRef<{ layout: ViewportLayout; zoom: number } | null>(null);
   const handledFitRef = useRef(0);
@@ -252,9 +263,26 @@ export function EditorCanvas() {
     <div
       ref={scrollRef}
       className="relative min-h-0 flex-1 overflow-scroll bg-muted"
-      style={{ cursor: pan.cursor }}
+      style={{ cursor: pan.cursor ?? create.cursor }}
       onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
-      {...pan.handlers}
+      // 平移優先（手形 / 空白鍵 / 中鍵）；平移攔下的事件，建立工具不再處理
+      onPointerDownCapture={(event) => {
+        pan.handlers.onPointerDownCapture(event);
+        create.handlers.onPointerDownCapture(event);
+      }}
+      onPointerMove={(event) => {
+        pan.handlers.onPointerMove(event);
+        create.handlers.onPointerMove(event);
+      }}
+      onPointerUp={(event) => {
+        pan.handlers.onPointerUp();
+        create.handlers.onPointerUp(event);
+      }}
+      onLostPointerCapture={() => {
+        pan.handlers.onLostPointerCapture();
+        create.handlers.onLostPointerCapture();
+      }}
+      onMouseDownCapture={pan.handlers.onMouseDownCapture}
     >
       <div className="relative" style={{ width: layout.contentWidth, height: layout.contentHeight }}>
         {/* Stage 只有視窗大小並黏在可視範圍，捲動時改變 Layer 位移，避免建立超大 canvas */}
@@ -305,6 +333,28 @@ export function EditorCanvas() {
                 />
               </Layer>
             </Stage>
+          )}
+          <div
+            ref={create.previewRef}
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute border border-dashed border-primary bg-primary/5",
+              state.tool === "shape" && state.shapeKind === "ellipse" && "rounded-[50%]",
+              !create.previewVisible && "hidden",
+            )}
+          />
+          {draftText && (
+            <TextEditorOverlay
+              key={draftText.id}
+              element={draftText}
+              zoom={zoom}
+              origin={origin}
+              onCommit={(text) => {
+                setDraftText(null);
+                if (text.trim().length > 0) dispatch({ type: "element/add", element: { ...draftText, text } });
+              }}
+              onCancel={() => setDraftText(null)}
+            />
           )}
           {editingText && (
             <TextEditorOverlay

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileDown, FileText, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { FileDown, FileText, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ interface EditorTopBarProps {
 }
 
 /**
- * System controls: document name, undo/redo, zoom and PDF export.
+ * System controls: document name, zoom and PDF export. Undo / redo live on the bottom toolbar's action bar.
  *
  * Args:
  *   props.className: Extra classes for grid placement.
@@ -65,22 +65,6 @@ export function EditorTopBar({ className, onExportPdf }: EditorTopBarProps) {
           {name}
         </button>
       )}
-
-      <Separator orientation="vertical" className="mx-2 h-6" />
-      <IconButton
-        label="復原 (Ctrl+Z)"
-        disabled={state.history.past.length === 0}
-        onClick={() => dispatch({ type: "history/undo" })}
-      >
-        <Undo2 />
-      </IconButton>
-      <IconButton
-        label="重做 (Ctrl+Y)"
-        disabled={state.history.future.length === 0}
-        onClick={() => dispatch({ type: "history/redo" })}
-      >
-        <Redo2 />
-      </IconButton>
 
       <div className="ml-auto flex items-center gap-1">
         <IconButton label="縮小" onClick={() => dispatch({ type: "view/setZoom", zoom: zoom / ZOOM_STEP })}>

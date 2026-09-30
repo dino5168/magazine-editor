@@ -3,7 +3,6 @@ import { selectSelectedElement } from "./editor-reducer";
 import { useEditorDispatch, useEditorState } from "./editor-context";
 import { createId } from "./element-factory";
 import { findToolShortcut } from "./tools";
-import { useChooseTool } from "./use-choose-tool";
 
 const NUDGE_PT = 1;
 const NUDGE_LARGE_PT = 10;
@@ -32,7 +31,6 @@ export function useEditorShortcuts(): void {
   const dispatch = useEditorDispatch();
   const selected = selectSelectedElement(state);
   const { tool } = state;
-  const chooseTool = useChooseTool();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -60,7 +58,7 @@ export function useEditorShortcuts(): void {
       const toolShortcut = event.repeat || event.isComposing ? null : findToolShortcut(event);
       if (toolShortcut) {
         event.preventDefault();
-        chooseTool(toolShortcut.tool, toolShortcut.shape);
+        dispatch({ type: "tool/set", tool: toolShortcut.tool, shape: toolShortcut.shape });
         return;
       }
       if (event.key === "Escape" && !selected && tool !== "select") {
@@ -83,5 +81,5 @@ export function useEditorShortcuts(): void {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch, selected, tool, chooseTool]);
+  }, [dispatch, selected, tool]);
 }

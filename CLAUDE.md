@@ -71,9 +71,13 @@ src/
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
-      text-editor-overlay.tsx     # 雙擊文字時疊在畫布上的 textarea（處理輸入法選字）
+      text-editor-overlay.tsx     # 雙擊文字（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字）
+      use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
+      use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
+      bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
+      shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       selection-toolbar.tsx       # 選取物件後的屬性工具列
-      editor-top-bar.tsx          # 系統控制項：文件名稱、復原/重做、縮放、匯出 PDF
+      editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
       panels/*.tsx                # 9 個面板；draw / resize 目前是佔位
@@ -110,12 +114,13 @@ src/
       types.ts                    # 文件模型（CanvasElement discriminated union）
       editor-reducer.ts           # 純 reducer + selectors + undo/redo
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
-      element-factory.ts          # 建立物件/頁面/範例文件、describeElement
+      element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
       geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、頁面尺寸 preset
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證
       image.ts                    # loadImageSize()
+      tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
   assets/photos/*.svg             # 相片面板的佔位範例圖（可以直接換成真實照片）
@@ -165,11 +170,25 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 兩個 `useLayoutEffect`（捲動校正 → fit）的**宣告順序不能對調**：fit 設定的錨點必須留到下一次 commit 才處理。
 - 從圖層面板選取完全不在畫面內的物件時，會自動捲動到該物件。
 
+### 底部工具列與畫布工具（`bottom-toolbar.tsx` + `lib/editor/tools.ts`）
+
+參考 tldraw 的**工具模式**：先選工具，再到畫布上點擊或拖曳建立，建立後回到選取工具。計畫與決定：`docs/imp-tldraw-bar.md`。
+
+- `EditorState.tool`（`select` / `hand` / `text` / `shape`）與 `shapeKind`（圖形工具建立的圖形，也是按鈕上顯示的「最近用過的圖形」）是 UI 狀態，不進復原歷史。圖片不是工具模式：按鈕直接開選檔對話框（和「檔案 → 匯入 → 圖片」共用 `home-page.tsx` 的 `importImage`）。
+- 工具列疊在畫布上（`absolute`），不佔版面，不影響畫布尺寸計算。
+- 平移（`use-canvas-pan`）與建立（`use-canvas-create`）都在捲動容器的 **capture 階段**攔下 `pointerdown`（`preventDefault` + `stopPropagation`），事件不會到達 Konva：手形 / 建立工具下按在物件上不會選取或拖曳物件。平移優先；平移攔下的事件建立工具不處理。
+- 建立：移動不到 4px 視為點擊（預設大小、以點擊處為中心）；拖曳時圖形填滿拖曳框。只在放開時 dispatch 一次 `element/add`；預覽框直接改 DOM style。
+- **文字工具的新文字是草稿**（`editor-canvas` 的 `draftText`），不在文件裡；輸入完成才 `element/add`，所以復原一次就撤銷，沒輸入就不建立。
+- `element/duplicate` 的新 id 由呼叫端帶入（`newId`），reducer 保持純函式。
+- 可平移的範圍 = 捲軸的範圍（內容範圍 + 200px），不是無限畫布。
+
 ### 其他注意事項
 
 - 字型：canvas 必須等字型載入後才建立 Stage（`useFontsReady`，中文字型也要等，一份中文雜誌的換行幾乎都由 Noto Sans TC 決定），否則換行寬度會算錯。預設 fontFamily 是 `"Geist", "Noto Sans TC", sans-serif`。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
-- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Esc / 方向鍵）焦點在 input、textarea、dialog、menu 內時不觸發。
+- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O）焦點在 input、textarea、dialog、menu 內時不觸發。
+  - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
+  - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
 - 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
 - `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，上傳面板的拖放區需要這個設定。**不可移除**。
 - 桌面版啟動時開啟上次的專案，沒有就建立空白 A4 的未命名專案；瀏覽器模式（`npm run dev`）沒有檔案存取，只載入 `createSampleDocument()` 的示範內容，檔案指令會提示「僅在桌面版可用」。

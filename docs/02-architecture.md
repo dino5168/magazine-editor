@@ -80,6 +80,7 @@ EditorState
 ├── activePageId           ← 以下是 UI 狀態,不會被復原/重做影響
 ├── selectedId
 ├── view (zoom、fitRequest)
+├── tool、shapeKind        ← 底部工具列目前的工具與圖形
 └── uploads
 ```
 
