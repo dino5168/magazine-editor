@@ -183,6 +183,9 @@ fn renders_every_element_type() {
     assert!(xml.contains("transform:rotate(12.5deg)"), "rect rotation");
     assert!(xml.contains("left:120px;top:440px;width:120px;height:80px;border-radius:50%"), "ellipse box from its centre");
     assert!(xml.contains(r#"src="../images/image-1.png""#));
+    // fixture 的矩形是半透明的 #e0e7ffcc
+    assert!(xml.contains("background:rgba(224,231,255,0.800)"), "rect alpha");
+    assert!(!xml.contains("#e0e7ffcc"), "8-digit hex must not reach the EPUB");
 
     // 多邊形與星形的頂點和 PDF 用的是同一組數字（平移到 viewBox 的左上角）
     let svgs: Vec<_> = page.descendants().filter(|n| n.has_tag_name("polygon")).collect();

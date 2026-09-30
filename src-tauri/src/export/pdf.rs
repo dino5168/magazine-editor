@@ -166,6 +166,53 @@ mod tests {
         assert!(matches!(render_pdf(root.path(), &req, fonts()), Err(AppError::InvalidInput(_))));
     }
 
+    /// A lone unrotated rectangle at (100, 100), 200 × 100 pt, on a white page.
+    fn single_rect(fill: &str) -> crate::project::format::Document {
+        let mut document = fixture_document();
+        let page = &mut document.pages[0];
+        page.background = "#ffffff".into();
+        page.elements.retain(|e| matches!(e, Element::Rect(_)));
+        let Element::Rect(rect) = &mut page.elements[0] else { unreachable!() };
+        (rect.base.x, rect.base.y, rect.base.rotation) = (100.0, 100.0, 0.0);
+        (rect.width, rect.height, rect.corner_radius) = (200.0, 100.0, 0.0);
+        rect.fill = fill.into();
+        document
+    }
+
+    /// RGB of the pixel at the rectangle's centre, rendered at 1 px/pt.
+    fn centre_pixel(fill: &str) -> [u8; 3] {
+        let root = project_with_image();
+        let compiled = compiled_pages(root.path(), &request(single_rect(fill)));
+        let pixmap = typst_render::render(
+            &compiled.pages()[0],
+            &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() },
+        );
+        let pixel = pixmap.pixel(200, 150).unwrap();
+        // 白底不透明，premultiplied 的值就是實際顏色
+        assert_eq!(pixel.alpha(), 255);
+        [pixel.red(), pixel.green(), pixel.blue()]
+    }
+
+    #[test]
+    fn element_alpha_blends_with_the_page() {
+        assert_eq!(centre_pixel("#ff0000"), [255, 0, 0]);
+        // 50% 紅色疊在白色上 ≈ (255, 127, 127)
+        let [r, g, b] = centre_pixel("#ff000080");
+        assert_eq!(r, 255);
+        assert!((125..=130).contains(&g) && (125..=130).contains(&b), "got {r},{g},{b}");
+        assert_eq!(centre_pixel("#ff000000"), [255, 255, 255]);
+    }
+
+    #[test]
+    fn pdf_carries_the_alpha() {
+        let root = project_with_image();
+        let opaque = render_pdf(root.path(), &request(single_rect("#ff0000")), fonts()).unwrap().bytes;
+        let half = render_pdf(root.path(), &request(single_rect("#ff000080")), fonts()).unwrap().bytes;
+        let has_alpha_state = |pdf: &[u8]| pdf.windows(4).any(|w| w == b"/ca ");
+        assert!(!has_alpha_state(&opaque));
+        assert!(has_alpha_state(&half), "PDF has no fill-opacity graphics state");
+    }
+
     /// Writes PNG previews (2 px/pt) for visual comparison with the canvas. Renders the fixture, or
     /// an `ExportRequest` captured from the editor when `EXPORT_REQUEST_JSON` is set:
     /// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] cargo test export_preview -- --ignored`

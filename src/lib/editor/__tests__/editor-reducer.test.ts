@@ -55,6 +55,21 @@ describe("editorReducer / elements", () => {
     expect(next).toBe(state);
   });
 
+  it("accepts fill colors with alpha and ignores invalid ones", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+
+    expect(run(state, { type: "element/update", id: element.id, patch: { fill: "#fb2c3680" } }).history.present.pages[0].elements[0])
+      .toMatchObject({ fill: "#fb2c3680" });
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fill: "red" } })).toBe(state);
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fill: "#fb2c368" } })).toBe(state);
+  });
+
+  it("rejects page backgrounds with alpha", () => {
+    const state = blankState();
+    expect(editorReducer(state, { type: "page/setBackground", id: state.activePageId, color: "#ffffff80" })).toBe(state);
+  });
+
   it("deletes the selected element and clears selection", () => {
     const element = createTextElement("body", { x: 10, y: 10 });
     const state = run(blankState(), { type: "element/add", element }, { type: "element/delete", id: element.id });

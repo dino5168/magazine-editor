@@ -7,7 +7,7 @@ import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import type { CanvasElement, ElementPatch, ElementType, TextElement } from "@/lib/editor/types";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, clampFontSize } from "@/lib/editor/validation";
-import { ColorInput } from "./color-input";
+import { ColorPicker } from "./color-picker";
 import { IconButton } from "./icon-button";
 
 const TYPE_LABELS: { readonly [K in ElementType]: string } = {
@@ -59,7 +59,7 @@ function TextControls({ element, onChange }: { readonly element: TextElement; re
     <>
       {/* key 讓 undo 或切換物件後輸入框同步為最新字級 */}
       <FontSizeInput key={`${element.id}-${element.fontSize}`} value={element.fontSize} onCommit={(fontSize) => onChange({ fontSize })} />
-      <ColorInput value={element.fill} label="文字顏色" onCommit={(fill) => onChange({ fill })} />
+      <ColorPicker value={element.fill} label="文字顏色" onCommit={(fill) => onChange({ fill })} />
       <IconButton
         label="粗體"
         aria-pressed={element.fontStyle === "bold"}
@@ -95,7 +95,7 @@ function SelectedControls({ element, index, count }: { readonly element: CanvasE
       {element.type !== "text" && element.type !== "image" && (
         <label className="flex items-center gap-1 text-xs text-muted-foreground">
           填色
-          <ColorInput value={element.fill} label="填色" onCommit={(fill) => update({ fill })} />
+          <ColorPicker value={element.fill} label="填色" onCommit={(fill) => update({ fill })} />
         </label>
       )}
       <div className="ml-auto flex items-center gap-1">

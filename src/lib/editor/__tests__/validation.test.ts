@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_UPLOAD_BYTES, clampFontSize, isHexColor, validateImageFile, validateName } from "../validation";
+import { MAX_UPLOAD_BYTES, clampFontSize, isElementColor, isHexColor, validateImageFile, validateName } from "../validation";
 import { createImageElement, describeElement, createTextElement } from "../element-factory";
 import { formatPageSize, mmToPt, ptToMm } from "../units";
 
@@ -38,6 +38,15 @@ describe("number and color helpers", () => {
     expect(isHexColor("#a1B2c3")).toBe(true);
     expect(isHexColor("#fff")).toBe(false);
     expect(isHexColor("red")).toBe(false);
+    expect(isHexColor("#a1b2c380")).toBe(false);
+  });
+
+  it("accepts #rrggbb and #rrggbbaa element colors", () => {
+    expect(isElementColor("#a1B2c3")).toBe(true);
+    expect(isElementColor("#a1b2c380")).toBe(true);
+    expect(isElementColor("#a1b2c38")).toBe(false);
+    expect(isElementColor("#a1b2c3800")).toBe(false);
+    expect(isElementColor("#fff")).toBe(false);
   });
 });
 

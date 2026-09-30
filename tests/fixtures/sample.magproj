@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-09-18T03:30:00Z",
@@ -38,7 +38,7 @@
             "width": 480,
             "height": 130,
             "cornerRadius": 12,
-            "fill": "#e0e7ff"
+            "fill": "#e0e7ffcc"
           },
           {
             "id": "el-ellipse",

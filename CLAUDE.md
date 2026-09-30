@@ -81,7 +81,8 @@ src/
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
       panels/*.tsx                # 9 個面板；draw / resize 目前是佔位
-      icon-button.tsx · color-input.tsx · inline-name-input.tsx   # 共用小元件
+      color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
+      icon-button.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
   lib/
     utils.ts                      # re-export `cn`（來自 `cn` 套件，不是 clsx + tailwind-merge）
@@ -118,7 +119,8 @@ src/
       geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、頁面尺寸 preset
-      validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證
+      validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證（isHexColor / isElementColor）
+      palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
@@ -158,7 +160,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
-- `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。顏色選擇器聽原生 `change` 事件（`ColorInput`），避免 React `onChange` 連續寫入歷史。
+- `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。調色板（`ColorPalette`）點選色票寫入一次，不透明度 slider 拖曳時只改預覽、放開（`onValueCommit`）才寫入。
 - reducer 內部會驗證名稱與顏色，非法輸入直接 no-op；UI 端的錯誤訊息用 sonner `toast`。
 
 ### 畫布捲動與縮放（`editor-canvas.tsx` + `viewport.ts`）
@@ -181,6 +183,15 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - **文字工具的新文字是草稿**（`editor-canvas` 的 `draftText`），不在文件裡；輸入完成才 `element/add`，所以復原一次就撤銷，沒輸入就不建立。
 - `element/duplicate` 的新 id 由呼叫端帶入（`newId`），reducer 保持純函式。
 - 可平移的範圍 = 捲軸的範圍（內容範圍 + 200px），不是無限畫布。
+
+### 調色板（`color-picker.tsx` + `lib/editor/palette.ts`）
+
+計畫與決定：`docs/imp-color-picker.md`。
+
+- 顏色**只能從 Tailwind v4 色票選**：經典 22 個色系 × 11 階深淺 + 黑、白，沒有自訂顏色輸入。不在色票裡的既有顏色（舊專案、示範內容）照常顯示與匯出，只是不會標示位置。
+- `palette.ts` 的資料照抄 Tailwind 的 oklch，載入時用 `oklchToHex` 換成 hex；**模型只存 hex**，Rust 驗證與匯出不認識 oklch。超出 sRGB 的顏色以「保持明度與色相、降低彩度」處理，少數飽和色和 Tailwind 官方 hex 差幾個數值。
+- **顏色格式**：物件的 `fill` 是 `#rrggbb` 或 `#rrggbbaa`（完全不透明時一律寫 6 位，`withAlpha` 負責）；頁面背景只能是 `#rrggbb`。TS `isElementColor` / `isHexColor` 與 Rust `require_element_color` / `require_background_color` 規則必須一致。
+- `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（選取工具列）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
 
 ### 其他注意事項
 
@@ -231,9 +242,9 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 1）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 2；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`，v1 檔案不需升級可直接開啟）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
-- **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION` 並在 `migrate()` 加升級步驟；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
+- **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
 - 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的）。
 - 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用），但**還有備份檔的暫存資料夾會保留**。
@@ -268,8 +279,9 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
 - 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。`polygon` 與 `star` 都由 `regular_points()` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
+- 半透明顏色：PDF 直接交給 Typst 的 `rgb("#rrggbbaa")`；**EPUB 輸出前轉換**（`epub/xhtml.rs` 的 `css_color` / `svg_fill`），CSS 用 `rgba()`、SVG 用 `fill-opacity`，不讓 8 位 hex 進入 EPUB（SVG 1.1 不允許，舊閱讀引擎也不支援）。
 - 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
-- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB，沒有出血、裁切線與 CMYK；Geist + Noto Sans TC 沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
+- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；Geist + Noto Sans TC 沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
 - **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
 
 ## Rust ↔ Frontend IPC

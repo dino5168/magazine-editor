@@ -1,6 +1,6 @@
 import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
-import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, isHexColor, validateName } from "./validation";
+import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, isElementColor, isHexColor, validateName } from "./validation";
 import { clampZoom } from "./viewport";
 import type {
   AssetInfo,
@@ -203,6 +203,9 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       const index = page.elements.findIndex((element) => element.id === action.id);
       if (index === -1) return page;
       const current = page.elements[index];
+      if ("fill" in action.patch && (typeof action.patch.fill !== "string" || !isElementColor(action.patch.fill))) {
+        return page;
+      }
       const changed = Object.entries(action.patch).some(
         ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
       );

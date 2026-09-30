@@ -42,6 +42,40 @@ pub fn num(value: f64) -> String {
     }
 }
 
+/// Splits a validated `#rrggbb` / `#rrggbbaa` color into its `#rrggbb` part and the opacity
+/// (0–1, at most 3 decimals); `None` when opaque.
+///
+/// 閱讀器相容性：8 位 hex 是 CSS Color 4 的寫法，SVG 1.1 也不允許；拆開後 CSS 用 `rgba()`、
+/// SVG 用 `fill-opacity`，較舊的閱讀引擎也看得懂。
+fn split_alpha(color: &str) -> (&str, Option<String>) {
+    match color.get(7..9) {
+        Some(hex) => {
+            let byte = u8::from_str_radix(hex, 16).unwrap_or(u8::MAX);
+            (&color[..7], (byte != u8::MAX).then(|| format!("{:.3}", f64::from(byte) / 255.0)))
+        }
+        None => (color, None),
+    }
+}
+
+/// CSS color value: `#rrggbb` when opaque, otherwise `rgba(r,g,b,a)`.
+fn css_color(color: &str) -> String {
+    match split_alpha(color) {
+        (rgb, None) => rgb.to_owned(),
+        (rgb, Some(alpha)) => {
+            let channel = |i: usize| u8::from_str_radix(&rgb[i..i + 2], 16).unwrap_or(0);
+            format!("rgba({},{},{},{alpha})", channel(1), channel(3), channel(5))
+        }
+    }
+}
+
+/// SVG fill attributes: `fill="#rrggbb"`, plus `fill-opacity` when not opaque.
+fn svg_fill(color: &str) -> String {
+    match split_alpha(color) {
+        (rgb, None) => format!(r#"fill="{rgb}""#),
+        (rgb, Some(alpha)) => format!(r#"fill="{rgb}" fill-opacity="{alpha}""#),
+    }
+}
+
 /// CSS `font-family` value: only bundled families (their canonical names, never the user's
 /// string) followed by a generic fallback.
 fn font_family(fonts: &[String]) -> String {
@@ -78,7 +112,7 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
         num(text.size),
         num(text.line_height),
         if text.bold { 700 } else { 400 },
-        text.fill,
+        css_color(&text.fill),
         align_name(text.align),
     );
     rotate(&mut style, element.rotation);
@@ -106,7 +140,7 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
                 num(r.width),
                 num(r.height),
                 num(r.corner_radius),
-                r.fill,
+                css_color(&r.fill),
             );
             rotate(&mut style, element.rotation);
             let _ = writeln!(out, r#"<div class="el" style="{style}"></div>"#);
@@ -119,7 +153,7 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
                 num(y - e.ry),
                 num(e.rx * 2.0),
                 num(e.ry * 2.0),
-                e.fill,
+                css_color(&e.fill),
             );
             rotate(&mut style, element.rotation);
             let _ = writeln!(out, r#"<div class="el c" style="{style}"></div>"#);
@@ -133,11 +167,11 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
                 p.points.iter().map(|[px, py]| format!("{},{}", num(px + p.rx), num(py + p.ry))).collect();
             let _ = writeln!(
                 out,
-                r#"<svg xmlns="http://www.w3.org/2000/svg" class="el c" style="{style}" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><polygon points="{points}" fill="{fill}"/></svg>"#,
+                r#"<svg xmlns="http://www.w3.org/2000/svg" class="el c" style="{style}" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><polygon points="{points}" {fill}/></svg>"#,
                 w = num(w),
                 h = num(h),
                 points = points.join(" "),
-                fill = p.fill,
+                fill = svg_fill(&p.fill),
             );
         }
         RenderKind::Image(i) => {
@@ -219,5 +253,15 @@ mod tests {
         let fonts = vec!["geist".to_owned(), "x'; background:url(http://evil)".to_owned(), "Noto Sans TC".to_owned()];
         assert_eq!(font_family(&fonts), "'Geist','Noto Sans TC',sans-serif");
         assert_eq!(font_family(&[]), "sans-serif");
+    }
+
+    #[test]
+    fn colors_with_alpha_use_widely_supported_syntax() {
+        assert_eq!(css_color("#e0e7ff"), "#e0e7ff");
+        assert_eq!(css_color("#e0e7ffcc"), "rgba(224,231,255,0.800)");
+        assert_eq!(css_color("#ff000000"), "rgba(255,0,0,0.000)");
+        assert_eq!(css_color("#ff0000ff"), "#ff0000");
+        assert_eq!(svg_fill("#86efac"), r##"fill="#86efac""##);
+        assert_eq!(svg_fill("#86efac80"), r##"fill="#86efac" fill-opacity="0.502""##);
     }
 }

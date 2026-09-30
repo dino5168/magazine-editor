@@ -10,10 +10,11 @@
 
 ## 目前階段
 
-**正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成,下一步是階段 3(封面)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
+**正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;**階段 3(封面)由使用者決定暫緩,待後續討論(2026-09-30),不要主動開始**;階段 4(command 與前端接線)也先不做,使用者要先處理其他事(2026-09-30)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
 
 - **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
 - **底部工具列(2026-09-30,已完成)**:任務檔 `docs/04-tldraw.md`,計畫 `docs/imp-tldraw-bar.md`。參考 tldraw 在畫布下方加浮動工具列(工具模式:選取 / 手形 / 文字 / 圖形 / 圖片,點擊或拖曳建立)與動作列(復原 / 重做 / 刪除 / 複製 / ⋮),手形 / 空白鍵 / 中鍵平移。五個步驟全部完成,規則寫在 `CLAUDE.md`「底部工具列與畫布工具」一節。下一步回到匯出 EPUB 階段 3(封面)。
+- **調色板(2026-09-30 起)**:任務檔 `docs/05-調色板.md`,計畫 `docs/imp-color-picker.md`。把原生選色器換成 Tailwind 色票(22 色系 × 11 深淺 + 黑白)與透明度 slider;透明度存成 `#rrggbbaa`(檔案格式變更,`SCHEMA_VERSION` 升為 2);頁面背景也用調色板但不含透明度;不保留自訂顏色。六個步驟**全部完成,尚未 commit**;規則寫在 `CLAUDE.md`「調色板」一節。
 - **MCP server 評估(2026-09-30)**:`docs/eval-mcp-server.md`。結論:不需要先做腳本功能;先做「自動化指令層」,再在 Rust 端內嵌只接受本機連線的 MCP server。**只是評估,尚未排入實作**,等匯出 EPUB 告一段落後由使用者決定;文件第 9 節有待決定的問題。
 - 第一、二階段:存檔 / 開啟、自動備份與當機復原。第一階段的對話框流程(開啟 / 另存)還沒有正式的人工測試紀錄;使用者已經在實際使用(建立過自己的專案)。
 - **匯出 PDF(2026-09-18 實作)**:內嵌 Typst 把所有頁面排版成 PDF,換行位置由編輯器量測後交給 Typst,規則寫在 `CLAUDE.md`「匯出 PDF」一節。**人工驗證(字型嵌入、中文可搜尋、疊圖比對)還沒有紀錄**,見下方「待辦 → 使用者」。
@@ -68,6 +69,13 @@
 | 2026-09-30 | 底部工具列步驟 1–3 commit `f9811e4`,步驟 4–5 另一個 commit,一起推送到 `main` |
 | 2026-09-30 | **底部工具列步驟 4**:`use-canvas-create.ts`,文字 / 圖形工具在畫布上點擊或拖曳建立(預覽框、拖曳中 Esc 取消、建立後回到選取);`element-factory.ts` 加 `createShapeInBox` / `createToolText` / `boundsFromPoints` + 7 個測試;新文字以草稿編輯、輸入完成才加入文件(復原一次撤銷);刪除 `useChooseTool`;文字編輯框 `rows={1}`。以無頭 Edge + CDP 驗證點擊與拖曳的位置尺寸、在既有物件上建立、Esc、空白鍵平移優先 |
 | 2026-09-30 | **底部工具列步驟 5**:上方系統控制列移除復原 / 重做(改在底部動作列);`CLAUDE.md` 新增「底部工具列與畫布工具」一節並更新目錄結構與快捷鍵;`docs/01-overview.md` 畫面對應圖、`docs/02-architecture.md` 的 `EditorState` 圖加上工具列 |
+| 2026-09-30 | **修正與補齊 `docs/02-architecture.md`**:模組地圖加上 `lib/project` / `lib/menu` / `lib/dock` / `lib/export`、`components/app` / `dock` 與 Rust 的 `commands` / `project` / `export` / `db`;資料夾行數重新計算;`EditorState` 的 `uploads` 改為 `assets`、補 `savedDocument`;「漏改檢查」表補 `PANEL_ICONS`、`CommandHandlers`、Rust `render.rs`;Rust 簡介改寫(原本寫「3 個指令、前端未使用」);閱讀順序的行數更新 |
+| 2026-09-30 | **調色板步驟 1**:`src/lib/editor/palette.ts`(Tailwind v4 經典 22 色系 oklch → hex,超出 sRGB 時降低彩度;`findPaletteColor` 反查)+ 5 個測試。畫面不變 |
+| 2026-09-30 | **調色板步驟 2**:物件顏色可為 `#rrggbbaa`(頁面背景仍只收 `#rrggbb`);Rust `SCHEMA_VERSION` 升為 2,v1 檔案不需升級可直接開啟;TS `isElementColor`、`colorAlpha` / `withAlpha`,reducer 的 `element/update` 開始檢查 `fill`;fixture 的矩形改成半透明。Rust 61 個、vitest 127 個測試通過。畫面不變 |
+| 2026-09-30 | **調色板步驟 3**:PDF 直接支援 `#rrggbbaa`(測試:點陣圖混色、PDF 內有 `/ca`);EPUB 輸出前把 8 位 hex 轉成 CSS `rgba()` 與 SVG `fill-opacity`(相容較舊的閱讀引擎)。PDF 與 EPUB(headless Edge)疊圖比對,半透明矩形像素兩邊一致。Rust 64 個測試通過 |
+| 2026-09-30 | **調色板步驟 4**:shadcn `popover`、`slider`;`components/editor/color-picker.tsx`(色系 / 深淺 / 不透明度 slider,放開才寫入),取代選取工具列的文字顏色與填色。以無頭 Edge + CDP 讀畫布像素驗證選色、slider、Delete / Esc、復原。清除步驟 1 誤用 `tsc -b` 產生的建置檔 |
+| 2026-09-30 | **調色板步驟 5**:`color-picker.tsx` 拆成 `ColorPalette`(本體)與 `ColorPicker`(按鈕 + Popover);背景面板改成內嵌 `ColorPalette`(沒有不透明度),移除原本 12 個色票;刪除 `color-input.tsx`,`CLAUDE.md` 同步。以無頭 Edge + CDP 驗證背景選色、復原,並重跑工具列測試 |
+| 2026-09-30 | **調色板步驟 6**:`CLAUDE.md` 新增「調色板」一節、目錄結構加 `palette.ts`、修正不存在的 `migrate()` 說明、「匯出 PDF」補上半透明的處理 |
 
 ---
 
@@ -112,6 +120,9 @@
 | PDF 與 EPUB **共用 `RenderModel`**,格式專屬的細節不進模型 | 座標、旋轉、分行、字型對應、圖片略過只定義一次;媒體型別之類的打包細節留在各自的產生器 |
 | 工具面板:9 個工具**各自是獨立面板**,同側**上下堆疊**,三欄之間是**可拖曳的分隔條**(不是縮放滑桿),**自行實作不加套件** | 使用者確認(2026-09-30),見 `docs/imp-tool-bar.md` |
 | 工具面板版面記在 **`localStorage`**,不進專案檔、不進 SQLite | 是 App 偏好不是文件內容;SQLite 的 `settings` 資料表還沒做,等偏好設定實作時再搬。計畫中的建議值,使用者未提出異議(2026-09-30) |
+| 顏色**只能從 Tailwind v4 色票選**(經典 22 色系 + 黑白),不保留自訂顏色;頁面背景也用調色板 | 使用者確認(2026-09-30),見 `docs/imp-color-picker.md` |
+| 透明度存成顏色字串 **`#rrggbbaa`**(不另加 `opacity` 欄位),頁面背景不可透明;`SCHEMA_VERSION` 升為 2 | 不用改 `types.ts`,Konva / Typst 直接支援。使用者確認(2026-09-30) |
+| EPUB 輸出前把 8 位 hex 轉成 CSS `rgba()` / SVG `fill-opacity` | SVG 1.1 不允許 8 位 hex,較舊的閱讀引擎也不支援 |
 | 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/imp-tldraw-bar.md` |
 
 ---
@@ -130,6 +141,7 @@
 - [ ] 手動驗證**EPUB 產生器**(階段 2,還沒有匯出按鈕):`EXPORT_PREVIEW_DIR=<dir> cargo test --manifest-path src-tauri/Cargo.toml epub_preview -- --ignored` 產生 `preview.epub`
   - 用 **epubcheck** 檢查(需要 Java,這台機器目前沒有),目標 0 error
   - 在 Thorium Reader / Calibre / Apple Books 開啟:固定版面、比例正確、中文可選取與搜尋、字型是內嵌的 Noto Sans TC
+- [ ] 在 `npm run tauri dev` 手動驗證**調色板**:文字 / 圖形選色與不透明度、頁面背景;存檔後重開半透明仍在;匯出 PDF 半透明正確(EPUB 還沒有匯出按鈕,可用 `epub_preview`)
 - [ ] 手動驗證**匯出 PDF**(Claude 無法操作系統對話框,也無法開 PDF 檢視器):
   - 在 Edge / Acrobat 開啟匯出的 PDF,確認字型已嵌入、中文可以選取、複製、搜尋
   - 旋轉過的物件、超出頁面的物件(應被紙張邊界裁掉)、多頁文件都正確
@@ -152,10 +164,10 @@
   - `06-rust-ipc.md`:SQLite、commands、`DbError`
   - `07-dev-workflow.md`:測試、hooks、`permissions.deny`、Claude Code 使用流程
 - [ ] 每寫完一份,更新 `docs/README.md` 的進度表和這份檔案
-- [ ] `02-architecture.md` 的目錄表與閱讀順序補上 `lib/menu/`、`app-menubar.tsx`、`lib/project/`、`lib/export/`、`src-tauri/src/project/`、`src-tauri/src/export/`(`home-page.tsx` 也因此從約 60 行變長)
 - [ ] 之後撰寫的文件要涵蓋匯出 PDF:`03-document-model.md` 說明 pt 單位和 Typst 的對應;`06-rust-ipc.md` 說明 `ExportWorld` 為什麼是沙箱、為什麼換行由前端量測
 - [ ] `03-document-model.md` 要說明 `ImageElement.src` 是專案相對路徑,以及為什麼圖片要複製進專案
 - [ ] `06-rust-ipc.md` 要涵蓋 `AppError`、`ProjectState`、「前端不傳路徑」的設計
+- [ ] **匯出 EPUB 階段 3(封面)——暫緩,待後續討論**(2026-09-30)。重新開始前先和使用者討論封面做法(原計畫:用 Typst + `typst-render` 把第 1 頁算成 PNG,失敗時略過封面),見 `docs/Imp-Plan-ExportEpub.md` 階段 3
 - [ ] **檔案系統第三階段(系統素材庫與範本)——暫緩,等使用者重新提出**。重新開始時先問以下四題(括號內是建議):
   1. 套用範本時:**插入為新頁面**(在目前頁面之後,可復原)還是取代目前頁面?(建議:插入)
   2. 內建範本:把 8 個漸層佔位換成**3–4 個真正可套用的簡單版面**(含原本的示範內容),還是 8 個全部做成真的、或只放示範內容?(建議:3–4 個)
@@ -170,7 +182,8 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 39 個(另有 1 個 `#[ignore]` 的疊圖預覽)、vitest 65 個全部通過;`cargo clippy --all-targets` 沒有警告(2026-09-22)。
+- **目前的自動化測試:** Rust 64 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 127 個全部通過(2026-09-30)。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **型別檢查用 `npx tsc --noEmit -p tsconfig.json`**(或 `npm run build`),不要用 `tsc -b`:會在專案根目錄產生 `vite.config.js`、`vite.config.d.ts`、`*.tsbuildinfo`,而且對 `vite.config.ts` 報一個既有的錯誤。
 - **匯出 PDF 只有自動化測試,沒有人工驗證紀錄:** Rust 測試涵蓋六種物件都能編譯成 PDF、頁數與頁面尺寸、圖片缺檔會略過、`World` 拒讀其他路徑、Typst 特殊字元原樣輸出、非法 layout 資料會被拒絕。字型嵌入、中文搜尋、和畫布的疊圖比對還需要使用者確認(見「待辦 → 使用者」)。
 - **`typst` 版本鎖在 `=0.15.1`:** `typst` / `typst-layout` / `typst-pdf` / `typst-render` 四個版本必須一致,升級時 `World` trait 的 API 會變動,要一起改 `export/world.rs`。
 - **檔案系統第一階段的對話框流程沒有正式人工測試紀錄:** 實際啟動確認過會建立未命名專案、資料庫升級到 v2、視窗標題正確、第二個 App 會立即結束;第二階段的 UI Automation 測試也順帶驗證了「正常關閉 → 未存檔提示 → 不儲存」。開啟 / 另存對話框、圖片在搬移後的顯示還需要使用者確認。

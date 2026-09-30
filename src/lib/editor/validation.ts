@@ -10,6 +10,7 @@ export const FONT_SIZE_MIN = 6;
 export const FONT_SIZE_MAX = 400;
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const ELEMENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 
 /** Minimal file shape so validation is testable without a DOM `File`. */
 export interface FileLike {
@@ -89,7 +90,7 @@ export function clampFontSize(value: number): number {
 }
 
 /**
- * Checks whether a string is a `#rrggbb` color.
+ * Checks whether a string is a `#rrggbb` color (page backgrounds: no transparency).
  *
  * Args:
  *   value: Candidate color string.
@@ -99,4 +100,18 @@ export function clampFontSize(value: number): number {
  */
 export function isHexColor(value: string): boolean {
   return HEX_COLOR_PATTERN.test(value);
+}
+
+/**
+ * Checks whether a string is a valid element color: `#rrggbb` or `#rrggbbaa`.
+ * 和 Rust `format.rs` 的 `require_element_color` 規則相同。
+ *
+ * Args:
+ *   value: Candidate color string.
+ *
+ * Returns:
+ *   True when the value is a 6- or 8-digit hex color.
+ */
+export function isElementColor(value: string): boolean {
+  return ELEMENT_COLOR_PATTERN.test(value);
 }

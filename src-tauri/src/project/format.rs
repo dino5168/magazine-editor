@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub const FORMAT_ID: &str = "magazine-editor/project";
-pub const SCHEMA_VERSION: u32 = 1;
+/// v2: element colors (`fill`) may carry alpha as `#rrggbbaa`. Page backgrounds stay `#rrggbb`.
+pub const SCHEMA_VERSION: u32 = 2;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 pub const ASSET_DIR: &str = "assets/images";
 
@@ -180,8 +181,9 @@ pub fn parse_project(json: &str) -> AppResult<ProjectFile> {
     }
     match header.schema_version {
         Some(version) if version > SCHEMA_VERSION => return Err(AppError::UnsupportedVersion(version)),
-        // v1 是第一版，沒有舊版需要升級。發布 v2 時在此把舊版 JSON（serde_json::Value）升級後再轉換
-        Some(SCHEMA_VERSION) => {}
+        // v1 → v2 只放寬顏色格式，v1 的內容原樣就是合法的 v2，不需要升級步驟。
+        // 之後的版本若要改寫內容，在此把舊版 JSON（serde_json::Value）升級後再轉換
+        Some(1..=SCHEMA_VERSION) => {}
         _ => return Err(AppError::invalid_project("missing or unknown schemaVersion")),
     }
     let project: ProjectFile = serde_json::from_str(json)?;
@@ -202,7 +204,7 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
         if !(page.width > 0.0 && page.height > 0.0) {
             return Err(AppError::invalid_project(format!("page {} has a non-positive size", page.id)));
         }
-        require_color(&page.background)?;
+        require_background_color(&page.background)?;
         for element in &page.elements {
             validate_element(element)?;
         }
@@ -226,7 +228,7 @@ fn validate_element(element: &Element) -> AppResult<()> {
         }
     };
     require_id(&base.id)?;
-    require_color(fill)
+    require_element_color(fill)
 }
 
 fn require_id(id: &str) -> AppResult<()> {
@@ -236,10 +238,23 @@ fn require_id(id: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn require_color(color: &str) -> AppResult<()> {
+/// `#` followed by exactly `digits` hex digits.
+fn is_hex_color(color: &str, digits: usize) -> bool {
     let bytes = color.as_bytes();
-    let valid = bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(u8::is_ascii_hexdigit);
-    if !valid {
+    bytes.len() == digits + 1 && bytes[0] == b'#' && bytes[1..].iter().all(u8::is_ascii_hexdigit)
+}
+
+/// Page backgrounds are paper: `#rrggbb` only, no transparency.
+fn require_background_color(color: &str) -> AppResult<()> {
+    if !is_hex_color(color, 6) {
+        return Err(AppError::invalid_project(format!("invalid background color {color:?}")));
+    }
+    Ok(())
+}
+
+/// Element colors: `#rrggbb` or `#rrggbbaa`.
+fn require_element_color(color: &str) -> AppResult<()> {
+    if !is_hex_color(color, 6) && !is_hex_color(color, 8) {
         return Err(AppError::invalid_project(format!("invalid color {color:?}")));
     }
     Ok(())
@@ -339,6 +354,33 @@ mod tests {
         let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
         value["document"]["pages"][0]["elements"][0]["type"] = Value::from("video");
         assert!(matches!(parse_project(&value.to_string()), Err(AppError::InvalidProject(_))));
+    }
+
+    #[test]
+    fn opens_v1_files() {
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(1);
+        // v1 沒有透明度
+        value["document"]["pages"][0]["elements"][1]["fill"] = Value::from("#e0e7ff");
+        assert_eq!(parse_project(&value.to_string()).unwrap().schema_version, 1);
+    }
+
+    #[test]
+    fn element_colors_may_have_alpha_but_backgrounds_may_not() {
+        let with = |pointer: &str, color: &str| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            *value.pointer_mut(pointer).unwrap() = Value::from(color);
+            parse_project(&value.to_string())
+        };
+        const FILL: &str = "/document/pages/0/elements/0/fill";
+        const BACKGROUND: &str = "/document/pages/0/background";
+        assert!(with(FILL, "#171717").is_ok());
+        assert!(with(FILL, "#17171780").is_ok());
+        assert!(with(FILL, "#1717178").is_err());
+        assert!(with(FILL, "#171717800").is_err());
+        assert!(with(FILL, "#17171g80").is_err());
+        assert!(with(BACKGROUND, "#ffffff").is_ok());
+        assert!(with(BACKGROUND, "#ffffff80").is_err());
     }
 
     #[test]
