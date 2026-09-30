@@ -1,7 +1,7 @@
 # 匯出 EPUB 實作計畫
 
 > 對應任務：`docs/Task-Plan-ExportEpub.md`（`menu-structure.ts:48` 的 `file.exportEpub` 尚未實作）
-> 狀態：**等待使用者檢核**，核准後才開始實作（原第 8 節的四個待決事項已於 2026-09-23 回覆，併入第 2 節）
+> 狀態：**階段 1、2 已完成**（2026-09-30），下一步是階段 3（封面）。原第 8 節的四個待決事項已於 2026-09-23 回覆，併入第 2 節
 > 撰寫日期：2026-09-23
 
 ---
@@ -204,6 +204,27 @@ pub enum RenderKind { Text(RenderText), Rect(RenderRect), Ellipse(RenderEllipse)
 **相依**：`Cargo.toml` 加 `zip`（只要 deflate 功能，版本在實作時以 `cargo add` 決定）；`typst-render` 從 `dev-dependencies` 移到 `dependencies`。
 
 **驗收**：單元測試產生的 EPUB 通過 6.1 的所有檢查。
+
+> ✅ **階段 2 已完成（2026-09-30）**：`cargo test` 59 passed（+2 ignored）、`npm test` 98 passed、`npm run build` 通過、`cargo clippy --all-targets` 只剩既有的 `recovery.rs:113`。另以 headless Edge 把 EPUB 頁面算成 2 px/pt 的圖，和 `export_preview` 的 PDF 頁面比對：只有標題文字區 0.075% 的像素因反鋸齒不同，文字墨水外框位置相差 ≤ 1 device px（0.5 pt），**基線不需校正**。
+>
+> 實作時和原計畫不同的地方：
+>
+> | 原計畫 | 實際 | 原因 |
+> |---|---|---|
+> | 沿用 `world.rs` 的 `BUNDLED_FONTS`（只有位元組） | 抽成 `export/fonts.rs`：每個字型帶 `family` / `bold` / `file` / `data`，`world.rs` 與 EPUB 共用 | EPUB 需要知道檔名與字族才能寫 manifest 與 `@font-face` |
+> | `typst-render` 這個階段升為正式相依 | 仍是 dev-dependency，**階段 3（封面）才升** | 這個階段沒有用到，先加只會多編譯 |
+> | `zip` 用 `deflate` feature | `zip` 8.6，`default-features = false, features = ["deflate-flate2"]` | `deflate` 會多帶 `zopfli`（慢速極限壓縮，用不到）；現在只新增 `zip` 與 `typed-path` 兩個 crate，flate2 沿用相依樹裡已有的 |
+> | package 宣告 `prefix="rendition: …"` | **不宣告** | `rendition` 是 EPUB 3 的保留前綴，重複宣告是 epubcheck 警告 |
+> | `RenderElement` 加 `Anchor` 欄位 | 不加；`xhtml.rs` 依物件類型決定，中心點旋轉的物件加 `class="c"`（`transform-origin: 50% 50%`） | 錨點是物件類型的函數，放進模型是重複資訊 |
+> | 語言碼常數在 `epub/package.rs`（`DEFAULT_LANGUAGE`） | `epub/mod.rs` 的 `LANGUAGE` | `package.rs` 與 `xhtml.rs` 都要用，放在上一層 |
+> | 圖片沿用專案檔名，媒體型別看副檔名 | EPUB 內改名 `images/image-<n>.<ext>`，媒體型別看**檔頭** | 專案檔名只保證是單純檔名，仍可能含 `#`、`%` 等在 URL 裡有意義的字元；讀不到或不是 PNG / JPEG / GIF / WebP 的圖片略過並計入 `skippedImages` |
+> | CSS `font-family` 寫文件裡的字族清單 | **只寫內嵌字型的正式名稱** + `sans-serif` | `fontFamily` 是使用者可控的字串，不讓它進 CSS；非內嵌字族在 PDF 裡本來就不會生效 |
+> | viewport = 頁面尺寸 | viewport 取**整數**（無條件進位），頁面 div 維持精確尺寸，`body` 背景同頁面色 | A4 是 595.28 × 841.89，整數 viewport 最保險；多出的不到 1 px 看不出來 |
+> | — | 空行輸出明確高度的 `<div>` | 沒有文字的行不產生行框，高度會塌成 0，後面的行會往上移 |
+> | `render_epub(root, request, fonts)` | `render_epub(root, request)`；`build_epub(…, &EpubMeta)` 讓測試注入固定的 UUID 與時間 | 這個階段不用 Typst 字型（封面在階段 3 才需要）；`render_epub` 在階段 4 接上 command 之前以 `#[expect(dead_code)]` 標示 |
+> | `baseline_matches_css_line_box` 驗證兩個公式等值 | 改為檢查每個內嵌字型的 `hhea` 等於 Windows 引擎實際採用的 `OS/2` 度量（USE_TYPO_METRICS ? typo : win） | 兩個公式在代數上必然相等，測它沒有意義；真正的風險是不同閱讀器讀不同的度量表（第 7 節）。實測：Geist 的 win 度量和 `hhea` 不同，但它設了 USE_TYPO_METRICS，typo 與 `hhea` 相同；Noto Sans TC 相反。兩者都安全 |
+>
+> 手動檢查用：`EXPORT_PREVIEW_DIR=<dir> cargo test epub_preview -- --ignored` 產生 `preview.epub`（可以再設 `EXPORT_REQUEST_JSON`，同 `export_preview`）。
 
 ### 階段 3：封面
 

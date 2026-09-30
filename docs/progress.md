@@ -10,9 +10,9 @@
 
 ## 目前階段
 
-**正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)已完成,下一步是階段 2(EPUB 產生器)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
+**正在實作「匯出 EPUB」,計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成,下一步是階段 3(封面)。檔案系統第一、二階段與「匯出 PDF」已完成並推送到 GitHub(`main`);檔案系統第三階段由使用者決定暫緩(2026-09-18),不要主動開始。**
 
-- **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已推送到 `origin/refactor/render-model`,尚未合併到 `main`),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
+- **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
 - **MCP server 評估(2026-09-30)**:`docs/eval-mcp-server.md`。結論:不需要先做腳本功能;先做「自動化指令層」,再在 Rust 端內嵌只接受本機連線的 MCP server。**只是評估,尚未排入實作**,等匯出 EPUB 告一段落後由使用者決定;文件第 9 節有待決定的問題。
 - 第一、二階段:存檔 / 開啟、自動備份與當機復原。第一階段的對話框流程(開啟 / 另存)還沒有正式的人工測試紀錄;使用者已經在實際使用(建立過自己的專案)。
 - **匯出 PDF(2026-09-18 實作)**:內嵌 Typst 把所有頁面排版成 PDF,換行位置由編輯器量測後交給 Typst,規則寫在 `CLAUDE.md`「匯出 PDF」一節。**人工驗證(字型嵌入、中文可搜尋、疊圖比對)還沒有紀錄**,見下方「待辦 → 使用者」。
@@ -59,6 +59,7 @@
 | 2026-09-30 | **工具面板步驟 7**:刪除 `app-siderbutton.tsx`、`sider-panel.tsx`(使用者決定);`CLAUDE.md` 新增「工具面板」一節並更新目錄結構、狀態、選單列;`docs/01-overview.md` 的畫面對應圖、`docs/02-architecture.md` 的目錄表 / 例子 / 自我檢查題改成工具面板 |
 | 2026-09-30 | 工具面板 commit `4fe677d`,連同 `f8ee3df`(EPUB 階段 1)推送到新的遠端分支 `refactor/render-model` |
 | 2026-09-30 | **MCP server 評估文件**(`docs/eval-mcp-server.md`):現況盤點(`element/*` 不做執行時驗證、只作用在目前頁面、沒有批次復原)、架構選項、第一批工具草案、安全性、分階段建議 |
+| 2026-09-30 | **匯出 EPUB 階段 2:EPUB 產生器**(`src-tauri/src/export/epub/`,尚未接 UI)。新增 `zip` 8.6(只開 `deflate-flate2`);字型清單抽到 `export/fonts.rs` 與 PDF 共用;17 個新測試(ZIP 結構、manifest 完整、XML 格式正確、使用者文字不變成標記、六種物件、略過圖片、只內嵌用到的字型、字型度量一致)。以 headless Edge 對照 PDF 點陣圖:文字位置相差 ≤ 0.5 pt。和計畫不同處記在計畫文件階段 2 |
 
 ---
 
@@ -117,6 +118,9 @@
   - 把專案資料夾搬到別的位置,用「開啟」選 `project.magproj`,圖片正常顯示
   - 上傳面板拖放圖片、相片面板加入內建相片,存檔後重開仍在
 - [ ] **確認換字型後的畫面**(階段 0):中文從微軟正黑體換成 Noto Sans TC,既有專案打開後字寬會變、文字會位移。在 `npm run tauri dev` 開既有專案看看能否接受
+- [ ] 手動驗證**EPUB 產生器**(階段 2,還沒有匯出按鈕):`EXPORT_PREVIEW_DIR=<dir> cargo test --manifest-path src-tauri/Cargo.toml epub_preview -- --ignored` 產生 `preview.epub`
+  - 用 **epubcheck** 檢查(需要 Java,這台機器目前沒有),目標 0 error
+  - 在 Thorium Reader / Calibre / Apple Books 開啟:固定版面、比例正確、中文可選取與搜尋、字型是內嵌的 Noto Sans TC
 - [ ] 手動驗證**匯出 PDF**(Claude 無法操作系統對話框,也無法開 PDF 檢視器):
   - 在 Edge / Acrobat 開啟匯出的 PDF,確認字型已嵌入、中文可以選取、複製、搜尋
   - 旋轉過的物件、超出頁面的物件(應被紙張邊界裁掉)、多頁文件都正確

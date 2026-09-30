@@ -1,6 +1,7 @@
 //! The `typst::World` used for PDF export: an embedded template, a JSON data file and the
 //! project's images. Nothing else on disk is reachable from Typst.
 
+use super::fonts::BUNDLED_FONTS;
 use crate::project::format::{validate_asset_path, ASSET_DIR};
 use std::path::{Path, PathBuf};
 use typst::diag::{FileError, FileResult};
@@ -13,21 +14,12 @@ use typst::{Library, LibraryExt, World};
 const TEMPLATE: &str = include_str!("template.typ");
 pub const DATA_FILE: &str = "data.json";
 
-/// The same four files `src/index.css` loads with `@font-face`; see `fonts/README.md` for why the
-/// canvas and the exporters must share them byte for byte.
-static BUNDLED_FONTS: &[&[u8]] = &[
-    include_bytes!("../../../fonts/Geist-Regular.ttf"),
-    include_bytes!("../../../fonts/Geist-Bold.ttf"),
-    include_bytes!("../../../fonts/NotoSansTC-Regular.otf"),
-    include_bytes!("../../../fonts/NotoSansTC-Bold.otf"),
-];
-
 /// Loads the bundled fonts (Geist + Noto Sans TC, regular and bold).
 ///
 /// Nothing is read from the system, so this cannot fail and the exported files render the same on
 /// every machine.
 pub fn load_fonts() -> Vec<Font> {
-    BUNDLED_FONTS.iter().flat_map(|data| Font::iter(Bytes::new(*data))).collect()
+    BUNDLED_FONTS.iter().flat_map(|font| Font::iter(Bytes::new(font.data))).collect()
 }
 
 fn file_id(path: &str) -> FileId {

@@ -1,0 +1,223 @@
+//! One document page → one fixed-layout XHTML file.
+//!
+//! Units: the editor's pt become CSS px with the same number (at zoom 1 the canvas shows 1 pt as
+//! 1 CSS px), and the reading system scales the whole page to the screen.
+
+use super::{EpubImages, LANGUAGE};
+use crate::export::fonts::bundled_family;
+use crate::export::render::{RenderElement, RenderKind, RenderPage, RenderText};
+use crate::project::format::Align;
+use std::fmt::Write;
+
+/// Escapes text for XML content and attribute values, dropping characters XML 1.0 does not allow.
+///
+/// User text (element text, page and document names) always goes through this: it stays data and
+/// can never become markup.
+pub fn escape(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            // XML 1.0 的合法字元：tab / LF / CR、U+0020 以上（排除代理區與 U+FFFE、U+FFFF）
+            '\t' | '\n' | '\r' => out.push(c),
+            c if c < ' ' || c == '\u{FFFE}' || c == '\u{FFFF}' => {}
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// Formats a length or angle for CSS / SVG: at most 4 decimals, no trailing zeros, no `-0`.
+pub fn num(value: f64) -> String {
+    let rounded = format!("{value:.4}");
+    let trimmed = rounded.trim_end_matches('0').trim_end_matches('.');
+    if trimmed == "-0" {
+        "0".to_owned()
+    } else {
+        trimmed.to_owned()
+    }
+}
+
+/// CSS `font-family` value: only bundled families (their canonical names, never the user's
+/// string) followed by a generic fallback.
+fn font_family(fonts: &[String]) -> String {
+    let mut families: Vec<&str> = Vec::new();
+    for family in fonts.iter().filter_map(|font| bundled_family(font)) {
+        if !families.contains(&family) {
+            families.push(family);
+        }
+    }
+    families.iter().map(|family| format!("'{family}',")).collect::<String>() + "sans-serif"
+}
+
+fn align_name(align: Align) -> &'static str {
+    match align {
+        Align::Left => "left",
+        Align::Center => "center",
+        Align::Right => "right",
+    }
+}
+
+fn rotate(style: &mut String, rotation: f64) {
+    if rotation != 0.0 {
+        let _ = write!(style, ";transform:rotate({}deg)", num(rotation));
+    }
+}
+
+fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
+    let mut style = format!(
+        "left:{}px;top:{}px;width:{}px;font-family:{};font-size:{}px;line-height:{}px;font-weight:{};color:{};text-align:{}",
+        num(element.x),
+        num(element.y),
+        num(text.width),
+        font_family(&text.fonts),
+        num(text.size),
+        num(text.line_height),
+        if text.bold { 700 } else { 400 },
+        text.fill,
+        align_name(text.align),
+    );
+    rotate(&mut style, element.rotation);
+    let _ = write!(out, r#"<div class="el t" style="{style}">"#);
+    for line in &text.lines {
+        if line.is_empty() {
+            // 空行沒有行框，高度會塌成 0；明確給一行的高度，後面的行才會在正確位置
+            let _ = write!(out, r#"<div style="height:{}px"></div>"#, num(text.line_height));
+        } else {
+            let _ = write!(out, "<div>{}</div>", escape(line));
+        }
+    }
+    out.push_str("</div>\n");
+}
+
+fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages) {
+    let (x, y) = (element.x, element.y);
+    match &element.kind {
+        RenderKind::Text(t) => text(out, element, t),
+        RenderKind::Rect(r) => {
+            let mut style = format!(
+                "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;background:{}",
+                num(x),
+                num(y),
+                num(r.width),
+                num(r.height),
+                num(r.corner_radius),
+                r.fill,
+            );
+            rotate(&mut style, element.rotation);
+            let _ = writeln!(out, r#"<div class="el" style="{style}"></div>"#);
+        }
+        RenderKind::Ellipse(e) => {
+            // Konva 的橢圓以中心為原點；外框從中心往左上退 rx、ry，旋轉也繞中心（.c）
+            let mut style = format!(
+                "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:50%;background:{}",
+                num(x - e.rx),
+                num(y - e.ry),
+                num(e.rx * 2.0),
+                num(e.ry * 2.0),
+                e.fill,
+            );
+            rotate(&mut style, element.rotation);
+            let _ = writeln!(out, r#"<div class="el c" style="{style}"></div>"#);
+        }
+        RenderKind::Polygon(p) => {
+            let (w, h) = (p.rx * 2.0, p.ry * 2.0);
+            let mut style = format!("left:{}px;top:{}px;width:{}px;height:{}px", num(x - p.rx), num(y - p.ry), num(w), num(h));
+            rotate(&mut style, element.rotation);
+            // 頂點以中心為原點，viewBox 從左上角開始，所以平移 (rx, ry)
+            let points: Vec<String> =
+                p.points.iter().map(|[px, py]| format!("{},{}", num(px + p.rx), num(py + p.ry))).collect();
+            let _ = writeln!(
+                out,
+                r#"<svg xmlns="http://www.w3.org/2000/svg" class="el c" style="{style}" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><polygon points="{points}" fill="{fill}"/></svg>"#,
+                w = num(w),
+                h = num(h),
+                points = points.join(" "),
+                fill = p.fill,
+            );
+        }
+        RenderKind::Image(i) => {
+            // 圖片在 EPUB 裡用產生的安全檔名（見 EpubImages），不會帶入專案裡的原始檔名
+            let Some(href) = images.href(&i.src) else { return };
+            let mut style =
+                format!("left:{}px;top:{}px;width:{}px;height:{}px", num(x), num(y), num(i.width), num(i.height));
+            rotate(&mut style, element.rotation);
+            let _ = writeln!(out, r#"<img class="el" src="../{href}" alt="" style="{style}"/>"#);
+        }
+    }
+}
+
+/// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
+pub fn has_svg(page: &RenderPage) -> bool {
+    page.elements.iter().any(|element| matches!(element.kind, RenderKind::Polygon(_)))
+}
+
+/// Builds the XHTML of one page.
+///
+/// # Args
+/// * `page` - The page to draw.
+/// * `title` - Page title (already falls back to a generated name when the page name is empty).
+/// * `images` - Where each project image was placed inside the EPUB; images missing from it are
+///   not drawn.
+pub fn page(page: &RenderPage, title: &str, images: &EpubImages) -> String {
+    let mut body = String::new();
+    for element in &page.elements {
+        element_markup(&mut body, element, images);
+    }
+    // viewport 用整數；頁面本身維持精確尺寸，多出的不到 1px 由 body 的同色背景補上
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="{lang}" lang="{lang}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width={vw}, height={vh}"/>
+<title>{title}</title>
+<link rel="stylesheet" type="text/css" href="../styles/page.css"/>
+</head>
+<body style="background:{bg}">
+<div class="page" style="width:{w}px;height:{h}px;background:{bg}">
+{body}</div>
+</body>
+</html>
+"#,
+        lang = LANGUAGE,
+        vw = page.width.ceil() as u64,
+        vh = page.height.ceil() as u64,
+        title = escape(title),
+        bg = page.background,
+        w = num(page.width),
+        h = num(page.height),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escapes_markup_and_drops_invalid_xml_characters() {
+        assert_eq!(escape(r#"<a href="x">&'"#), "&lt;a href=&quot;x&quot;&gt;&amp;&apos;");
+        assert_eq!(escape("a\u{0}b\u{1b}c\td"), "abc\td");
+        assert_eq!(escape("中文"), "中文");
+    }
+
+    #[test]
+    fn formats_numbers_compactly() {
+        assert_eq!(num(595.2755905511812), "595.2756");
+        assert_eq!(num(12.0), "12");
+        assert_eq!(num(-0.00001), "0");
+        assert_eq!(num(-30.5), "-30.5");
+    }
+
+    #[test]
+    fn font_family_uses_only_bundled_names() {
+        let fonts = vec!["geist".to_owned(), "x'; background:url(http://evil)".to_owned(), "Noto Sans TC".to_owned()];
+        assert_eq!(font_family(&fonts), "'Geist','Noto Sans TC',sans-serif");
+        assert_eq!(font_family(&[]), "sans-serif");
+    }
+}

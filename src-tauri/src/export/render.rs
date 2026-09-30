@@ -37,6 +37,8 @@ pub struct RenderDocument {
 
 #[derive(Debug, Clone)]
 pub struct RenderPage {
+    /// Page name shown in the editor's page tabs (EPUB table of contents).
+    pub name: String,
     pub width: f64,
     pub height: f64,
     pub background: String,
@@ -229,6 +231,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
             elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind });
         }
         pages.push(RenderPage {
+            name: page.name.clone(),
             width: page.width,
             height: page.height,
             background: page.background.clone(),

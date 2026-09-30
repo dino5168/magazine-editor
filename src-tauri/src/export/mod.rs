@@ -3,14 +3,18 @@
 //! The editor's document first becomes a [`render::RenderDocument`]: the drawable form of one
 //! document, with the text already split into lines by the editor ([`TextLayout`], measured by
 //! Konva) so that every output wraps exactly like the canvas. Each format then draws that model —
-//! [`pdf`] hands it to the embedded Typst compiler.
+//! [`pdf`] hands it to the embedded Typst compiler, [`epub`] writes fixed-layout XHTML pages.
 
+pub mod epub;
+pub mod fonts;
 pub mod pdf;
 pub mod render;
 #[cfg(test)]
 mod test_support;
 pub mod world;
 
+#[expect(unused_imports, reason = "階段 4 由 export command 呼叫；接上後移除這個屬性")]
+pub use epub::render_epub;
 pub use pdf::render_pdf;
 
 use crate::project::format::Document;

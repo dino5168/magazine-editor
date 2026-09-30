@@ -32,9 +32,12 @@ time = { version = "0.3", features = ["formatting"] }
 typst = "=0.15.1"
 typst-pdf = "=0.15.1"
 typst-layout = "=0.15.1"
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
 
 [dev-dependencies]
+roxmltree = "0.21"
 tempfile = "3"
+ttf-parser = "0.25"
 typst-render = "=0.15.1"
 
 
