@@ -12,6 +12,7 @@ import {
   getElementBounds,
   pageCenter,
 } from "@/lib/editor/geometry";
+import { usedFontFamilies } from "@/lib/editor/fonts";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
 import {
@@ -22,6 +23,7 @@ import {
   scrollForAnchor,
   type ViewportLayout,
 } from "@/lib/editor/viewport";
+import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { cn } from "@/lib/utils";
 import { ElementNode } from "./canvas-elements";
 import { TextEditorOverlay } from "./text-editor-overlay";
@@ -51,30 +53,6 @@ const TRANSFORMER_OPTIONS: {
   image: { anchors: ALL_ANCHORS, keepRatio: false },
 };
 
-function useFontsReady(): boolean {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    // canvas 量字寬需字型已載入，否則首次繪製會用 fallback 字型的寬度換行。
-    // 中文字型也要等：一份中文雜誌的換行幾乎都由 Noto Sans TC 決定。
-    // load() 只在字型實際被用到時才抓檔案，所以要帶一個該字型涵蓋的字當樣本。
-    Promise.all([
-      document.fonts.load('16px "Geist"'),
-      document.fonts.load('bold 16px "Geist"'),
-      document.fonts.load('16px "Noto Sans TC"', '中'),
-      document.fonts.load('bold 16px "Noto Sans TC"', '中'),
-    ])
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return ready;
-}
-
 /**
  * Konva editing surface: scrollable workspace, page, elements, selection and in-place text editing.
  *
@@ -87,7 +65,10 @@ export function EditorCanvas() {
   const page = selectActivePage(state);
   const selected = selectSelectedElement(state);
   const { zoom, fitRequest } = state.view;
-  const fontsReady = useFontsReady();
+  // 畫布（和匯出 PDF 的量測）要等文件用到的字型都載入才畫，換行寬度才正確；
+  // 開啟用到其他字型的專案時，載入期間畫布會短暫消失
+  const usedFamilies = useMemo(() => usedFontFamilies(state.history.present), [state.history.present]);
+  const fontsReady = useFontsReady(usedFamilies);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);

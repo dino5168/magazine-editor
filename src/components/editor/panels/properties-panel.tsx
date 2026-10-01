@@ -21,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
+import { findFontOption, FONT_OPTIONS } from "@/lib/editor/fonts";
+import { loadFontOption } from "@/lib/editor/use-fonts-ready";
 import { describeShape } from "@/lib/editor/element-factory";
 import {
   clampCornerRadius,
@@ -40,7 +42,14 @@ import type {
   TextElement,
   TextStyle,
 } from "@/lib/editor/types";
-import { STROKE_WIDTH_MAX, STROKE_WIDTH_MIN, clamp, clampFontSize } from "@/lib/editor/validation";
+import {
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  STROKE_WIDTH_MAX,
+  STROKE_WIDTH_MIN,
+  clamp,
+  clampFontSize,
+} from "@/lib/editor/validation";
 import { ColorPicker } from "../color-picker";
 import { IconButton } from "../icon-button";
 import { NumberField } from "../number-field";
@@ -260,8 +269,52 @@ const VERTICAL_ALIGN_OPTIONS: readonly {
   { value: "bottom", label: "靠下對齊", icon: AlignVerticalJustifyEnd },
 ];
 
+/** 文件裡的字型不在 FONT_OPTIONS（舊專案、手改的檔案）時，下拉選單顯示的值 */
+const OTHER_FONT = "other";
+
 /**
- * Font size, bold, alignment and color: shared by text elements and the text inside shapes.
+ * Font menu: the bundled fonts, each label drawn in its own font.
+ *
+ * The font is loaded before the change is written, so the canvas never measures the new text with
+ * a fallback font (and does not blank out while it loads).
+ */
+function FontFamilySelect({ value, onChange }: { readonly value: string; readonly onChange: (family: string) => void }) {
+  const current = findFontOption(value);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-8 shrink-0 text-xs text-muted-foreground">字體</span>
+      <Select
+        value={current?.id ?? OTHER_FONT}
+        onValueChange={(id) => {
+          const option = FONT_OPTIONS.find((candidate) => candidate.id === id);
+          if (option) void loadFontOption(option).then(() => onChange(option.family));
+        }}
+      >
+        <SelectTrigger size="sm" className="h-7 flex-1" aria-label="字型">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FONT_OPTIONS.map((option) => (
+            <SelectItem key={option.id} value={option.id} style={{ fontFamily: option.family }}>
+              {option.label}
+            </SelectItem>
+          ))}
+          {!current && (
+            <SelectItem value={OTHER_FONT} disabled>
+              其他字型
+            </SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** 字級的 − / ＋：每按一下 1 pt */
+const FONT_SIZE_STEP = { size: 1, min: FONT_SIZE_MIN, max: FONT_SIZE_MAX } as const;
+
+/**
+ * Font, font size, bold, alignment and color: shared by text elements and the text inside shapes.
  * `verticalAlign` is only given for shape text.
  */
 function TextStyleControls({
@@ -277,11 +330,13 @@ function TextStyleControls({
 }) {
   return (
     <Section title="字型">
+      <FontFamilySelect value={style.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} />
       <NumberField
         key={`${id}-${style.fontSize}`}
         label="字級"
         unit="pt"
         value={style.fontSize}
+        step={FONT_SIZE_STEP}
         onCommit={(size) => onChange({ fontSize: clampFontSize(size) })}
       />
       <div className="flex flex-wrap items-center gap-1">

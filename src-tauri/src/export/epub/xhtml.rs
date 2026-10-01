@@ -4,7 +4,7 @@
 //! 1 CSS px), and the reading system scales the whole page to the screen.
 
 use super::{EpubImages, LANGUAGE};
-use crate::export::fonts::bundled_family;
+use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{RenderElement, RenderKind, RenderPage, RenderStroke, RenderText, STROKE_MITER_LIMIT};
 use crate::project::format::Align;
 use std::fmt::Write;
@@ -109,7 +109,7 @@ fn svg_box(out: &mut String, element: &RenderElement, width: f64, height: f64, s
 }
 
 /// CSS `font-family` value: only bundled families (their canonical names, never the user's
-/// string) followed by a generic fallback.
+/// string) followed by the first family's generic fallback (`serif` for 明體 / 楷體).
 fn font_family(fonts: &[String]) -> String {
     let mut families: Vec<&str> = Vec::new();
     for family in fonts.iter().filter_map(|font| bundled_family(font)) {
@@ -117,7 +117,8 @@ fn font_family(fonts: &[String]) -> String {
             families.push(family);
         }
     }
-    families.iter().map(|family| format!("'{family}',")).collect::<String>() + "sans-serif"
+    let generic = families.first().and_then(|family| bundled_generic(family)).unwrap_or("sans-serif");
+    families.iter().map(|family| format!("'{family}',")).collect::<String>() + generic
 }
 
 fn align_name(align: Align) -> &'static str {
@@ -302,6 +303,9 @@ mod tests {
         let fonts = vec!["geist".to_owned(), "x'; background:url(http://evil)".to_owned(), "Noto Sans TC".to_owned()];
         assert_eq!(font_family(&fonts), "'Geist','Noto Sans TC',sans-serif");
         assert_eq!(font_family(&[]), "sans-serif");
+        assert_eq!(font_family(&["Noto Serif TC".to_owned()]), "'Noto Serif TC',serif");
+        assert_eq!(font_family(&["LXGW WenKai TC".to_owned()]), "'LXGW WenKai TC',serif");
+        assert_eq!(font_family(&["GenSenRounded2 TW".to_owned()]), "'GenSenRounded2 TW',sans-serif");
     }
 
     #[test]

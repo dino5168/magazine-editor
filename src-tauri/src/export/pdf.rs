@@ -3,6 +3,7 @@
 //! Typst only positions and renders. Line breaks already come from the editor (see
 //! [`super::render`]), so the PDF wraps exactly like the canvas.
 
+use super::fonts::typst_family;
 use super::render::{build_render, RenderDocument, RenderElement, RenderKind, RenderStroke, STROKE_MITER_LIMIT};
 use super::world::ExportWorld;
 use super::{ExportOutput, ExportRequest};
@@ -99,7 +100,8 @@ fn element_data(element: &RenderElement) -> Value {
         }),
         RenderKind::Text(e) => json!({
             "kind": "text", "x": x, "y": y, "rotation": rotation,
-            "width": e.width, "size": e.size, "fonts": e.fonts,
+            "width": e.width, "size": e.size,
+            "fonts": e.fonts.iter().map(|font| typst_family(font)).collect::<Vec<_>>(),
             "bold": e.bold, "align": align_name(e.align), "fill": e.fill,
             "lines": e.lines, "baseline": e.baseline, "lineHeight": e.line_height,
         }),

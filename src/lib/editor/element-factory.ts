@@ -1,3 +1,4 @@
+import { DEFAULT_FONT_OPTION } from "./fonts";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
 import { PAGE_SIZE_PRESETS, presetToPt } from "./units";
 import type {
@@ -13,7 +14,8 @@ import type {
   TextElement,
 } from "./types";
 
-export const DEFAULT_FONT_FAMILY = '"Geist", "Noto Sans TC", sans-serif';
+/** 新文字的字型：字型清單的第一個選項（黑體） */
+export const DEFAULT_FONT_FAMILY = DEFAULT_FONT_OPTION.family;
 export const DEFAULT_SHAPE_FILL = "#64748b";
 export const DEFAULT_TEXT_FILL = "#171717";
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";

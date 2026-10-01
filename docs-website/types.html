@@ -608,7 +608,7 @@
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>fontSize</code></td><td><code>number</code></td><td>字級（pt），6–400</td></tr>
-    <tr><td><code>fontFamily</code></td><td><code>string</code></td><td>CSS font-family 字串，預設 <code>"Geist", "Noto Sans TC", sans-serif</code>（匯出時只認得內嵌的這兩個字型）</td></tr>
+    <tr><td><code>fontFamily</code></td><td><code>string</code></td><td>CSS font-family 字串，值來自字體選單 <code>FONT_OPTIONS</code>（<code>lib/editor/fonts.ts</code>）：黑體（預設）<code>"Geist", "Noto Sans TC", sans-serif</code>、明體、楷體、圓體。匯出時只認得內嵌在 <code>fonts/</code> 的字型</td></tr>
     <tr><td><code>fontStyle</code></td><td><code>"normal" | "bold"</code></td><td>只能是這兩個字串之一（字型只內嵌 Regular 與 Bold，沒有斜體）</td></tr>
     <tr><td><code>align</code></td><td><code>"left" | "center" | "right"</code></td><td>水平對齊</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>文字顏色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code>（半透明）</td></tr>

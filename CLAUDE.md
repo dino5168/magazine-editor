@@ -24,7 +24,7 @@
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` |
-| 字型 | 自備靜態字型，放在 `fonts/`（Geist + Noto Sans TC，Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
+| 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
 ## Commands
@@ -76,7 +76,7 @@ src/
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
       bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
-      number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消）
+      number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
       editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）、滾輪橫捲、`<` `>` 與頁碼輸入框
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面
@@ -128,6 +128,8 @@ src/
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵
+      fonts.ts                    # FONT_OPTIONS（可選的字型）、文件用到的字型、載入參數
+      use-fonts-ready.ts          # 字型用到才載入：loadFontOption、useFontsReady（畫布等字型）
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
@@ -217,7 +219,9 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ### 其他注意事項
 
-- 字型：canvas 必須等字型載入後才建立 Stage（`useFontsReady`，中文字型也要等，一份中文雜誌的換行幾乎都由 Noto Sans TC 決定），否則換行寬度會算錯。預設 fontFamily 是 `"Geist", "Noto Sans TC", sans-serif`。
+- 字型：canvas 必須等字型載入後才建立 Stage，否則換行寬度會算錯（Konva 不會在字型載入後重新量測）。
+  - 可選的字型是 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（屬性面板的下拉選單與字型載入的單一資料來源）；第一個是預設（黑體 `"Geist", "Noto Sans TC", sans-serif`）。文件的 `fontFamily` 存 `family` 字串，不在清單中的照常顯示，選單顯示「其他字型」。
+  - **用到才載入**（`use-fonts-ready.ts`）：畫布等「預設字型 + 文件所有頁面用到的字型」都載入才畫；屬性面板換字型時先 `loadFontOption` 再寫入，畫布不會閃。中文字型也要等，一份中文雜誌的換行幾乎都由中文字型決定。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
 - 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End）焦點在 input、textarea、dialog、menu 內時不觸發。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
@@ -302,7 +306,9 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
 - **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`export/pdf.rs` 的 `to_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
 - **`ExportWorld` 是沙箱**：只有 `main.typ`（內嵌模板）、`data.json` 與 `assets/images/*` 可讀，其他路徑一律 `AccessDenied`，圖片路徑還要過 `validate_asset_path`（和專案檔同一個檢查，擋 `../` 與絕對路徑）。
-- **字型**：畫面、PDF（之後還有 EPUB）**共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face`，Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一邊就要改另一邊**。細節見 `fonts/README.md`。
+- **字型**：畫面、PDF、EPUB **共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face` 與 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（字體選單），Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一處就要改其他處**。新增字型的步驟、修改過的字型檔與 `patch_font.py` 見 `fonts/README.md`。
+  - Typst 讀到的家族名稱不一定等於 CSS 名稱（霞鶩文楷是「霞鶩文楷 TC」）：`BUNDLED_FONTS.typst_family` 記錄它，`pdf.rs` 用 `typst_family()` 轉換。測試 `typst_sees_the_declared_family_and_weight` 守著。
+  - 霞鶩文楷沒有 Bold，粗體用 Medium（CSS 宣告為 700、`bold: true`）。
   - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。
   - 不讀系統字型，所以 `load_fonts()` 不會失敗，匯出結果在每台機器上都一樣。字型在第一次匯出時解析並快取在 `ExportState` 的 `OnceLock`。
   - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，再套 `LEGACY_FAMILIES`（`"Geist Variable"` → `"Geist"`、`"Microsoft JhengHei"` → `"Noto Sans TC"`）。**這個對應表不能刪**：內嵌字型之前存檔的專案仍然帶著舊名稱，而且沒有 schema 遷移會改寫它。
@@ -316,7 +322,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - EPUB 中有邊框的矩形 / 橢圓輸出成 inline SVG，因為 CSS border 畫在框內，位置會差半個線寬。
 - 半透明顏色：PDF 直接交給 Typst 的 `rgb("#rrggbbaa")`；**EPUB 輸出前轉換**（`epub/xhtml.rs` 的 `css_color` / `svg_fill`），CSS 用 `rgba()`、SVG 用 `fill-opacity`，不讓 8 位 hex 進入 EPUB（SVG 1.1 不允許，舊閱讀引擎也不支援）。
 - 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
-- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；Geist + Noto Sans TC 沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
+- **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；內嵌字型沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
 - **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
 
 ## Rust ↔ Frontend IPC

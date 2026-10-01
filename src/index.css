@@ -36,6 +36,55 @@
     src: url('../fonts/NotoSansTC-Bold.otf') format('opentype');
 }
 
+@font-face {
+    font-family: 'Noto Serif TC';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('../fonts/NotoSerifTC-Regular.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Noto Serif TC';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('../fonts/NotoSerifTC-Bold.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'LXGW WenKai TC';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('../fonts/LXGWWenKaiTC-Regular.ttf') format('truetype');
+}
+
+/* 霞鶩文楷沒有 Bold，粗體用 Medium（Rust BUNDLED_FONTS 同樣把它標為 bold） */
+@font-face {
+    font-family: 'LXGW WenKai TC';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('../fonts/LXGWWenKaiTC-Medium.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'GenSenRounded2 TW';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('../fonts/GenSenRounded2TW-R.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'GenSenRounded2 TW';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('../fonts/GenSenRounded2TW-B.otf') format('opentype');
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

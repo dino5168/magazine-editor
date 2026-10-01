@@ -10,7 +10,7 @@
 
 ## 目前階段
 
-**暫停:頁籤列修正(2026-10-01)**,任務檔 `docs/Plans/2026-10-01-bug-fixed.md`(不 commit),計畫 `docs/Plans/imp-bug-fixed.md`(已和使用者確認規格;六個步驟中步驟 1–3 與 3a(頁碼輸入框、鍵盤換頁)已完成;步驟 4–6 暫停,跨頁之後再討論)。 型別重構與屬性面板已完成並推送(`881ef71` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:自由繪圖(畫筆、`path` 物件,等使用者另開任務);匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
+**字型選擇與字級上下鈕(2026-10-01)已完成並 commit(未推送)**:任務檔 `docs/Plans/2026-10-01-addfontfamily.md`(不 commit),計畫 `docs/Plans/imp-add-font-family.md`(四個步驟全部完成)。字級 − / ＋;屬性面板「字體」選單有黑體 / 明體 / 楷體 / 圓體,字型用到才載入;楷體、圓體的字型檔經 `fonts/patch_font.py` 修正(見 `fonts/README.md`)。還沒有桌面版的人工驗證。**暫停:頁籤列修正(2026-10-01)**,任務檔 `docs/Plans/2026-10-01-bug-fixed.md`(不 commit),計畫 `docs/Plans/imp-bug-fixed.md`(commit `fdfddde`,未推送;已和使用者確認規格;六個步驟中步驟 1–3 與 3a(頁碼輸入框、鍵盤換頁)已完成;步驟 4–6 暫停,跨頁之後再討論)。 型別重構與屬性面板已完成並推送(`881ef71` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:自由繪圖(畫筆、`path` 物件,等使用者另開任務);匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
 
 - **型別重構與屬性面板(2026-10-01,已完成)**:任務檔 `docs/Plans/2026-10-01-自由繪圖.md`(不 commit),計畫 `docs/Plans/imp-refactory-types.md`。六個步驟全部完成,commit `881ef71`(已推送)。
   - rect / ellipse / polygon / star 合併成 `shape` + `geometry`,所有物件以外框左上角定位;`SCHEMA_VERSION` 3,舊檔與舊備份開啟時自動升級。
@@ -92,6 +92,7 @@
 | 2026-10-01 | **型別重構步驟 4:圖形內文字**。雙擊圖形輸入文字(外框內縮 4 pt、上 / 中 / 下對齊、超出照常顯示、隨圖形旋轉),屬性面板的圖形多了「文字」分頁;換行由畫布量測後交給 Rust,PDF / EPUB 文字位置相差 ≤ 0.6 pt。Rust 78 個、vitest 166 個通過,無頭 Edge 驗證 19 項 |
 | 2026-10-01 | **型別重構步驟 5:形狀參數**。「樣式」分頁的「形狀」區:矩形圓角、多邊形邊數、星形角數與內徑比例;TS / Rust 以相同規則驗證 geometry(舊檔不受影響)。Rust 79 個、vitest 172 個通過,無頭 Edge 驗證 11 項 |
 | 2026-10-01 | **頁籤列修正(步驟 1–3、3a)**:「+」新增的頁面加在最後;外層 Grid 加 `grid-cols-[minmax(0,1fr)]`(頁面多時整個 App 被頁籤撐寬,是點不到頁面的主因);頁籤區滾輪橫捲、自動捲到目前頁籤、`<` `>`、頁碼輸入框、PageUp / PageDown / Ctrl+Home / Ctrl+End;`≡` 與 `˅` 頁面清單選單(`page-menu.tsx`)。步驟 4–6 暫停 |
+| 2026-10-01 | **字型選擇與字級上下鈕**:`NumberField` 可選 − / ＋;`FONT_OPTIONS`(`lib/editor/fonts.ts`)與用到才載入(`use-fonts-ready.ts`);加入明體(Noto Serif TC)、楷體(霞鶩文楷 TC,粗體用 Medium)、圓體(源泉圓體 TW);`BUNDLED_FONTS` 加 `generic` / `typst_family`,新測試 `typst_sees_the_declared_family_and_weight`。Rust 82 個、vitest 190 個通過;四套字型的畫布 / PDF 疊圖比對一致 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
 ---
@@ -164,7 +165,11 @@
   - 雙擊圖形用注音輸入文字(選字時按 Enter 不會結束編輯),上 / 中 / 下對齊;存檔重開文字仍在
   - 邊框(實線 / 虛線 / 點線)與圖形內文字匯出 PDF,位置和畫面一致
   - 屬性面板:改位置、大小、旋轉、圓角、邊數後 Ctrl+Z 一步一步復原
-- [ ] 在 `npm run tauri dev` 手動驗證**頁籤列**(Claude 只用瀏覽器模式驗證過):頁面多時的滾輪、`<` `>`、頁碼輸入框、PageUp / PageDown、`≡` 選單
+- [ ] 在 `npm run tauri dev` 手動驗證**字型與頁籤列**(Claude 只用瀏覽器模式驗證過):
+  - 四種字體的一般 / 粗體,存檔後重開仍正確;開啟用到其他字體的專案時,畫布會先短暫空白再出現
+  - 匯出 PDF:四種字體都正確嵌入(楷體的粗體是 Medium,只稍粗)
+  - 頁面多時的頁籤列:滾輪、`<` `>`、頁碼輸入框、PageUp / PageDown、`≡` 選單
+  - 安裝檔變大約 75 MB(字型)是否可以接受
 - [ ] 在 `npm run tauri dev` 手動驗證**調色板**:文字 / 圖形選色與不透明度、頁面背景;存檔後重開半透明仍在;匯出 PDF 半透明正確(EPUB 還沒有匯出按鈕,可用 `epub_preview`)
 - [ ] 手動驗證**匯出 PDF**(Claude 無法操作系統對話框,也無法開 PDF 檢視器):
   - 在 Edge / Acrobat 開啟匯出的 PDF,確認字型已嵌入、中文可以選取、複製、搜尋
