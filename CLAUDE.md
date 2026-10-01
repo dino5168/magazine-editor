@@ -78,7 +78,8 @@ src/
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消）
       editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
-      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
+      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）、滾輪橫捲、`<` `>` 與頁碼輸入框
+      page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
       panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw / resize 目前是佔位
       color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
@@ -126,6 +127,7 @@ src/
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
+      page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
@@ -217,7 +219,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 - 字型：canvas 必須等字型載入後才建立 Stage（`useFontsReady`，中文字型也要等，一份中文雜誌的換行幾乎都由 Noto Sans TC 決定），否則換行寬度會算錯。預設 fontFamily 是 `"Geist", "Noto Sans TC", sans-serif`。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
-- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O）焦點在 input、textarea、dialog、menu 內時不觸發。
+- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End）焦點在 input、textarea、dialog、menu 內時不觸發。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
   - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
 - 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。

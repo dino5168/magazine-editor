@@ -225,7 +225,7 @@ describe("editorReducer / tools", () => {
 });
 
 describe("editorReducer / pages", () => {
-  it("adds a page after the active page, copying size and background, and activates it", () => {
+  it("adds a page at the end, copying the active page's size and background, and activates it", () => {
     const initial = blankState();
     const state = run(
       initial,
@@ -237,6 +237,38 @@ describe("editorReducer / pages", () => {
     expect(pages).toHaveLength(2);
     expect(pages[1]).toMatchObject({ name: "Page-2", width: 595, height: 842, background: "#123456" });
     expect(state.activePageId).toBe(pages[1].id);
+  });
+
+  it("appends new pages at the end with increasing names, even when an earlier page is active", () => {
+    const initial = blankState();
+    const firstId = initial.activePageId;
+    const state = run(
+      initial,
+      { type: "page/add" },
+      { type: "page/select", id: firstId },
+      { type: "page/add" },
+      { type: "page/select", id: firstId },
+      { type: "page/add" },
+    );
+
+    expect(state.history.present.pages.map((page) => page.name)).toEqual(["Page-1", "Page-2", "Page-3", "Page-4"]);
+    expect(state.activePageId).toBe(state.history.present.pages[3].id);
+  });
+
+  it("inserts a page after the given page", () => {
+    const initial = run(blankState(), { type: "page/add" });
+    const [first, second] = initial.history.present.pages;
+    const state = run(initial, { type: "page/add", after: first.id });
+
+    const pages = state.history.present.pages;
+    expect(pages.map((page) => page.id)).toEqual([first.id, pages[1].id, second.id]);
+    expect(pages[1].name).toBe("Page-3");
+    expect(state.activePageId).toBe(pages[1].id);
+  });
+
+  it("ignores inserting after a page that does not exist", () => {
+    const state = blankState();
+    expect(editorReducer(state, { type: "page/add", after: "missing" })).toBe(state);
   });
 
   it("refuses to delete the last page", () => {

@@ -113,7 +113,8 @@ function EditorLayout() {
 
   return (
     // 選單列與頁籤列橫跨全寬；中間是三欄：左停靠區｜系統控制列 + 畫布｜右停靠區
-    <div className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
+    // grid-cols 必須是 minmax(0,1fr)：隱含的 auto 欄會被頁籤列的內容撐寬（頁面多時整個畫面變寬、頁籤無法捲動）
+    <div className="grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
       <AppMenubar handlers={menuHandlers} isChecked={isChecked} />
       {/* relative：空白側的放置區疊在這一列的左右邊緣 */}
       <div className="relative flex min-h-0 min-w-0">

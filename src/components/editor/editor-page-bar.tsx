@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Menu, Plus, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,12 +10,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
+import { parsePageNumber, stepPageIndex, type PageStep } from "@/lib/editor/page-navigation";
 import type { Page, PageId } from "@/lib/editor/types";
 import { PAGE_NAME_MAX_LENGTH } from "@/lib/editor/validation";
 import { IconButton } from "./icon-button";
 import { InlineNameInput } from "./inline-name-input";
+import { PageMenu } from "./page-menu";
 
 interface EditorPageBarProps {
   readonly className?: string;
@@ -35,23 +38,52 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
   const dispatch = useEditorDispatch();
   const [renamingId, setRenamingId] = useState<PageId | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Page | null>(null);
+  const tabListRef = useRef<HTMLDivElement>(null);
   const { pages } = state.history.present;
+  const activeIndex = pages.findIndex((page) => page.id === state.activePageId);
+
+  // 切換頁面（含新增、`<` `>`、復原）時把目前頁籤捲進畫面
+  useEffect(() => {
+    const tab = tabListRef.current?.querySelector<HTMLElement>(`[data-page-id="${CSS.escape(state.activePageId)}"]`);
+    tab?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [state.activePageId, pages.length]);
+
+  const selectPageAt = (index: number | null) => {
+    const page = index === null ? undefined : pages[index];
+    if (page) dispatch({ type: "page/select", id: page.id });
+  };
+  const step = (to: PageStep) => selectPageAt(stepPageIndex(to, activeIndex, pages.length));
 
   return (
     <footer className={cn("flex h-10 items-stretch border-t bg-background", className)}>
-      <div className="flex items-center border-r px-1.5">
+      <div className="flex items-center gap-0.5 border-r px-1.5">
         <IconButton label="新增頁面" onClick={() => dispatch({ type: "page/add" })}>
           <Plus />
         </IconButton>
+        <PageMenu>
+          <IconButton label="所有頁面">
+            <Menu />
+          </IconButton>
+        </PageMenu>
       </div>
 
-      <div role="tablist" aria-label="頁面" className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
+      <div
+        ref={tabListRef}
+        role="tablist"
+        aria-label="頁面"
+        // 捲軸會被頁籤列的高度壓住，所以隱藏；改用滾輪（直向轉橫向）與 `<` `>` 切換頁面
+        onWheel={(event) => {
+          if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
+        }}
+        className="flex min-w-0 flex-1 items-stretch overflow-x-auto [scrollbar-width:none]"
+      >
         {pages.map((page) => {
           const active = page.id === state.activePageId;
           const renaming = renamingId === page.id;
           return (
             <div
               key={page.id}
+              data-page-id={page.id}
               role="tab"
               tabIndex={0}
               aria-selected={active}
@@ -85,6 +117,19 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
               ) : (
                 <span className="max-w-40 truncate">{page.name}</span>
               )}
+              {active && !renaming && (
+                <PageMenu>
+                  <button
+                    type="button"
+                    aria-label="頁面選單"
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => event.stopPropagation()}
+                    className="rounded p-0.5 hover:bg-background"
+                  >
+                    <ChevronDown className="size-3.5" />
+                  </button>
+                </PageMenu>
+              )}
               {pages.length > 1 && !renaming && (
                 <button
                   type="button"
@@ -102,6 +147,22 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
             </div>
           );
         })}
+      </div>
+
+      <div className="flex items-center gap-0.5 border-l px-1.5">
+        <IconButton label="上一頁（PageUp）" disabled={activeIndex <= 0} onClick={() => step("prev")}>
+          <ChevronLeft />
+        </IconButton>
+        {/* key：切換頁面或頁數改變時重設輸入框的草稿 */}
+        <PageNumberField
+          key={`${activeIndex}/${pages.length}`}
+          index={activeIndex}
+          pageCount={pages.length}
+          onCommit={selectPageAt}
+        />
+        <IconButton label="下一頁（PageDown）" disabled={activeIndex >= pages.length - 1} onClick={() => step("next")}>
+          <ChevronRight />
+        </IconButton>
       </div>
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
@@ -127,5 +188,73 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
         </AlertDialogContent>
       </AlertDialog>
     </footer>
+  );
+}
+
+interface PageNumberFieldProps {
+  /** Current 0-based page index. */
+  readonly index: number;
+  readonly pageCount: number;
+  /** Called with the 0-based index of the page to go to. */
+  readonly onCommit: (index: number) => void;
+}
+
+/**
+ * "12 / 120" page number box: type a page number and press Enter to jump there.
+ *
+ * Enter / blur jumps, Esc or invalid text restores the current number (same pattern as `NumberField`).
+ *
+ * Args:
+ *   props: Current index, page count and jump callback.
+ *
+ * Returns:
+ *   Labelled input followed by the page count.
+ */
+function PageNumberField({ index, pageCount, onCommit }: PageNumberFieldProps) {
+  const id = useId();
+  const current = String(index + 1);
+  const [draft, setDraft] = useState(current);
+  // Esc 之後的 blur 不跳頁：blur 執行時 state 還是舊的草稿
+  const cancelledRef = useRef(false);
+
+  const commit = (): void => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
+    const next = parsePageNumber(draft, pageCount);
+    if (next === null || next === index) {
+      setDraft(current);
+      return;
+    }
+    onCommit(next);
+  };
+
+  return (
+    <div className="flex items-center gap-1 px-1 text-sm text-muted-foreground tabular-nums">
+      <label htmlFor={id} className="sr-only">
+        頁碼
+      </label>
+      <Input
+        id={id}
+        inputMode="numeric"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onFocus={(event) => event.currentTarget.select()}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return;
+          if (event.key === "Enter") commit();
+          if (event.key === "Escape") {
+            cancelledRef.current = true;
+            setDraft(current);
+            event.currentTarget.blur();
+          }
+        }}
+        title="輸入頁碼後按 Enter 跳頁"
+        className="h-7 w-12 px-1.5 text-center text-sm"
+      />
+      <span aria-hidden>/ {pageCount}</span>
+    </div>
   );
 }

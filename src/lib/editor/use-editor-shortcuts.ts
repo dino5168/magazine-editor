@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { selectSelectedElement } from "./editor-reducer";
 import { useEditorDispatch, useEditorState } from "./editor-context";
 import { createId } from "./element-factory";
+import { findPageShortcut, stepPageIndex } from "./page-navigation";
 import { findToolShortcut } from "./tools";
 
 const NUDGE_PT = 1;
@@ -24,13 +25,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /**
  * Registers global keyboard shortcuts for the editor (delete, undo/redo, duplicate, deselect, nudge,
- * tool keys).
+ * tool keys, page switching).
  */
 export function useEditorShortcuts(): void {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const selected = selectSelectedElement(state);
-  const { tool } = state;
+  const { tool, activePageId } = state;
+  const { pages } = state.history.present;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -52,6 +54,14 @@ export function useEditorShortcuts(): void {
       if (mod && !event.shiftKey && !event.altKey && event.code === "KeyD") {
         event.preventDefault();
         if (selected) dispatch({ type: "element/duplicate", id: selected.id, newId: createId() });
+        return;
+      }
+      // PageUp / PageDown / Ctrl+Home / Ctrl+End 換頁；按住不放可以連續翻頁
+      const pageStep = findPageShortcut(event);
+      if (pageStep) {
+        event.preventDefault();
+        const index = stepPageIndex(pageStep, pages.findIndex((page) => page.id === activePageId), pages.length);
+        if (index !== null) dispatch({ type: "page/select", id: pages[index].id });
         return;
       }
       // 按住不放會連續觸發 keydown，工具鍵只處理第一次；選字中（isComposing）不當成快捷鍵
@@ -81,5 +91,5 @@ export function useEditorShortcuts(): void {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dispatch, selected, tool]);
+  }, [dispatch, selected, tool, pages, activePageId]);
 }

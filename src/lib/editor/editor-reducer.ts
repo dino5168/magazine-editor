@@ -62,7 +62,8 @@ export type EditorAction =
   | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" | "top" | "bottom" }
   /** `newId` comes from the caller so the reducer stays pure (React may run it twice). */
   | { readonly type: "element/duplicate"; readonly id: ElementId; readonly newId: ElementId }
-  | { readonly type: "page/add" }
+  /** `after` 省略時加在最後（「+」按鈕），有值時插在該頁後面（「插入頁面」） */
+  | { readonly type: "page/add"; readonly after?: PageId }
   | { readonly type: "page/select"; readonly id: PageId }
   | { readonly type: "page/rename"; readonly id: PageId; readonly name: string }
   | { readonly type: "page/delete"; readonly id: PageId }
@@ -279,13 +280,15 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     return { ...next, selectedId: copy.id };
   },
 
-  "page/add": (state) => {
+  // 新頁面沿用目前頁面的尺寸與背景
+  "page/add": (state, action) => {
     const document = state.history.present;
     const active = selectActivePage(state);
+    const afterIndex = action.after === undefined ? -1 : document.pages.findIndex((p) => p.id === action.after);
+    if (action.after !== undefined && afterIndex === -1) return state;
     const page = createPage(nextPageName(document.pages), active, active.background);
-    const activeIndex = document.pages.findIndex((p) => p.id === active.id);
     const pages = [...document.pages];
-    pages.splice(activeIndex + 1, 0, page);
+    pages.splice(afterIndex === -1 ? pages.length : afterIndex + 1, 0, page);
     return { ...commit(state, { ...document, pages }), activePageId: page.id, selectedId: null };
   },
 

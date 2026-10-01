@@ -10,10 +10,15 @@
 
 ## 目前階段
 
-**2026-10-01:進行中的工作是「型別重構與屬性面板」(見下一條)。** 調色板已完成並推送(`c3ce372`、`d737844` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
+**暫停:頁籤列修正(2026-10-01)**,任務檔 `docs/Plans/2026-10-01-bug-fixed.md`(不 commit),計畫 `docs/Plans/imp-bug-fixed.md`(已和使用者確認規格;六個步驟中步驟 1–3 與 3a(頁碼輸入框、鍵盤換頁)已完成;步驟 4–6 暫停,跨頁之後再討論)。 型別重構與屬性面板已完成並推送(`881ef71` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:自由繪圖(畫筆、`path` 物件,等使用者另開任務);匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
 
-- **型別重構與屬性面板(2026-10-01 起,進行中)**:任務檔 `docs/Plans/2026-10-01-自由繪圖.md`,計畫 `docs/Plans/imp-refactory-types.md`。四個待決事項使用者都採建議:rect / ellipse / polygon / star 合併成 `shape` + `geometry`(外框定位、`SCHEMA_VERSION` 3)、draw.io 式「屬性」工具面板取代上方選取工具列、圖形內文字(超出時照常顯示)、自由繪圖這次不做。共 6 步,**步驟 1(型別重構)、2(屬性面板)、3(邊框)、4(圖形內文字)、5(形狀參數)、6(文件同步)全部完成,已 commit 成一個 commit(尚未推送)**。`docs-website/types.html` 的頁首不寫編號,改成「和 `types.ts` 在同一個 commit 更新」。任務檔 `docs/Plans/2026-10-01-自由繪圖.md` 本身不 commit(和其他任務檔一樣);計畫 `docs/Plans/imp-refactory-types.md` 要 commit。自由繪圖(畫筆、`path` 物件)這次沒有做,之後另開任務。上方的選取工具列已移除,屬性改在右側「屬性」面板;`localStorage` 版面 key 換成 v2(v1 版面會沿用並加上屬性面板)。`SCHEMA_VERSION` 已升為 3(舊檔與舊備份開啟時自動升級);`docs-website/types.html` 與 `CLAUDE.md` 的文件模型說明留到步驟 6 同步,在那之前兩者描述的是舊型別。
-- **未 commit 的變更**:`docs/progress.md`(這份,補 commit 編號與本段);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
+- **型別重構與屬性面板(2026-10-01,已完成)**:任務檔 `docs/Plans/2026-10-01-自由繪圖.md`(不 commit),計畫 `docs/Plans/imp-refactory-types.md`。六個步驟全部完成,commit `881ef71`(已推送)。
+  - rect / ellipse / polygon / star 合併成 `shape` + `geometry`,所有物件以外框左上角定位;`SCHEMA_VERSION` 3,舊檔與舊備份開啟時自動升級。
+  - draw.io 式「屬性」工具面板(樣式 / 文字 / 調整)取代上方選取工具列;`localStorage` 版面 key 換成 v2。
+  - 圖形可加邊框、可輸入圖形內文字;多邊形 / 星形可自由拉伸,也能調邊數、角數、內徑與圓角。
+  - 規則寫在 `CLAUDE.md`「文件模型」「工具面板」「匯出 PDF」各節,型別圖在 `docs-website/types.html`。
+  - **還沒有桌面版的人工驗證**,見「待辦 → 使用者」。
+- **未 commit 的變更**:`docs/progress.md`(這份,記錄本段落的結束);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
 - **匯出 EPUB**:計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;階段 3、4 暫緩(見上)。檔案系統第一、二階段與「匯出 PDF」已完成並推送。
 
 - **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
@@ -86,6 +91,7 @@
 | 2026-10-01 | **型別重構步驟 3:邊框**。圖形可加邊框(顏色含透明度、線寬、實線 / 虛線 / 點線),畫布、PDF、EPUB 都畫在外框線中心、虛線數字一致;PDF 有邊框的矩形 / 橢圓改畫成和 Konva 同起點的路徑,虛線位置才對得上(疊圖重疊率 99%)。Rust 76 個、vitest 156 個通過 |
 | 2026-10-01 | **型別重構步驟 4:圖形內文字**。雙擊圖形輸入文字(外框內縮 4 pt、上 / 中 / 下對齊、超出照常顯示、隨圖形旋轉),屬性面板的圖形多了「文字」分頁;換行由畫布量測後交給 Rust,PDF / EPUB 文字位置相差 ≤ 0.6 pt。Rust 78 個、vitest 166 個通過,無頭 Edge 驗證 19 項 |
 | 2026-10-01 | **型別重構步驟 5:形狀參數**。「樣式」分頁的「形狀」區:矩形圓角、多邊形邊數、星形角數與內徑比例;TS / Rust 以相同規則驗證 geometry(舊檔不受影響)。Rust 79 個、vitest 172 個通過,無頭 Edge 驗證 11 項 |
+| 2026-10-01 | **頁籤列修正(步驟 1–3、3a)**:「+」新增的頁面加在最後;外層 Grid 加 `grid-cols-[minmax(0,1fr)]`(頁面多時整個 App 被頁籤撐寬,是點不到頁面的主因);頁籤區滾輪橫捲、自動捲到目前頁籤、`<` `>`、頁碼輸入框、PageUp / PageDown / Ctrl+Home / Ctrl+End;`≡` 與 `˅` 頁面清單選單(`page-menu.tsx`)。步驟 4–6 暫停 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
 ---
@@ -153,6 +159,12 @@
 - [ ] 手動驗證**EPUB 產生器**(階段 2,還沒有匯出按鈕):`EXPORT_PREVIEW_DIR=<dir> cargo test --manifest-path src-tauri/Cargo.toml epub_preview -- --ignored` 產生 `preview.epub`
   - 用 **epubcheck** 檢查(需要 Java,這台機器目前沒有),目標 0 error
   - 在 Thorium Reader / Calibre / Apple Books 開啟:固定版面、比例正確、中文可選取與搜尋、字型是內嵌的 Noto Sans TC
+- [ ] 在 `npm run tauri dev` 手動驗證**型別重構與屬性面板**(Claude 只用瀏覽器模式驗證過):
+  - 開一個 2026-10-01 之前存的專案:圖形位置、大小、旋轉都沒有跑掉;存檔後再開仍正確
+  - 雙擊圖形用注音輸入文字(選字時按 Enter 不會結束編輯),上 / 中 / 下對齊;存檔重開文字仍在
+  - 邊框(實線 / 虛線 / 點線)與圖形內文字匯出 PDF,位置和畫面一致
+  - 屬性面板:改位置、大小、旋轉、圓角、邊數後 Ctrl+Z 一步一步復原
+- [ ] 在 `npm run tauri dev` 手動驗證**頁籤列**(Claude 只用瀏覽器模式驗證過):頁面多時的滾輪、`<` `>`、頁碼輸入框、PageUp / PageDown、`≡` 選單
 - [ ] 在 `npm run tauri dev` 手動驗證**調色板**:文字 / 圖形選色與不透明度、頁面背景;存檔後重開半透明仍在;匯出 PDF 半透明正確(EPUB 還沒有匯出按鈕,可用 `epub_preview`)
 - [ ] 手動驗證**匯出 PDF**(Claude 無法操作系統對話框,也無法開 PDF 檢視器):
   - 在 Edge / Acrobat 開啟匯出的 PDF,確認字型已嵌入、中文可以選取、複製、搜尋
@@ -195,6 +207,10 @@
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
 - **目前的自動化測試:** Rust 79 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 172 個全部通過(2026-10-01)。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **圖形內文字的已知限制(2026-10-01)**:
+  - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
+  - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。
+  - PDF 與 EPUB 的文字位置相差 ≤ 0.6 pt,和既有的字距限制相同。
 - **型別檢查用 `npx tsc --noEmit -p tsconfig.json`**(或 `npm run build`),不要用 `tsc -b`:會在專案根目錄產生 `vite.config.js`、`vite.config.d.ts`、`*.tsbuildinfo`,而且對 `vite.config.ts` 報一個既有的錯誤。
 - **匯出 PDF 只有自動化測試,沒有人工驗證紀錄:** Rust 測試涵蓋六種物件都能編譯成 PDF、頁數與頁面尺寸、圖片缺檔會略過、`World` 拒讀其他路徑、Typst 特殊字元原樣輸出、非法 layout 資料會被拒絕。字型嵌入、中文搜尋、和畫布的疊圖比對還需要使用者確認(見「待辦 → 使用者」)。
 - **`typst` 版本鎖在 `=0.15.1`:** `typst` / `typst-layout` / `typst-pdf` / `typst-render` 四個版本必須一致,升級時 `World` trait 的 API 會變動,要一起改 `export/world.rs`。
