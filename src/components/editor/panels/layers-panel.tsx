@@ -4,17 +4,30 @@ import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage } from "@/lib/editor/editor-reducer";
 import { describeElement } from "@/lib/editor/element-factory";
-import type { ElementType } from "@/lib/editor/types";
+import type { CanvasElement, GeometryKind } from "@/lib/editor/types";
 import { IconButton } from "../icon-button";
 
-const TYPE_ICONS: { readonly [K in ElementType]: LucideIcon } = {
-  text: Type,
+const GEOMETRY_ICONS: { readonly [K in GeometryKind]: LucideIcon } = {
   rect: Square,
   ellipse: Circle,
   polygon: Triangle,
   star: Star,
-  image: Image,
 };
+
+function elementIcon(element: CanvasElement): LucideIcon {
+  switch (element.type) {
+    case "text":
+      return Type;
+    case "shape":
+      return GEOMETRY_ICONS[element.geometry.kind];
+    case "image":
+      return Image;
+    default: {
+      const exhaustive: never = element;
+      return exhaustive;
+    }
+  }
+}
 
 /**
  * Panel listing elements of the active page from top to bottom.
@@ -40,7 +53,7 @@ export function LayersPanel() {
         <CardContent>
           <ul className="flex flex-col gap-0.5">
             {rows.map(({ element, index }) => {
-              const Icon = TYPE_ICONS[element.type];
+              const Icon = elementIcon(element);
               const selected = element.id === state.selectedId;
               return (
                 <li

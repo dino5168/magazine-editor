@@ -1,3 +1,4 @@
+import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
 import type { EditorDocument, TextElement } from "@/lib/editor/types";
 
 /** How the editor wrapped one text element; mirrors `TextLayout` in `src-tauri/src/export/mod.rs`. */
@@ -34,6 +35,10 @@ export function buildExportRequest(
   for (const page of document.pages) {
     for (const element of page.elements) {
       if (element.type === "text") textLayouts[element.id] = measure(element);
+      // 圖形內文字：以 `<id>#label` 為 key；位置由 Rust 依外框與垂直對齊計算，量測只需要寬度與樣式
+      if (element.type === "shape" && element.label && element.label.text !== "") {
+        textLayouts[labelLayoutKey(element.id)] = measure(labelAsText(element, element.label, { x: 0, y: 0 }));
+      }
     }
   }
   return { document, textLayouts };

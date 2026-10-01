@@ -11,7 +11,6 @@ import { BottomToolbar } from "@/components/editor/bottom-toolbar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
-import { SelectionToolbar } from "@/components/editor/selection-toolbar";
 import { useAddImage } from "@/components/editor/panels/use-add-image";
 import {
   CANVAS_MIN_WIDTH,
@@ -128,7 +127,6 @@ function EditorLayout() {
         />
         <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
           <EditorTopBar onExportPdf={() => void project.exportPdf()} />
-          <SelectionToolbar />
           {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <EditorCanvas />

@@ -1,3 +1,5 @@
+import type { ShapeGeometry, ShapeLabel, Stroke } from "./types";
+
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
 
 export const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
@@ -8,6 +10,21 @@ export const PAGE_NAME_MAX_LENGTH = 50;
 
 export const FONT_SIZE_MIN = 6;
 export const FONT_SIZE_MAX = 400;
+
+/** Thinnest stroke the property panel offers (pt). The file format only requires > 0. */
+export const STROKE_WIDTH_MIN = 0.25;
+/** Thickest stroke (pt); same as `STROKE_WIDTH_MAX` in Rust `format.rs`. */
+export const STROKE_WIDTH_MAX = 100;
+const STROKE_DASHES: readonly Stroke["dash"][] = ["solid", "dashed", "dotted"];
+
+/** Most polygon sides / star points a document may contain; same as `MAX_VERTEX_COUNT` in Rust. */
+export const MAX_VERTEX_COUNT = 1000;
+/** Range the property panel offers for polygon sides and star points. */
+export const VERTEX_COUNT_MIN = 3;
+export const VERTEX_COUNT_MAX = 24;
+/** Range (%) the property panel offers for a star's inner radius. */
+export const STAR_INNER_PERCENT_MIN = 10;
+export const STAR_INNER_PERCENT_MAX = 90;
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const ELEMENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
@@ -114,4 +131,83 @@ export function isHexColor(value: string): boolean {
  */
 export function isElementColor(value: string): boolean {
   return ELEMENT_COLOR_PATTERN.test(value);
+}
+
+/**
+ * Checks whether a value is drawable shape geometry. Same rules as Rust `validate_geometry`:
+ * corner radius ≥ 0, star inner ratio in (0, 1], at most MAX_VERTEX_COUNT sides / points
+ * (fewer than 3 are raised when drawing, so they are not rejected).
+ *
+ * Args:
+ *   value: Candidate geometry (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `ShapeElement.geometry`.
+ */
+export function isShapeGeometry(value: unknown): value is ShapeGeometry {
+  if (typeof value !== "object" || value === null) return false;
+  const g = value as Record<string, unknown>;
+  const count = (n: unknown) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_VERTEX_COUNT;
+  switch (g.kind) {
+    case "rect":
+      return typeof g.cornerRadius === "number" && Number.isFinite(g.cornerRadius) && g.cornerRadius >= 0;
+    case "ellipse":
+      return true;
+    case "polygon":
+      return count(g.sides);
+    case "star":
+      return count(g.numPoints) && typeof g.innerRatio === "number" && g.innerRatio > 0 && g.innerRatio <= 1;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Checks whether a value is a valid shape label (text, supported font size, known styles, element
+ * color). Rust checks the color; the other limits are what the UI can produce.
+ *
+ * Args:
+ *   value: Candidate label (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `ShapeElement.label`.
+ */
+export function isShapeLabel(value: unknown): value is ShapeLabel {
+  if (typeof value !== "object" || value === null) return false;
+  const label = value as Record<string, unknown>;
+  return (
+    typeof label.text === "string" &&
+    typeof label.fontSize === "number" &&
+    label.fontSize >= FONT_SIZE_MIN &&
+    label.fontSize <= FONT_SIZE_MAX &&
+    typeof label.fontFamily === "string" &&
+    (label.fontStyle === "normal" || label.fontStyle === "bold") &&
+    ["left", "center", "right"].includes(label.align as string) &&
+    ["top", "middle", "bottom"].includes(label.verticalAlign as string) &&
+    typeof label.fill === "string" &&
+    isElementColor(label.fill)
+  );
+}
+
+/**
+ * Checks whether a value is a valid shape stroke (same rules as Rust `validate_element`):
+ * element color, width in (0, STROKE_WIDTH_MAX], known dash style.
+ *
+ * Args:
+ *   value: Candidate stroke (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `ShapeElement.stroke`.
+ */
+export function isStroke(value: unknown): value is Stroke {
+  if (typeof value !== "object" || value === null) return false;
+  const { color, width, dash } = value as Record<string, unknown>;
+  return (
+    typeof color === "string" &&
+    isElementColor(color) &&
+    typeof width === "number" &&
+    width > 0 &&
+    width <= STROKE_WIDTH_MAX &&
+    (STROKE_DASHES as readonly unknown[]).includes(dash)
+  );
 }

@@ -1,6 +1,8 @@
 import type { Bounds, CanvasElement, Page, Point, TextElement } from "./types";
 
 export const TEXT_LINE_HEIGHT = 1.2;
+/** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
+export const MIN_ELEMENT_SIZE_PT = 4;
 
 // 小於此 code point 視為窄字（拉丁字母），以下為 CJK 等全形字
 const WIDE_CHAR_START = 0x2e80;
@@ -34,20 +36,9 @@ function localBounds(element: CanvasElement): Bounds {
   switch (element.type) {
     case "text":
       return { minX: 0, minY: 0, maxX: element.width, maxY: estimateTextHeight(element) };
-    case "rect":
+    case "shape":
     case "image":
       return { minX: 0, minY: 0, maxX: element.width, maxY: element.height };
-    case "ellipse":
-      return { minX: -element.radiusX, minY: -element.radiusY, maxX: element.radiusX, maxY: element.radiusY };
-    case "polygon":
-      return { minX: -element.radius, minY: -element.radius, maxX: element.radius, maxY: element.radius };
-    case "star":
-      return {
-        minX: -element.outerRadius,
-        minY: -element.outerRadius,
-        maxX: element.outerRadius,
-        maxY: element.outerRadius,
-      };
     default: {
       const exhaustive: never = element;
       return exhaustive;

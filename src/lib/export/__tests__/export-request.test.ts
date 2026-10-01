@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPage, createShapeElement, createTextElement } from "@/lib/editor/element-factory";
+import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
 import type { EditorDocument } from "@/lib/editor/types";
 import { buildExportRequest } from "../export-request";
 
@@ -27,5 +28,23 @@ describe("buildExportRequest", () => {
     expect(measured).toEqual([title.id, body.id]);
     expect(request.textLayouts[title.id]).toEqual({ lines: [title.text], baseline: title.fontSize });
     expect(Object.keys(request.textLayouts)).toHaveLength(2);
+  });
+
+  it("measures shape labels at the label's wrapping width, keyed <id>#label", () => {
+    const shape = createShapeElement("rect", { x: 100, y: 100 });
+    const labelled = { ...shape, label: createLabel("圖形內文字") };
+    const empty = { ...createShapeElement("ellipse", { x: 0, y: 0 }), label: createLabel("") };
+    const page = createPage("P", { width: 595, height: 842 }, "#ffffff");
+    const document: EditorDocument = { name: "測試", pages: [{ ...page, elements: [shape, labelled, empty] }] };
+    const widths: number[] = [];
+
+    const request = buildExportRequest(document, (element) => {
+      widths.push(element.width);
+      return { lines: [element.text], baseline: 10 };
+    });
+
+    expect(Object.keys(request.textLayouts)).toEqual([`${labelled.id}#label`]);
+    expect(request.textLayouts[`${labelled.id}#label`].lines).toEqual(["圖形內文字"]);
+    expect(widths).toEqual([labelled.width - 2 * LABEL_PADDING_PT]);
   });
 });

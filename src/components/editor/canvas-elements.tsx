@@ -1,21 +1,25 @@
+import { useMemo } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Ellipse, Image as KonvaImage, Rect, RegularPolygon, Star, Text } from "react-konva";
+import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
 import useImage from "use-image";
-import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
-import type { CanvasElement, ElementId, ElementPatch, ImageElement } from "@/lib/editor/types";
+import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
+import { shapePoints } from "@/lib/editor/shape-geometry";
+import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
+import { konvaStroke } from "@/lib/editor/stroke";
+import type { CanvasElement, ElementId, ElementPatch, ImageElement, ShapeElement, ShapeLabel } from "@/lib/editor/types";
+import { measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "@/lib/project/project-context";
-
-/** Smallest width/height (pt) an element can be resized to. */
-const MIN_SIZE_PT = 4;
 
 export const ELEMENT_NODE_NAME = "element";
 
 export interface ElementNodeProps {
   readonly element: CanvasElement;
-  readonly hidden: boolean;
+  /** Hides the element's text while it is edited in place (the whole text element, or a shape's label). */
+  readonly textHidden: boolean;
   readonly onSelect: (id: ElementId) => void;
   readonly onChange: (id: ElementId, patch: ElementPatch) => void;
+  /** Double-click: edit a text element, or the text inside a shape. */
   readonly onEditText: (id: ElementId) => void;
 }
 
@@ -55,26 +59,12 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
     case "text":
       // onTransform 已即時把 scaleX 換算進 width，這裡以節點目前寬度為準
       return { ...base, width: Math.max(MIN_SIZE_PT, node.width() * scaleX) };
-    case "rect":
+    case "shape":
     case "image":
       return {
         ...base,
         width: Math.max(MIN_SIZE_PT, element.width * scaleX),
         height: Math.max(MIN_SIZE_PT, element.height * scaleY),
-      };
-    case "ellipse":
-      return {
-        ...base,
-        radiusX: Math.max(MIN_SIZE_PT / 2, element.radiusX * scaleX),
-        radiusY: Math.max(MIN_SIZE_PT / 2, element.radiusY * scaleY),
-      };
-    case "polygon":
-      return { ...base, radius: Math.max(MIN_SIZE_PT / 2, element.radius * scaleX) };
-    case "star":
-      return {
-        ...base,
-        innerRadius: Math.max(MIN_SIZE_PT / 4, element.innerRadius * scaleX),
-        outerRadius: Math.max(MIN_SIZE_PT / 2, element.outerRadius * scaleX),
       };
     default: {
       const exhaustive: never = element;
@@ -94,6 +84,57 @@ function ImageNode({ element, common }: { readonly element: ImageElement; readon
   return <KonvaImage {...common} image={image} width={element.width} height={element.height} />;
 }
 
+// Transformer 以 Group 的外框決定控制框；超出圖形的文字不能算進去，否則控制框變大、拖曳換算的 scale 也會錯。
+// Konva 的 Container.getClientRect 會略過寬高為 0 的子節點，所以讓文字節點回報空的外框。
+function excludeFromBounds(node: Konva.Text | null): void {
+  if (node) node.getClientRect = () => ({ x: 0, y: 0, width: 0, height: 0 });
+}
+
+function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement; readonly label: ShapeLabel; readonly hidden: boolean }) {
+  const frame = labelFrame(shape);
+  // 垂直對齊需要文字高度：用和匯出相同的離畫面 Konva.Text 量測分行
+  const lineCount = useMemo(
+    () => measureTextLayout(labelAsText(shape, label, { x: 0, y: 0 })).lines.length,
+    // 分行只取決於文字、樣式與換行寬度；圖形的位置、旋轉改變時不必重新量測
+    [label, frame.width],
+  );
+  const y = frame.y + labelTextOffset(frame, label.verticalAlign, textBlockHeight(lineCount, label.fontSize));
+  return (
+    <Text
+      ref={excludeFromBounds}
+      x={frame.x}
+      y={y}
+      width={frame.width}
+      text={label.text}
+      fontSize={label.fontSize}
+      fontFamily={label.fontFamily}
+      fontStyle={label.fontStyle}
+      align={label.align}
+      fill={label.fill}
+      lineHeight={TEXT_LINE_HEIGHT}
+      visible={!hidden}
+    />
+  );
+}
+
+function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
+  const { geometry, width, height, fill } = shape;
+  const stroke = konvaStroke(shape.stroke);
+  switch (geometry.kind) {
+    case "rect":
+      return <Rect width={width} height={height} cornerRadius={geometry.cornerRadius} fill={fill} {...stroke} />;
+    case "ellipse":
+      return <Ellipse x={width / 2} y={height / 2} radiusX={width / 2} radiusY={height / 2} fill={fill} {...stroke} />;
+    case "polygon":
+    case "star":
+      return <Line points={shapePoints(geometry, width, height) ?? []} closed fill={fill} {...stroke} />;
+    default: {
+      const exhaustive: never = geometry;
+      return exhaustive;
+    }
+  }
+}
+
 /**
  * Renders one canvas element as the matching Konva node.
  *
@@ -103,7 +144,7 @@ function ImageNode({ element, common }: { readonly element: ImageElement; readon
  * Returns:
  *   Konva node.
  */
-export function ElementNode({ element, hidden, onSelect, onChange, onEditText }: ElementNodeProps) {
+export function ElementNode({ element, textHidden, onSelect, onChange, onEditText }: ElementNodeProps) {
   const common: CommonNodeProps = {
     id: element.id,
     name: ELEMENT_NODE_NAME,
@@ -111,7 +152,8 @@ export function ElementNode({ element, hidden, onSelect, onChange, onEditText }:
     y: element.y,
     rotation: element.rotation,
     draggable: true,
-    visible: !hidden,
+    // 編輯文字物件時整個節點隱藏；圖形只隱藏它的文字（ShapeLabelText）
+    visible: !(textHidden && element.type === "text"),
     onMouseDown: () => onSelect(element.id),
     onTouchStart: () => onSelect(element.id),
     onDragEnd: (event) => onChange(element.id, { x: event.target.x(), y: event.target.y() }),
@@ -140,29 +182,15 @@ export function ElementNode({ element, hidden, onSelect, onChange, onEditText }:
           }}
         />
       );
-    case "rect":
+    case "shape":
+      // Group 的原點是外框左上角；Transformer 掛在 Group 上，之後的圖形內文字也放在這裡
       return (
-        <Rect
-          {...common}
-          width={element.width}
-          height={element.height}
-          cornerRadius={element.cornerRadius}
-          fill={element.fill}
-        />
-      );
-    case "ellipse":
-      return <Ellipse {...common} radiusX={element.radiusX} radiusY={element.radiusY} fill={element.fill} />;
-    case "polygon":
-      return <RegularPolygon {...common} sides={element.sides} radius={element.radius} fill={element.fill} />;
-    case "star":
-      return (
-        <Star
-          {...common}
-          numPoints={element.numPoints}
-          innerRadius={element.innerRadius}
-          outerRadius={element.outerRadius}
-          fill={element.fill}
-        />
+        <Group {...common} onDblClick={() => onEditText(element.id)} onDblTap={() => onEditText(element.id)}>
+          <ShapeBody shape={element} />
+          {element.label && element.label.text !== "" && (
+            <ShapeLabelText shape={element} label={element.label} hidden={textHidden} />
+          )}
+        </Group>
       );
     case "image":
       return <ImageNode element={element} common={common} />;

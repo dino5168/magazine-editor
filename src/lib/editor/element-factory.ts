@@ -1,3 +1,4 @@
+import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
 import { PAGE_SIZE_PRESETS, presetToPt } from "./units";
 import type {
   Bounds,
@@ -6,6 +7,8 @@ import type {
   ImageElement,
   Page,
   Point,
+  ShapeElement,
+  ShapeGeometry,
   Size,
   TextElement,
 } from "./types";
@@ -73,13 +76,50 @@ export function createTextElement(preset: TextPreset, center: Point): TextElemen
   };
 }
 
-const SHAPE_FACTORIES: { readonly [K in ShapeKind]: (id: string, center: Point) => CanvasElement } = {
-  rect: (id, c) => ({ id, type: "rect", x: c.x - 80, y: c.y - 60, rotation: 0, width: 160, height: 120, cornerRadius: 0, fill: DEFAULT_SHAPE_FILL }),
-  roundedRect: (id, c) => ({ id, type: "rect", x: c.x - 80, y: c.y - 60, rotation: 0, width: 160, height: 120, cornerRadius: 16, fill: DEFAULT_SHAPE_FILL }),
-  ellipse: (id, c) => ({ id, type: "ellipse", x: c.x, y: c.y, rotation: 0, radiusX: 60, radiusY: 60, fill: DEFAULT_SHAPE_FILL }),
-  triangle: (id, c) => ({ id, type: "polygon", x: c.x, y: c.y, rotation: 0, sides: 3, radius: 70, fill: DEFAULT_SHAPE_FILL }),
-  star: (id, c) => ({ id, type: "star", x: c.x, y: c.y, rotation: 0, numPoints: 5, innerRadius: 30, outerRadius: 70, fill: DEFAULT_SHAPE_FILL }),
+/** Star inner / outer radius ratio of new stars. */
+const STAR_INNER_RATIO = 30 / 70;
+/** Outer radius (pt) of a clicked triangle or star, before it is fitted into its box. */
+const REGULAR_SHAPE_RADIUS = 70;
+
+interface ShapePresetConfig {
+  readonly geometry: ShapeGeometry;
+  /** Size of a shape created by a click (or from the elements panel). */
+  readonly size: Size;
+}
+
+function regularSize(geometry: ShapeGeometry): Size {
+  const unit = unitVertices(geometry);
+  if (!unit) throw new Error("regularSize needs a polygon or star");
+  const { minX, minY, maxX, maxY } = vertexBounds(unit);
+  return { width: (maxX - minX) * REGULAR_SHAPE_RADIUS, height: (maxY - minY) * REGULAR_SHAPE_RADIUS };
+}
+
+const TRIANGLE: ShapeGeometry = { kind: "polygon", sides: 3 };
+const STAR: ShapeGeometry = { kind: "star", numPoints: 5, innerRatio: STAR_INNER_RATIO };
+
+const SHAPE_PRESETS: { readonly [K in ShapeKind]: ShapePresetConfig } = {
+  rect: { geometry: { kind: "rect", cornerRadius: 0 }, size: { width: 160, height: 120 } },
+  roundedRect: { geometry: { kind: "rect", cornerRadius: 16 }, size: { width: 160, height: 120 } },
+  ellipse: { geometry: { kind: "ellipse" }, size: { width: 120, height: 120 } },
+  triangle: { geometry: TRIANGLE, size: regularSize(TRIANGLE) },
+  star: { geometry: STAR, size: regularSize(STAR) },
 };
+
+function createShape(geometry: ShapeGeometry, box: Bounds): ShapeElement {
+  return {
+    id: createId(),
+    type: "shape",
+    x: box.minX,
+    y: box.minY,
+    rotation: 0,
+    width: box.maxX - box.minX,
+    height: box.maxY - box.minY,
+    geometry,
+    fill: DEFAULT_SHAPE_FILL,
+    stroke: null,
+    label: null,
+  };
+}
 
 /**
  * Creates a shape element centered on a point.
@@ -91,12 +131,16 @@ const SHAPE_FACTORIES: { readonly [K in ShapeKind]: (id: string, center: Point) 
  * Returns:
  *   New shape element.
  */
-export function createShapeElement(kind: ShapeKind, center: Point): CanvasElement {
-  return SHAPE_FACTORIES[kind](createId(), center);
+export function createShapeElement(kind: ShapeKind, center: Point): ShapeElement {
+  const { geometry, size } = SHAPE_PRESETS[kind];
+  return createShape(geometry, {
+    minX: center.x - size.width / 2,
+    minY: center.y - size.height / 2,
+    maxX: center.x + size.width / 2,
+    maxY: center.y + size.height / 2,
+  });
 }
 
-/** Star inner / outer radius ratio, same as the elements panel's star. */
-const STAR_INNER_RATIO = 30 / 70;
 /** Text created by dragging is never narrower than this, in pt. */
 export const MIN_TEXT_WIDTH = 40;
 /** Style of text created with the text tool. */
@@ -116,33 +160,13 @@ export function boundsFromPoints(a: Point, b: Point): Bounds {
   return { minX: Math.min(a.x, b.x), minY: Math.min(a.y, b.y), maxX: Math.max(a.x, b.x), maxY: Math.max(a.y, b.y) };
 }
 
-// Konva 正多邊形 / 星形的頂點（外半徑 1、第一個頂點朝上）形成的外框
-function unitVertexBounds(radii: readonly number[], count: number): Bounds {
-  const points = Array.from({ length: count }, (_, n) => {
-    const radius = radii[n % radii.length];
-    const angle = (n * 2 * Math.PI) / count;
-    return { x: radius * Math.sin(angle), y: -radius * Math.cos(angle) };
-  });
-  return {
-    minX: Math.min(...points.map((p) => p.x)),
-    minY: Math.min(...points.map((p) => p.y)),
-    maxX: Math.max(...points.map((p) => p.x)),
-    maxY: Math.max(...points.map((p) => p.y)),
-  };
-}
-
-// 以中心為原點的圖形：算出放進 box 的最大外半徑，並讓頂點外框置中於 box
-function fitRegular(box: Bounds, radii: readonly number[], count: number): { center: Point; radius: number } {
-  const unit = unitVertexBounds(radii, count);
-  const radius = Math.min((box.maxX - box.minX) / (unit.maxX - unit.minX), (box.maxY - box.minY) / (unit.maxY - unit.minY));
-  const boxCenter = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
-  return {
-    center: {
-      x: boxCenter.x - ((unit.minX + unit.maxX) / 2) * radius,
-      y: boxCenter.y - ((unit.minY + unit.maxY) / 2) * radius,
-    },
-    radius,
-  };
+// 保持原本比例的最大外框，置中於 box
+function fitAspect(box: Bounds, aspect: number): Bounds {
+  const width = Math.min(box.maxX - box.minX, (box.maxY - box.minY) * aspect);
+  const height = width / aspect;
+  const cx = (box.minX + box.maxX) / 2;
+  const cy = (box.minY + box.maxY) / 2;
+  return { minX: cx - width / 2, minY: cy - height / 2, maxX: cx + width / 2, maxY: cy + height / 2 };
 }
 
 /**
@@ -156,35 +180,20 @@ function fitRegular(box: Bounds, radii: readonly number[], count: number): { cen
  * Returns:
  *   New shape element.
  */
-export function createShapeInBox(kind: ShapeKind, box: Bounds): CanvasElement {
-  const id = createId();
-  const width = box.maxX - box.minX;
-  const height = box.maxY - box.minY;
-  const base = { id, rotation: 0, fill: DEFAULT_SHAPE_FILL };
-  switch (kind) {
-    case "rect":
-    case "roundedRect":
-      return {
-        ...base,
-        type: "rect",
-        x: box.minX,
-        y: box.minY,
-        width,
-        height,
-        cornerRadius: kind === "roundedRect" ? Math.min(16, Math.min(width, height) / 2) : 0,
-      };
+export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
+  const { geometry } = SHAPE_PRESETS[kind];
+  switch (geometry.kind) {
+    case "rect": {
+      const shortSide = Math.min(box.maxX - box.minX, box.maxY - box.minY);
+      return createShape({ kind: "rect", cornerRadius: Math.min(geometry.cornerRadius, shortSide / 2) }, box);
+    }
     case "ellipse":
-      return { ...base, type: "ellipse", x: box.minX + width / 2, y: box.minY + height / 2, radiusX: width / 2, radiusY: height / 2 };
-    case "triangle": {
-      const { center, radius } = fitRegular(box, [1], 3);
-      return { ...base, type: "polygon", ...center, sides: 3, radius };
-    }
-    case "star": {
-      const { center, radius } = fitRegular(box, [1, STAR_INNER_RATIO], 10);
-      return { ...base, type: "star", ...center, numPoints: 5, innerRadius: radius * STAR_INNER_RATIO, outerRadius: radius };
-    }
+      return createShape(geometry, box);
+    case "polygon":
+    case "star":
+      return createShape(geometry, fitAspect(box, naturalAspect(geometry)));
     default: {
-      const exhaustive: never = kind;
+      const exhaustive: never = geometry;
       return exhaustive;
     }
   }
@@ -296,15 +305,54 @@ export function createSampleDocument(): EditorDocument {
   const subheading = createTextElement("subheading", { x: centerX, y: 180 });
   const body = createTextElement("body", { x: centerX, y: 260 });
   const elements: readonly CanvasElement[] = [
-    { id: createId(), type: "rect", x: centerX - 240, y: 90, rotation: 0, width: 480, height: 130, cornerRadius: 12, fill: "#e0e7ff" },
+    {
+      ...createShape({ kind: "rect", cornerRadius: 12 }, { minX: centerX - 240, minY: 90, maxX: centerX + 240, maxY: 220 }),
+      fill: "#e0e7ff",
+    },
     { ...heading, text: "雜誌編輯軟體", width: 420, x: centerX - 210 },
     { ...subheading, text: "Konva.js 編輯範例", fill: "#4f46e5" },
     { ...body, text: "點選物件可拖曳、縮放、旋轉；雙擊文字可直接編輯。", width: 360, x: centerX - 180 },
-    { id: createId(), type: "ellipse", x: 180, y: 480, rotation: 0, radiusX: 60, radiusY: 60, fill: "#fda4af" },
-    { id: createId(), type: "star", x: centerX, y: 480, rotation: 0, numPoints: 5, innerRadius: 30, outerRadius: 70, fill: "#fcd34d" },
-    { id: createId(), type: "polygon", x: size.width - 180, y: 490, rotation: 0, sides: 3, radius: 70, fill: "#86efac" },
+    { ...createShapeElement("ellipse", { x: 180, y: 480 }), fill: "#fda4af" },
+    { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
+    { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
   ];
   return { name: "未命名文件", pages: [{ ...page, elements }] };
+}
+
+const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };
+
+/**
+ * Returns the name of a shape's kind, e.g. 「圓角矩形」.
+ *
+ * Args:
+ *   shape: Shape element.
+ *
+ * Returns:
+ *   Label text.
+ */
+export function describeShape(shape: ShapeElement): string {
+  const { geometry } = shape;
+  switch (geometry.kind) {
+    case "rect":
+      return geometry.cornerRadius > 0 ? "圓角矩形" : "矩形";
+    case "ellipse":
+      return shape.width === shape.height ? "圓形" : "橢圓";
+    case "polygon":
+      return POLYGON_NAMES[geometry.sides] ?? `${geometry.sides} 邊形`;
+    case "star":
+      return "星形";
+    default: {
+      const exhaustive: never = geometry;
+      return exhaustive;
+    }
+  }
+}
+
+// 空白壓成一個、去頭尾，超過 max 個字截斷；沒有內容時回傳 null
+function summarize(text: string, max: number): string | null {
+  const chars = Array.from(text.replace(/\s+/g, " ").trim());
+  if (chars.length === 0) return null;
+  return chars.length > max ? `${chars.slice(0, max).join("")}…` : chars.join("");
 }
 
 /**
@@ -318,19 +366,13 @@ export function createSampleDocument(): EditorDocument {
  */
 export function describeElement(element: CanvasElement): string {
   switch (element.type) {
-    case "text": {
-      const chars = Array.from(element.text.replace(/\s+/g, " ").trim());
-      if (chars.length === 0) return "文字";
-      return chars.length > 20 ? `${chars.slice(0, 20).join("")}…` : chars.join("");
+    case "text":
+      return summarize(element.text, 20) ?? "文字";
+    case "shape": {
+      // 有文字的圖形帶上文字開頭，圖層清單才分得出是哪一個
+      const text = element.label ? summarize(element.label.text, 12) : null;
+      return text ? `${describeShape(element)}：${text}` : describeShape(element);
     }
-    case "rect":
-      return element.cornerRadius > 0 ? "圓角矩形" : "矩形";
-    case "ellipse":
-      return element.radiusX === element.radiusY ? "圓形" : "橢圓";
-    case "polygon":
-      return element.sides === 3 ? "三角形" : "多邊形";
-    case "star":
-      return "星形";
     case "image":
       return "圖片";
     default: {

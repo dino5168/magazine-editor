@@ -1,7 +1,9 @@
-import { DEFAULT_DOCK_LAYOUT, parseDockLayout, type DockLayout } from "./dock-layout";
+import { DEFAULT_DOCK_LAYOUT, isPanelVisible, movePanel, parseDockLayout, type DockLayout } from "./dock-layout";
 
-// 版本號放在 key 裡：之後格式不相容時換新 key，舊資料自然被忽略
-export const DOCK_LAYOUT_STORAGE_KEY = "magazine-editor.dockLayout.v1";
+// 版本號放在 key 裡：之後格式不相容時換新 key，舊資料自然被忽略（或在 loadDockLayout 轉換）
+export const DOCK_LAYOUT_STORAGE_KEY = "magazine-editor.dockLayout.v2";
+/** v1 had no property panel; v1 layouts are kept and get the panel added once. */
+export const DOCK_LAYOUT_STORAGE_KEY_V1 = "magazine-editor.dockLayout.v1";
 
 type ReadableStorage = Pick<Storage, "getItem">;
 type WritableStorage = Pick<Storage, "setItem">;
@@ -23,6 +25,8 @@ export function getBrowserStorage(): Storage | null {
 
 /**
  * Loads the saved dock layout. Missing, unreadable or malformed data yields the default layout.
+ * A v1 layout is upgraded by opening the property panel at the top of the right side (the
+ * selection toolbar it replaces was always visible).
  *
  * Args:
  *   storage: Storage to read from, or null.
@@ -33,7 +37,11 @@ export function getBrowserStorage(): Storage | null {
 export function loadDockLayout(storage: ReadableStorage | null): DockLayout {
   try {
     const raw = storage?.getItem(DOCK_LAYOUT_STORAGE_KEY);
-    return raw ? parseDockLayout(JSON.parse(raw)) : DEFAULT_DOCK_LAYOUT;
+    if (raw) return parseDockLayout(JSON.parse(raw));
+    const v1 = storage?.getItem(DOCK_LAYOUT_STORAGE_KEY_V1);
+    if (!v1) return DEFAULT_DOCK_LAYOUT;
+    const layout = parseDockLayout(JSON.parse(v1));
+    return isPanelVisible(layout, "properties") ? layout : movePanel(layout, "properties", "right", 0);
   } catch {
     return DEFAULT_DOCK_LAYOUT;
   }

@@ -7,6 +7,7 @@ import {
   Pencil,
   Scaling,
   Shapes,
+  SlidersHorizontal,
   Type,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -21,6 +22,7 @@ export const PANEL_ICONS = {
   draw: Pencil,
   upload: CloudUpload,
   background: PaintBucket,
+  properties: SlidersHorizontal,
   layers: Layers,
   resize: Scaling,
 } as const satisfies Record<PanelId, LucideIcon>;

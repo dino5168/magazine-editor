@@ -16,6 +16,7 @@ export const PANEL_DEFINITIONS = [
   { id: "draw", label: "繪圖", defaultSide: "left" },
   { id: "upload", label: "上傳", defaultSide: "left" },
   { id: "background", label: "背景", defaultSide: "left" },
+  { id: "properties", label: "屬性", defaultSide: "right" },
   { id: "layers", label: "圖層", defaultSide: "right" },
   { id: "resize", label: "尺寸", defaultSide: "right" },
 ] as const satisfies readonly PanelDefinition[];

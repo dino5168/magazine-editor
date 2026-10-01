@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_DOCK_LAYOUT, type DockLayout } from "../dock-layout";
-import { DOCK_LAYOUT_STORAGE_KEY, loadDockLayout, saveDockLayout } from "../dock-storage";
+import { DOCK_LAYOUT_STORAGE_KEY, DOCK_LAYOUT_STORAGE_KEY_V1, loadDockLayout, saveDockLayout } from "../dock-storage";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -45,6 +45,28 @@ describe("dock layout storage", () => {
       right: [],
       width: { left: 200, right: 300 },
     });
+  });
+
+  it("keeps a v1 layout and opens the property panel at the top right once", () => {
+    const v1 = JSON.stringify({ left: [{ id: "text" }], right: [{ id: "layers", collapsed: true }], width: { left: 300, right: 300 } });
+    const loaded = loadDockLayout(memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1 }));
+    expect(loaded.left).toEqual([{ id: "text", collapsed: false }]);
+    expect(loaded.right).toEqual([
+      { id: "properties", collapsed: false },
+      { id: "layers", collapsed: true },
+    ]);
+
+    // v2 已經存在時以 v2 為準（使用者之後關掉屬性面板，不會再被打開）
+    const v2 = JSON.stringify({ left: [], right: [{ id: "layers" }], width: { left: 300, right: 300 } });
+    const both = memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1, [DOCK_LAYOUT_STORAGE_KEY]: v2 });
+    expect(loadDockLayout(both).right).toEqual([{ id: "layers", collapsed: false }]);
+  });
+
+  it("does not move a property panel that a v1 layout already has", () => {
+    const v1 = JSON.stringify({ left: [{ id: "properties" }], right: [], width: { left: 300, right: 300 } });
+    const loaded = loadDockLayout(memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1 }));
+    expect(loaded.left).toEqual([{ id: "properties", collapsed: false }]);
+    expect(loaded.right).toEqual([]);
   });
 
   it("ignores storage that throws", () => {

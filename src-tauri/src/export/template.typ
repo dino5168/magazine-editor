@@ -36,30 +36,51 @@
   }
 })
 
-// 以左上角為定位點的物件：text / rect / image
+// 所有物件都以外框左上角為定位點，旋轉也繞左上角
 #let at-corner(el, body) = place(top + left, dx: pt(el.x), dy: pt(el.y), rotated(el, top + left, body))
 
-// 以中心為定位點的物件：ellipse / polygon / star（外框 2rx × 2ry）
-#let at-center(el, body) = place(
-  top + left,
-  dx: pt(el.x - el.rx),
-  dy: pt(el.y - el.ry),
-  rotated(el, center + horizon, box(width: pt(2 * el.rx), height: pt(2 * el.ry), body)),
-)
+// 邊框：畫在外框線的中心（和 Konva 相同）；虛線與點線的數字由 Rust 算好（render.rs 的 dash_pattern）
+#let stroke-of(s) = if s == none { none } else {
+  (
+    paint: rgb(s.color),
+    thickness: pt(s.width),
+    cap: s.cap,
+    join: "miter",
+    miter-limit: s.miterLimit,
+    dash: if s.dash == none { none } else { (array: s.dash.map(pt), phase: 0pt) },
+  )
+}
+
+#let xy(s, i) = (pt(s.at(i)), pt(s.at(i + 1)))
+#let path-segment(s) = if s.at(0) == "m" {
+  curve.move(xy(s, 1))
+} else if s.at(0) == "l" {
+  curve.line(xy(s, 1))
+} else {
+  curve.cubic(xy(s, 1), xy(s, 3), xy(s, 5))
+}
 
 #let draw(el) = {
   if el.kind == "text" {
     at-corner(el, draw-text(el))
   } else if el.kind == "rect" {
-    at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: pt(el.radius), fill: rgb(el.fill), stroke: none))
+    at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: pt(el.radius), fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "image" {
     at-corner(el, image(el.src, width: pt(el.width), height: pt(el.height), fit: "stretch"))
   } else if el.kind == "ellipse" {
-    at-center(el, ellipse(width: pt(2 * el.rx), height: pt(2 * el.ry), fill: rgb(el.fill), stroke: none))
+    at-corner(el, ellipse(width: pt(el.width), height: pt(el.height), fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "polygon" {
-    // 頂點座標以中心為原點，換算成外框左上角為原點
-    let points = el.points.map(p => (pt(p.at(0) + el.rx), pt(p.at(1) + el.ry)))
-    at-center(el, place(top + left, polygon(fill: rgb(el.fill), stroke: none, ..points)))
+    // 頂點座標以外框左上角為原點；box 讓旋轉以外框為範圍
+    let points = el.points.map(p => (pt(p.at(0)), pt(p.at(1))))
+    at-corner(el, box(width: pt(el.width), height: pt(el.height), place(top + left, polygon(fill: rgb(el.fill), stroke: stroke-of(el.stroke), ..points))))
+  } else if el.kind == "path" {
+    // 有邊框的矩形 / 橢圓：路徑由 Rust 算好（起點與方向和畫布相同，虛線才會落在同樣位置）
+    at-corner(el, box(width: pt(el.width), height: pt(el.height), place(top + left, curve(
+      fill: rgb(el.fill),
+      stroke: stroke-of(el.stroke),
+      ..el.segments.map(path-segment),
+      curve.close(mode: "straight"),
+    ))))
   }
 }
 

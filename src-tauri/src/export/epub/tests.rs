@@ -2,7 +2,7 @@ use super::*;
 use crate::export::render::build_render;
 use crate::export::test_support::{fixture_document, project_with_image, request};
 use crate::export::TextLayout;
-use crate::project::format::Element;
+use crate::project::format::{Element, ShapeGeometry};
 use std::io::Read;
 
 fn meta() -> EpubMeta {
@@ -153,7 +153,8 @@ fn user_text_is_data_not_markup() {
         .filter(|n| n.attribute("class") == Some("el t"))
         .flat_map(|t| t.children().filter(|c| c.is_element()).filter_map(|c| c.text()))
         .collect();
-    assert_eq!(lines, vec![hostile, "第二行"]);
+    // 最後一行是 fixture 橢圓的圖形內文字（沒有 layout，以 \n 分行）
+    assert_eq!(lines, vec![hostile, "第二行", "圖形內文字"]);
     // 標題裡的 NUL（XML 不允許）被去掉，其餘原樣保留
     let opf = parse(text_of(&entries, "OEBPS/content.opf"));
     assert_eq!(opf.descendants().find(|n| n.has_tag_name("title")).and_then(|n| n.text()), Some(hostile));
@@ -179,15 +180,22 @@ fn renders_every_element_type() {
         .map(|n| format!("{}.{}", n.tag_name().name(), class_of(&n)))
         .collect();
     // 順序即 z 軸順序：text、rect、ellipse、polygon、star、image
-    assert_eq!(drawn, vec!["div.el t", "div.el", "div.el c", "svg.el c", "svg.el c", "img.el"]);
+    // 橢圓有邊框，所以和多邊形一樣畫成 SVG（邊線在外框線中心，CSS border 做不到）；
+    // 它的圖形內文字是緊接在後的文字 div
+    assert_eq!(drawn, vec!["div.el t", "div.el", "svg.el", "div.el t", "svg.el", "svg.el", "img.el"]);
     assert!(xml.contains("transform:rotate(12.5deg)"), "rect rotation");
-    assert!(xml.contains("left:120px;top:440px;width:120px;height:80px;border-radius:50%"), "ellipse box from its centre");
+    assert!(xml.contains("left:120px;top:440px;width:120px;height:80px"), "ellipse box");
+    let ellipse = page.descendants().find(|n| n.has_tag_name("ellipse")).expect("stroked ellipse is SVG");
+    assert_eq!(
+        ["cx", "cy", "rx", "ry", "stroke", "stroke-width", "stroke-dasharray"].map(|a| ellipse.attribute(a).unwrap_or("-")),
+        ["60", "40", "60", "40", "#be123c", "2", "6 6"]
+    );
     assert!(xml.contains(r#"src="../images/image-1.png""#));
     // fixture 的矩形是半透明的 #e0e7ffcc
     assert!(xml.contains("background:rgba(224,231,255,0.800)"), "rect alpha");
     assert!(!xml.contains("#e0e7ffcc"), "8-digit hex must not reach the EPUB");
 
-    // 多邊形與星形的頂點和 PDF 用的是同一組數字（平移到 viewBox 的左上角）
+    // 多邊形與星形的頂點和 PDF 用的是同一組數字（以 viewBox 的左上角為原點）
     let svgs: Vec<_> = page.descendants().filter(|n| n.has_tag_name("polygon")).collect();
     let shapes: Vec<_> = render.pages[0]
         .elements
@@ -202,7 +210,7 @@ fn renders_every_element_type() {
         let expected: Vec<String> = shape
             .points
             .iter()
-            .map(|[x, y]| format!("{},{}", xhtml::num(x + shape.rx), xhtml::num(y + shape.ry)))
+            .map(|[x, y]| format!("{},{}", xhtml::num(*x), xhtml::num(*y)))
             .collect();
         assert_eq!(svg.attribute("points"), Some(expected.join(" ").as_str()));
     }
@@ -214,7 +222,15 @@ fn svg_property_marks_pages_with_shapes() {
     let mut plain = document.pages[0].clone();
     plain.id = "page-2".into();
     plain.name = String::new();
-    plain.elements.retain(|e| !matches!(e, Element::Polygon(_) | Element::Star(_)));
+    // 沒有 SVG 的頁面：拿掉多邊形與星形，其他圖形也不要邊框
+    plain.elements.retain(|e| {
+        !matches!(e, Element::Shape(s) if matches!(s.geometry, ShapeGeometry::Polygon { .. } | ShapeGeometry::Star { .. }))
+    });
+    for element in &mut plain.elements {
+        if let Element::Shape(shape) = element {
+            shape.stroke = None;
+        }
+    }
     document.pages.push(plain);
     let (_, entries) = export(document);
     let opf = parse(text_of(&entries, "OEBPS/content.opf"));
@@ -255,8 +271,15 @@ fn embeds_only_used_font_families() {
     let fonts_in = |family: &str| {
         let mut document = fixture_document();
         for element in &mut document.pages[0].elements {
-            if let Element::Text(text) = element {
-                text.font_family = family.to_owned();
+            match element {
+                Element::Text(text) => text.font_family = family.to_owned(),
+                // 圖形內文字的字型也會內嵌
+                Element::Shape(shape) => {
+                    if let Some(label) = &mut shape.label {
+                        label.font_family = family.to_owned();
+                    }
+                }
+                Element::Image(_) => {}
             }
         }
         let (_, entries) = export(document);

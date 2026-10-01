@@ -58,19 +58,21 @@ flowchart TB
 
 | 資料夾 | 行數 | 負責什麼 | 要讀嗎 |
 |---|---|---|---|
-| `src/lib/editor/` | 約 1,600 | **編輯器核心**:資料模型、狀態變化、幾何計算、驗證、畫布工具。不含任何畫面 | **最優先** |
-| `src/components/editor/` | 約 2,300 | 畫布、面板內容、上方與底部工具列、頁籤列 | 需要 |
+| `src/lib/editor/` | 約 2,200 | **編輯器核心**:資料模型、狀態變化、幾何計算(含圖形頂點、圖形內文字的位置)、驗證、畫布工具。不含任何畫面 | **最優先** |
+| `src/components/editor/` | 約 2,700 | 畫布、面板內容(含屬性面板)、上方控制列與底部工具列、頁籤列 | 需要 |
 | `src/pages/`、`src/App.tsx`、`src/main.tsx` | 約 200 | 程式進入點、版面組合、選單指令接線 | 需要(很短) |
 | `src/lib/project/` | 約 750 | 新增 / 開啟 / 儲存 / 另存、匯入圖片、自動備份、關閉前提示;呼叫 Rust 的地方 | 之後再看(06 會講) |
 | `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
-| `src/components/dock/`、`src/lib/dock/` | 約 950 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
+| `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
 | `src/lib/export/` | 約 80 | 匯出前用 Konva 量測每段文字的分行 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
-| `src/**/__tests__/` | 約 1,200 | 測試 | 之後再看 |
-| `src-tauri/src/` | 約 3,800 | Rust 後端:專案檔、匯出 PDF / EPUB、SQLite(含 Rust 測試) | 之後再看(06 會講) |
+| `src/**/__tests__/` | 約 1,500 | 測試 | 之後再看 |
+| `src-tauri/src/` | 約 4,300 | Rust 後端:專案檔、匯出 PDF / EPUB、SQLite(含 Rust 測試) | 之後再看(06 會講) |
 
-> 前端(不含測試)約 8,700 行,其中 shadcn 元件和舊側邊欄約 2,100 行可以跳過。**先讀懂 `lib/editor/`、`components/editor/` 和 `pages/`(約 4,100 行)**,其他資料夾等用到時再看。
+> 前端(不含測試)約 9,500 行,其中 shadcn 元件和舊側邊欄約 2,100 行可以跳過。**先讀懂 `lib/editor/`、`components/editor/` 和 `pages/`(約 5,100 行)**,其他資料夾等用到時再看。
+>
+> 2026-10-01 型別重構後,`lib/editor/` 與 `components/editor/` 各多了約 500 行(圖形合併成 `shape`、屬性面板、邊框、圖形內文字)。型別的關係圖見 [`docs-website/types.html`](../docs-website/types.html)。
 
 ---
 
@@ -168,8 +170,9 @@ sequenceDiagram
 |---|---|
 | `editor-reducer.ts` 的 `HANDLERS` | 每一種 action 都必須有對應的處理函式 |
 | `panels/index.ts` 的 `PANELS` | 每個工具面板都必須有對應的內容 |
-| `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式 |
+| `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式;`ShapeBody` 的 `switch` 對每一種 geometry(矩形、橢圓、多邊形、星形)也一樣 |
 | `editor-canvas.tsx` 的 `TRANSFORMER_OPTIONS` | 每一種物件類型都必須設定縮放控制點 |
+| `properties-panel.tsx` 的 `tabsOf` / `GeometrySection` | 每一種物件都必須決定屬性面板有哪些分頁;每一種 geometry 都必須決定有哪些參數 |
 | `panel-icons.ts` 的 `PANEL_ICONS` | 每個工具面板都必須有 icon |
 | `lib/menu/commands.ts` 的 `CommandHandlers` | 每個選單指令都必須有處理函式(還沒做的用佔位函式) |
 | Rust `export/render.rs` 的 `match` | 每一種物件類型都必須能轉成匯出用的資料 |
@@ -218,12 +221,12 @@ sequenceDiagram
 
 | 順序 | 檔案 | 行數 | 讀的時候注意 |
 |---|---|---|---|
-| 1 | `src/lib/editor/types.ts` | 約 130 | 文件、頁面、物件長什麼樣子 |
-| 2 | `src/lib/editor/editor-reducer.ts` | 約 380 | 所有 action 的清單、`commit` 如何記錄歷史 |
+| 1 | `src/lib/editor/types.ts` | 約 120 | 文件、頁面、物件長什麼樣子;配合 `docs-website/types.html` 的關係圖看 |
+| 2 | `src/lib/editor/editor-reducer.ts` | 約 370 | 所有 action 的清單、`commit` 如何記錄歷史 |
 | 3 | `src/lib/editor/editor-context.tsx` | 約 80 | reducer 怎麼接到 React |
-| 4 | `src/pages/home-page.tsx` | 約 180 | 版面怎麼組合、`dockLayout` 在哪、選單指令接到哪些函式 |
+| 4 | `src/pages/home-page.tsx` | 約 160 | 版面怎麼組合、`dockLayout` 在哪、選單指令接到哪些函式 |
 | 5 | `src/components/editor/panels/text-panel.tsx` | 約 50 | 最簡單的「按按鈕 → dispatch」例子(範例 A) |
-| 6 | `src/components/editor/canvas-elements.tsx` | 約 170 | 物件怎麼畫成 Konva 節點、拖曳放開時送出什麼(範例 B) |
+| 6 | `src/components/editor/canvas-elements.tsx` | 約 190 | 物件怎麼畫成 Konva 節點、拖曳放開時送出什麼(範例 B) |
 | 7 | `src/components/editor/editor-canvas.tsx` | 約 380 | **先略過**捲動和縮放相關的 `useLayoutEffect`,05 再講 |
 
 `home-page.tsx` 裡的 `ProjectProvider`、`useProjectCommands` 屬於存檔流程,第一次讀可以先當作「負責檔案的黑盒子」,06 再打開。

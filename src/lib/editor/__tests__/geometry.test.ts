@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { estimateTextHeight, getContentBounds, getElementBounds } from "../geometry";
 import { createPage, createTextElement } from "../element-factory";
-import type { RectElement } from "../types";
+import type { ShapeElement } from "../types";
 
-const rect: RectElement = {
+const rect: ShapeElement = {
   id: "r",
-  type: "rect",
+  type: "shape",
   x: 10,
   y: 20,
   rotation: 0,
   width: 100,
   height: 50,
-  cornerRadius: 0,
+  geometry: { kind: "rect", cornerRadius: 0 },
   fill: "#000000",
+  stroke: null,
+  label: null,
 };
 
 describe("getElementBounds", () => {
@@ -29,10 +31,13 @@ describe("getElementBounds", () => {
     expect(bounds.maxY).toBeCloseTo(120);
   });
 
-  it("centers ellipses on their position", () => {
-    expect(
-      getElementBounds({ id: "e", type: "ellipse", x: 0, y: 0, rotation: 0, radiusX: 30, radiusY: 10, fill: "#000000" }),
-    ).toEqual({ minX: -30, minY: -10, maxX: 30, maxY: 10 });
+  it("uses the box for every shape kind, not only rectangles", () => {
+    expect(getElementBounds({ ...rect, geometry: { kind: "star", numPoints: 5, innerRatio: 0.4 } })).toEqual({
+      minX: 10,
+      minY: 20,
+      maxX: 110,
+      maxY: 70,
+    });
   });
 });
 

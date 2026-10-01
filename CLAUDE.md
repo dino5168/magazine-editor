@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -71,16 +71,16 @@ src/
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
-      text-editor-overlay.tsx     # 雙擊文字（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字）
+      text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
       bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
-      selection-toolbar.tsx       # 選取物件後的屬性工具列
+      number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消）
       editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 9 個面板；draw / resize 目前是佔位
+      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw / resize 目前是佔位
       color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
       icon-button.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
@@ -116,10 +116,14 @@ src/
       editor-reducer.ts           # 純 reducer + selectors + undo/redo
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
-      geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算
+      geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算、MIN_ELEMENT_SIZE_PT
+      shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
+      shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
+      stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性
+      properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、頁面尺寸 preset
-      validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證（isHexColor / isElementColor）
+      validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
@@ -130,13 +134,14 @@ src-tauri/
   src/lib.rs                      # Builder：single-instance（最先註冊）、setup DB / ProjectState、清除上次的未命名專案、註冊 commands、視窗 Destroyed 時刪除目前專案的備份
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
-  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）、recovery.rs（自動備份檔）
+  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）、recovery.rs（自動備份檔）
   src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）
   src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、recovery.rs、export.rs）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
-tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（含六種物件）
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v3：文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字）
+tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 ```
 
 `@/*` alias 指向 `src/*`，`tsconfig.json` 的 paths 和 `vite.config.ts` 的 resolve.alias 兩處必須一致。
@@ -146,11 +151,26 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 ### 文件模型（`lib/editor/types.ts`）
 
 - **長度單位一律是 pt（1/72 inch）**，和 Typst 一致。座標原點是頁面左上角；zoom 1 時 1pt = 1 CSS px。
-- `x` / `y` 沿用 Konva 的定義：`text` / `rect` / `image` 是左上角，`ellipse` / `polygon` / `star` 是中心點。
-- **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height` / `radius`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
+- 物件只有三種：`text` / `shape` / `image`。**每種物件的 `x` / `y` 都是外框（旋轉前）的左上角**，旋轉也繞這一點（2026-10-01 起；舊檔的橢圓 / 多邊形 / 星形以中心定位，開檔時由 Rust 換算）。
+- **圖形 = `ShapeElement`**（計畫與決定：`docs/Plans/imp-refactory-types.md`）：
+  - 外框 `width` / `height` + `geometry`（`rect` 圓角 / `ellipse` / `polygon` 邊數 / `star` 角數與 `innerRatio`）+ `fill` + `stroke: Stroke | null` + `label: ShapeLabel | null`。
+  - 多邊形與星形的頂點拉伸到碰到外框四邊（`shape-geometry.ts` 與 Rust `project/shape.rs` 同公式），所以每種圖形都能自由拉伸。
+  - **新增框型圖形**（箭頭、對話框…）= 在 `ShapeGeometry` 加一個成員，不是新增 Element。
+- **名稱**：`element-factory.ts` 的 `ShapeKind`（rect / roundedRect / ellipse / triangle / star）是元素面板與底部工具列的**圖形選項**，由 `SHAPE_PRESETS` 對應到 geometry；`types.ts` 的 `GeometryKind` 才是文件裡存的種類。
+- **圖形內文字**（`ShapeLabel extends TextStyle`）：
+  - 排在外框往內縮 `LABEL_PADDING_PT`（4 pt）的文字框裡，依 `verticalAlign` 上 / 中 / 下對齊，超出照常顯示，隨圖形旋轉。
+  - 畫布上是圖形 Group 裡的 Konva `Text`。它的 `getClientRect` 被改成回報空的外框（`excludeFromBounds`），否則超出的文字會撐大 Transformer 的控制框，縮放換算就錯。
+  - 雙擊圖形編輯（`TextEditorOverlay` 的 `frame` 模式）。清空文字 = `label: null`。
+- **邊框**（`Stroke`）畫在外框線的**中心**（Konva / Typst / SVG 都是）；Transformer 設 `ignoreStroke`，控制框不含邊線。
+- **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
+- `stroke` / `label` / `geometry` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
 - 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、物件沒有 dragBoundFunc；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
-- 新增物件類型時要改的地方：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`selection-toolbar` 的 `TYPE_LABELS`、`layers-panel` 的 `TYPE_ICONS`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。**匯出端還要改** `format.rs` 的 `Element`、`export/mod.rs` 的 `build_data`（exhaustive match，漏改會編譯失敗）、以及 `template.typ` 的 `draw`（Typst 腳本，漏改只會**靜默不畫**，要自己記得）。
+- 新增物件類型（不是框的東西，例如之後的自由繪圖 `path`）時要改的地方：
+  - 前端：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
+  - 匯出端：`format.rs` 的 `Element`、`export/render.rs` 的 `build_render`（exhaustive match，漏改會編譯失敗），以及 `template.typ` 的 `draw` 與 EPUB `xhtml.rs` 的 `element_markup`。`template.typ` 是 Typst 腳本，漏改只會**靜默不畫**，要自己記得。
+- 新增 geometry 種類時要改的地方：`ShapeGeometry`，以及 `shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometrySection`、`validation.ts` 的 `isShapeGeometry`；Rust `format.rs` 的 `ShapeGeometry` / `validate_geometry`、`render.rs` 的 `shape_kind`（都有 exhaustive switch / match）。
+- **檔案格式升級**：`format.rs` 的 `upgrade_shapes_to_v3` 把 v1 / v2 的 rect / ellipse / polygon / star 改寫成 shape。`recovery::read` 也會呼叫它，因為備份檔沒有版本號，舊版 App 當機留下的備份可能還是舊格式。
 
 ### 狀態（`lib/editor/editor-reducer.ts`）
 
@@ -191,7 +211,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 顏色**只能從 Tailwind v4 色票選**：經典 22 個色系 × 11 階深淺 + 黑、白，沒有自訂顏色輸入。不在色票裡的既有顏色（舊專案、示範內容）照常顯示與匯出，只是不會標示位置。
 - `palette.ts` 的資料照抄 Tailwind 的 oklch，載入時用 `oklchToHex` 換成 hex；**模型只存 hex**，Rust 驗證與匯出不認識 oklch。超出 sRGB 的顏色以「保持明度與色相、降低彩度」處理，少數飽和色和 Tailwind 官方 hex 差幾個數值。
 - **顏色格式**：物件的 `fill` 是 `#rrggbb` 或 `#rrggbbaa`（完全不透明時一律寫 6 位，`withAlpha` 負責）；頁面背景只能是 `#rrggbb`。TS `isElementColor` / `isHexColor` 與 Rust `require_element_color` / `require_background_color` 規則必須一致。
-- `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（選取工具列）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
+- `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（屬性面板的填色、邊框、文字顏色）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
 
 ### 其他注意事項
 
@@ -217,7 +237,7 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
-- `設定 → 工具面板`：9 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
+- `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
 | 快捷鍵 | 指令 |
 |--------|------|
@@ -230,21 +250,25 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 
 參考 Krita 的 Docker。計畫與決定：`docs/imp-tool-bar.md`。
 
-- **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 選取工具列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
+- **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
+- **屬性面板**（`properties`，預設在右側最上方）取代了原本的上方選取工具列：
+  - 分頁依物件類型：圖形 = 樣式 / 文字 / 調整，文字 = 文字 / 調整，圖片 = 調整。名稱與分頁列固定在面板頂端（sticky）。
+  - 數字欄位用 `NumberField`：Enter / 失焦才寫入，一次編輯 = 一筆復原。
+  - 「限制寬高比」是面板的編輯選項，不存進文件。
 - **面板的單一資料來源**是 `lib/dock/panels.ts` 的 `PANEL_DEFINITIONS`；`PANELS`（內容）、`PANEL_ICONS`（icon）以 `satisfies Record<PanelId, …>` 檢查完整性，選單指令自動產生。**新增面板**：在 `PANEL_DEFINITIONS` 加一筆 → 補 `PANELS` 與 `PANEL_ICONS`（漏了會編譯失敗）。
 - `DockLayout`（左右各一個由上到下的面板清單 + 兩側寬度）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。
 - 同一側多個面板上下堆疊，展開的平分高度，收合只剩標題列。一個面板最多出現一次。
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
 - **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳；結束後吞掉下一次 click。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
-- **記憶**：`localStorage` key `magazine-editor.dockLayout.v1`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。`npm run dev` 與安裝版 origin 不同，各記一份。
+- **記憶**：`localStorage` key `magazine-editor.dockLayout.v2`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。只有 v1 時沿用它，並把屬性面板加到右側最上方一次（`loadDockLayout`）。`npm run dev` 與安裝版 origin 不同，各記一份。
 - Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockPanel` 用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正。
 - Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 2；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`，v1 檔案不需升級可直接開啟）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 3；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
-- **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
+- **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
 - 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的）。
 - 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用），但**還有備份檔的暫存資料夾會保留**。
@@ -266,9 +290,15 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - **Typst 以 crate 形式內嵌**（沒有外部執行檔、沒有 sidecar）：`typst` + `typst-layout` + `typst-pdf`，版本鎖 `=0.15.1`。升級時三個要一起改，而且 `World` trait 與 `RootedPath` / `VirtualRoot` 這些 API 每版都會變動。
 - **換行由編輯器決定，Typst 只負責定位**（所見即所得的關鍵）：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 畫的節點完全相同）取得 `lines` 與 `baseline`，`buildExportRequest()` 把每個 text 物件的結果放進 `ExportRequest.textLayouts`（以 element id 為 key）。模板逐行 `place`，不讓 Typst 再斷行。
   - 因此 `measureTextLayout` **必須在字型載入後**呼叫（編輯器已顯示即符合），否則量出來的行寬是錯的。
-  - `TEXT_LINE_HEIGHT = 1.2` 在 `geometry.ts` 和 `export/mod.rs` 各有一份，**改一邊要改兩邊**。
+  - **前端與 Rust 各有一份、改一邊要改兩邊的常數**（兩邊的測試用同一組數字守著）：
+    - `TEXT_LINE_HEIGHT = 1.2`：`geometry.ts` / `export/render.rs`。
+    - `LABEL_PADDING_PT = 4`：`shape-label.ts` / `render.rs`。
+    - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`。虛線 3w + 3w；點線 0 + 2w，圓頭。
+    - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
+    - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`：`validation.ts` / `format.rs`。
+  - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
-- **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`build_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
+- **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`export/pdf.rs` 的 `to_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
 - **`ExportWorld` 是沙箱**：只有 `main.typ`（內嵌模板）、`data.json` 與 `assets/images/*` 可讀，其他路徑一律 `AccessDenied`，圖片路徑還要過 `validate_asset_path`（和專案檔同一個檢查，擋 `../` 與絕對路徑）。
 - **字型**：畫面、PDF（之後還有 EPUB）**共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face`，Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一邊就要改另一邊**。細節見 `fonts/README.md`。
   - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。
@@ -278,7 +308,10 @@ tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture�
 - **兩步 command**：`export_pdf_choose_path`（開儲存對話框，路徑存進 `ExportState.pending`，只回傳檔名）→ `export_pdf`（取出路徑、排版、寫檔）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的 PDF（成功 toast 的「開啟」按鈕）。
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
-- 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。`polygon` 與 `star` 都由 `regular_points()` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
+- 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。render model 的每個元素都以外框左上角定位，旋轉也繞這一點。
+- 多邊形與星形由 `project/shape.rs` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
+- **邊框的虛線位置由路徑起點決定**：Typst 內建 `rect` / `ellipse` 的起點和 Konva 不同。所以有邊框的矩形與橢圓在 PDF 裡改畫成 `kind: "path"`（`pdf.rs` 的 `rect_path` / `ellipse_path`，起點與方向和 Konva、SVG 相同），沒有邊框的照舊。
+- EPUB 中有邊框的矩形 / 橢圓輸出成 inline SVG，因為 CSS border 畫在框內，位置會差半個線寬。
 - 半透明顏色：PDF 直接交給 Typst 的 `rgb("#rrggbbaa")`；**EPUB 輸出前轉換**（`epub/xhtml.rs` 的 `css_color` / `svg_fill`），CSS 用 `rgba()`、SVG 用 `fill-opacity`，不讓 8 位 hex 進入 EPUB（SVG 1.1 不允許，舊閱讀引擎也不支援）。
 - 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
 - **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；Geist + Noto Sans TC 沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。

@@ -7,6 +7,7 @@ pub mod assets;
 pub mod format;
 pub mod io;
 pub mod recovery;
+pub mod shape;
 
 use crate::error::{AppError, AppResult};
 use format::{ProjectContent, ProjectFile, FORMAT_ID, SCHEMA_VERSION};

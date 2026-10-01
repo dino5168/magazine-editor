@@ -2,7 +2,7 @@
  * 編輯器文件模型。
  *
  * 長度單位一律為 pt（1/72 inch），與 Typst 一致；座標原點為頁面左上角。
- * `x` / `y` 沿用 Konva 語意：text / rect / image 為左上角，ellipse / polygon / star 為中心點。
+ * 每種物件的 `x` / `y` 都是外框（旋轉前）的左上角，旋轉也繞這一點。
  */
 
 export type ElementId = string;
@@ -10,52 +10,67 @@ export type PageId = string;
 
 export interface BaseElement {
   readonly id: ElementId;
+  /** Top-left corner of the element's box, before rotation. */
   readonly x: number;
   readonly y: number;
-  /** Degrees, clockwise, around the element origin. */
+  /** Degrees, clockwise, around (x, y). */
   readonly rotation: number;
 }
 
-export interface TextElement extends BaseElement {
-  readonly type: "text";
-  readonly text: string;
-  /** Wrapping width. */
-  readonly width: number;
+/** Text style shared by text elements and the text inside shapes. */
+export interface TextStyle {
   readonly fontSize: number;
   readonly fontFamily: string;
   readonly fontStyle: "normal" | "bold";
   readonly align: "left" | "center" | "right";
+  /** Text color. */
   readonly fill: string;
 }
 
-export interface RectElement extends BaseElement {
-  readonly type: "rect";
+export interface TextElement extends BaseElement, TextStyle {
+  readonly type: "text";
+  readonly text: string;
+  /** Wrapping width. */
+  readonly width: number;
+}
+
+export interface Stroke {
+  /** `#rrggbb` or `#rrggbbaa`. */
+  readonly color: string;
+  /** Line width in pt. */
+  readonly width: number;
+  readonly dash: "solid" | "dashed" | "dotted";
+}
+
+/** Text inside a shape (draw.io's label). */
+export interface ShapeLabel extends TextStyle {
+  readonly text: string;
+  readonly verticalAlign: "top" | "middle" | "bottom";
+}
+
+/**
+ * What a shape draws inside its box. Adding a box shape = adding a member here.
+ * Polygons and stars are stretched so their vertices touch every edge of the box.
+ */
+export type ShapeGeometry =
+  | { readonly kind: "rect"; readonly cornerRadius: number }
+  | { readonly kind: "ellipse" }
+  | { readonly kind: "polygon"; readonly sides: number }
+  /** `innerRatio` = inner radius / outer radius. */
+  | { readonly kind: "star"; readonly numPoints: number; readonly innerRatio: number };
+
+export type GeometryKind = ShapeGeometry["kind"];
+
+export interface ShapeElement extends BaseElement {
+  readonly type: "shape";
   readonly width: number;
   readonly height: number;
-  readonly cornerRadius: number;
+  readonly geometry: ShapeGeometry;
   readonly fill: string;
-}
-
-export interface EllipseElement extends BaseElement {
-  readonly type: "ellipse";
-  readonly radiusX: number;
-  readonly radiusY: number;
-  readonly fill: string;
-}
-
-export interface PolygonElement extends BaseElement {
-  readonly type: "polygon";
-  readonly sides: number;
-  readonly radius: number;
-  readonly fill: string;
-}
-
-export interface StarElement extends BaseElement {
-  readonly type: "star";
-  readonly numPoints: number;
-  readonly innerRadius: number;
-  readonly outerRadius: number;
-  readonly fill: string;
+  /** null = no outline. */
+  readonly stroke: Stroke | null;
+  /** null = no text. */
+  readonly label: ShapeLabel | null;
 }
 
 export interface ImageElement extends BaseElement {
@@ -69,13 +84,7 @@ export interface ImageElement extends BaseElement {
   readonly height: number;
 }
 
-export type CanvasElement =
-  | TextElement
-  | RectElement
-  | EllipseElement
-  | PolygonElement
-  | StarElement
-  | ImageElement;
+export type CanvasElement = TextElement | ShapeElement | ImageElement;
 
 export type ElementType = CanvasElement["type"];
 

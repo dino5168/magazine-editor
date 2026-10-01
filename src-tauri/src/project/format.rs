@@ -1,14 +1,22 @@
 //! `project.magproj` file format. Mirrors `src/lib/editor/types.ts`; the shared fixture
 //! `tests/fixtures/sample.magproj` is round-tripped by both `cargo test` and vitest to catch drift.
 
+use super::shape;
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v2: element colors (`fill`) may carry alpha as `#rrggbbaa`. Page backgrounds stay `#rrggbb`.
-pub const SCHEMA_VERSION: u32 = 2;
+/// v3: `rect` / `ellipse` / `polygon` / `star` merged into `shape` (box + geometry, `x` / `y` at the
+/// top-left corner) with optional `stroke` and `label`. Older files are upgraded on read.
+pub const SCHEMA_VERSION: u32 = 3;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
+/// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
+pub const STROKE_WIDTH_MAX: f64 = 100.0;
+/// Most polygon sides / star points a file may contain (each is drawn as vertices); same as
+/// `MAX_VERTEX_COUNT` in `src/lib/editor/validation.ts`.
+pub const MAX_VERTEX_COUNT: u32 = 1000;
 pub const ASSET_DIR: &str = "assets/images";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -80,45 +88,73 @@ pub struct TextElement {
     pub fill: String,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum VerticalAlign {
+    Top,
+    Middle,
+    Bottom,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StrokeDash {
+    Solid,
+    Dashed,
+    Dotted,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Stroke {
+    pub color: String,
+    pub width: f64,
+    pub dash: StrokeDash,
+}
+
+/// Text inside a shape (draw.io's label).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct RectElement {
+pub struct ShapeLabel {
+    pub text: String,
+    pub font_size: f64,
+    pub font_family: String,
+    pub font_style: FontStyle,
+    pub align: Align,
+    pub vertical_align: VerticalAlign,
+    pub fill: String,
+}
+
+/// What is drawn inside a shape's box.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum ShapeGeometry {
+    Rect {
+        #[serde(rename = "cornerRadius")]
+        corner_radius: f64,
+    },
+    Ellipse,
+    /// Regular polygon stretched to fill the box.
+    Polygon { sides: u32 },
+    /// Star stretched to fill the box; `inner_ratio` = inner radius / outer radius.
+    Star {
+        #[serde(rename = "numPoints")]
+        num_points: u32,
+        #[serde(rename = "innerRatio")]
+        inner_ratio: f64,
+    },
+}
+
+/// Any box shape: `x` / `y` is the box's top-left corner, like every other element.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShapeElement {
     #[serde(flatten)]
     pub base: Base,
     pub width: f64,
     pub height: f64,
-    pub corner_radius: f64,
+    pub geometry: ShapeGeometry,
     pub fill: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct EllipseElement {
-    #[serde(flatten)]
-    pub base: Base,
-    pub radius_x: f64,
-    pub radius_y: f64,
-    pub fill: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PolygonElement {
-    #[serde(flatten)]
-    pub base: Base,
-    pub sides: u32,
-    pub radius: f64,
-    pub fill: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct StarElement {
-    #[serde(flatten)]
-    pub base: Base,
-    pub num_points: u32,
-    pub inner_radius: f64,
-    pub outer_radius: f64,
-    pub fill: String,
+    pub stroke: Option<Stroke>,
+    pub label: Option<ShapeLabel>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -135,10 +171,7 @@ pub struct ImageElement {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Element {
     Text(TextElement),
-    Rect(RectElement),
-    Ellipse(EllipseElement),
-    Polygon(PolygonElement),
-    Star(StarElement),
+    Shape(ShapeElement),
     Image(ImageElement),
 }
 
@@ -179,16 +212,98 @@ pub fn parse_project(json: &str) -> AppResult<ProjectFile> {
     if header.format.as_deref() != Some(FORMAT_ID) {
         return Err(AppError::invalid_project("not a magazine-editor project file"));
     }
-    match header.schema_version {
+    let project: ProjectFile = match header.schema_version {
         Some(version) if version > SCHEMA_VERSION => return Err(AppError::UnsupportedVersion(version)),
-        // v1 → v2 只放寬顏色格式，v1 的內容原樣就是合法的 v2，不需要升級步驟。
-        // 之後的版本若要改寫內容，在此把舊版 JSON（serde_json::Value）升級後再轉換
-        Some(1..=SCHEMA_VERSION) => {}
+        Some(SCHEMA_VERSION) => serde_json::from_str(json)?,
+        // v1 → v2 只放寬顏色格式（沒有升級步驟）；v1 / v2 → v3 把四種圖形改寫成 shape
+        Some(1..SCHEMA_VERSION) => {
+            let mut value: Value = serde_json::from_str(json)?;
+            if let Some(document) = value.get_mut("document") {
+                upgrade_shapes_to_v3(document);
+            }
+            serde_json::from_value(value)?
+        }
         _ => return Err(AppError::invalid_project("missing or unknown schemaVersion")),
-    }
-    let project: ProjectFile = serde_json::from_str(json)?;
+    };
     validate_content(&project.document, &project.assets)?;
     Ok(project)
+}
+
+/// Rotates `(dx, dy)` clockwise (y down) by `degrees`.
+fn rotate_offset(dx: f64, dy: f64, degrees: f64) -> (f64, f64) {
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    (dx * cos - dy * sin, dx * sin + dy * cos)
+}
+
+/// Converts one v2 `rect` / `ellipse` / `polygon` / `star` element to a v3 `shape`.
+///
+/// Returns `None` (leaving the element untouched, so deserialization reports it) when a field is
+/// missing or has the wrong type.
+fn upgrade_shape(element: &Map<String, Value>) -> Option<Map<String, Value>> {
+    let number = |key: &str| element.get(key).and_then(Value::as_f64);
+    let count = |key: &str| element.get(key).and_then(Value::as_u64).map(|n| u32::try_from(n).unwrap_or(u32::MAX));
+    let (x, y, rotation) = (number("x")?, number("y")?, number("rotation")?);
+
+    // 舊版 ellipse / polygon / star 以中心定位，算出中心到外框左上角的位移與外框尺寸
+    let (geometry, corner, width, height) = match element.get("type")?.as_str()? {
+        "rect" => {
+            let geometry = serde_json::json!({ "kind": "rect", "cornerRadius": number("cornerRadius")? });
+            return Some(shape_fields(element, x, y, number("width")?, number("height")?, geometry));
+        }
+        "ellipse" => {
+            let (rx, ry) = (number("radiusX")?, number("radiusY")?);
+            (serde_json::json!({ "kind": "ellipse" }), (-rx, -ry), 2.0 * rx, 2.0 * ry)
+        }
+        "polygon" => {
+            let (sides, radius) = (count("sides")?, number("radius")?);
+            let [min_x, min_y, max_x, max_y] = shape::point_bounds(&shape::polygon_unit_points(sides));
+            let geometry = serde_json::json!({ "kind": "polygon", "sides": sides });
+            (geometry, (min_x * radius, min_y * radius), (max_x - min_x) * radius, (max_y - min_y) * radius)
+        }
+        "star" => {
+            let (num_points, inner, outer) = (count("numPoints")?, number("innerRadius")?, number("outerRadius")?);
+            let ratio = if outer > 0.0 { inner / outer } else { 0.5 };
+            let [min_x, min_y, max_x, max_y] = shape::point_bounds(&shape::star_unit_points(num_points, ratio));
+            let geometry = serde_json::json!({ "kind": "star", "numPoints": num_points, "innerRatio": ratio });
+            (geometry, (min_x * outer, min_y * outer), (max_x - min_x) * outer, (max_y - min_y) * outer)
+        }
+        _ => return None,
+    };
+    // 旋轉是繞定位點；新的定位點（左上角）要放在舊圖形旋轉後左上角所在的位置，外觀才不變
+    let (dx, dy) = rotate_offset(corner.0, corner.1, rotation);
+    Some(shape_fields(element, x + dx, y + dy, width, height, geometry))
+}
+
+fn shape_fields(element: &Map<String, Value>, x: f64, y: f64, width: f64, height: f64, geometry: Value) -> Map<String, Value> {
+    let mut shape = Map::new();
+    for key in ["id", "rotation", "fill"] {
+        if let Some(value) = element.get(key) {
+            shape.insert(key.to_owned(), value.clone());
+        }
+    }
+    shape.insert("type".to_owned(), Value::from("shape"));
+    shape.insert("x".to_owned(), Value::from(x));
+    shape.insert("y".to_owned(), Value::from(y));
+    shape.insert("width".to_owned(), Value::from(width));
+    shape.insert("height".to_owned(), Value::from(height));
+    shape.insert("geometry".to_owned(), geometry);
+    shape.insert("stroke".to_owned(), Value::Null);
+    shape.insert("label".to_owned(), Value::Null);
+    shape
+}
+
+/// Rewrites every v1 / v2 shape element of a document JSON in place. Elements that are already v3
+/// are left alone, so it is safe on content of unknown age (recovery files carry no version).
+pub fn upgrade_shapes_to_v3(document: &mut Value) {
+    let Some(pages) = document.get_mut("pages").and_then(Value::as_array_mut) else { return };
+    for page in pages {
+        let Some(elements) = page.get_mut("elements").and_then(Value::as_array_mut) else { continue };
+        for element in elements {
+            if let Some(shape) = element.as_object().and_then(upgrade_shape) {
+                *element = Value::Object(shape);
+            }
+        }
+    }
 }
 
 /// Validates document content received from the frontend or read from disk.
@@ -216,19 +331,49 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
 }
 
 fn validate_element(element: &Element) -> AppResult<()> {
-    let (base, fill) = match element {
-        Element::Text(e) => (&e.base, &e.fill),
-        Element::Rect(e) => (&e.base, &e.fill),
-        Element::Ellipse(e) => (&e.base, &e.fill),
-        Element::Polygon(e) => (&e.base, &e.fill),
-        Element::Star(e) => (&e.base, &e.fill),
+    match element {
+        Element::Text(e) => {
+            require_id(&e.base.id)?;
+            require_element_color(&e.fill)
+        }
+        Element::Shape(e) => {
+            require_id(&e.base.id)?;
+            require_element_color(&e.fill)?;
+            validate_geometry(&e.geometry)?;
+            if let Some(stroke) = &e.stroke {
+                require_element_color(&stroke.color)?;
+                if !(stroke.width > 0.0 && stroke.width <= STROKE_WIDTH_MAX) {
+                    return Err(AppError::invalid_project(format!("invalid stroke width {}", stroke.width)));
+                }
+            }
+            if let Some(label) = &e.label {
+                require_element_color(&label.fill)?;
+            }
+            Ok(())
+        }
         Element::Image(e) => {
             require_id(&e.base.id)?;
-            return validate_asset_path(&e.src);
+            validate_asset_path(&e.src)
+        }
+    }
+}
+
+/// Rejects geometry that cannot be drawn sensibly. Same rules as `isShapeGeometry` in
+/// `src/lib/editor/validation.ts`. Fewer than 3 sides / 2 points are not rejected: drawing raises
+/// them (`project/shape.rs`), so older files keep opening.
+fn validate_geometry(geometry: &ShapeGeometry) -> AppResult<()> {
+    let valid = match *geometry {
+        ShapeGeometry::Rect { corner_radius } => corner_radius >= 0.0,
+        ShapeGeometry::Ellipse => true,
+        ShapeGeometry::Polygon { sides } => sides <= MAX_VERTEX_COUNT,
+        ShapeGeometry::Star { num_points, inner_ratio } => {
+            num_points <= MAX_VERTEX_COUNT && inner_ratio > 0.0 && inner_ratio <= 1.0
         }
     };
-    require_id(&base.id)?;
-    require_element_color(fill)
+    if !valid {
+        return Err(AppError::invalid_project(format!("invalid shape geometry {geometry:?}")));
+    }
+    Ok(())
 }
 
 fn require_id(id: &str) -> AppResult<()> {
@@ -297,6 +442,8 @@ mod tests {
     use super::*;
 
     const FIXTURE: &str = include_str!("../../../tests/fixtures/sample.magproj");
+    /// The same document saved by a v2 app (shapes as `rect` / `ellipse` / `polygon` / `star`).
+    const FIXTURE_V2: &str = include_str!("../../../tests/fixtures/sample-v2.magproj");
 
     // TS 寫出的整數（例如 0）在 Rust 會以 0.0 寫回；比較時把數字一律視為 f64
     fn normalize(value: Value) -> Value {
@@ -319,12 +466,71 @@ mod tests {
     #[test]
     fn fixture_contains_every_element_type() {
         let project = parse_project(FIXTURE).unwrap();
-        let kinds: std::collections::HashSet<_> = project.document.pages[0]
-            .elements
+        let elements = &project.document.pages[0].elements;
+        let kinds: std::collections::HashSet<_> = elements.iter().map(std::mem::discriminant).collect();
+        assert_eq!(kinds.len(), 3);
+        let geometries: std::collections::HashSet<_> = elements
             .iter()
-            .map(std::mem::discriminant)
+            .filter_map(|element| match element {
+                Element::Shape(shape) => Some(std::mem::discriminant(&shape.geometry)),
+                _ => None,
+            })
             .collect();
-        assert_eq!(kinds.len(), 6);
+        assert_eq!(geometries.len(), 4);
+        // stroke 與 label 兩種情況（有 / 沒有）都要出現
+        let shapes = || elements.iter().filter_map(|element| if let Element::Shape(s) = element { Some(s) } else { None });
+        assert!(shapes().any(|s| s.stroke.is_some()) && shapes().any(|s| s.stroke.is_none()));
+        assert!(shapes().any(|s| s.label.is_some()) && shapes().any(|s| s.label.is_none()));
+    }
+
+    #[test]
+    fn upgrades_v2_shapes_without_moving_them() {
+        let upgraded = parse_project(FIXTURE_V2).unwrap().document.pages.remove(0).elements;
+        let expected = parse_project(FIXTURE).unwrap().document.pages.remove(0).elements;
+        assert_eq!(upgraded.len(), expected.len());
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-6;
+        for (old, new) in upgraded.iter().zip(&expected) {
+            match (old, new) {
+                (Element::Shape(old), Element::Shape(new)) => {
+                    assert_eq!(old.base.id, new.base.id);
+                    assert!(
+                        close(old.base.x, new.base.x) && close(old.base.y, new.base.y),
+                        "{} moved: {:?} vs {:?}",
+                        old.base.id,
+                        (old.base.x, old.base.y),
+                        (new.base.x, new.base.y)
+                    );
+                    assert!(close(old.width, new.width) && close(old.height, new.height), "{} resized", old.base.id);
+                    assert_eq!(old.base.rotation, new.base.rotation);
+                    assert_eq!(old.fill, new.fill);
+                    // 舊版沒有邊框與圖形內文字
+                    assert_eq!((&old.stroke, &old.label), (&None, &None));
+                    match (&old.geometry, &new.geometry) {
+                        (
+                            ShapeGeometry::Star { num_points: a, inner_ratio: ra },
+                            ShapeGeometry::Star { num_points: b, inner_ratio: rb },
+                        ) => assert!(a == b && close(*ra, *rb)),
+                        (a, b) => assert_eq!(a, b),
+                    }
+                }
+                (old, new) => assert_eq!(old, new),
+            }
+        }
+    }
+
+    #[test]
+    fn upgrade_keeps_the_rotated_centre_in_place() {
+        // 中心 (100, 100)、旋轉 90° 的 40 × 20 橢圓：新的左上角是中心 + R(90°)·(−20, −10) = (110, 80)
+        let mut value: Value = serde_json::from_str(FIXTURE_V2).unwrap();
+        let ellipse = value.pointer_mut("/document/pages/0/elements/2").unwrap();
+        for (key, number) in [("x", 100.0), ("y", 100.0), ("rotation", 90.0), ("radiusX", 20.0), ("radiusY", 10.0)] {
+            ellipse[key] = Value::from(number);
+        }
+        let Element::Shape(shape) = &parse_project(&value.to_string()).unwrap().document.pages[0].elements[2] else {
+            panic!("expected a shape")
+        };
+        assert!((shape.base.x - 110.0).abs() < 1e-9 && (shape.base.y - 80.0).abs() < 1e-9, "{:?}", shape.base);
+        assert_eq!((shape.width, shape.height), (40.0, 20.0));
     }
 
     #[test]
@@ -358,7 +564,7 @@ mod tests {
 
     #[test]
     fn opens_v1_files() {
-        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        let mut value: Value = serde_json::from_str(FIXTURE_V2).unwrap();
         value["schemaVersion"] = Value::from(1);
         // v1 沒有透明度
         value["document"]["pages"][0]["elements"][1]["fill"] = Value::from("#e0e7ff");
@@ -381,6 +587,43 @@ mod tests {
         assert!(with(FILL, "#17171g80").is_err());
         assert!(with(BACKGROUND, "#ffffff").is_ok());
         assert!(with(BACKGROUND, "#ffffff80").is_err());
+        // 邊框與圖形內文字的顏色也要檢查（fixture 的橢圓兩者都有）
+        assert!(with("/document/pages/0/elements/2/stroke/color", "#be123c80").is_ok());
+        assert!(with("/document/pages/0/elements/2/stroke/color", "red").is_err());
+        assert!(with("/document/pages/0/elements/2/label/fill", "red").is_err());
+    }
+
+    #[test]
+    fn geometry_must_be_drawable() {
+        let with = |index: usize, geometry: Value| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value["document"]["pages"][0]["elements"][index]["geometry"] = geometry;
+            parse_project(&value.to_string())
+        };
+        use serde_json::json;
+        assert!(with(1, json!({ "kind": "rect", "cornerRadius": 0 })).is_ok());
+        assert!(with(1, json!({ "kind": "rect", "cornerRadius": -1 })).is_err());
+        assert!(with(3, json!({ "kind": "polygon", "sides": 8 })).is_ok());
+        // 繪製時會補到 3 邊，舊檔不因此打不開
+        assert!(with(3, json!({ "kind": "polygon", "sides": 2 })).is_ok());
+        assert!(with(3, json!({ "kind": "polygon", "sides": MAX_VERTEX_COUNT + 1 })).is_err());
+        assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 1.0 })).is_ok());
+        assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 0.0 })).is_err());
+        assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 1.5 })).is_err());
+    }
+
+    #[test]
+    fn stroke_width_must_be_positive_and_bounded() {
+        let with_width = |width: f64| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value["document"]["pages"][0]["elements"][2]["stroke"]["width"] = Value::from(width);
+            parse_project(&value.to_string())
+        };
+        assert!(with_width(0.25).is_ok());
+        assert!(with_width(STROKE_WIDTH_MAX).is_ok());
+        assert!(with_width(0.0).is_err());
+        assert!(with_width(-1.0).is_err());
+        assert!(with_width(STROKE_WIDTH_MAX + 1.0).is_err());
     }
 
     #[test]

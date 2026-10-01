@@ -75,7 +75,12 @@ pub fn write(dir: &Path, project: &OpenProject, content: ProjectContent) -> AppR
 /// # Errors
 /// `AppError::Io` when missing, `AppError::InvalidProject` when damaged.
 pub fn read(dir: &Path, id: &str) -> AppResult<RecoveryFile> {
-    let file: RecoveryFile = serde_json::from_slice(&fs::read(file_path(dir, id)?)?)?;
+    let mut value: serde_json::Value = serde_json::from_slice(&fs::read(file_path(dir, id)?)?)?;
+    // 備份檔沒有版本號：舊版 App 當機留下的備份可能還是 v2 的圖形格式
+    if let Some(document) = value.pointer_mut("/content/document") {
+        format::upgrade_shapes_to_v3(document);
+    }
+    let file: RecoveryFile = serde_json::from_value(value)?;
     if file.format != FORMAT_ID || file.project_id != id {
         return Err(AppError::invalid_project("not a recovery file"));
     }
@@ -190,6 +195,25 @@ mod tests {
         fs::write(dir.join("0000-damaged.json"), "{").unwrap();
         let ids: Vec<_> = list(&dir).unwrap().into_iter().map(|e| e.id).collect();
         assert_eq!(ids, vec![newer.id, older.id]);
+    }
+
+    #[test]
+    fn backups_left_by_a_v2_app_are_upgraded() {
+        const FIXTURE_V2: &str = include_str!("../../../tests/fixtures/sample-v2.magproj");
+        let base = tempfile::tempdir().unwrap();
+        let dir = base.path().join(RECOVERY_DIR);
+        let project = create_untitled(&base.path().join("u")).unwrap();
+        write(&dir, &project, content()).unwrap();
+        // 換成舊版 App 會寫出的內容：圖形是 rect / ellipse / polygon / star
+        let path = dir.join(format!("{}.json", project.id));
+        let mut backup: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        let old: serde_json::Value = serde_json::from_str(FIXTURE_V2).unwrap();
+        backup["content"]["document"] = old["document"].clone();
+        fs::write(&path, backup.to_string()).unwrap();
+
+        assert_eq!(list(&dir).unwrap().len(), 1, "an old backup must not be skipped as damaged");
+        let elements = read(&dir, &project.id).unwrap().content.document.pages.remove(0).elements;
+        assert_eq!(elements.iter().filter(|e| matches!(e, format::Element::Shape(_))).count(), 4);
     }
 
     #[test]

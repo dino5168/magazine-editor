@@ -5,7 +5,7 @@
 
 use super::{EpubImages, LANGUAGE};
 use crate::export::fonts::bundled_family;
-use crate::export::render::{RenderElement, RenderKind, RenderPage, RenderText};
+use crate::export::render::{RenderElement, RenderKind, RenderPage, RenderStroke, RenderText, STROKE_MITER_LIMIT};
 use crate::project::format::Align;
 use std::fmt::Write;
 
@@ -76,6 +76,38 @@ fn svg_fill(color: &str) -> String {
     }
 }
 
+/// SVG stroke attributes (with a leading space), or nothing for `None`.
+///
+/// 邊線畫在外框線的中心，和 Konva、Typst 相同；所以有邊框的矩形與橢圓不用 CSS border（畫在框內）。
+fn svg_stroke(stroke: &Option<RenderStroke>) -> String {
+    let Some(stroke) = stroke else { return String::new() };
+    let mut attrs = match split_alpha(&stroke.color) {
+        (rgb, None) => format!(r#" stroke="{rgb}""#),
+        (rgb, Some(alpha)) => format!(r#" stroke="{rgb}" stroke-opacity="{alpha}""#),
+    };
+    let _ = write!(attrs, r#" stroke-width="{}" stroke-miterlimit="{}""#, num(stroke.width), num(STROKE_MITER_LIMIT));
+    if let Some(dash) = stroke.dash {
+        let _ = write!(attrs, r#" stroke-dasharray="{} {}""#, num(dash.dash), num(dash.gap));
+        if dash.round_cap {
+            attrs.push_str(r#" stroke-linecap="round""#);
+        }
+    }
+    attrs
+}
+
+/// An inline SVG covering the element's box; `shape` is drawn in box coordinates.
+fn svg_box(out: &mut String, element: &RenderElement, width: f64, height: f64, shape: &str) {
+    let mut style =
+        format!("left:{}px;top:{}px;width:{}px;height:{}px", num(element.x), num(element.y), num(width), num(height));
+    rotate(&mut style, element.rotation);
+    let _ = writeln!(
+        out,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" class="el" style="{style}" width="{w}" height="{h}" viewBox="0 0 {w} {h}">{shape}</svg>"#,
+        w = num(width),
+        h = num(height),
+    );
+}
+
 /// CSS `font-family` value: only bundled families (their canonical names, never the user's
 /// string) followed by a generic fallback.
 fn font_family(fonts: &[String]) -> String {
@@ -132,6 +164,28 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
     let (x, y) = (element.x, element.y);
     match &element.kind {
         RenderKind::Text(t) => text(out, element, t),
+        RenderKind::Rect(r) if r.stroke.is_some() => {
+            // 和 Konva 一樣，圓角不超過短邊的一半（SVG 也會自動限制，這裡寫明以免依賴閱讀器）
+            let radius = num(r.corner_radius.min(r.width.min(r.height) / 2.0));
+            let shape = format!(
+                r#"<rect x="0" y="0" width="{}" height="{}" rx="{radius}" ry="{radius}" {}{}/>"#,
+                num(r.width),
+                num(r.height),
+                svg_fill(&r.fill),
+                svg_stroke(&r.stroke),
+            );
+            svg_box(out, element, r.width, r.height, &shape);
+        }
+        RenderKind::Ellipse(e) if e.stroke.is_some() => {
+            let shape = format!(
+                r#"<ellipse cx="{rx}" cy="{ry}" rx="{rx}" ry="{ry}" {}{}/>"#,
+                svg_fill(&e.fill),
+                svg_stroke(&e.stroke),
+                rx = num(e.width / 2.0),
+                ry = num(e.height / 2.0),
+            );
+            svg_box(out, element, e.width, e.height, &shape);
+        }
         RenderKind::Rect(r) => {
             let mut style = format!(
                 "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;background:{}",
@@ -146,33 +200,23 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
             let _ = writeln!(out, r#"<div class="el" style="{style}"></div>"#);
         }
         RenderKind::Ellipse(e) => {
-            // Konva 的橢圓以中心為原點；外框從中心往左上退 rx、ry，旋轉也繞中心（.c）
             let mut style = format!(
                 "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:50%;background:{}",
-                num(x - e.rx),
-                num(y - e.ry),
-                num(e.rx * 2.0),
-                num(e.ry * 2.0),
+                num(x),
+                num(y),
+                num(e.width),
+                num(e.height),
                 css_color(&e.fill),
             );
             rotate(&mut style, element.rotation);
-            let _ = writeln!(out, r#"<div class="el c" style="{style}"></div>"#);
+            let _ = writeln!(out, r#"<div class="el" style="{style}"></div>"#);
         }
         RenderKind::Polygon(p) => {
-            let (w, h) = (p.rx * 2.0, p.ry * 2.0);
-            let mut style = format!("left:{}px;top:{}px;width:{}px;height:{}px", num(x - p.rx), num(y - p.ry), num(w), num(h));
-            rotate(&mut style, element.rotation);
-            // 頂點以中心為原點，viewBox 從左上角開始，所以平移 (rx, ry)
-            let points: Vec<String> =
-                p.points.iter().map(|[px, py]| format!("{},{}", num(px + p.rx), num(py + p.ry))).collect();
-            let _ = writeln!(
-                out,
-                r#"<svg xmlns="http://www.w3.org/2000/svg" class="el c" style="{style}" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><polygon points="{points}" {fill}/></svg>"#,
-                w = num(w),
-                h = num(h),
-                points = points.join(" "),
-                fill = svg_fill(&p.fill),
-            );
+            // 頂點以外框左上角為原點，和 viewBox 相同
+            let points: Vec<String> = p.points.iter().map(|[px, py]| format!("{},{}", num(*px), num(*py))).collect();
+            let shape =
+                format!(r#"<polygon points="{}" {}{}/>"#, points.join(" "), svg_fill(&p.fill), svg_stroke(&p.stroke));
+            svg_box(out, element, p.width, p.height, &shape);
         }
         RenderKind::Image(i) => {
             // 圖片在 EPUB 裡用產生的安全檔名（見 EpubImages），不會帶入專案裡的原始檔名
@@ -187,7 +231,12 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
 
 /// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
 pub fn has_svg(page: &RenderPage) -> bool {
-    page.elements.iter().any(|element| matches!(element.kind, RenderKind::Polygon(_)))
+    page.elements.iter().any(|element| match &element.kind {
+        RenderKind::Polygon(_) => true,
+        RenderKind::Rect(r) => r.stroke.is_some(),
+        RenderKind::Ellipse(e) => e.stroke.is_some(),
+        RenderKind::Text(_) | RenderKind::Image(_) => false,
+    })
 }
 
 /// Builds the XHTML of one page.
@@ -263,5 +312,22 @@ mod tests {
         assert_eq!(css_color("#ff0000ff"), "#ff0000");
         assert_eq!(svg_fill("#86efac"), r##"fill="#86efac""##);
         assert_eq!(svg_fill("#86efac80"), r##"fill="#86efac" fill-opacity="0.502""##);
+    }
+
+    #[test]
+    fn stroke_attributes_follow_the_render_model() {
+        use crate::export::render::DashPattern;
+        assert_eq!(svg_stroke(&None), "");
+        let solid = RenderStroke { color: "#be123c80".into(), width: 2.0, dash: None };
+        assert_eq!(
+            svg_stroke(&Some(solid)),
+            r##" stroke="#be123c" stroke-opacity="0.502" stroke-width="2" stroke-miterlimit="10""##
+        );
+        let dotted = RenderStroke {
+            color: "#000000".into(),
+            width: 2.0,
+            dash: Some(DashPattern { dash: 0.0, gap: 4.0, round_cap: true }),
+        };
+        assert!(svg_stroke(&Some(dotted)).ends_with(r#" stroke-dasharray="0 4" stroke-linecap="round""#));
     }
 }

@@ -11,6 +11,7 @@ import {
   type EditorAction,
   type EditorState,
 } from "../editor-reducer";
+import { createLabel } from "../shape-label";
 import type { EditorDocument } from "../types";
 
 function blankState(): EditorState {
@@ -65,6 +66,58 @@ describe("editorReducer / elements", () => {
     expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fill: "#fb2c368" } })).toBe(state);
   });
 
+  it("sets and removes a stroke, ignoring invalid ones", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const stroke = { color: "#00000080", width: 2, dash: "dotted" } as const;
+
+    const stroked = run(state, { type: "element/update", id: element.id, patch: { stroke } });
+    expect(selectSelectedElement(stroked)).toMatchObject({ stroke });
+    expect(selectSelectedElement(run(stroked, { type: "element/update", id: element.id, patch: { stroke: null } }))).toMatchObject({
+      stroke: null,
+    });
+    for (const bad of [
+      { ...stroke, width: 0 },
+      { ...stroke, width: 101 },
+      { ...stroke, color: "red" },
+      { ...stroke, dash: "wavy" },
+    ]) {
+      expect(editorReducer(state, { type: "element/update", id: element.id, patch: { stroke: bad as never } })).toBe(state);
+    }
+  });
+
+  it("sets a label and ignores invalid ones", () => {
+    const element = createShapeElement("ellipse", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const label = createLabel("圖形內文字");
+
+    expect(selectSelectedElement(run(state, { type: "element/update", id: element.id, patch: { label } }))).toMatchObject({ label });
+    expect(
+      editorReducer(state, { type: "element/update", id: element.id, patch: { label: { ...label, verticalAlign: "x" as never } } }),
+    ).toBe(state);
+  });
+
+  it("changes the geometry and ignores invalid geometry", () => {
+    const element = createShapeElement("star", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const geometry = { kind: "star", numPoints: 8, innerRatio: 0.6 } as const;
+
+    expect(selectSelectedElement(run(state, { type: "element/update", id: element.id, patch: { geometry } }))).toMatchObject({
+      geometry,
+    });
+    expect(
+      editorReducer(state, { type: "element/update", id: element.id, patch: { geometry: { ...geometry, innerRatio: 2 } } }),
+    ).toBe(state);
+  });
+
+  it("ignores numbers that are not finite", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { x: Number.NaN } })).toBe(state);
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { rotation: Infinity } })).toBe(state);
+  });
+
   it("rejects page backgrounds with alpha", () => {
     const state = blankState();
     expect(editorReducer(state, { type: "page/setBackground", id: state.activePageId, color: "#ffffff80" })).toBe(state);
@@ -91,6 +144,17 @@ describe("editorReducer / elements", () => {
     expect(selectActivePage(state).elements.map((e) => e.id)).toEqual([b.id, a.id]);
     expect(editorReducer(state, { type: "element/reorder", id: a.id, direction: "up" })).toBe(state);
   });
+
+  it("moves elements to the front or back in one step", () => {
+    const [a, b, c] = ["rect", "ellipse", "star"].map((kind) => createShapeElement(kind as "rect", { x: 0, y: 0 }));
+    const state = run(blankState(), ...[a, b, c].map((element) => ({ type: "element/add", element }) as const));
+    const ids = (s: EditorState) => selectActivePage(s).elements.map((e) => e.id);
+
+    expect(ids(run(state, { type: "element/reorder", id: a.id, direction: "top" }))).toEqual([b.id, c.id, a.id]);
+    expect(ids(run(state, { type: "element/reorder", id: c.id, direction: "bottom" }))).toEqual([c.id, a.id, b.id]);
+    expect(editorReducer(state, { type: "element/reorder", id: c.id, direction: "top" })).toBe(state);
+    expect(editorReducer(state, { type: "element/reorder", id: a.id, direction: "bottom" })).toBe(state);
+  });
 });
 
 describe("editorReducer / duplicate", () => {
@@ -104,7 +168,8 @@ describe("editorReducer / duplicate", () => {
     const ids = selectActivePage(state).elements.map((element) => element.id);
     expect(ids).toEqual([below.id, original.id, "copy", above.id]);
     expect(selectSelectedElement(state)).toMatchObject({
-      type: "ellipse",
+      type: "shape",
+      geometry: { kind: "ellipse" },
       x: original.x + DUPLICATE_OFFSET_PT,
       y: original.y + DUPLICATE_OFFSET_PT,
     });

@@ -1,6 +1,15 @@
 import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
-import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, isElementColor, isHexColor, validateName } from "./validation";
+import {
+  DOCUMENT_NAME_MAX_LENGTH,
+  PAGE_NAME_MAX_LENGTH,
+  isElementColor,
+  isHexColor,
+  isShapeGeometry,
+  isShapeLabel,
+  isStroke,
+  validateName,
+} from "./validation";
 import { clampZoom } from "./viewport";
 import type {
   AssetInfo,
@@ -49,7 +58,8 @@ export type EditorAction =
   | { readonly type: "element/add"; readonly element: CanvasElement }
   | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch }
   | { readonly type: "element/delete"; readonly id: ElementId }
-  | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" }
+  /** up / down: one layer; top / bottom: to the front / back of the page. */
+  | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" | "top" | "bottom" }
   /** `newId` comes from the caller so the reducer stays pure (React may run it twice). */
   | { readonly type: "element/duplicate"; readonly id: ElementId; readonly newId: ElementId }
   | { readonly type: "page/add" }
@@ -206,6 +216,19 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       if ("fill" in action.patch && (typeof action.patch.fill !== "string" || !isElementColor(action.patch.fill))) {
         return page;
       }
+      if ("stroke" in action.patch && action.patch.stroke !== null && !isStroke(action.patch.stroke)) {
+        return page;
+      }
+      if ("label" in action.patch && action.patch.label !== null && !isShapeLabel(action.patch.label)) {
+        return page;
+      }
+      if ("geometry" in action.patch && !isShapeGeometry(action.patch.geometry)) {
+        return page;
+      }
+      // 屬性面板的數字欄位直接來自使用者輸入：NaN / Infinity 一律不接受
+      if (Object.values(action.patch).some((value) => typeof value === "number" && !Number.isFinite(value))) {
+        return page;
+      }
       const changed = Object.entries(action.patch).some(
         ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
       );
@@ -228,10 +251,11 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/reorder": (state, action) =>
     updateActivePage(state, (page) => {
       const index = page.elements.findIndex((element) => element.id === action.id);
-      const target = action.direction === "up" ? index + 1 : index - 1;
-      if (index === -1 || target < 0 || target >= page.elements.length) return page;
-      const elements = [...page.elements];
-      [elements[index], elements[target]] = [elements[target], elements[index]];
+      const last = page.elements.length - 1;
+      const target = { up: index + 1, down: index - 1, top: last, bottom: 0 }[action.direction];
+      if (index === -1 || target === index || target < 0 || target > last) return page;
+      const elements = page.elements.filter((element) => element.id !== action.id);
+      elements.splice(target, 0, page.elements[index]);
       return { ...page, elements };
     }),
 

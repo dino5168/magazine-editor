@@ -9,7 +9,6 @@ use std::fmt::Write;
 const RESET: &str = r#"html, body { margin: 0; padding: 0; overflow: hidden; }
 .page { position: relative; overflow: hidden; }
 .el { position: absolute; margin: 0; padding: 0; transform-origin: 0 0; }
-.c { transform-origin: 50% 50%; }
 .t { font-style: normal; font-kerning: normal; text-spacing-trim: space-all; hyphens: none; -epub-hyphens: none; }
 .t > div { white-space: pre; }
 img.el { display: block; }

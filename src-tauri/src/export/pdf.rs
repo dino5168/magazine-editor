@@ -3,7 +3,7 @@
 //! Typst only positions and renders. Line breaks already come from the editor (see
 //! [`super::render`]), so the PDF wraps exactly like the canvas.
 
-use super::render::{build_render, RenderDocument, RenderElement, RenderKind};
+use super::render::{build_render, RenderDocument, RenderElement, RenderKind, RenderStroke, STROKE_MITER_LIMIT};
 use super::world::ExportWorld;
 use super::{ExportOutput, ExportRequest};
 use crate::error::{AppError, AppResult};
@@ -23,9 +23,80 @@ fn align_name(align: Align) -> &'static str {
     }
 }
 
+/// `null` or the stroke dictionary `template.typ` turns into a Typst stroke.
+fn stroke_data(stroke: &Option<RenderStroke>) -> Value {
+    match stroke {
+        None => Value::Null,
+        Some(s) => json!({
+            "color": s.color,
+            "width": s.width,
+            "dash": s.dash.map(|d| [d.dash, d.gap]),
+            "cap": if s.dash.is_some_and(|d| d.round_cap) { "round" } else { "butt" },
+            "miterLimit": STROKE_MITER_LIMIT,
+        }),
+    }
+}
+
+/// Cubic Bézier factor for a quarter circle.
+const KAPPA: f64 = 0.552_284_749_830_793_4;
+
+/// One path segment for `template.typ`: `["m", x, y]`, `["l", x, y]` or `["c", x1, y1, x2, y2, x, y]`.
+fn seg(kind: &str, coords: &[f64]) -> Value {
+    let mut items = vec![Value::from(kind)];
+    items.extend(coords.iter().map(|&c| Value::from(c)));
+    Value::Array(items)
+}
+
+/// Rounded-rectangle outline in Konva's order: from (r, 0) to the right, clockwise.
+///
+/// 虛線的位置由路徑起點與方向決定；Typst 內建的 rect 起點不同，有邊框時改畫這條路徑，
+/// 虛線才會和畫布、EPUB（SVG rect 的起點也是 (r, 0)）落在同樣的位置。
+fn rect_path(w: f64, h: f64, radius: f64) -> Vec<Value> {
+    let r = radius.clamp(0.0, w.min(h) / 2.0);
+    let k = r * KAPPA;
+    let mut path = vec![seg("m", &[r, 0.0]), seg("l", &[w - r, 0.0])];
+    if r > 0.0 {
+        path.push(seg("c", &[w - r + k, 0.0, w, r - k, w, r]));
+    }
+    path.push(seg("l", &[w, h - r]));
+    if r > 0.0 {
+        path.push(seg("c", &[w, h - r + k, w - r + k, h, w - r, h]));
+    }
+    path.push(seg("l", &[r, h]));
+    if r > 0.0 {
+        path.push(seg("c", &[r - k, h, 0.0, h - r + k, 0.0, h - r]));
+    }
+    path.push(seg("l", &[0.0, r]));
+    if r > 0.0 {
+        path.push(seg("c", &[0.0, r - k, r - k, 0.0, r, 0.0]));
+    }
+    path
+}
+
+/// Ellipse outline in Konva's order: from the rightmost point, clockwise (y down).
+fn ellipse_path(w: f64, h: f64) -> Vec<Value> {
+    let (rx, ry) = (w / 2.0, h / 2.0);
+    let (kx, ky) = (rx * KAPPA, ry * KAPPA);
+    vec![
+        seg("m", &[w, ry]),
+        seg("c", &[w, ry + ky, rx + kx, h, rx, h]),
+        seg("c", &[rx - kx, h, 0.0, ry + ky, 0.0, ry]),
+        seg("c", &[0.0, ry - ky, rx - kx, 0.0, rx, 0.0]),
+        seg("c", &[rx + kx, 0.0, w, ry - ky, w, ry]),
+    ]
+}
+
 fn element_data(element: &RenderElement) -> Value {
     let (x, y, rotation) = (element.x, element.y, element.rotation);
     match &element.kind {
+        RenderKind::Rect(e) if e.stroke.is_some() => json!({
+            "kind": "path", "x": x, "y": y, "rotation": rotation, "width": e.width, "height": e.height,
+            "fill": e.fill, "stroke": stroke_data(&e.stroke), "segments": rect_path(e.width, e.height, e.corner_radius),
+        }),
+        RenderKind::Ellipse(e) if e.stroke.is_some() => json!({
+            "kind": "path", "x": x, "y": y, "rotation": rotation, "width": e.width, "height": e.height,
+            "fill": e.fill, "stroke": stroke_data(&e.stroke), "segments": ellipse_path(e.width, e.height),
+        }),
         RenderKind::Text(e) => json!({
             "kind": "text", "x": x, "y": y, "rotation": rotation,
             "width": e.width, "size": e.size, "fonts": e.fonts,
@@ -35,14 +106,16 @@ fn element_data(element: &RenderElement) -> Value {
         RenderKind::Rect(e) => json!({
             "kind": "rect", "x": x, "y": y, "rotation": rotation,
             "width": e.width, "height": e.height, "radius": e.corner_radius, "fill": e.fill,
+            "stroke": stroke_data(&e.stroke),
         }),
         RenderKind::Ellipse(e) => json!({
             "kind": "ellipse", "x": x, "y": y, "rotation": rotation,
-            "rx": e.rx, "ry": e.ry, "fill": e.fill,
+            "width": e.width, "height": e.height, "fill": e.fill, "stroke": stroke_data(&e.stroke),
         }),
         RenderKind::Polygon(e) => json!({
             "kind": "polygon", "x": x, "y": y, "rotation": rotation,
-            "rx": e.rx, "ry": e.ry, "fill": e.fill, "points": e.points,
+            "width": e.width, "height": e.height, "fill": e.fill, "points": e.points,
+            "stroke": stroke_data(&e.stroke),
         }),
         RenderKind::Image(e) => json!({
             "kind": "image", "x": x, "y": y, "rotation": rotation,
@@ -91,7 +164,7 @@ mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, fonts, project_with_image, request};
     use crate::export::TextLayout;
-    use crate::project::format::Element;
+    use crate::project::format::{Element, ShapeGeometry, Stroke, StrokeDash};
 
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();
@@ -171,26 +244,115 @@ mod tests {
         let mut document = fixture_document();
         let page = &mut document.pages[0];
         page.background = "#ffffff".into();
-        page.elements.retain(|e| matches!(e, Element::Rect(_)));
-        let Element::Rect(rect) = &mut page.elements[0] else { unreachable!() };
+        page.elements.retain(|e| matches!(e, Element::Shape(s) if matches!(s.geometry, ShapeGeometry::Rect { .. })));
+        let Element::Shape(rect) = &mut page.elements[0] else { unreachable!() };
         (rect.base.x, rect.base.y, rect.base.rotation) = (100.0, 100.0, 0.0);
-        (rect.width, rect.height, rect.corner_radius) = (200.0, 100.0, 0.0);
+        (rect.width, rect.height) = (200.0, 100.0);
+        rect.geometry = ShapeGeometry::Rect { corner_radius: 0.0 };
         rect.fill = fill.into();
         document
     }
 
+    /// RGB pixels of a page rendered at 1 px/pt.
+    struct Raster {
+        width: u32,
+        pixels: Vec<[u8; 3]>,
+    }
+
+    /// The page rendered at 1 px/pt.
+    fn render_page(document: crate::project::format::Document) -> Raster {
+        let root = project_with_image();
+        let compiled = compiled_pages(root.path(), &request(document));
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() });
+        let pixels = pixmap
+            .pixels()
+            .iter()
+            .map(|pixel| {
+                // 白底不透明，premultiplied 的值就是實際顏色
+                assert_eq!(pixel.alpha(), 255);
+                [pixel.red(), pixel.green(), pixel.blue()]
+            })
+            .collect();
+        Raster { width: pixmap.width(), pixels }
+    }
+
+    fn rgb_at(raster: &Raster, x: u32, y: u32) -> [u8; 3] {
+        raster.pixels[(y * raster.width + x) as usize]
+    }
+
     /// RGB of the pixel at the rectangle's centre, rendered at 1 px/pt.
     fn centre_pixel(fill: &str) -> [u8; 3] {
+        rgb_at(&render_page(single_rect(fill)), 200, 150)
+    }
+
+    /// The single rectangle with a black stroke of the given width and style.
+    fn stroked_rect(width: f64, dash: StrokeDash) -> crate::project::format::Document {
+        let mut document = single_rect("#ffffff");
+        let Element::Shape(rect) = &mut document.pages[0].elements[0] else { unreachable!() };
+        rect.stroke = Some(Stroke { color: "#000000".into(), width, dash });
+        document
+    }
+
+    const BLACK: [u8; 3] = [0, 0, 0];
+    const WHITE: [u8; 3] = [255, 255, 255];
+
+    #[test]
+    fn stroke_is_centred_on_the_edge_like_the_canvas() {
+        // 矩形左緣在 x = 100，10 pt 的邊線從 95 到 105
+        let pixmap = render_page(stroked_rect(10.0, StrokeDash::Solid));
+        assert_eq!(rgb_at(&pixmap, 96, 150), BLACK, "outside half of the stroke");
+        assert_eq!(rgb_at(&pixmap, 103, 150), BLACK, "inside half of the stroke");
+        assert_eq!(rgb_at(&pixmap, 93, 150), WHITE);
+        assert_eq!(rgb_at(&pixmap, 108, 150), WHITE, "fill");
+    }
+
+    /// Last point of a path segment.
+    fn end(segment: &Value) -> (f64, f64) {
+        let items = segment.as_array().unwrap();
+        let n = items.len();
+        (items[n - 2].as_f64().unwrap(), items[n - 1].as_f64().unwrap())
+    }
+
+    #[test]
+    fn outline_paths_start_where_konva_starts_and_close() {
+        let rect = rect_path(100.0, 40.0, 30.0);
+        // 圓角超過短邊一半時限制為 20（和 Konva、SVG 一樣）
+        assert_eq!(rect[0], json!(["m", 20.0, 0.0]));
+        assert_eq!(rect[1], json!(["l", 80.0, 0.0]), "goes right first");
+        assert_eq!(end(rect.last().unwrap()), (20.0, 0.0));
+        assert_eq!(rect_path(10.0, 10.0, 0.0).len(), 5, "no curves without a corner radius");
+
+        let ellipse = ellipse_path(100.0, 40.0);
+        assert_eq!(ellipse[0], json!(["m", 100.0, 20.0]), "rightmost point");
+        assert_eq!(end(&ellipse[1]), (50.0, 40.0), "then down (clockwise)");
+        assert_eq!(end(ellipse.last().unwrap()), (100.0, 20.0));
+    }
+
+    #[test]
+    fn stroked_ellipses_compile() {
+        let mut document = fixture_document();
+        for element in &mut document.pages[0].elements {
+            if let Element::Shape(shape) = element {
+                shape.stroke = Some(Stroke { color: "#000000".into(), width: 3.0, dash: StrokeDash::Dotted });
+            }
+        }
         let root = project_with_image();
-        let compiled = compiled_pages(root.path(), &request(single_rect(fill)));
-        let pixmap = typst_render::render(
-            &compiled.pages()[0],
-            &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() },
-        );
-        let pixel = pixmap.pixel(200, 150).unwrap();
-        // 白底不透明，premultiplied 的值就是實際顏色
-        assert_eq!(pixel.alpha(), 255);
-        [pixel.red(), pixel.green(), pixel.blue()]
+        assert!(render_pdf(root.path(), &request(document), fonts()).is_ok());
+    }
+
+    #[test]
+    fn dashed_and_dotted_strokes_have_gaps() {
+        for dash in [StrokeDash::Dashed, StrokeDash::Dotted] {
+            let pixmap = render_page(stroked_rect(4.0, dash));
+            // 沿著上緣（y = 100）取樣
+            let row: Vec<[u8; 3]> = (110..290).map(|x| rgb_at(&pixmap, x, 100)).collect();
+            let dark = row.iter().filter(|p| p[0] < 64).count();
+            let light = row.iter().filter(|p| p[0] > 192).count();
+            assert!(dark > 20 && light > 20, "{dash:?}: dark {dark}, light {light}");
+        }
+        let solid = render_page(stroked_rect(4.0, StrokeDash::Solid));
+        assert!((110..290).all(|x| rgb_at(&solid, x, 100) == BLACK));
     }
 
     #[test]

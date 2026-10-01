@@ -12,6 +12,7 @@ import {
   getElementBounds,
   pageCenter,
 } from "@/lib/editor/geometry";
+import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
 import {
   clampZoom,
@@ -40,18 +41,14 @@ const ALL_ANCHORS: readonly AnchorName[] = [
   "top-left", "top-center", "top-right", "middle-right",
   "bottom-right", "bottom-center", "bottom-left", "middle-left",
 ];
-const CORNER_ANCHORS: readonly AnchorName[] = ["top-left", "top-right", "bottom-right", "bottom-left"];
 
 const TRANSFORMER_OPTIONS: {
   readonly [K in ElementType]: { readonly anchors: readonly AnchorName[]; readonly keepRatio: boolean };
 } = {
   text: { anchors: ["middle-left", "middle-right"], keepRatio: false },
-  rect: { anchors: ALL_ANCHORS, keepRatio: false },
+  // 所有圖形都以外框定義，可以自由拉伸（多邊形與星形也是）
+  shape: { anchors: ALL_ANCHORS, keepRatio: false },
   image: { anchors: ALL_ANCHORS, keepRatio: false },
-  ellipse: { anchors: ALL_ANCHORS, keepRatio: false },
-  // 正多邊形與星形只有單一 radius，只能等比例縮放
-  polygon: { anchors: CORNER_ANCHORS, keepRatio: true },
-  star: { anchors: CORNER_ANCHORS, keepRatio: true },
 };
 
 function useFontsReady(): boolean {
@@ -231,10 +228,14 @@ export function EditorCanvas() {
 
   const editingElement = page.elements.find((element) => element.id === editingId);
   const editingText = editingElement?.type === "text" ? editingElement : null;
+  // 雙擊圖形：編輯圖形內文字（還沒有文字時用預設樣式的空白文字開始）
+  const editingShape = editingElement?.type === "shape" ? editingElement : null;
+  const editingLabel = editingShape ? (editingShape.label ?? createLabel("")) : null;
 
   useEffect(() => {
-    if (editingId !== null && !editingText) setEditingId(null);
-  }, [editingId, editingText]);
+    // 物件被刪除或復原掉時結束編輯
+    if (editingId !== null && !editingText && !editingShape) setEditingId(null);
+  }, [editingId, editingText, editingShape]);
 
   const handleSelect = useCallback((id: ElementId) => dispatch({ type: "selection/set", id }), [dispatch]);
   const handleChange = useCallback(
@@ -256,7 +257,7 @@ export function EditorCanvas() {
     }
   };
 
-  const transformerOptions = selected ? TRANSFORMER_OPTIONS[selected.type] : TRANSFORMER_OPTIONS.rect;
+  const transformerOptions = selected ? TRANSFORMER_OPTIONS[selected.type] : TRANSFORMER_OPTIONS.shape;
   const origin = { x: layout.offsetX - scroll.x, y: layout.offsetY - scroll.y };
 
   return (
@@ -309,7 +310,7 @@ export function EditorCanvas() {
                   <ElementNode
                     key={element.id}
                     element={element}
-                    hidden={element.id === editingId}
+                    textHidden={element.id === editingId}
                     onSelect={handleSelect}
                     onChange={handleChange}
                     onEditText={handleEditText}
@@ -322,6 +323,8 @@ export function EditorCanvas() {
                   enabledAnchors={[...transformerOptions.anchors]}
                   keepRatio={transformerOptions.keepRatio}
                   flipEnabled={false}
+                  // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
+                  ignoreStroke
                   rotateAnchorOffset={24}
                   anchorSize={8}
                   anchorCornerRadius={2}
@@ -368,6 +371,24 @@ export function EditorCanvas() {
                   dispatch({ type: "element/delete", id: editingText.id });
                 } else {
                   dispatch({ type: "element/update", id: editingText.id, patch: { text } });
+                }
+              }}
+              onCancel={() => setEditingId(null)}
+            />
+          )}
+          {editingShape && editingLabel && (
+            <TextEditorOverlay
+              key={editingShape.id}
+              element={labelAsText(editingShape, editingLabel, labelFrame(editingShape))}
+              frame={{ height: labelFrame(editingShape).height, verticalAlign: editingLabel.verticalAlign }}
+              zoom={zoom}
+              origin={origin}
+              onCommit={(text) => {
+                setEditingId(null);
+                // 清空文字 = 移除圖形內文字；原本就沒有文字時不產生歷史
+                const label = text.trim().length === 0 ? null : { ...editingLabel, text };
+                if (label !== null || editingShape.label !== null) {
+                  dispatch({ type: "element/update", id: editingShape.id, patch: { label } });
                 }
               }}
               onCancel={() => setEditingId(null)}

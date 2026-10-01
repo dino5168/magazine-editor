@@ -45,10 +45,13 @@ export const DOCK_WIDTH_STEP = 16;
  */
 export const CANVAS_MIN_WIDTH = 480;
 
-// 對照原本的畫面：左側開範本；圖層常用，預設放右側
+// 左側開範本；屬性與圖層常用，預設放右側（屬性在上）
 export const DEFAULT_DOCK_LAYOUT: DockLayout = {
   left: [{ id: "templates", collapsed: false }],
-  right: [{ id: "layers", collapsed: false }],
+  right: [
+    { id: "properties", collapsed: false },
+    { id: "layers", collapsed: false },
+  ],
   width: { left: DOCK_WIDTH.default, right: DOCK_WIDTH.default },
 };
 
