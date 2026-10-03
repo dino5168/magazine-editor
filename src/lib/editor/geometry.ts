@@ -1,4 +1,4 @@
-import type { Bounds, CanvasElement, Page, Point, TextElement } from "./types";
+import type { Bounds, CanvasElement, ElementId, Page, Point, TextElement } from "./types";
 
 export const TEXT_LINE_HEIGHT = 1.2;
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
@@ -121,6 +121,35 @@ export function expandBounds(bounds: Bounds, margin: number): Bounds {
  */
 export function boundsIntersect(a: Bounds, b: Bounds): boolean {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+}
+
+/**
+ * Checks whether `inner` lies entirely inside `outer` (touching edges count as inside).
+ *
+ * Args:
+ *   outer: Containing bounds.
+ *   inner: Bounds to test.
+ *
+ * Returns:
+ *   True when inner is fully contained.
+ */
+export function boundsContain(outer: Bounds, inner: Bounds): boolean {
+  return inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minY >= outer.minY && inner.maxY <= outer.maxY;
+}
+
+/**
+ * Finds the elements a marquee selects: those whose (rotated) bounding box is fully inside the box.
+ *
+ * Args:
+ *   elements: Elements of the page.
+ *   box: Marquee in pt.
+ *
+ * Returns:
+ *   Ids of the fully enclosed elements, in layer order.
+ */
+export function elementsInBox(elements: readonly CanvasElement[], box: Bounds): ElementId[] {
+  // 只碰到一角不算（PowerPoint、draw.io 的規則）
+  return elements.filter((element) => boundsContain(box, getElementBounds(element))).map((element) => element.id);
 }
 
 /**

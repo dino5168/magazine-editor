@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { selectSelectedElement } from "./editor-reducer";
+import { selectSelectedElements } from "./editor-reducer";
 import { useEditorDispatch, useEditorState } from "./editor-context";
-import { createId } from "./element-factory";
 import { findPageShortcut, stepPageIndex } from "./page-navigation";
+import { deleteSelection, duplicateSelection, nudgeSelection } from "./selection-actions";
 import { findToolShortcut } from "./tools";
 
 const NUDGE_PT = 1;
@@ -30,7 +30,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function useEditorShortcuts(): void {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
-  const selected = selectSelectedElement(state);
+  // 刪除、複製、方向鍵、Esc 都作用在整組選取
+  const selected = selectSelectedElements(state);
   const { tool, activePageId } = state;
   const { pages } = state.history.present;
 
@@ -53,7 +54,7 @@ export function useEditorShortcuts(): void {
       // Ctrl+D 以實體按鍵比對；WebView2 預設是「加入我的最愛」，一律攔下
       if (mod && !event.shiftKey && !event.altKey && event.code === "KeyD") {
         event.preventDefault();
-        if (selected) dispatch({ type: "element/duplicate", id: selected.id, newId: createId() });
+        if (selected.length > 0) dispatch(duplicateSelection(selected));
         return;
       }
       // PageUp / PageDown / Ctrl+Home / Ctrl+End 換頁；按住不放可以連續翻頁
@@ -71,22 +72,22 @@ export function useEditorShortcuts(): void {
         dispatch({ type: "tool/set", tool: toolShortcut.tool, shape: toolShortcut.shape });
         return;
       }
-      if (event.key === "Escape" && !selected && tool !== "select") {
+      if (event.key === "Escape" && selected.length === 0 && tool !== "select") {
         dispatch({ type: "tool/set", tool: "select" });
         return;
       }
-      if (!selected) return;
+      if (selected.length === 0) return;
 
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        dispatch({ type: "element/delete", id: selected.id });
+        dispatch(deleteSelection(selected));
       } else if (event.key === "Escape") {
         dispatch({ type: "selection/set", id: null });
       } else if (event.key in ARROW_DELTAS && !mod) {
         event.preventDefault();
         const [dx, dy] = ARROW_DELTAS[event.key];
         const step = event.shiftKey ? NUDGE_LARGE_PT : NUDGE_PT;
-        dispatch({ type: "element/update", id: selected.id, patch: { x: selected.x + dx * step, y: selected.y + dy * step } });
+        dispatch(nudgeSelection(selected, dx * step, dy * step));
       }
     };
     window.addEventListener("keydown", onKeyDown);

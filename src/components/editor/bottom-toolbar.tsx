@@ -24,8 +24,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
-import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
-import { createId, type ShapeKind } from "@/lib/editor/element-factory";
+import { selectActivePage, selectSelectedElement, selectSelectedElements } from "@/lib/editor/editor-reducer";
+import { type ShapeKind } from "@/lib/editor/element-factory";
+import { deleteSelection, duplicateSelection } from "@/lib/editor/selection-actions";
 import { getToolKeyLabel, getToolLabel, type ToolId } from "@/lib/editor/tools";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./icon-button";
@@ -78,6 +79,8 @@ function MenuIconButton({
 function ActionBar() {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
+  // 刪除、複製作用在整組選取；圖層順序（⋮）只在選取一個物件時可用
+  const selection = selectSelectedElements(state);
   const selected = selectSelectedElement(state);
   const elements = selectActivePage(state).elements;
   const index = selected ? elements.findIndex((element) => element.id === selected.id) : -1;
@@ -100,15 +103,15 @@ function ActionBar() {
       </IconButton>
       <IconButton
         label="刪除 (Delete)"
-        disabled={!selected}
-        onClick={() => selected && dispatch({ type: "element/delete", id: selected.id })}
+        disabled={selection.length === 0}
+        onClick={() => dispatch(deleteSelection(selection))}
       >
         <Trash />
       </IconButton>
       <IconButton
         label="複製 (Ctrl+D)"
-        disabled={!selected}
-        onClick={() => selected && dispatch({ type: "element/duplicate", id: selected.id, newId: createId() })}
+        disabled={selection.length === 0}
+        onClick={() => dispatch(duplicateSelection(selection))}
       >
         <Copy />
       </IconButton>

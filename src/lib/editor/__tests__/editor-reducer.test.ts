@@ -8,6 +8,7 @@ import {
   selectActivePage,
   selectIsDirty,
   selectSelectedElement,
+  selectSelectedElements,
   type EditorAction,
   type EditorState,
 } from "../editor-reducer";
@@ -32,7 +33,7 @@ describe("editorReducer / elements", () => {
     const state = run(blankState(), { type: "element/add", element });
 
     expect(selectActivePage(state).elements).toEqual([element]);
-    expect(state.selectedId).toBe(element.id);
+    expect(state.selectedIds).toEqual([element.id]);
     expect(state.history.past).toHaveLength(1);
   });
 
@@ -125,10 +126,10 @@ describe("editorReducer / elements", () => {
 
   it("deletes the selected element and clears selection", () => {
     const element = createTextElement("body", { x: 10, y: 10 });
-    const state = run(blankState(), { type: "element/add", element }, { type: "element/delete", id: element.id });
+    const state = run(blankState(), { type: "element/add", element }, { type: "element/delete", ids: [element.id] });
 
     expect(selectActivePage(state).elements).toHaveLength(0);
-    expect(state.selectedId).toBeNull();
+    expect(state.selectedIds).toEqual([]);
   });
 
   it("reorders elements and ignores moves past the edges", () => {
@@ -163,7 +164,7 @@ describe("editorReducer / duplicate", () => {
     const original = createShapeElement("ellipse", { x: 200, y: 200 });
     const above = createShapeElement("star", { x: 300, y: 300 });
     const start = run(blankState(), ...[below, original, above].map((element) => ({ type: "element/add", element }) as const));
-    const state = run(start, { type: "element/duplicate", id: original.id, newId: "copy" });
+    const state = run(start, { type: "element/duplicate", copies: [{ id: original.id, newId: "copy" }] });
 
     const ids = selectActivePage(state).elements.map((element) => element.id);
     expect(ids).toEqual([below.id, original.id, "copy", above.id]);
@@ -174,15 +175,116 @@ describe("editorReducer / duplicate", () => {
       y: original.y + DUPLICATE_OFFSET_PT,
     });
     expect(state.history.past).toHaveLength(start.history.past.length + 1);
-    expect(run(state, { type: "history/undo" }).selectedId).toBeNull();
+    expect(run(state, { type: "history/undo" }).selectedIds).toEqual([]);
   });
 
   it("ignores unknown elements and ids that already exist", () => {
     const element = createShapeElement("rect", { x: 100, y: 100 });
     const state = run(blankState(), { type: "element/add", element });
 
-    expect(run(state, { type: "element/duplicate", id: "missing", newId: "copy" })).toBe(state);
-    expect(run(state, { type: "element/duplicate", id: element.id, newId: element.id })).toBe(state);
+    expect(run(state, { type: "element/duplicate", copies: [{ id: "missing", newId: "copy" }] })).toBe(state);
+    expect(run(state, { type: "element/duplicate", copies: [{ id: element.id, newId: element.id }] })).toBe(state);
+  });
+});
+
+describe("editorReducer / multi-selection", () => {
+  function threeShapes() {
+    const [a, b, c] = ["rect", "ellipse", "star"].map((kind) => createShapeElement(kind as "rect", { x: 100, y: 100 }));
+    const state = run(blankState(), ...[a, b, c].map((element) => ({ type: "element/add", element }) as const));
+    return { a, b, c, state };
+  }
+
+  it("toggles elements in and out of the selection without touching history", () => {
+    const { a, b, c, state } = threeShapes();
+    const both = run(state, { type: "selection/set", id: a.id }, { type: "selection/toggle", id: c.id });
+
+    expect(both.selectedIds).toEqual([a.id, c.id]);
+    expect(selectSelectedElements(both).map((e) => e.id)).toEqual([a.id, c.id]);
+    // 選了不只一個時，單一物件的 selector 回傳 null（屬性面板只編輯單一物件）
+    expect(selectSelectedElement(both)).toBeNull();
+    expect(run(both, { type: "selection/toggle", id: a.id }).selectedIds).toEqual([c.id]);
+    expect(both.history.past).toHaveLength(state.history.past.length);
+    expect(run(both, { type: "selection/toggle", id: "missing" })).toBe(both);
+    expect(run(both, { type: "selection/set", id: b.id }).selectedIds).toEqual([b.id]);
+  });
+
+  it("selects a marquee result, replacing or adding to the selection", () => {
+    const { a, b, c, state } = threeShapes();
+    const selected = run(state, { type: "selection/set", id: a.id });
+
+    expect(run(selected, { type: "selection/setMany", ids: [b.id, c.id], additive: false }).selectedIds).toEqual([b.id, c.id]);
+    expect(run(selected, { type: "selection/setMany", ids: [a.id, c.id], additive: true }).selectedIds).toEqual([a.id, c.id]);
+    expect(run(selected, { type: "selection/setMany", ids: ["missing"], additive: false }).selectedIds).toEqual([]);
+    expect(run(selected, { type: "selection/setMany", ids: [], additive: true })).toBe(selected);
+    expect(run(selected, { type: "selection/setMany", ids: [a.id], additive: false })).toBe(selected);
+  });
+
+  it("returns the same state when selecting the only selected element again", () => {
+    const { a, state } = threeShapes();
+    const selected = run(state, { type: "selection/set", id: a.id });
+    expect(run(selected, { type: "selection/set", id: a.id })).toBe(selected);
+  });
+
+  it("updates several elements in one undo step", () => {
+    const { a, b, c, state } = threeShapes();
+    const moved = run(state, {
+      type: "element/updateMany",
+      patches: [
+        { id: a.id, patch: { x: 10, y: 20 } },
+        { id: c.id, patch: { x: 30, y: 40 } },
+      ],
+    });
+
+    expect(selectActivePage(moved).elements.map(({ x, y }) => [x, y])).toEqual([[10, 20], [b.x, b.y], [30, 40]]);
+    expect(moved.history.past).toHaveLength(state.history.past.length + 1);
+    expect(selectActivePage(run(moved, { type: "history/undo" })).elements).toEqual([a, b, c]);
+  });
+
+  it("rejects the whole batch when one patch is invalid, and ignores no-op batches", () => {
+    const { a, c, state } = threeShapes();
+    const invalid = { type: "element/updateMany", patches: [{ id: a.id, patch: { x: 1 } }, { id: c.id, patch: { x: Number.NaN } }] } as const;
+
+    expect(editorReducer(state, invalid)).toBe(state);
+    expect(editorReducer(state, { type: "element/updateMany", patches: [{ id: a.id, patch: { x: a.x } }] })).toBe(state);
+    expect(editorReducer(state, { type: "element/updateMany", patches: [{ id: "missing", patch: { x: 1 } }] })).toBe(state);
+  });
+
+  it("deletes several elements in one undo step and drops them from the selection", () => {
+    const { a, b, c, state } = threeShapes();
+    const selected = run(state, { type: "selection/set", id: a.id }, { type: "selection/toggle", id: b.id });
+    const deleted = run(selected, { type: "element/delete", ids: [b.id, c.id] });
+
+    expect(selectActivePage(deleted).elements.map((e) => e.id)).toEqual([a.id]);
+    expect(deleted.selectedIds).toEqual([a.id]);
+    expect(deleted.history.past).toHaveLength(selected.history.past.length + 1);
+    expect(run(selected, { type: "element/delete", ids: ["missing"] })).toBe(selected);
+  });
+
+  it("duplicates several elements above their originals and selects the copies", () => {
+    const { a, b, c, state } = threeShapes();
+    const copied = run(state, {
+      type: "element/duplicate",
+      copies: [
+        { id: c.id, newId: "copy-c" },
+        { id: a.id, newId: "copy-a" },
+      ],
+    });
+
+    expect(selectActivePage(copied).elements.map((e) => e.id)).toEqual([a.id, "copy-a", b.id, c.id, "copy-c"]);
+    expect(copied.selectedIds).toEqual(["copy-c", "copy-a"]);
+    expect(copied.history.past).toHaveLength(state.history.past.length + 1);
+    // 新 id 重複或原物件不存在時整批不做
+    expect(run(state, { type: "element/duplicate", copies: [{ id: a.id, newId: "x" }, { id: b.id, newId: "x" }] })).toBe(state);
+    expect(run(state, { type: "element/duplicate", copies: [{ id: a.id, newId: "x" }, { id: "missing", newId: "y" }] })).toBe(state);
+  });
+
+  it("drops elements that no longer exist from the selection after undo", () => {
+    const { a, state } = threeShapes();
+    const d = createShapeElement("rect", { x: 0, y: 0 });
+    const selected = run(state, { type: "selection/set", id: a.id }, { type: "element/add", element: d }, { type: "selection/toggle", id: a.id });
+
+    expect(selected.selectedIds).toEqual([d.id, a.id]);
+    expect(run(selected, { type: "history/undo" }).selectedIds).toEqual([a.id]);
   });
 });
 
@@ -195,12 +297,12 @@ describe("editorReducer / tools", () => {
     const element = createShapeElement("rect", { x: 100, y: 100 });
     const selected = run(blankState(), { type: "element/add", element });
 
-    expect(run(selected, { type: "tool/set", tool: "hand" }).selectedId).toBe(element.id);
-    expect(run(selected, { type: "tool/set", tool: "text" })).toMatchObject({ tool: "text", selectedId: null });
+    expect(run(selected, { type: "tool/set", tool: "hand" }).selectedIds).toEqual([element.id]);
+    expect(run(selected, { type: "tool/set", tool: "text" })).toMatchObject({ tool: "text", selectedIds: [] });
     expect(run(selected, { type: "tool/set", tool: "shape", shape: "star" })).toMatchObject({
       tool: "shape",
       shapeKind: "star",
-      selectedId: null,
+      selectedIds: [],
     });
   });
 
@@ -300,9 +402,9 @@ describe("editorReducer / pages", () => {
     const element = createShapeElement("star", { x: 0, y: 0 });
     const state = run(blankState(), { type: "element/add", element }, { type: "page/add" });
 
-    expect(state.selectedId).toBeNull();
+    expect(state.selectedIds).toEqual([]);
     const back = run(state, { type: "page/select", id: state.history.present.pages[0].id });
-    expect(back.selectedId).toBeNull();
+    expect(back.selectedIds).toEqual([]);
   });
 });
 
@@ -314,7 +416,7 @@ describe("editorReducer / history", () => {
     const redone = editorReducer(undone, { type: "history/redo" });
 
     expect(selectActivePage(undone).elements).toHaveLength(0);
-    expect(undone.selectedId).toBeNull();
+    expect(undone.selectedIds).toEqual([]);
     expect(selectActivePage(redone).elements).toHaveLength(1);
   });
 
@@ -397,7 +499,7 @@ describe("editorReducer / project", () => {
     // reducer 必須保存同一個參考，ProjectProvider 才能用 === 判斷是否修改
     expect(loaded.history.present).toBe(document);
     expect(loaded.activePageId).toBe(document.pages[0].id);
-    expect(loaded.selectedId).toBeNull();
+    expect(loaded.selectedIds).toEqual([]);
     expect(loaded.assets).toEqual([asset]);
     expect(loaded.view.zoom).toBe(2);
     expect(loaded.view.fitRequest).toBe(edited.view.fitRequest + 1);

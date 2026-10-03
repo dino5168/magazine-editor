@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-01 型別重構，檔案格式 <code>schemaVersion</code> 3；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-01
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-01 型別重構，檔案格式 <code>schemaVersion</code> 3；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-03（<code>EditorState.selectedIds</code>，<code>types.ts</code> 沒有變動）
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -222,7 +222,7 @@
     <text class="nm" x="142.5" y="65">EditorState</text>
       <text class="field" x="25" y="94">history<tspan class="ft">: EditorHistory</tspan></text>
       <text class="field" x="25" y="114">activePageId<tspan class="ft">: PageId</tspan></text>
-      <text class="field" x="25" y="134">selectedId<tspan class="ft">: ElementId | null</tspan></text>
+      <text class="field" x="25" y="134">selectedIds<tspan class="ft">: readonly ElementId[]</tspan></text>
       <text class="field" x="25" y="154">view<tspan class="ft">: EditorView</tspan></text>
       <text class="field" x="25" y="174">assets<tspan class="ft">: readonly AssetInfo[]</tspan></text>
       <text class="field" x="25" y="194">savedDocument<tspan class="ft">: EditorDocument | null</tspan></text>
@@ -698,7 +698,7 @@
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>history</code></td><td><code>EditorHistory</code></td><td><code>{ past, present, future }</code>：<code>present</code> 是目前的 <code>EditorDocument</code>，<code>past</code> / <code>future</code> 是復原 / 重做用的舊版本和新版本（最多 100 筆）</td></tr>
     <tr><td><code>activePageId</code></td><td><code>PageId</code></td><td>目前顯示的頁面</td></tr>
-    <tr><td><code>selectedId</code></td><td><code>ElementId | null</code></td><td>目前選取的物件，沒有選取時是 <code>null</code></td></tr>
+    <tr><td><code>selectedIds</code></td><td><code>readonly ElementId[]</code></td><td>目前選取的物件（依選取順序），沒有選取時是空陣列。可以多選（Ctrl + 點擊、框選）；<code>selectSelectedElement</code> 只在剛好選一個時回傳物件，屬性面板靠它判斷要不要顯示欄位</td></tr>
     <tr><td><code>view</code></td><td><code>EditorView</code></td><td>縮放倍率等檢視設定</td></tr>
     <tr><td><code>assets</code></td><td><code>readonly AssetInfo[]</code></td><td>上傳面板列出的專案圖片。會跟著專案存檔，但<strong>不進入</strong>復原歷史</td></tr>
     <tr><td><code>savedDocument</code></td><td><code>EditorDocument | null</code></td><td>上一次存檔（或開啟）時的文件。和 <code>history.present</code> 比較參考就知道有沒有未存檔的變更；從備份開啟時是 <code>null</code>，代表需要重新存檔</td></tr>

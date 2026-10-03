@@ -42,7 +42,8 @@ export interface EditorState {
   readonly history: EditorHistory;
   // 以下為 UI 狀態，不進入 undo 歷史
   readonly activePageId: PageId;
-  readonly selectedId: ElementId | null;
+  /** Selected elements on the active page, in the order they were selected; empty when nothing is selected. */
+  readonly selectedIds: readonly ElementId[];
   readonly view: EditorView;
   /** Active canvas tool (bottom toolbar). */
   readonly tool: ToolId;
@@ -54,14 +55,26 @@ export interface EditorState {
   readonly savedDocument: EditorDocument | null;
 }
 
+export interface ElementPatchEntry {
+  readonly id: ElementId;
+  readonly patch: ElementPatch;
+}
+
+export interface ElementCopy {
+  readonly id: ElementId;
+  /** Comes from the caller so the reducer stays pure (React may run it twice). */
+  readonly newId: ElementId;
+}
+
 export type EditorAction =
   | { readonly type: "element/add"; readonly element: CanvasElement }
   | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch }
-  | { readonly type: "element/delete"; readonly id: ElementId }
+  /** Several elements in one undo step (moving a multi-selection); any invalid patch rejects them all. */
+  | { readonly type: "element/updateMany"; readonly patches: readonly ElementPatchEntry[] }
+  | { readonly type: "element/delete"; readonly ids: readonly ElementId[] }
   /** up / down: one layer; top / bottom: to the front / back of the page. */
   | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" | "top" | "bottom" }
-  /** `newId` comes from the caller so the reducer stays pure (React may run it twice). */
-  | { readonly type: "element/duplicate"; readonly id: ElementId; readonly newId: ElementId }
+  | { readonly type: "element/duplicate"; readonly copies: readonly ElementCopy[] }
   /** `after` 省略時加在最後（「+」按鈕），有值時插在該頁後面（「插入頁面」） */
   | { readonly type: "page/add"; readonly after?: PageId }
   | { readonly type: "page/select"; readonly id: PageId }
@@ -71,7 +84,12 @@ export type EditorAction =
   | { readonly type: "document/rename"; readonly name: string }
   | { readonly type: "history/undo" }
   | { readonly type: "history/redo" }
+  /** Selects only this element; null clears the selection. */
   | { readonly type: "selection/set"; readonly id: ElementId | null }
+  /** Ctrl+click: adds the element to the selection, or removes it when already selected. */
+  | { readonly type: "selection/toggle"; readonly id: ElementId }
+  /** Marquee: selects these elements; `additive` (Ctrl held) adds them to the current selection. */
+  | { readonly type: "selection/setMany"; readonly ids: readonly ElementId[]; readonly additive: boolean }
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
   | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeKind }
@@ -105,7 +123,7 @@ export function createInitialState(
   return {
     history: { past: [], present: document, future: [] },
     activePageId: document.pages[0].id,
-    selectedId: null,
+    selectedIds: NO_SELECTION,
     view: { zoom: 1, fitRequest: 1 },
     tool: DEFAULT_TOOL,
     shapeKind: DEFAULT_SHAPE_KIND,
@@ -143,18 +161,35 @@ export function selectActivePage(state: EditorState): Page {
 }
 
 /**
- * Returns the selected element on the active page.
+ * Returns the selected elements on the active page.
  *
  * Args:
  *   state: Editor state.
  *
  * Returns:
- *   Selected element, or null.
+ *   Selected elements in layer order (bottom first).
+ */
+export function selectSelectedElements(state: EditorState): CanvasElement[] {
+  if (state.selectedIds.length === 0) return [];
+  const ids = new Set(state.selectedIds);
+  return selectActivePage(state).elements.filter((element) => ids.has(element.id));
+}
+
+/**
+ * Returns the selected element when exactly one is selected.
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   The only selected element, or null when none or several are selected.
  */
 export function selectSelectedElement(state: EditorState): CanvasElement | null {
-  if (state.selectedId === null) return null;
-  return selectActivePage(state).elements.find((element) => element.id === state.selectedId) ?? null;
+  if (state.selectedIds.length !== 1) return null;
+  return selectActivePage(state).elements.find((element) => element.id === state.selectedIds[0]) ?? null;
 }
+
+const NO_SELECTION: readonly ElementId[] = [];
 
 function commit(state: EditorState, next: EditorDocument): EditorState {
   if (next === state.history.present) return state;
@@ -186,13 +221,52 @@ function updatePage(state: EditorState, id: PageId, update: (page: Page) => Page
 function reconcileSelection(state: EditorState): EditorState {
   const { pages } = state.history.present;
   const activePage = pages.find((page) => page.id === state.activePageId) ?? pages[0];
-  const selectionValid =
-    state.selectedId !== null && activePage.elements.some((element) => element.id === state.selectedId);
+  const existing = new Set(activePage.elements.map((element) => element.id));
+  const valid = state.selectedIds.filter((id) => existing.has(id));
   return {
     ...state,
     activePageId: activePage.id,
-    selectedId: selectionValid ? state.selectedId : null,
+    selectedIds: valid.length === state.selectedIds.length ? state.selectedIds : valid,
   };
+}
+
+// 屬性面板的數字欄位、拖曳結果都直接來自使用者操作：不合法的 patch 一律不接受
+function isValidPatch(patch: ElementPatch): boolean {
+  if ("fill" in patch && (typeof patch.fill !== "string" || !isElementColor(patch.fill))) return false;
+  if ("stroke" in patch && patch.stroke !== null && !isStroke(patch.stroke)) return false;
+  if ("label" in patch && patch.label !== null && !isShapeLabel(patch.label)) return false;
+  if ("geometry" in patch && !isShapeGeometry(patch.geometry)) return false;
+  // NaN / Infinity 一律不接受
+  return !Object.values(patch).some((value) => typeof value === "number" && !Number.isFinite(value));
+}
+
+/** Applies a validated patch; returns the same element when nothing changes. */
+function applyPatch(current: CanvasElement, patch: ElementPatch): CanvasElement {
+  const changed = Object.entries(patch).some(
+    ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
+  );
+  // patch 型別為各物件屬性的聯集；呼叫端依物件的 type 傳入對應欄位
+  return changed ? ({ ...current, ...patch } as CanvasElement) : current;
+}
+
+function updateElements(state: EditorState, entries: readonly ElementPatchEntry[]): EditorState {
+  if (!entries.every((entry) => isValidPatch(entry.patch))) return state;
+  const patches = new Map(entries.map((entry) => [entry.id, entry.patch]));
+  // 全部的變更放在同一次 commit：多選移動 = 一筆復原
+  return updateActivePage(state, (page) => {
+    let changed = false;
+    const elements = page.elements.map((element) => {
+      const patch = patches.get(element.id);
+      const next = patch ? applyPatch(element, patch) : element;
+      if (next !== element) changed = true;
+      return next;
+    });
+    return changed ? { ...page, elements } : page;
+  });
+}
+
+function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 function nextPageName(pages: readonly Page[]): string {
@@ -206,47 +280,20 @@ function nextPageName(pages: readonly Page[]): string {
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/add": (state, action) => {
     const next = updateActivePage(state, (page) => ({ ...page, elements: [...page.elements, action.element] }));
-    return { ...next, selectedId: action.element.id };
+    return { ...next, selectedIds: [action.element.id] };
   },
 
-  "element/update": (state, action) =>
-    updateActivePage(state, (page) => {
-      const index = page.elements.findIndex((element) => element.id === action.id);
-      if (index === -1) return page;
-      const current = page.elements[index];
-      if ("fill" in action.patch && (typeof action.patch.fill !== "string" || !isElementColor(action.patch.fill))) {
-        return page;
-      }
-      if ("stroke" in action.patch && action.patch.stroke !== null && !isStroke(action.patch.stroke)) {
-        return page;
-      }
-      if ("label" in action.patch && action.patch.label !== null && !isShapeLabel(action.patch.label)) {
-        return page;
-      }
-      if ("geometry" in action.patch && !isShapeGeometry(action.patch.geometry)) {
-        return page;
-      }
-      // 屬性面板的數字欄位直接來自使用者輸入：NaN / Infinity 一律不接受
-      if (Object.values(action.patch).some((value) => typeof value === "number" && !Number.isFinite(value))) {
-        return page;
-      }
-      const changed = Object.entries(action.patch).some(
-        ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
-      );
-      if (!changed) return page;
-      // patch 型別為各物件屬性的聯集；呼叫端依選取物件的 type 傳入對應欄位
-      const updated = { ...current, ...action.patch } as CanvasElement;
-      const elements = [...page.elements];
-      elements[index] = updated;
-      return { ...page, elements };
-    }),
+  "element/update": (state, action) => updateElements(state, [{ id: action.id, patch: action.patch }]),
+
+  "element/updateMany": (state, action) => updateElements(state, action.patches),
 
   "element/delete": (state, action) => {
+    const ids = new Set(action.ids);
     const next = updateActivePage(state, (page) => {
-      const elements = page.elements.filter((element) => element.id !== action.id);
+      const elements = page.elements.filter((element) => !ids.has(element.id));
       return elements.length === page.elements.length ? page : { ...page, elements };
     });
-    return state.selectedId === action.id ? { ...next, selectedId: null } : next;
+    return next === state ? state : reconcileSelection(next);
   },
 
   "element/reorder": (state, action) =>
@@ -260,24 +307,34 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       return { ...page, elements };
     }),
 
-  // 複本放在原物件正上方一層（不是最上層），位移一點以便看出是新的物件
+  // 每個複本放在各自原物件的正上方一層（不是最上層），位移一點以便看出是新的物件；之後選取這組複本
   "element/duplicate": (state, action) => {
     const page = selectActivePage(state);
-    const index = page.elements.findIndex((element) => element.id === action.id);
-    if (index === -1 || page.elements.some((element) => element.id === action.newId)) return state;
-    const original = page.elements[index];
-    const copy: CanvasElement = {
-      ...original,
-      id: action.newId,
-      x: original.x + DUPLICATE_OFFSET_PT,
-      y: original.y + DUPLICATE_OFFSET_PT,
-    };
-    const next = updateActivePage(state, (p) => {
-      const elements = [...p.elements];
-      elements.splice(index + 1, 0, copy);
-      return { ...p, elements };
-    });
-    return { ...next, selectedId: copy.id };
+    const existing = new Set(page.elements.map((element) => element.id));
+    const newIds = new Set(action.copies.map((copy) => copy.newId));
+    if (
+      action.copies.length === 0 ||
+      newIds.size !== action.copies.length ||
+      action.copies.some((copy) => !existing.has(copy.id) || existing.has(copy.newId))
+    ) {
+      return state;
+    }
+    const newIdOf = new Map(action.copies.map((copy) => [copy.id, copy.newId]));
+    const next = updateActivePage(state, (p) => ({
+      ...p,
+      elements: p.elements.flatMap((element) => {
+        const newId = newIdOf.get(element.id);
+        if (newId === undefined) return [element];
+        const copy: CanvasElement = {
+          ...element,
+          id: newId,
+          x: element.x + DUPLICATE_OFFSET_PT,
+          y: element.y + DUPLICATE_OFFSET_PT,
+        };
+        return [element, copy];
+      }),
+    }));
+    return { ...next, selectedIds: action.copies.map((copy) => copy.newId) };
   },
 
   // 新頁面沿用目前頁面的尺寸與背景
@@ -289,13 +346,13 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const page = createPage(nextPageName(document.pages), active, active.background);
     const pages = [...document.pages];
     pages.splice(afterIndex === -1 ? pages.length : afterIndex + 1, 0, page);
-    return { ...commit(state, { ...document, pages }), activePageId: page.id, selectedId: null };
+    return { ...commit(state, { ...document, pages }), activePageId: page.id, selectedIds: NO_SELECTION };
   },
 
   "page/select": (state, action) => {
     if (action.id === state.activePageId) return state;
     if (!state.history.present.pages.some((page) => page.id === action.id)) return state;
-    return { ...state, activePageId: action.id, selectedId: null };
+    return { ...state, activePageId: action.id, selectedIds: NO_SELECTION };
   },
 
   "page/rename": (state, action) => {
@@ -312,7 +369,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const pages = document.pages.filter((page) => page.id !== action.id);
     const next = commit(state, { ...document, pages });
     if (state.activePageId !== action.id) return next;
-    return { ...next, activePageId: pages[Math.max(0, index - 1)].id, selectedId: null };
+    return { ...next, activePageId: pages[Math.max(0, index - 1)].id, selectedIds: NO_SELECTION };
   },
 
   "page/setBackground": (state, action) => {
@@ -348,11 +405,29 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   },
 
   "selection/set": (state, action) => {
-    if (state.selectedId === action.id) return state;
+    const ids = action.id === null ? NO_SELECTION : [action.id];
+    if (sameIds(state.selectedIds, ids)) return state;
     if (action.id !== null && !selectActivePage(state).elements.some((element) => element.id === action.id)) {
       return state;
     }
-    return { ...state, selectedId: action.id };
+    return { ...state, selectedIds: ids };
+  },
+
+  "selection/toggle": (state, action) => {
+    if (state.selectedIds.includes(action.id)) {
+      return { ...state, selectedIds: state.selectedIds.filter((id) => id !== action.id) };
+    }
+    if (!selectActivePage(state).elements.some((element) => element.id === action.id)) return state;
+    return { ...state, selectedIds: [...state.selectedIds, action.id] };
+  },
+
+  "selection/setMany": (state, action) => {
+    const existing = new Set(selectActivePage(state).elements.map((element) => element.id));
+    const valid = action.ids.filter((id) => existing.has(id));
+    const ids = action.additive
+      ? [...state.selectedIds, ...valid.filter((id) => !state.selectedIds.includes(id))]
+      : valid;
+    return sameIds(state.selectedIds, ids) ? state : { ...state, selectedIds: ids };
   },
 
   "view/setZoom": (state, action) => {
@@ -367,7 +442,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const shapeKind = action.shape ?? state.shapeKind;
     if (action.tool === state.tool && shapeKind === state.shapeKind) return state;
     const creates = action.tool === "text" || action.tool === "shape";
-    return { ...state, tool: action.tool, shapeKind, selectedId: creates ? null : state.selectedId };
+    return { ...state, tool: action.tool, shapeKind, selectedIds: creates ? NO_SELECTION : state.selectedIds };
   },
 
   // 圖片以內容 hash 命名，同一張圖再次匯入會得到相同的 src，不重複列出

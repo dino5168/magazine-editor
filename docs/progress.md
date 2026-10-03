@@ -4,13 +4,18 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-01
+最後更新:2026-10-03
 
 ---
 
 ## 目前階段
 
-**字型選擇與字級上下鈕(2026-10-01)已完成並 commit(未推送)**:任務檔 `docs/Plans/2026-10-01-addfontfamily.md`(不 commit),計畫 `docs/Plans/imp-add-font-family.md`(四個步驟全部完成)。字級 − / ＋;屬性面板「字體」選單有黑體 / 明體 / 楷體 / 圓體,字型用到才載入;楷體、圓體的字型檔經 `fonts/patch_font.py` 修正(見 `fonts/README.md`)。還沒有桌面版的人工驗證。**暫停:頁籤列修正(2026-10-01)**,任務檔 `docs/Plans/2026-10-01-bug-fixed.md`(不 commit),計畫 `docs/Plans/imp-bug-fixed.md`(commit `fdfddde`,未推送;已和使用者確認規格;六個步驟中步驟 1–3 與 3a(頁碼輸入框、鍵盤換頁)已完成;步驟 4–6 暫停,跨頁之後再討論)。 型別重構與屬性面板已完成並推送(`881ef71` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:自由繪圖(畫筆、`path` 物件,等使用者另開任務);匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
+- **多選與一起移動(2026-10-03,已完成,尚未 commit)**:任務檔 `docs/Plans/2026-10-03.md`(不 commit),計畫 `docs/Plans/imp-muiti-select-move.md`(已和使用者確認:多選只移動不縮放旋轉;Delete / 方向鍵 / Ctrl+D 作用在整組;圖層面板也能 Ctrl + 點擊;這次一起做框選)。五個步驟,**步驟 1(reducer:`selectedIds`、`selection/toggle`、`element/updateMany`、多選刪除 / 複製)已完成**;**步驟 2(畫布 Ctrl + 點擊多選、整組拖曳、多選隱藏縮放 / 旋轉控制點)已完成**,無頭 Edge 驗證通過;**步驟 3(框選:完全包住才選、Ctrl 框選加入、Esc 取消)已完成**,vitest 200 個通過;**步驟 4(Delete / 方向鍵 / Ctrl+D / 動作列作用在整組、屬性面板「已選取 N 個」、圖層面板 Ctrl + 點擊)已完成**,vitest 202 個通過;**步驟 5(文件同步:`CLAUDE.md` 新增「多選與框選」一節、`types.html` / `02-architecture.md` 的 `EditorState`、`01-overview.md` 功能表)已完成**。五個步驟全部完成,等使用者決定是否 commit;還沒有桌面版的人工驗證(見「待辦 → 使用者」)。
+
+**2026-10-01 工作段落結束:目前沒有進行中的工作,等使用者指定下一項。** 頁籤列修正(`fdfddde`)與字型選擇(`777c752`)已推送到 GitHub `main`。
+
+- **字型選擇與字級上下鈕(2026-10-01,已完成)**:任務檔 `docs/Plans/2026-10-01-addfontfamily.md`(不 commit),計畫 `docs/Plans/imp-add-font-family.md`(四個步驟全部完成)。字級 − / ＋;屬性面板「字體」選單有黑體 / 明體 / 楷體 / 圓體,字型用到才載入;楷體、圓體的字型檔經 `fonts/patch_font.py` 修正(見 `fonts/README.md`)。還沒有桌面版的人工驗證。
+- **暫停:頁籤列修正(2026-10-01)**,任務檔 `docs/Plans/2026-10-01-bug-fixed.md`(不 commit),計畫 `docs/Plans/imp-bug-fixed.md`(commit `fdfddde`;已和使用者確認規格;六個步驟中步驟 1–3 與 3a(頁碼輸入框、鍵盤換頁)已完成;步驟 4–6 暫停,跨頁之後再討論)。 型別重構與屬性面板已完成並推送(`881ef71` 在 GitHub `main`)。以下都**暫緩,不要主動開始**:自由繪圖(畫筆、`path` 物件,等使用者另開任務);匯出 EPUB 階段 3(封面,待討論做法)與階段 4(command 與前端接線,使用者要先處理其他事);檔案系統第三階段;MCP server。
 
 - **型別重構與屬性面板(2026-10-01,已完成)**:任務檔 `docs/Plans/2026-10-01-自由繪圖.md`(不 commit),計畫 `docs/Plans/imp-refactory-types.md`。六個步驟全部完成,commit `881ef71`(已推送)。
   - rect / ellipse / polygon / star 合併成 `shape` + `geometry`,所有物件以外框左上角定位;`SCHEMA_VERSION` 3,舊檔與舊備份開啟時自動升級。
@@ -18,7 +23,7 @@
   - 圖形可加邊框、可輸入圖形內文字;多邊形 / 星形可自由拉伸,也能調邊數、角數、內徑與圓角。
   - 規則寫在 `CLAUDE.md`「文件模型」「工具面板」「匯出 PDF」各節,型別圖在 `docs-website/types.html`。
   - **還沒有桌面版的人工驗證**,見「待辦 → 使用者」。
-- **未 commit 的變更**:`docs/progress.md`(這份,記錄本段落的結束);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
+- **未 commit 的變更**:`docs/progress.md`(這份,記錄 2026-10-01 下午段落的結束);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
 - **匯出 EPUB**:計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;階段 3、4 暫緩(見上)。檔案系統第一、二階段與「匯出 PDF」已完成並推送。
 
 - **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
@@ -93,6 +98,7 @@
 | 2026-10-01 | **型別重構步驟 5:形狀參數**。「樣式」分頁的「形狀」區:矩形圓角、多邊形邊數、星形角數與內徑比例;TS / Rust 以相同規則驗證 geometry(舊檔不受影響)。Rust 79 個、vitest 172 個通過,無頭 Edge 驗證 11 項 |
 | 2026-10-01 | **頁籤列修正(步驟 1–3、3a)**:「+」新增的頁面加在最後;外層 Grid 加 `grid-cols-[minmax(0,1fr)]`(頁面多時整個 App 被頁籤撐寬,是點不到頁面的主因);頁籤區滾輪橫捲、自動捲到目前頁籤、`<` `>`、頁碼輸入框、PageUp / PageDown / Ctrl+Home / Ctrl+End;`≡` 與 `˅` 頁面清單選單(`page-menu.tsx`)。步驟 4–6 暫停 |
 | 2026-10-01 | **字型選擇與字級上下鈕**:`NumberField` 可選 − / ＋;`FONT_OPTIONS`(`lib/editor/fonts.ts`)與用到才載入(`use-fonts-ready.ts`);加入明體(Noto Serif TC)、楷體(霞鶩文楷 TC,粗體用 Medium)、圓體(源泉圓體 TW);`BUNDLED_FONTS` 加 `generic` / `typst_family`,新測試 `typst_sees_the_declared_family_and_weight`。Rust 82 個、vitest 190 個通過;四套字型的畫布 / PDF 疊圖比對一致 |
+| 2026-10-03 | **多選與一起移動**(計畫 `docs/Plans/imp-muiti-select-move.md`):`selectedId` → `selectedIds`;Ctrl + 點擊多選(畫布與圖層面板)、整組拖曳交給 Konva Transformer(放開時一次 `element/updateMany` = 一筆復原)、多選隱藏縮放 / 旋轉;框選(完全包住才選、Ctrl 加入、Esc 取消);Delete / 方向鍵 / Ctrl+D / 動作列作用在整組;屬性面板「已選取 N 個」。vitest 202 個通過,無頭 Edge 驗證 41 項 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
 ---
@@ -150,6 +156,7 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**多選與框選**(Claude 只用瀏覽器模式驗證過):Ctrl + 點擊多選、整組拖曳後 Ctrl+Z 一次回去、框選(含旋轉過的物件)、多選時 Delete / Ctrl+D / 方向鍵、圖層面板 Ctrl + 點擊;存檔重開位置正確
 - [ ] 在 `npm run tauri dev` 手動測試檔案系統第一階段(Claude 無法操作系統對話框),有問題告訴 Claude:
   - 另存新檔到中文路徑 → 關閉 App → 重新開啟,內容與圖片都在
   - 修改後標題出現 `●`;復原到存檔狀態後 `●` 消失
@@ -211,7 +218,7 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 79 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 172 個全部通過(2026-10-01)。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **目前的自動化測試:** Rust 82 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽,2026-10-01)、vitest 202 個(2026-10-03)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
 - **圖形內文字的已知限制(2026-10-01)**:
   - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
   - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。

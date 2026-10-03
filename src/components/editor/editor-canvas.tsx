@@ -7,6 +7,7 @@ import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-red
 import {
   boundsCenter,
   boundsIntersect,
+  elementsInBox,
   expandBounds,
   getContentBounds,
   getElementBounds,
@@ -25,9 +26,10 @@ import {
 } from "@/lib/editor/viewport";
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { cn } from "@/lib/utils";
-import { ElementNode } from "./canvas-elements";
+import { ElementNode, isAdditive } from "./canvas-elements";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
+import { useCanvasMarquee } from "./use-canvas-marquee";
 import { useCanvasPan } from "./use-canvas-pan";
 
 /** Extra scrollable space around the page and all elements, in screen pixels. */
@@ -83,15 +85,25 @@ export function EditorCanvas() {
   const bounds = useMemo(() => expandBounds(getContentBounds(page), WORKSPACE_MARGIN_PX / zoom), [page, zoom]);
   const layout = useMemo(() => computeLayout(bounds, zoom, viewport), [bounds, zoom, viewport]);
 
+  // 選到畫面外的物件時捲過去：多選時看最後加入選取的那一個
+  const lastSelectedId = state.selectedIds[state.selectedIds.length - 1];
+  const scrollTarget = page.elements.find((element) => element.id === lastSelectedId) ?? null;
+
   // 原生事件 handler 與 layout effect 需要讀到最新值
-  const latest = useRef({ layout, zoom, scroll, viewport, selected });
-  latest.current = { layout, zoom, scroll, viewport, selected };
+  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget });
+  latest.current = { layout, zoom, scroll, viewport, scrollTarget };
   const create = useCanvasCreate({
     scrollRef,
     tool: state.tool,
     shapeKind: state.shapeKind,
     toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
     onTextDraft: setDraftText,
+  });
+  const marquee = useCanvasMarquee({
+    scrollRef,
+    toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
+    onSelectBox: (box, additive) =>
+      dispatch({ type: "selection/setMany", ids: elementsInBox(page.elements, box), additive }),
   });
   const anchorRef = useRef<Anchor | null>(null);
   const prevLayoutRef = useRef<{ layout: ViewportLayout; zoom: number } | null>(null);
@@ -182,7 +194,7 @@ export function EditorCanvas() {
 
   // 從圖層面板選到畫面外的物件時，捲動到該物件
   useEffect(() => {
-    const { selected: target, layout: currentLayout, zoom: currentZoom, scroll: currentScroll, viewport: size } =
+    const { scrollTarget: target, layout: currentLayout, zoom: currentZoom, scroll: currentScroll, viewport: size } =
       latest.current;
     if (!target || size.width === 0) return;
     const topLeft = screenToPt(currentLayout, currentZoom, currentScroll, { x: 0, y: 0 });
@@ -193,19 +205,19 @@ export function EditorCanvas() {
     applyScroll(
       scrollForAnchor(currentLayout, currentZoom, boundsCenter(elementBounds), { x: size.width / 2, y: size.height / 2 }),
     );
-  }, [state.selectedId, applyScroll]);
+  }, [lastSelectedId, applyScroll]);
 
+  // 多選時 Transformer 掛所有選取的節點：拖曳其中一個，Konva 會讓其他節點跟著移動
   useEffect(() => {
     const transformer = transformerRef.current;
     if (!transformer) return;
     const stage = transformer.getStage();
-    const node =
-      selected && selected.id !== editingId && stage
-        ? stage.findOne((candidate: Konva.Node) => candidate.id() === selected.id)
-        : undefined;
-    transformer.nodes(node ? [node] : []);
+    const ids = new Set(state.selectedIds.filter((id) => id !== editingId));
+    const nodes = stage && ids.size > 0 ? stage.find((candidate: Konva.Node) => ids.has(candidate.id())) : [];
+    transformer.nodes(nodes);
     transformer.getLayer()?.batchDraw();
-  }, [selected, editingId, fontsReady, viewport.width]);
+    // page.elements：物件更新後節點可能換新（例如圖片載入完成），要重新掛上
+  }, [state.selectedIds, page.elements, editingId, fontsReady, viewport.width]);
 
   const editingElement = page.elements.find((element) => element.id === editingId);
   const editingText = editingElement?.type === "text" ? editingElement : null;
@@ -218,9 +230,31 @@ export function EditorCanvas() {
     if (editingId !== null && !editingText && !editingShape) setEditingId(null);
   }, [editingId, editingText, editingShape]);
 
-  const handleSelect = useCallback((id: ElementId) => dispatch({ type: "selection/set", id }), [dispatch]);
+  // Ctrl+點擊加入 / 移出選取；點已選取的物件保留整組選取，才能拖曳整組
+  const handleSelect = useCallback(
+    (id: ElementId, additive: boolean) => {
+      if (additive) dispatch({ type: "selection/toggle", id });
+      else if (!state.selectedIds.includes(id)) dispatch({ type: "selection/set", id });
+    },
+    [dispatch, state.selectedIds],
+  );
   const handleChange = useCallback(
     (id: ElementId, patch: ElementPatch) => dispatch({ type: "element/update", id, patch }),
+    [dispatch],
+  );
+  // 整組拖曳時 Konva 會讓每個節點都觸發 dragend：每次都寫入整組位置，第一次之後的寫入沒有變化，reducer 不產生歷史
+  const handleMoveEnd = useCallback(
+    (id: ElementId, node: Konva.Node) => {
+      const group = transformerRef.current?.nodes() ?? [];
+      if (group.length > 1 && group.includes(node)) {
+        dispatch({
+          type: "element/updateMany",
+          patches: group.map((member) => ({ id: member.id(), patch: { x: member.x(), y: member.y() } })),
+        });
+      } else {
+        dispatch({ type: "element/update", id, patch: { x: node.x(), y: node.y() } });
+      }
+    },
     [dispatch],
   );
   const handleEditText = useCallback(
@@ -231,13 +265,18 @@ export function EditorCanvas() {
     [dispatch],
   );
 
+  // 按在空白處 / 頁面背景：清空選取並開始框選（手形、建立工具在 capture 階段就攔下，不會到這裡）
   const handleStageMouseDown = (event: KonvaEventObject<MouseEvent | TouchEvent>): void => {
     const target = event.target;
-    if (target === target.getStage() || target.hasName(PAGE_BACKGROUND_NAME)) {
-      dispatch({ type: "selection/set", id: null });
-    }
+    if (target !== target.getStage() && !target.hasName(PAGE_BACKGROUND_NAME)) return;
+    // Ctrl 點歪到空白處時不清空，避免整組選取一下就沒了；Ctrl 框選 = 加入選取
+    const additive = event.evt instanceof MouseEvent && isAdditive(event.evt);
+    if (!additive) dispatch({ type: "selection/set", id: null });
+    if (event.evt instanceof MouseEvent) marquee.start(event.evt, additive);
   };
 
+  // 多選只能一起移動：不顯示縮放與旋轉控制點
+  const multiSelected = state.selectedIds.length > 1;
   const transformerOptions = selected ? TRANSFORMER_OPTIONS[selected.type] : TRANSFORMER_OPTIONS.shape;
   const origin = { x: layout.offsetX - scroll.x, y: layout.offsetY - scroll.y };
 
@@ -294,6 +333,7 @@ export function EditorCanvas() {
                     textHidden={element.id === editingId}
                     onSelect={handleSelect}
                     onChange={handleChange}
+                    onMoveEnd={handleMoveEnd}
                     onEditText={handleEditText}
                   />
                 ))}
@@ -301,7 +341,8 @@ export function EditorCanvas() {
                 <Rect width={page.width} height={page.height} stroke="#a3a3a3" strokeWidth={1 / zoom} listening={false} />
                 <Transformer
                   ref={transformerRef}
-                  enabledAnchors={[...transformerOptions.anchors]}
+                  enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
+                  rotateEnabled={!multiSelected}
                   keepRatio={transformerOptions.keepRatio}
                   flipEnabled={false}
                   // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
@@ -327,6 +368,14 @@ export function EditorCanvas() {
               !create.previewVisible && "hidden",
             )}
           />
+          <div
+            ref={marquee.previewRef}
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute border border-primary bg-primary/10",
+              !marquee.previewVisible && "hidden",
+            )}
+          />
           {draftText && (
             <TextEditorOverlay
               key={draftText.id}
@@ -349,7 +398,7 @@ export function EditorCanvas() {
               onCommit={(text) => {
                 setEditingId(null);
                 if (text.trim().length === 0) {
-                  dispatch({ type: "element/delete", id: editingText.id });
+                  dispatch({ type: "element/delete", ids: [editingText.id] });
                 } else {
                   dispatch({ type: "element/update", id: editingText.id, patch: { text } });
                 }

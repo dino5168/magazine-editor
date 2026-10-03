@@ -102,7 +102,7 @@ EditorState
 │   └── future   復原後可以重做的文件
 │
 ├── activePageId           ← 以下都不會被復原/重做影響
-├── selectedId
+├── selectedIds            ← 選取的物件(可以多選;空陣列 = 沒有選取)
 ├── view (zoom、fitRequest)
 ├── tool、shapeKind        ← 底部工具列目前的工具與圖形
 ├── assets                 ← 專案裡的圖片清單(會存檔,但不進復原歷史)

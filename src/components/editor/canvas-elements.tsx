@@ -13,12 +13,20 @@ import { useProject } from "@/lib/project/project-context";
 
 export const ELEMENT_NODE_NAME = "element";
 
+/** Ctrl (or Cmd) held: the click adds to / removes from the selection. */
+export function isAdditive(event: MouseEvent): boolean {
+  return event.ctrlKey || event.metaKey;
+}
+
 export interface ElementNodeProps {
   readonly element: CanvasElement;
   /** Hides the element's text while it is edited in place (the whole text element, or a shape's label). */
   readonly textHidden: boolean;
-  readonly onSelect: (id: ElementId) => void;
+  /** Pointer down on the element; `additive` is true with Ctrl held (add to / remove from the selection). */
+  readonly onSelect: (id: ElementId, additive: boolean) => void;
   readonly onChange: (id: ElementId, patch: ElementPatch) => void;
+  /** Drag ended; the canvas reads the final position (of the whole selection when several are dragged). */
+  readonly onMoveEnd: (id: ElementId, node: Konva.Node) => void;
   /** Double-click: edit a text element, or the text inside a shape. */
   readonly onEditText: (id: ElementId) => void;
 }
@@ -31,7 +39,7 @@ interface CommonNodeProps {
   readonly rotation: number;
   readonly draggable: true;
   readonly visible: boolean;
-  readonly onMouseDown: () => void;
+  readonly onMouseDown: (event: KonvaEventObject<MouseEvent>) => void;
   readonly onTouchStart: () => void;
   readonly onDragEnd: (event: KonvaEventObject<DragEvent>) => void;
   readonly onTransformEnd: (event: KonvaEventObject<Event>) => void;
@@ -144,7 +152,7 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
  * Returns:
  *   Konva node.
  */
-export function ElementNode({ element, textHidden, onSelect, onChange, onEditText }: ElementNodeProps) {
+export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd, onEditText }: ElementNodeProps) {
   const common: CommonNodeProps = {
     id: element.id,
     name: ELEMENT_NODE_NAME,
@@ -154,10 +162,14 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onEditTex
     draggable: true,
     // 編輯文字物件時整個節點隱藏；圖形只隱藏它的文字（ShapeLabelText）
     visible: !(textHidden && element.type === "text"),
-    onMouseDown: () => onSelect(element.id),
-    onTouchStart: () => onSelect(element.id),
-    onDragEnd: (event) => onChange(element.id, { x: event.target.x(), y: event.target.y() }),
+    onMouseDown: (event) => onSelect(element.id, isAdditive(event.evt)),
+    onTouchStart: () => onSelect(element.id, false),
+    onDragEnd: (event) => onMoveEnd(element.id, event.target),
     onTransformEnd: (event) => onChange(element.id, bakeTransform(element, event.target)),
+  };
+  // Ctrl+連點兩下是在加入 / 移出選取，不是要編輯文字
+  const editOnDblClick = (event: KonvaEventObject<MouseEvent>): void => {
+    if (!isAdditive(event.evt)) onEditText(element.id);
   };
 
   switch (element.type) {
@@ -173,7 +185,7 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onEditTex
           align={element.align}
           fill={element.fill}
           lineHeight={TEXT_LINE_HEIGHT}
-          onDblClick={() => onEditText(element.id)}
+          onDblClick={editOnDblClick}
           onDblTap={() => onEditText(element.id)}
           onTransform={(event) => {
             // 文字只調整換行寬度，不拉伸字形
@@ -185,7 +197,7 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onEditTex
     case "shape":
       // Group 的原點是外框左上角；Transformer 掛在 Group 上，之後的圖形內文字也放在這裡
       return (
-        <Group {...common} onDblClick={() => onEditText(element.id)} onDblTap={() => onEditText(element.id)}>
+        <Group {...common} onDblClick={editOnDblClick} onDblTap={() => onEditText(element.id)}>
           <ShapeBody shape={element} />
           {element.label && element.label.text !== "" && (
             <ShapeLabelText shape={element} label={element.label} hidden={textHidden} />

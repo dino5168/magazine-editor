@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateTextHeight, getContentBounds, getElementBounds } from "../geometry";
+import { elementsInBox, estimateTextHeight, getContentBounds, getElementBounds } from "../geometry";
 import { createPage, createTextElement } from "../element-factory";
 import type { ShapeElement } from "../types";
 
@@ -16,6 +16,27 @@ const rect: ShapeElement = {
   stroke: null,
   label: null,
 };
+
+describe("elementsInBox", () => {
+  // rect 外框 (10, 20)–(110, 70)
+  it("selects only fully enclosed elements, in layer order", () => {
+    const other = { ...rect, id: "o", x: 200 };
+    const elements = [other, rect];
+
+    expect(elementsInBox(elements, { minX: 0, minY: 0, maxX: 400, maxY: 100 })).toEqual(["o", "r"]);
+    // 只碰到一部分不算
+    expect(elementsInBox(elements, { minX: 0, minY: 0, maxX: 109, maxY: 100 })).toEqual([]);
+    // 剛好貼齊邊算在內
+    expect(elementsInBox(elements, { minX: 10, minY: 20, maxX: 110, maxY: 70 })).toEqual(["r"]);
+  });
+
+  it("uses the rotated bounding box", () => {
+    // 旋轉 90° 後外框是 (-40, 20)–(10, 120)：未旋轉時的框選範圍不夠
+    const rotated = { ...rect, rotation: 90 };
+    expect(elementsInBox([rotated], { minX: 0, minY: 0, maxX: 120, maxY: 80 })).toEqual([]);
+    expect(elementsInBox([rotated], { minX: -41, minY: 19, maxX: 11, maxY: 121 })).toEqual(["r"]);
+  });
+});
 
 describe("getElementBounds", () => {
   it("returns the rectangle itself when not rotated", () => {

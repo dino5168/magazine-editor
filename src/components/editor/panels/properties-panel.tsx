@@ -487,7 +487,7 @@ function ArrangeTab({ element, update }: { readonly element: CanvasElement; read
           variant="outline"
           size="sm"
           className="text-destructive hover:text-destructive"
-          onClick={() => dispatch({ type: "element/delete", id: element.id })}
+          onClick={() => dispatch({ type: "element/delete", ids: [element.id] })}
         >
           <Trash />
           刪除
@@ -548,11 +548,20 @@ function SelectedProperties({ element }: { readonly element: CanvasElement }) {
  *   Tabs for the selection, or a hint when nothing is selected.
  */
 export function PropertiesPanel() {
-  const selected = selectSelectedElement(useEditorState());
+  const state = useEditorState();
+  const selected = selectSelectedElement(state);
+  // 多選時只能一起移動 / 刪除 / 複製，共同屬性的編輯之後再做
+  if (state.selectedIds.length > 1) {
+    return (
+      <p className="px-3 py-2 text-sm text-muted-foreground">
+        已選取 {state.selectedIds.length} 個物件。可以一起拖曳、用方向鍵移動、刪除或複製；要編輯屬性請只選一個物件。
+      </p>
+    );
+  }
   if (!selected) {
     return (
       <p className="px-3 py-2 text-sm text-muted-foreground">
-        點選畫布上的物件即可編輯屬性；拖曳移動、拉控制點縮放旋轉，雙擊文字可修改內容。
+        點選畫布上的物件即可編輯屬性；拖曳移動、拉控制點縮放旋轉，雙擊文字可修改內容。按住 Ctrl 點選或在空白處拖曳可以選取多個物件。
       </p>
     );
   }

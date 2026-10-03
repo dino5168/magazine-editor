@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -74,6 +74,7 @@ src/
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
+      use-canvas-marquee.ts       # 選取工具在空白處拖曳框選（選取框、Ctrl 加入、Esc 取消）
       bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
@@ -115,9 +116,10 @@ src/
     editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
       types.ts                    # 文件模型（CanvasElement discriminated union）
       editor-reducer.ts           # 純 reducer + selectors + undo/redo
+      selection-actions.ts        # 整組選取的刪除 / 複製 / 方向鍵移動 action（快捷鍵與底部動作列共用）
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
-      geometry.ts                 # 物件外框（含旋轉）、內容範圍、文字高度估算、MIN_ELEMENT_SIZE_PT
+      geometry.ts                 # 物件外框（含旋轉）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
       stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性
@@ -181,10 +183,10 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`、`selectedId`、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）。
+- **不進歷史的 UI 狀態**：`activePageId`、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
-- `element/update` 只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。調色板（`ColorPalette`）點選色票寫入一次，不透明度 slider 拖曳時只改預覽、放開（`onValueCommit`）才寫入。
+- `element/update`（多個物件用 `element/updateMany`，一次 = 一筆復原；有一個 patch 不合法就整批不做）只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。調色板（`ColorPalette`）點選色票寫入一次，不透明度 slider 拖曳時只改預覽、放開（`onValueCommit`）才寫入。
 - reducer 內部會驗證名稱與顏色，非法輸入直接 no-op；UI 端的錯誤訊息用 sonner `toast`。
 
 ### 畫布捲動與縮放（`editor-canvas.tsx` + `viewport.ts`）
@@ -194,7 +196,19 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 換算公式：螢幕像素 = pt × zoom + `layout.offset` − scroll。縮放或內容範圍改變時，用錨點（Ctrl+滾輪時是游標，其他情況是畫面中心）重新計算 scroll，讓錨點下的內容保持不動。
 - 「符合畫面」以 `view/fit` 遞增 `fitRequest` 觸發，因為只有 canvas 知道 viewport 大小。
 - 兩個 `useLayoutEffect`（捲動校正 → fit）的**宣告順序不能對調**：fit 設定的錨點必須留到下一次 commit 才處理。
-- 從圖層面板選取完全不在畫面內的物件時，會自動捲動到該物件。
+- 從圖層面板選取完全不在畫面內的物件時，會自動捲動到該物件（多選時看最後加入選取的物件）。
+
+### 多選與框選（`editor-canvas.tsx` + `use-canvas-marquee.ts`）
+
+計畫與決定：`docs/Plans/imp-muiti-select-move.md`。
+
+- `EditorState.selectedIds` 依選取順序存放；`selectSelectedElements` 回傳整組（圖層順序），`selectSelectedElement` **只在剛好選一個時**回傳物件（屬性面板、「⋮」圖層順序靠它）。
+- 選取 actions：`selection/set`（只選一個 / `null` 清空）、`selection/toggle`（Ctrl+點擊）、`selection/setMany { ids, additive }`（框選）。`element/delete` 收 `ids`、`element/duplicate` 收 `copies: { id, newId }[]`。
+- 畫布：Ctrl（或 Cmd）+ 點物件 = 加入 / 移出；點**已選取**的物件不改選取（否則整組拖不動）；Ctrl + 點空白處不清空；按住 Ctrl 的雙擊不進入文字編輯（快速 Ctrl 點兩下會被 Konva 當成雙擊）。圖層面板的 Ctrl + 點列相同。
+- **整組拖曳交給 Konva Transformer**：Transformer 掛所有選取的節點，拖曳其中一個時 Konva 會移動其他節點，而且**每個節點都會觸發 dragend**。`handleMoveEnd` 每次都從 `transformer.nodes()` 讀整組位置送 `element/updateMany`；之後幾次沒有變化，reducer 回傳同一個 state。
+- 多選只能移動：Transformer 的 `enabledAnchors=[]`、`rotateEnabled=false`；屬性面板顯示「已選取 N 個物件」。
+- Delete / Ctrl+D / 方向鍵 / Esc 與底部動作列的刪除、複製作用在整組，action 由 `lib/editor/selection-actions.ts` 產生（快捷鍵與動作列共用）。
+- **框選**：Stage 的 mousedown 按在空白處 / 頁面背景時開始（手形、建立工具在 capture 階段攔下，不會到這裡）；被選取框**完全包住**的物件才選（`geometry.ts` 的 `elementsInBox`，含旋轉）；Ctrl 框選 = 加入；Esc 取消；不到 4px 是點擊。pointermove / pointerup 在**按下的當下**註冊到 `window`，不要改成 effect：快速點一下時 pointerup 可能比 effect 先到。
 
 ### 底部工具列與畫布工具（`bottom-toolbar.tsx` + `lib/editor/tools.ts`）
 
@@ -205,7 +219,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 平移（`use-canvas-pan`）與建立（`use-canvas-create`）都在捲動容器的 **capture 階段**攔下 `pointerdown`（`preventDefault` + `stopPropagation`），事件不會到達 Konva：手形 / 建立工具下按在物件上不會選取或拖曳物件。平移優先；平移攔下的事件建立工具不處理。
 - 建立：移動不到 4px 視為點擊（預設大小、以點擊處為中心）；拖曳時圖形填滿拖曳框。只在放開時 dispatch 一次 `element/add`；預覽框直接改 DOM style。
 - **文字工具的新文字是草稿**（`editor-canvas` 的 `draftText`），不在文件裡；輸入完成才 `element/add`，所以復原一次就撤銷，沒輸入就不建立。
-- `element/duplicate` 的新 id 由呼叫端帶入（`newId`），reducer 保持純函式。
+- `element/duplicate` 的新 id 由呼叫端帶入（`copies[].newId`），reducer 保持純函式。
 - 可平移的範圍 = 捲軸的範圍（內容範圍 + 200px），不是無限畫布。
 
 ### 調色板（`color-picker.tsx` + `lib/editor/palette.ts`）

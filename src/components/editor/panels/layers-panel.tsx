@@ -54,7 +54,7 @@ export function LayersPanel() {
           <ul className="flex flex-col gap-0.5">
             {rows.map(({ element, index }) => {
               const Icon = elementIcon(element);
-              const selected = element.id === state.selectedId;
+              const selected = state.selectedIds.includes(element.id);
               return (
                 <li
                   key={element.id}
@@ -63,7 +63,14 @@ export function LayersPanel() {
                   <button
                     type="button"
                     aria-current={selected}
-                    onClick={() => dispatch({ type: "selection/set", id: element.id })}
+                    // Ctrl+點擊加入 / 移出選取（和畫布相同）
+                    onClick={(event) =>
+                      dispatch(
+                        event.ctrlKey || event.metaKey
+                          ? { type: "selection/toggle", id: element.id }
+                          : { type: "selection/set", id: element.id },
+                      )
+                    }
                     className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm"
                   >
                     <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -89,7 +96,7 @@ export function LayersPanel() {
                     label="刪除"
                     size="icon-xs"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => dispatch({ type: "element/delete", id: element.id })}
+                    onClick={() => dispatch({ type: "element/delete", ids: [element.id] })}
                   >
                     <Trash />
                   </IconButton>
