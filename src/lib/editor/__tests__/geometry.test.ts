@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  contentGuides,
   drawnGridSpacing,
   elementsInBox,
   marginBounds,
@@ -144,5 +145,24 @@ describe("marginBounds", () => {
 
   it("returns null when there are no margins", () => {
     expect(marginBounds({ width: 600, height: 800 }, { top: 0, right: 0, bottom: 0, left: 0 })).toBeNull();
+  });
+});
+
+describe("contentGuides", () => {
+  it("puts lines at 1/4, 1/2 and 3/4 of the area inside the margins", () => {
+    const guides = contentGuides({ width: 600, height: 800 }, { top: 100, right: 50, bottom: 100, left: 150 });
+    expect(guides.area).toEqual({ minX: 150, minY: 100, maxX: 550, maxY: 700 });
+    expect(guides.vertical).toEqual([
+      { position: 250, emphasis: "quarter" },
+      { position: 350, emphasis: "half" },
+      { position: 450, emphasis: "quarter" },
+    ]);
+    expect(guides.horizontal.map((line) => line.position)).toEqual([250, 400, 550]);
+  });
+
+  it("uses the whole page when there are no margins", () => {
+    const guides = contentGuides({ width: 400, height: 200 }, { top: 0, right: 0, bottom: 0, left: 0 });
+    expect(guides.area).toEqual({ minX: 0, minY: 0, maxX: 400, maxY: 200 });
+    expect(guides.vertical.map((line) => line.position)).toEqual([100, 200, 300]);
   });
 });

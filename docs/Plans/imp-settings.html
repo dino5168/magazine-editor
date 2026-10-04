@@ -359,6 +359,18 @@ export interface EditorDocument {
   </ul>
 </div>
 
+<div class="card step">
+  <h3>追加（2026-10-04）　格線改虛線、內容區 1/4 與 1/2 對齊線 <span class="badge done">已完成</span></h3>
+  <p>使用者要求：格線用虛線；在「頁面內容」寬、高的 1/2、1/4 處加重標示，讓編修時有對齊依據。</p>
+  <ul>
+    <li>內容區 = 邊界以內（邊界全 0 時是整頁）。對齊線在寬、高的 <strong>1/4、1/2、3/4</strong>，只畫在內容區內，靛藍虛線；1/2 比 1/4 粗、透明度高、虛線長（螢幕上 1.5 px / 1 px）。</li>
+    <li>一般格線改成灰色虛線（螢幕上 2 px 線 + 3 px 空隙，除以 zoom）。</li>
+    <li>對齊線跟著「顯示格線」開關；只是視覺參考，吸附仍只對齊格線。</li>
+    <li>位置計算：<code>geometry.ts</code> 的 <code>contentGuides</code> + 2 個測試；繪製：<code>page-guides.tsx</code>（每種強度一個 Konva <code>Shape</code>）。</li>
+    <li>vitest 228 個通過；無頭 Edge 讀像素驗證 6 項（1/2、1/4、3/4 線都有、是虛線、1/2 比 1/4 明顯、一般格線是虛線、對齊線以外沒有靛藍色）並截圖確認。</li>
+  </ul>
+</div>
+
 <h2>6. 不在這次範圍</h2>
 <ul>
   <li>新文件的預設紙張尺寸、單頁不同尺寸。</li>

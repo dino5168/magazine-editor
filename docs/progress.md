@@ -10,7 +10,7 @@
 
 ## 目前階段
 
-- **偏好設定(2026-10-04,已完成,尚未 commit)**:任務檔 `docs/Plans/2026-10-04-偏好設定.md`(不 commit),計畫 `docs/Plans/imp-settings.html`(要 commit)。七個步驟全部完成:
+- **偏好設定(2026-10-04,已完成,commit `ab3b23c`,尚未推送)**:任務檔 `docs/Plans/2026-10-04-偏好設定.md`(不 commit),計畫 `docs/Plans/imp-settings.html`(要 commit)。七個步驟全部完成:
   - 步驟 1:`lib/preferences/`(偏好資料、localStorage)與 `snapToGrid`。
   - 步驟 2:偏好設定對話框骨架;Ctrl+, 與「頁面設定...」接上;移除「尺寸」面板。
   - 步驟 3:`EditorDocument.margins`、`document/setPageSetup`、Rust `SCHEMA_VERSION` 4、fixture、`types.html`。
@@ -19,6 +19,7 @@
   - 步驟 6:吸附格線(拖曳 / 多選整組 / 縮放 / 建立)。
   - 步驟 7:`CLAUDE.md` 新增「偏好設定」一節、`01-overview.md` / `02-architecture.md` 同步。
   - 測試:vitest 226 個、Rust 84 個通過;無頭 Edge 驗證共 41 項。**還沒有桌面版的人工驗證**(見「待辦 → 使用者」)。
+  - **追加(與 `ab3b23c` 分開 commit)**:格線改虛線;內容區(邊界以內)寬、高的 1/4、1/2、3/4 畫靛藍虛線對齊線,1/2 較明顯(`geometry.ts` 的 `contentGuides`、`page-guides.tsx`)。vitest 228 個通過,無頭 Edge 6 項。對齊線只是視覺參考,吸附仍只對齊格線。
   - 之後要 commit 的範圍:程式碼、`tests/fixtures/sample.magproj`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-settings.html`;任務檔 `2026-10-04-偏好設定.md` 不 commit。
 - **多選與一起移動(2026-10-03,已完成,commit `c2af9e6`,已推送)**:任務檔 `docs/Plans/2026-10-03.md`(不 commit),計畫 `docs/Plans/imp-muiti-select-move.md`(已和使用者確認:多選只移動不縮放旋轉;Delete / 方向鍵 / Ctrl+D 作用在整組;圖層面板也能 Ctrl + 點擊;這次一起做框選)。五個步驟,**步驟 1(reducer:`selectedIds`、`selection/toggle`、`element/updateMany`、多選刪除 / 複製)已完成**;**步驟 2(畫布 Ctrl + 點擊多選、整組拖曳、多選隱藏縮放 / 旋轉控制點)已完成**,無頭 Edge 驗證通過;**步驟 3(框選:完全包住才選、Ctrl 框選加入、Esc 取消)已完成**,vitest 200 個通過;**步驟 4(Delete / 方向鍵 / Ctrl+D / 動作列作用在整組、屬性面板「已選取 N 個」、圖層面板 Ctrl + 點擊)已完成**,vitest 202 個通過;**步驟 5(文件同步:`CLAUDE.md` 新增「多選與框選」一節、`types.html` / `02-architecture.md` 的 `EditorState`、`01-overview.md` 功能表)已完成**。五個步驟全部完成;還沒有桌面版的人工驗證(見「待辦 → 使用者」)。
 

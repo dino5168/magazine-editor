@@ -257,3 +257,43 @@ export function marginBounds(size: Size, margins: Margins): Bounds | null {
   if (top === 0 && right === 0 && bottom === 0 && left === 0) return null;
   return { minX: left, minY: top, maxX: size.width - right, maxY: size.height - bottom };
 }
+
+/** An alignment line at a fraction of the content area; `half` lines are drawn stronger than `quarter` lines. */
+export interface ContentGuideLine {
+  /** Position in pt (x for vertical lines, y for horizontal lines). */
+  readonly position: number;
+  readonly emphasis: "half" | "quarter";
+}
+
+export interface ContentGuides {
+  /** The content area (inside the margins; the whole page when there are none). Lines span this area. */
+  readonly area: Bounds;
+  /** Vertical lines at 1/4, 1/2 and 3/4 of the content width. */
+  readonly vertical: readonly ContentGuideLine[];
+  /** Horizontal lines at 1/4, 1/2 and 3/4 of the content height. */
+  readonly horizontal: readonly ContentGuideLine[];
+}
+
+const CONTENT_GUIDE_FRACTIONS = [
+  { fraction: 0.25, emphasis: "quarter" },
+  { fraction: 0.5, emphasis: "half" },
+  { fraction: 0.75, emphasis: "quarter" },
+] as const;
+
+/**
+ * Computes the emphasized grid lines at quarters and the half of the page content (the area inside
+ * the margins), drawn as alignment aids while editing.
+ *
+ * Args:
+ *   size: Page size in pt.
+ *   margins: Margins in pt.
+ *
+ * Returns:
+ *   The content area and its quarter / half lines.
+ */
+export function contentGuides(size: Size, margins: Margins): ContentGuides {
+  const area = marginBounds(size, margins) ?? { minX: 0, minY: 0, maxX: size.width, maxY: size.height };
+  const at = (min: number, max: number) =>
+    CONTENT_GUIDE_FRACTIONS.map(({ fraction, emphasis }) => ({ position: min + (max - min) * fraction, emphasis }));
+  return { area, vertical: at(area.minX, area.maxX), horizontal: at(area.minY, area.maxY) };
+}

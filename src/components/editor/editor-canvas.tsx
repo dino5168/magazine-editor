@@ -374,7 +374,14 @@ export function EditorCanvas() {
                   shadowOpacity={0.12}
                   shadowOffsetY={2}
                 />
-                {preferences.grid.visible && <PageGrid page={page} spacing={preferences.grid.spacing} zoom={zoom} />}
+                {preferences.grid.visible && (
+                  <PageGrid
+                    page={page}
+                    margins={state.history.present.margins}
+                    spacing={preferences.grid.spacing}
+                    zoom={zoom}
+                  />
+                )}
                 {page.elements.map((element) => (
                   <ElementNode
                     key={element.id}

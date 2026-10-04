@@ -248,7 +248,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 頁面草稿與格線草稿都放在 `PreferencesForm`，因為 Radix Tabs 會卸載沒顯示的分頁。
   - **沒動過頁面設定時不 dispatch `document/setPageSetup`**：否則只改格線，就會把頁面尺寸不一致的文件統一成目前頁的尺寸，還多一筆復原。
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
-- **畫布**：格線畫在頁面背景之上、物件之下；邊界參考線（粉紅虛線）畫在物件之上、頁緣線旁。兩者都 `listening={false}`、不算進內容範圍，也不會匯出。線距小於 6 px（`MIN_GRID_GAP_PX`）時只畫每 N 條（`drawnGridSpacing`），畫出來的線仍落在吸附格線上。
+- **畫布**：格線（灰色虛線）畫在頁面背景之上、物件之下，同一層還有**內容區對齊線**：內容區（邊界以內，邊界全 0 時是整頁）寬、高的 1/4、1/2、3/4 處的靛藍虛線，1/2 比 1/4 粗而明顯，只畫在內容區內，跟著「顯示格線」開關（`geometry.ts` 的 `contentGuides`）；對齊線只是視覺參考，吸附仍只對齊格線。邊界參考線（粉紅虛線）畫在物件之上、頁緣線旁。兩者都 `listening={false}`、不算進內容範圍，也不會匯出。線距小於 6 px（`MIN_GRID_GAP_PX`）時只畫每 N 條（`drawnGridSpacing`），畫出來的線仍落在吸附格線上。
 - **吸附格線**（格線隱藏時也可以開）：
   - 拖曳：`ElementNode` 的 `dragBoundFunc` 交給 `editor-canvas` 的 `dragBound`。**多選時 Konva 會讓每個節點各自呼叫 `dragBoundFunc`，而且 Transformer 在主節點第一次 dragmove 後才讓其他節點開始拖曳**，所以不能各自吸附，也不能用各自的位置推算：第一個呼叫的節點是 lead，記下它的起點與滑鼠偏移，每次從**滑鼠位置**推回 lead 的原始位置再吸附，所有節點都用「自己的起點 + lead 的位移」（相對位置不變）。記錄在 `handleMoveEnd` 清空。
   - 縮放：Transformer 的 `anchorDragBoundFunc`，只在單選且旋轉 0° 時吸附控制點。
