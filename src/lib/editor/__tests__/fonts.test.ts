@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createPage, createShapeElement, createTextElement, DEFAULT_FONT_FAMILY } from "../element-factory";
+import {
+  createPage,
+  createShapeElement,
+  createTextElement,
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_MARGINS,
+} from "../element-factory";
 import { DEFAULT_FONT_OPTION, findFontOption, FONT_OPTIONS, fontLoadRequests, fontOptionsFor, usedFontFamilies } from "../fonts";
 import { createLabel } from "../shape-label";
 import type { EditorDocument } from "../types";
@@ -41,6 +47,7 @@ describe("usedFontFamilies", () => {
     const labelled = { ...plainShape, id: "s2", label: { ...createLabel("A"), fontFamily: "Alpha" } };
     const document: EditorDocument = {
       name: "doc",
+      margins: DEFAULT_MARGINS,
       pages: [
         { ...createPage("P1", SIZE, "#ffffff"), elements: [text, plainShape] },
         { ...createPage("P2", SIZE, "#ffffff"), elements: [labelled, { ...text, id: "t2" }] },

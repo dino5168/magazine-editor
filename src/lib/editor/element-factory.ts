@@ -1,11 +1,12 @@
 import { DEFAULT_FONT_OPTION } from "./fonts";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
-import { PAGE_SIZE_PRESETS, presetToPt } from "./units";
+import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
 import type {
   Bounds,
   CanvasElement,
   EditorDocument,
   ImageElement,
+  Margins,
   Page,
   Point,
   ShapeElement,
@@ -19,6 +20,11 @@ export const DEFAULT_FONT_FAMILY = DEFAULT_FONT_OPTION.family;
 export const DEFAULT_SHAPE_FILL = "#64748b";
 export const DEFAULT_TEXT_FILL = "#171717";
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
+/** Margins of a new document (15 mm on every side). Files without margins load as all 0 instead. */
+export const DEFAULT_MARGINS: Margins = (() => {
+  const side = mmToPt(15);
+  return { top: side, right: side, bottom: side, left: side };
+})();
 
 /** Newly added images never exceed this fraction of the page size. */
 const IMAGE_MAX_PAGE_RATIO = 0.5;
@@ -289,6 +295,7 @@ export function createPage(name: string, size: Size, background: string): Page {
 export function createBlankDocument(): EditorDocument {
   return {
     name: "未命名文件",
+    margins: DEFAULT_MARGINS,
     pages: [createPage("Page-1", presetToPt(PAGE_SIZE_PRESETS.a4), DEFAULT_PAGE_BACKGROUND)],
   };
 }
@@ -318,7 +325,7 @@ export function createSampleDocument(): EditorDocument {
     { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
     { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
   ];
-  return { name: "未命名文件", pages: [{ ...page, elements }] };
+  return { name: "未命名文件", margins: DEFAULT_MARGINS, pages: [{ ...page, elements }] };
 }
 
 const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };

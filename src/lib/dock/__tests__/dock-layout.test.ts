@@ -56,7 +56,7 @@ describe("findPanel / isPanelVisible", () => {
 describe("togglePanel / closePanel", () => {
   it("opens a closed panel at the bottom of its default side", () => {
     expect(ids(togglePanel(layout, "draw"), "left")).toEqual(["templates", "text", "photos", "draw"]);
-    expect(ids(togglePanel(layout, "resize"), "right")).toEqual(["layers", "resize"]);
+    expect(ids(togglePanel(layout, "properties"), "right")).toEqual(["layers", "properties"]);
   });
 
   it("closes an open panel wherever it is docked", () => {

@@ -7,8 +7,9 @@ import {
   createToolText,
   type ShapeKind,
 } from "@/lib/editor/element-factory";
+import { snapPointToGrid } from "@/lib/editor/geometry";
 import type { ToolId } from "@/lib/editor/tools";
-import type { Point, TextElement } from "@/lib/editor/types";
+import type { CanvasElement, Point, TextElement } from "@/lib/editor/types";
 
 /** Pointer movement below this (screen px, in either direction) is a click, not a drag. */
 const CLICK_TOLERANCE_PX = 4;
@@ -26,6 +27,8 @@ interface UseCanvasCreateOptions {
   readonly shapeKind: ShapeKind;
   /** Converts a container-relative screen point to page pt with the current zoom and scroll. */
   readonly toPt: (screen: Point) => Point;
+  /** Grid spacing (pt) new elements snap to, or null when snapping is off. */
+  readonly snapSpacing: number | null;
   /** Receives the empty text the text tool creates; the canvas edits it before adding it. */
   readonly onTextDraft: (draft: TextElement) => void;
 }
@@ -51,7 +54,7 @@ function relative(element: HTMLElement, event: { clientX: number; clientY: numbe
  *   cursor: CSS cursor for the container, or undefined.
  *   handlers: Props to spread on the scroll container.
  */
-export function useCanvasCreate({ scrollRef, tool, shapeKind, toPt, onTextDraft }: UseCanvasCreateOptions) {
+export function useCanvasCreate({ scrollRef, tool, shapeKind, toPt, snapSpacing, onTextDraft }: UseCanvasCreateOptions) {
   const dispatch = useEditorDispatch();
   const dragRef = useRef<CreateDrag | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -89,14 +92,17 @@ export function useCanvasCreate({ scrollRef, tool, shapeKind, toPt, onTextDraft 
   const finish = (drag: CreateDrag): void => {
     const dx = Math.abs(drag.current.x - drag.start.x);
     const dy = Math.abs(drag.current.y - drag.start.y);
+    const snap = (point: Point): Point => (snapSpacing === null ? point : snapPointToGrid(point, snapSpacing));
+    // 吸附格線：拖曳框的兩個角對齊格線；點擊建立的物件把外框左上角對齊格線
+    const snapTopLeft = <T extends CanvasElement>(element: T): T => ({ ...element, ...snap(element) });
     const startPt = toPt(drag.start);
-    const box = boundsFromPoints(startPt, toPt(drag.current));
+    const box = boundsFromPoints(snap(startPt), snap(toPt(drag.current)));
     if (tool === "text") {
-      onTextDraft(createToolText(startPt, dx < CLICK_TOLERANCE_PX ? null : box));
+      onTextDraft(dx < CLICK_TOLERANCE_PX ? snapTopLeft(createToolText(startPt, null)) : createToolText(startPt, box));
     } else {
-      // 其中一邊太短時當成點擊：避免建立出一條線一樣、選不到的圖形
-      const click = dx < CLICK_TOLERANCE_PX || dy < CLICK_TOLERANCE_PX;
-      const element = click ? createShapeElement(shapeKind, startPt) : createShapeInBox(shapeKind, box);
+      // 其中一邊太短（或吸附後變成 0）時當成點擊：避免建立出一條線一樣、選不到的圖形
+      const click = dx < CLICK_TOLERANCE_PX || dy < CLICK_TOLERANCE_PX || box.minX === box.maxX || box.minY === box.maxY;
+      const element = click ? snapTopLeft(createShapeElement(shapeKind, startPt)) : createShapeInBox(shapeKind, box);
       dispatch({ type: "element/add", element });
     }
     dispatch({ type: "tool/set", tool: "select" });

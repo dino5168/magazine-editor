@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createPage, createShapeElement, createTextElement } from "../element-factory";
+import { DEFAULT_MARGINS, createPage, createShapeElement, createTextElement } from "../element-factory";
 import {
   DUPLICATE_OFFSET_PT,
   HISTORY_LIMIT,
@@ -18,6 +18,7 @@ import type { EditorDocument } from "../types";
 function blankState(): EditorState {
   const document: EditorDocument = {
     name: "測試文件",
+    margins: DEFAULT_MARGINS,
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
   };
   return createInitialState(document);
@@ -472,6 +473,56 @@ describe("editorReducer / document", () => {
   });
 });
 
+describe("editorReducer / page setup", () => {
+  const B5 = { width: 515.9, height: 728.5 };
+  const margins = { top: 20, right: 30, bottom: 40, left: 50 };
+
+  it("resizes every page and sets the margins in one undo step, leaving elements in place", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element }, { type: "page/add" });
+    const pastLength = state.history.past.length;
+
+    const next = run(state, { type: "document/setPageSetup", size: B5, margins });
+    const { pages } = next.history.present;
+
+    expect(pages.map((p) => [p.width, p.height])).toEqual([
+      [B5.width, B5.height],
+      [B5.width, B5.height],
+    ]);
+    expect(next.history.present.margins).toEqual(margins);
+    expect(pages[0].elements).toBe(state.history.present.pages[0].elements);
+    expect(next.history.past).toHaveLength(pastLength + 1);
+    expect(run(next, { type: "history/undo" }).history.present).toBe(state.history.present);
+  });
+
+  it("keeps unchanged parts and returns the same state when nothing changes", () => {
+    const state = blankState();
+    const document = state.history.present;
+    const size = { width: document.pages[0].width, height: document.pages[0].height };
+
+    expect(editorReducer(state, { type: "document/setPageSetup", size, margins: { ...document.margins } })).toBe(state);
+
+    const onlyMargins = run(state, { type: "document/setPageSetup", size, margins });
+    expect(onlyMargins.history.present.pages).toBe(document.pages);
+
+    const onlySize = run(state, { type: "document/setPageSetup", size: B5, margins: document.margins });
+    expect(onlySize.history.present.margins).toBe(document.margins);
+  });
+
+  it("rejects sizes outside 10–2000 mm and invalid margins", () => {
+    const state = blankState();
+    const reject = (size: { width: number; height: number }, m: typeof margins) =>
+      expect(editorReducer(state, { type: "document/setPageSetup", size, margins: m })).toBe(state);
+
+    reject({ width: 20, height: 600 }, margins);
+    reject({ width: 600, height: 6000 }, margins);
+    reject({ width: Number.NaN, height: 600 }, margins);
+    reject(B5, { ...margins, top: -1 });
+    reject(B5, { ...margins, left: Number.POSITIVE_INFINITY });
+    reject(B5, { ...margins, right: 6000 });
+  });
+});
+
 describe("editorReducer / project", () => {
   const asset = { src: "assets/images/abc.png", name: "封面.png", width: 1600, height: 900 };
 
@@ -490,6 +541,7 @@ describe("editorReducer / project", () => {
     const edited = run(blankState(), { type: "element/add", element }, { type: "view/setZoom", zoom: 2 });
     const document: EditorDocument = {
       name: "另一個專案",
+      margins: DEFAULT_MARGINS,
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
     };
 

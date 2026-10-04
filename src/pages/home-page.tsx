@@ -5,6 +5,7 @@ import { DockArea } from "@/components/dock/dock-area";
 import { DockDragGhost } from "@/components/dock/dock-drag-ghost";
 import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
+import { PreferencesDialog, type PreferencesTab } from "@/components/app/preferences-dialog";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
 import { BottomToolbar } from "@/components/editor/bottom-toolbar";
@@ -33,6 +34,7 @@ import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-
 import { pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
 import { createPlaceholderHandlers, panelCommandId, type CommandHandlers, type CommandId } from "@/lib/menu/commands";
+import { PreferencesProvider } from "@/lib/preferences/preferences-context";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
@@ -72,7 +74,11 @@ function EditorLayout() {
     [dockLayout],
   );
 
-  // 匯出、頁面設定、偏好設定、匯入其他專案的頁面等仍是佔位（toast「尚未實作」）
+  // 偏好設定對話框：記住上次看的分頁，Ctrl+, 回到那一頁；「頁面設定...」固定開「頁面」分頁
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [preferencesTab, setPreferencesTab] = useState<PreferencesTab>("page");
+
+  // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
     () => ({
       ...createPlaceholderHandlers((title) => toast.info(`「${title}」尚未實作`)),
@@ -82,6 +88,11 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": importImage,
+      "settings.page": () => {
+        setPreferencesTab("page");
+        setPreferencesOpen(true);
+      },
+      "settings.preferences": () => setPreferencesOpen(true),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
@@ -146,6 +157,12 @@ function EditorLayout() {
       <EditorPageBar />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
+      <PreferencesDialog
+        open={preferencesOpen}
+        tab={preferencesTab}
+        onTabChange={setPreferencesTab}
+        onOpenChange={setPreferencesOpen}
+      />
     </div>
   );
 }
@@ -166,7 +183,9 @@ export function HomePage() {
   return (
     <EditorProvider initialState={initialState}>
       <ProjectProvider confirmRecovery={confirmRecovery}>
-        <EditorLayout />
+        <PreferencesProvider>
+          <EditorLayout />
+        </PreferencesProvider>
         {recoveryDialog}
       </ProjectProvider>
     </EditorProvider>

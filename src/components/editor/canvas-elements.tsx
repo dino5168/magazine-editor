@@ -3,7 +3,7 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
 import useImage from "use-image";
-import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
+import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, TEXT_LINE_HEIGHT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
@@ -29,6 +29,26 @@ export interface ElementNodeProps {
   readonly onMoveEnd: (id: ElementId, node: Konva.Node) => void;
   /** Double-click: edit a text element, or the text inside a shape. */
   readonly onEditText: (id: ElementId) => void;
+  /** Konva dragBoundFunc in absolute coordinates (grid snapping); null = free dragging. */
+  readonly dragBound: ((id: ElementId, pos: Konva.Vector2d) => Konva.Vector2d) | null;
+}
+
+/**
+ * Snaps a point given in stage (absolute) coordinates to the page grid: absolute → page pt via the
+ * parent's transform, round to the grid, and back. Used by drag and Transformer anchor bounds, which
+ * Konva calls with absolute positions.
+ *
+ * Args:
+ *   parent: Node whose local coordinates are page pt (the page layer).
+ *   pos: Absolute position.
+ *   spacing: Grid spacing in pt.
+ *
+ * Returns:
+ *   Snapped absolute position.
+ */
+export function snapAbsoluteToGrid(parent: Konva.Node, pos: Konva.Vector2d, spacing: number): Konva.Vector2d {
+  const transform = parent.getAbsoluteTransform();
+  return transform.point(snapPointToGrid(transform.copy().invert().point(pos), spacing));
 }
 
 interface CommonNodeProps {
@@ -38,6 +58,7 @@ interface CommonNodeProps {
   readonly y: number;
   readonly rotation: number;
   readonly draggable: true;
+  readonly dragBoundFunc: ((pos: Konva.Vector2d) => Konva.Vector2d) | undefined;
   readonly visible: boolean;
   readonly onMouseDown: (event: KonvaEventObject<MouseEvent>) => void;
   readonly onTouchStart: () => void;
@@ -152,7 +173,7 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
  * Returns:
  *   Konva node.
  */
-export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd, onEditText }: ElementNodeProps) {
+export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd, onEditText, dragBound }: ElementNodeProps) {
   const common: CommonNodeProps = {
     id: element.id,
     name: ELEMENT_NODE_NAME,
@@ -160,6 +181,8 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
     y: element.y,
     rotation: element.rotation,
     draggable: true,
+    // 吸附格線：由畫布決定位置（多選時整組依按下的物件對齊）
+    dragBoundFunc: dragBound === null ? undefined : (pos) => dragBound(element.id, pos),
     // 編輯文字物件時整個節點隱藏；圖形只隱藏它的文字（ShapeLabelText）
     visible: !(textHidden && element.type === "text"),
     onMouseDown: (event) => onSelect(element.id, isAdditive(event.evt)),

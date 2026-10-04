@@ -5,7 +5,6 @@ import {
   Layers,
   PaintBucket,
   Pencil,
-  Scaling,
   Shapes,
   SlidersHorizontal,
   Type,
@@ -24,5 +23,4 @@ export const PANEL_ICONS = {
   background: PaintBucket,
   properties: SlidersHorizontal,
   layers: Layers,
-  resize: Scaling,
 } as const satisfies Record<PanelId, LucideIcon>;

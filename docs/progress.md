@@ -4,13 +4,23 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-03
+最後更新:2026-10-04
 
 ---
 
 ## 目前階段
 
-- **多選與一起移動(2026-10-03,已完成,尚未 commit)**:任務檔 `docs/Plans/2026-10-03.md`(不 commit),計畫 `docs/Plans/imp-muiti-select-move.md`(已和使用者確認:多選只移動不縮放旋轉;Delete / 方向鍵 / Ctrl+D 作用在整組;圖層面板也能 Ctrl + 點擊;這次一起做框選)。五個步驟,**步驟 1(reducer:`selectedIds`、`selection/toggle`、`element/updateMany`、多選刪除 / 複製)已完成**;**步驟 2(畫布 Ctrl + 點擊多選、整組拖曳、多選隱藏縮放 / 旋轉控制點)已完成**,無頭 Edge 驗證通過;**步驟 3(框選:完全包住才選、Ctrl 框選加入、Esc 取消)已完成**,vitest 200 個通過;**步驟 4(Delete / 方向鍵 / Ctrl+D / 動作列作用在整組、屬性面板「已選取 N 個」、圖層面板 Ctrl + 點擊)已完成**,vitest 202 個通過;**步驟 5(文件同步:`CLAUDE.md` 新增「多選與框選」一節、`types.html` / `02-architecture.md` 的 `EditorState`、`01-overview.md` 功能表)已完成**。五個步驟全部完成,等使用者決定是否 commit;還沒有桌面版的人工驗證(見「待辦 → 使用者」)。
+- **偏好設定(2026-10-04,已完成,尚未 commit)**:任務檔 `docs/Plans/2026-10-04-偏好設定.md`(不 commit),計畫 `docs/Plans/imp-settings.html`(要 commit)。七個步驟全部完成:
+  - 步驟 1:`lib/preferences/`(偏好資料、localStorage)與 `snapToGrid`。
+  - 步驟 2:偏好設定對話框骨架;Ctrl+, 與「頁面設定...」接上;移除「尺寸」面板。
+  - 步驟 3:`EditorDocument.margins`、`document/setPageSetup`、Rust `SCHEMA_VERSION` 4、fixture、`types.html`。
+  - 步驟 4:「頁面」分頁(紙張、直橫、邊界),`lib/editor/page-setup.ts`。
+  - 步驟 5:畫布格線與邊界參考線,`components/editor/page-guides.tsx`。
+  - 步驟 6:吸附格線(拖曳 / 多選整組 / 縮放 / 建立)。
+  - 步驟 7:`CLAUDE.md` 新增「偏好設定」一節、`01-overview.md` / `02-architecture.md` 同步。
+  - 測試:vitest 226 個、Rust 84 個通過;無頭 Edge 驗證共 41 項。**還沒有桌面版的人工驗證**(見「待辦 → 使用者」)。
+  - 之後要 commit 的範圍:程式碼、`tests/fixtures/sample.magproj`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-settings.html`;任務檔 `2026-10-04-偏好設定.md` 不 commit。
+- **多選與一起移動(2026-10-03,已完成,commit `c2af9e6`,已推送)**:任務檔 `docs/Plans/2026-10-03.md`(不 commit),計畫 `docs/Plans/imp-muiti-select-move.md`(已和使用者確認:多選只移動不縮放旋轉;Delete / 方向鍵 / Ctrl+D 作用在整組;圖層面板也能 Ctrl + 點擊;這次一起做框選)。五個步驟,**步驟 1(reducer:`selectedIds`、`selection/toggle`、`element/updateMany`、多選刪除 / 複製)已完成**;**步驟 2(畫布 Ctrl + 點擊多選、整組拖曳、多選隱藏縮放 / 旋轉控制點)已完成**,無頭 Edge 驗證通過;**步驟 3(框選:完全包住才選、Ctrl 框選加入、Esc 取消)已完成**,vitest 200 個通過;**步驟 4(Delete / 方向鍵 / Ctrl+D / 動作列作用在整組、屬性面板「已選取 N 個」、圖層面板 Ctrl + 點擊)已完成**,vitest 202 個通過;**步驟 5(文件同步:`CLAUDE.md` 新增「多選與框選」一節、`types.html` / `02-architecture.md` 的 `EditorState`、`01-overview.md` 功能表)已完成**。五個步驟全部完成;還沒有桌面版的人工驗證(見「待辦 → 使用者」)。
 
 **2026-10-01 工作段落結束:目前沒有進行中的工作,等使用者指定下一項。** 頁籤列修正(`fdfddde`)與字型選擇(`777c752`)已推送到 GitHub `main`。
 
@@ -99,6 +109,7 @@
 | 2026-10-01 | **頁籤列修正(步驟 1–3、3a)**:「+」新增的頁面加在最後;外層 Grid 加 `grid-cols-[minmax(0,1fr)]`(頁面多時整個 App 被頁籤撐寬,是點不到頁面的主因);頁籤區滾輪橫捲、自動捲到目前頁籤、`<` `>`、頁碼輸入框、PageUp / PageDown / Ctrl+Home / Ctrl+End;`≡` 與 `˅` 頁面清單選單(`page-menu.tsx`)。步驟 4–6 暫停 |
 | 2026-10-01 | **字型選擇與字級上下鈕**:`NumberField` 可選 − / ＋;`FONT_OPTIONS`(`lib/editor/fonts.ts`)與用到才載入(`use-fonts-ready.ts`);加入明體(Noto Serif TC)、楷體(霞鶩文楷 TC,粗體用 Medium)、圓體(源泉圓體 TW);`BUNDLED_FONTS` 加 `generic` / `typst_family`,新測試 `typst_sees_the_declared_family_and_weight`。Rust 82 個、vitest 190 個通過;四套字型的畫布 / PDF 疊圖比對一致 |
 | 2026-10-03 | **多選與一起移動**(計畫 `docs/Plans/imp-muiti-select-move.md`):`selectedId` → `selectedIds`;Ctrl + 點擊多選(畫布與圖層面板)、整組拖曳交給 Konva Transformer(放開時一次 `element/updateMany` = 一筆復原)、多選隱藏縮放 / 旋轉;框選(完全包住才選、Ctrl 加入、Esc 取消);Delete / 方向鍵 / Ctrl+D / 動作列作用在整組;屬性面板「已選取 N 個」。vitest 202 個通過,無頭 Edge 驗證 41 項 |
+| 2026-10-04 | **偏好設定**(計畫 `docs/Plans/imp-settings.html`):「偏好設定」對話框(Ctrl+, / 頁面設定...)取代「尺寸」工具面板;紙張尺寸套用到所有頁面、邊界存進文件(`schemaVersion` 4,只畫參考線不輸出);格線顯示 / 間距 / 吸附與邊界參考線開關存 localStorage;吸附涵蓋拖曳(多選整組依被拖曳的物件對齊)、縮放(旋轉 0°)、建立。vitest 226 個、Rust 84 個通過,無頭 Edge 驗證 41 項 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
 ---
@@ -148,6 +159,8 @@
 | 透明度存成顏色字串 **`#rrggbbaa`**(不另加 `opacity` 欄位),頁面背景不可透明;`SCHEMA_VERSION` 升為 2 | 不用改 `types.ts`,Konva / Typst 直接支援。使用者確認(2026-09-30) |
 | EPUB 輸出前把 8 位 hex 轉成 CSS `rgba()` / SVG `fill-opacity` | SVG 1.1 不允許 8 位 hex,較舊的閱讀引擎也不支援 |
 | rect / ellipse / polygon / star 合併成 **`shape` + `geometry`**,所有物件以外框左上角定位;draw.io 式**屬性面板**取代上方選取工具列;圖形內文字超出時照常顯示;自由繪圖這次不做 | 使用者確認(2026-10-01),見 `docs/Plans/imp-refactory-types.md` |
+| 偏好設定:紙張尺寸改**目前文件的所有頁面**(可復原,物件不動);邊界**存進文件、只當參考線**(`schemaVersion` 4);格線有**開關 + 間距 + 吸附**;App 偏好存 **localStorage**(不做 SQLite `settings` 表);「頁面設定...」與「偏好設定...」開**同一個對話框**;新文件邊界 15 mm、格線 5 mm、格線與吸附預設關、參考線預設開;按「確定」才生效 | 使用者確認(2026-10-04),見 `docs/Plans/imp-settings.html` |
+| 沒動過頁面設定時按「確定」**不套用頁面**;多選拖曳吸附時**整組依被拖曳的物件對齊、相對位置不變** | 實作時決定(2026-10-04):前者避免只改格線就統一頁面尺寸;後者避免整組形狀被吸附打亂 |
 | 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/imp-tldraw-bar.md` |
 
 ---
@@ -155,6 +168,13 @@
 ## 待辦
 
 ### 使用者
+
+- [ ] 在 `npm run tauri dev` 手動驗證**偏好設定**(Claude 只用瀏覽器模式驗證過):
+  - 「頁面設定...」改紙張(B5 橫式)與邊界 → 標題出現 `●`、Ctrl+Z 一次回去;存檔重開尺寸與邊界仍在
+  - 匯出 PDF:頁面尺寸是新紙張,沒有格線與邊界參考線
+  - 開一個 2026-10-04 之前存的專案:沒有邊界參考線(全 0),其他內容不變;存檔後**舊版 App 會拒絕開啟**(v4)
+  - 開啟吸附後拖曳、多選拖曳、縮放、用工具建立;旋轉過的物件縮放時不吸附(瀏覽器沒測)
+  - 重開 App 後格線設定仍在
 
 - [ ] 在 `npm run tauri dev` 手動驗證**多選與框選**(Claude 只用瀏覽器模式驗證過):Ctrl + 點擊多選、整組拖曳後 Ctrl+Z 一次回去、框選(含旋轉過的物件)、多選時 Delete / Ctrl+D / 方向鍵、圖層面板 Ctrl + 點擊;存檔重開位置正確
 - [ ] 在 `npm run tauri dev` 手動測試檔案系統第一階段(Claude 無法操作系統對話框),有問題告訴 Claude:
@@ -218,7 +238,7 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 82 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽,2026-10-01)、vitest 202 個(2026-10-03)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **目前的自動化測試:** Rust 84 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 226 個(2026-10-04)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
 - **圖形內文字的已知限制(2026-10-01)**:
   - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
   - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。

@@ -5,6 +5,8 @@ import {
   PAGE_NAME_MAX_LENGTH,
   isElementColor,
   isHexColor,
+  isMargins,
+  isPageSize,
   isShapeGeometry,
   isShapeLabel,
   isStroke,
@@ -17,8 +19,10 @@ import type {
   EditorDocument,
   ElementId,
   ElementPatch,
+  Margins,
   Page,
   PageId,
+  Size,
 } from "./types";
 
 export const HISTORY_LIMIT = 100;
@@ -82,6 +86,8 @@ export type EditorAction =
   | { readonly type: "page/delete"; readonly id: PageId }
   | { readonly type: "page/setBackground"; readonly id: PageId; readonly color: string }
   | { readonly type: "document/rename"; readonly name: string }
+  /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
+  | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
   | { readonly type: "history/undo" }
   | { readonly type: "history/redo" }
   /** Selects only this element; null clears the selection. */
@@ -384,6 +390,31 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const document = state.history.present;
     if (result.error || result.data === document.name) return state;
     return commit(state, { ...document, name: result.data });
+  },
+
+  // 只改有變的部分：沒變的頁面保留原參考，完全沒變時回傳同一個 state
+  "document/setPageSetup": (state, action) => {
+    const { size, margins } = action;
+    if (!isPageSize(size) || !isMargins(margins)) return state;
+    const document = state.history.present;
+    let pagesChanged = false;
+    const pages = document.pages.map((page) => {
+      if (page.width === size.width && page.height === size.height) return page;
+      pagesChanged = true;
+      return { ...page, width: size.width, height: size.height };
+    });
+    const current = document.margins;
+    const marginsChanged =
+      current.top !== margins.top ||
+      current.right !== margins.right ||
+      current.bottom !== margins.bottom ||
+      current.left !== margins.left;
+    if (!pagesChanged && !marginsChanged) return state;
+    return commit(state, {
+      ...document,
+      margins: marginsChanged ? { ...margins } : current,
+      pages: pagesChanged ? pages : document.pages,
+    });
   },
 
   "history/undo": (state) => {

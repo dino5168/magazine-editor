@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { elementsInBox, estimateTextHeight, getContentBounds, getElementBounds } from "../geometry";
+import {
+  drawnGridSpacing,
+  elementsInBox,
+  marginBounds,
+  estimateTextHeight,
+  getContentBounds,
+  getElementBounds,
+  snapPointToGrid,
+  snapToGrid,
+} from "../geometry";
 import { createPage, createTextElement } from "../element-factory";
 import type { ShapeElement } from "../types";
 
@@ -82,5 +91,58 @@ describe("getContentBounds", () => {
     const page = { ...createPage("P", { width: 100, height: 100 }, "#ffffff"), elements: [{ ...rect, x: -300, y: 500 }] };
 
     expect(getContentBounds(page)).toEqual({ minX: -300, minY: 0, maxX: 100, maxY: 550 });
+  });
+});
+
+describe("snapToGrid", () => {
+  it("rounds to the nearest grid line from the page origin", () => {
+    expect(snapToGrid(12, 10)).toBe(10);
+    expect(snapToGrid(15, 10)).toBe(20);
+    expect(snapToGrid(-4, 10)).toBe(0);
+    expect(snapToGrid(-6, 10)).toBe(-10);
+    expect(Object.is(snapToGrid(-1, 10), 0)).toBe(true);
+  });
+
+  it("leaves the value alone for a non-positive spacing", () => {
+    expect(snapToGrid(12.3, 0)).toBe(12.3);
+    expect(snapToGrid(12.3, -5)).toBe(12.3);
+    expect(snapToGrid(12.3, Number.NaN)).toBe(12.3);
+  });
+
+  it("snaps both coordinates of a point", () => {
+    expect(snapPointToGrid({ x: 7, y: 23 }, 5)).toEqual({ x: 5, y: 25 });
+  });
+});
+
+describe("drawnGridSpacing", () => {
+  it("draws every line when they are far enough apart", () => {
+    expect(drawnGridSpacing(10, 1)).toBe(10);
+    expect(drawnGridSpacing(10, 0.6)).toBe(10);
+  });
+
+  it("skips lines when zoomed out, staying on the grid", () => {
+    // 10 pt × 0.25 = 2.5 px → 每 3 條畫一條（7.5 px）
+    expect(drawnGridSpacing(10, 0.25)).toBe(30);
+    expect(drawnGridSpacing(2, 0.5)).toBe(12);
+  });
+
+  it("leaves invalid input alone", () => {
+    expect(drawnGridSpacing(0, 1)).toBe(0);
+    expect(drawnGridSpacing(10, 0)).toBe(10);
+  });
+});
+
+describe("marginBounds", () => {
+  it("returns the area inside the margins", () => {
+    expect(marginBounds({ width: 600, height: 800 }, { top: 10, right: 20, bottom: 30, left: 40 })).toEqual({
+      minX: 40,
+      minY: 10,
+      maxX: 580,
+      maxY: 770,
+    });
+  });
+
+  it("returns null when there are no margins", () => {
+    expect(marginBounds({ width: 600, height: 800 }, { top: 0, right: 0, bottom: 0, left: 0 })).toBeNull();
   });
 });

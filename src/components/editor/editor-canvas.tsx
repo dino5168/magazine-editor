@@ -25,8 +25,10 @@ import {
   type ViewportLayout,
 } from "@/lib/editor/viewport";
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
+import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
-import { ElementNode, isAdditive } from "./canvas-elements";
+import { ElementNode, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
+import { MarginGuide, PageGrid } from "./page-guides";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
 import { useCanvasMarquee } from "./use-canvas-marquee";
@@ -64,6 +66,9 @@ const TRANSFORMER_OPTIONS: {
 export function EditorCanvas() {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
+  const preferences = usePreferences();
+  /** Grid spacing elements snap to, or null when snapping is off. */
+  const snapSpacing = preferences.grid.snap ? preferences.grid.spacing : null;
   const page = selectActivePage(state);
   const selected = selectSelectedElement(state);
   const { zoom, fitRequest } = state.view;
@@ -97,6 +102,7 @@ export function EditorCanvas() {
     tool: state.tool,
     shapeKind: state.shapeKind,
     toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
+    snapSpacing,
     onTextDraft: setDraftText,
   });
   const marquee = useCanvasMarquee({
@@ -230,6 +236,39 @@ export function EditorCanvas() {
     if (editingId !== null && !editingText && !editingShape) setEditingId(null);
   }, [editingId, editingText, editingShape]);
 
+  // 吸附格線的拖曳：被拖曳的物件（lead）對齊格線，整組用同一個位移，相對位置不變。
+  // 多選時 Konva Transformer 在 lead 第一次 dragmove 之後才讓其他節點開始拖曳，它們的「滑鼠偏移」
+  // 已經含有 lead 第一次的吸附修正，不能用各自的位置推算；一律從滑鼠位置推回 lead 的原始位置。
+  // 第一個呼叫的節點就是 lead（按下的那一個）；起點在第一次呼叫時記錄（節點還沒移動），dragend 時清空
+  const dragSessionRef = useRef<{
+    lead: { readonly start: Konva.Vector2d; readonly pointerOffset: Konva.Vector2d } | null;
+    starts: Map<ElementId, Konva.Vector2d>;
+  }>({ lead: null, starts: new Map() });
+  const dragBound = useMemo(() => {
+    if (snapSpacing === null) return null;
+    return (id: ElementId, pos: Konva.Vector2d): Konva.Vector2d => {
+      const transformer = transformerRef.current;
+      const layer = transformer?.getLayer();
+      const pointer = layer?.getStage()?.getPointerPosition();
+      if (!transformer || !layer || !pointer) return pos;
+      const session = dragSessionRef.current;
+      if (session.lead === null) {
+        for (const node of transformer.nodes()) session.starts.set(node.id(), node.getAbsolutePosition());
+        const node = layer.findOne((candidate: Konva.Node) => candidate.id() === id);
+        const start = node?.getAbsolutePosition() ?? pos;
+        session.starts.set(id, start);
+        // pos = 滑鼠位置 − Konva 的拖曳偏移，反推回偏移量
+        session.lead = { start, pointerOffset: { x: pointer.x - pos.x, y: pointer.y - pos.y } };
+      }
+      const { lead, starts } = session;
+      const self = starts.get(id);
+      if (!self) return pos;
+      const leadRaw = { x: pointer.x - lead.pointerOffset.x, y: pointer.y - lead.pointerOffset.y };
+      const leadSnapped = snapAbsoluteToGrid(layer, leadRaw, snapSpacing);
+      return { x: self.x + leadSnapped.x - lead.start.x, y: self.y + leadSnapped.y - lead.start.y };
+    };
+  }, [snapSpacing]);
+
   // Ctrl+點擊加入 / 移出選取；點已選取的物件保留整組選取，才能拖曳整組
   const handleSelect = useCallback(
     (id: ElementId, additive: boolean) => {
@@ -245,6 +284,7 @@ export function EditorCanvas() {
   // 整組拖曳時 Konva 會讓每個節點都觸發 dragend：每次都寫入整組位置，第一次之後的寫入沒有變化，reducer 不產生歷史
   const handleMoveEnd = useCallback(
     (id: ElementId, node: Konva.Node) => {
+      dragSessionRef.current = { lead: null, starts: new Map() };
       const group = transformerRef.current?.nodes() ?? [];
       if (group.length > 1 && group.includes(node)) {
         dispatch({
@@ -277,6 +317,14 @@ export function EditorCanvas() {
 
   // 多選只能一起移動：不顯示縮放與旋轉控制點
   const multiSelected = state.selectedIds.length > 1;
+  // 縮放時把拖曳中的控制點對齊格線；旋轉過的物件外框邊不在格線方向上，不吸附
+  const snapAnchor =
+    snapSpacing !== null && selected && selected.rotation % 360 === 0
+      ? (_oldPos: Konva.Vector2d, newPos: Konva.Vector2d): Konva.Vector2d => {
+          const layer = transformerRef.current?.getLayer();
+          return layer ? snapAbsoluteToGrid(layer, newPos, snapSpacing) : newPos;
+        }
+      : undefined;
   const transformerOptions = selected ? TRANSFORMER_OPTIONS[selected.type] : TRANSFORMER_OPTIONS.shape;
   const origin = { x: layout.offsetX - scroll.x, y: layout.offsetY - scroll.y };
 
@@ -326,6 +374,7 @@ export function EditorCanvas() {
                   shadowOpacity={0.12}
                   shadowOffsetY={2}
                 />
+                {preferences.grid.visible && <PageGrid page={page} spacing={preferences.grid.spacing} zoom={zoom} />}
                 {page.elements.map((element) => (
                   <ElementNode
                     key={element.id}
@@ -335,9 +384,12 @@ export function EditorCanvas() {
                     onChange={handleChange}
                     onMoveEnd={handleMoveEnd}
                     onEditText={handleEditText}
+                    dragBound={dragBound}
                   />
                 ))}
                 {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}
+                {/* 格線與邊界參考線都不攔事件、不算進內容範圍，也不會匯出 */}
+                {preferences.showMargins && <MarginGuide page={page} margins={state.history.present.margins} zoom={zoom} />}
                 <Rect width={page.width} height={page.height} stroke="#a3a3a3" strokeWidth={1 / zoom} listening={false} />
                 <Transformer
                   ref={transformerRef}
@@ -355,6 +407,7 @@ export function EditorCanvas() {
                   boundBoxFunc={(oldBox, newBox) =>
                     Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
                   }
+                  anchorDragBoundFunc={snapAnchor}
                 />
               </Layer>
             </Stage>

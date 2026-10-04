@@ -27,7 +27,7 @@ flowchart TB
             Comp["components/editor/<br/>畫布、面板、工具列"]
             AppUI["components/app/、components/dock/<br/>選單列、對話框、工具面板"]
             Core["lib/editor/<br/>編輯器核心:資料模型、reducer、計算<br/>(不含畫面)"]
-            Other["lib/menu/、lib/dock/<br/>選單指令、面板版面(不含畫面)"]
+            Other["lib/menu/、lib/dock/、lib/preferences/<br/>選單指令、面板版面、App 偏好(不含畫面)"]
             Proj["lib/project/、lib/export/<br/>存檔 / 開啟 / 備份、匯出前的量測"]
             UI["components/ui/<br/>shadcn 元件(外部程式碼)"]
             Page --> Comp
@@ -64,6 +64,7 @@ flowchart TB
 | `src/lib/project/` | 約 750 | 新增 / 開啟 / 儲存 / 另存、匯入圖片、自動備份、關閉前提示;呼叫 Rust 的地方 | 之後再看(06 會講) |
 | `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
 | `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
+| `src/lib/preferences/`、`src/components/app/preferences-dialog.tsx` | 約 440 | 偏好設定:格線等 App 偏好(localStorage)、「偏好設定」對話框(紙張、邊界、格線) | 之後再看 |
 | `src/lib/export/` | 約 80 | 匯出前用 Konva 量測每段文字的分行 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |

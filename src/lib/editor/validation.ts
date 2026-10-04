@@ -1,4 +1,5 @@
-import type { ShapeGeometry, ShapeLabel, Stroke } from "./types";
+import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke } from "./types";
+import { mmToPt } from "./units";
 
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
 
@@ -25,6 +26,12 @@ export const VERTEX_COUNT_MAX = 24;
 /** Range (%) the property panel offers for a star's inner radius. */
 export const STAR_INNER_PERCENT_MIN = 10;
 export const STAR_INNER_PERCENT_MAX = 90;
+
+/** Page width / height range (pt) the page setup accepts: 10–2000 mm. The file format only requires > 0. */
+export const PAGE_SIZE_MIN_PT = mmToPt(10);
+export const PAGE_SIZE_MAX_PT = mmToPt(2000);
+/** Largest margin (pt): 2000 mm; same as `MARGIN_MAX_PT` in Rust `format.rs`. */
+export const MARGIN_MAX_PT = mmToPt(2000);
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const ELEMENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
@@ -210,4 +217,38 @@ export function isStroke(value: unknown): value is Stroke {
     width <= STROKE_WIDTH_MAX &&
     (STROKE_DASHES as readonly unknown[]).includes(dash)
   );
+}
+
+/**
+ * Checks whether a page size is within what the page setup accepts (10–2000 mm on each side).
+ *
+ * Args:
+ *   size: Candidate page size in pt.
+ *
+ * Returns:
+ *   True when both sides are in [PAGE_SIZE_MIN_PT, PAGE_SIZE_MAX_PT].
+ */
+export function isPageSize(size: Size): boolean {
+  const inRange = (n: number) => Number.isFinite(n) && n >= PAGE_SIZE_MIN_PT && n <= PAGE_SIZE_MAX_PT;
+  return inRange(size.width) && inRange(size.height);
+}
+
+/**
+ * Checks whether a value is a valid set of margins (same rules as Rust `validate_margins`):
+ * every side finite and in [0, MARGIN_MAX_PT]. Whether the margins fit the page is checked
+ * by the page setup dialog only, so resizing a page never makes a file invalid.
+ *
+ * Args:
+ *   value: Candidate margins.
+ *
+ * Returns:
+ *   True when the value can be stored as `EditorDocument.margins`.
+ */
+export function isMargins(value: unknown): value is Margins {
+  if (typeof value !== "object" || value === null) return false;
+  const margins = value as Record<string, unknown>;
+  return (["top", "right", "bottom", "left"] as const).every((side) => {
+    const n = margins[side];
+    return typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= MARGIN_MAX_PT;
+  });
 }

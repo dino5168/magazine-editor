@@ -1,12 +1,18 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
   "appVersion": "0.1.0",
   "document": {
     "name": "範例雜誌",
+    "margins": {
+      "top": 42.519685039370074,
+      "right": 36,
+      "bottom": 48,
+      "left": 30
+    },
     "pages": [
       {
         "id": "page-1",

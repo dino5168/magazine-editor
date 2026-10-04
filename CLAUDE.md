@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -60,6 +60,7 @@ src/
     app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（上面兩個對話框共用）
+    app/preferences-dialog.tsx    # 「偏好設定」對話框：頁面分頁（紙張 / 邊界，文件設定）與格線分頁（App 偏好），按「確定」才寫入
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     dock/                         # 工具面板（Krita 式停靠）的 UI
       dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
@@ -70,7 +71,7 @@ src/
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
-      canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()
+      canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
@@ -82,7 +83,8 @@ src/
       editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）、滾輪橫捲、`<` `>` 與頁碼輸入框
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw / resize 目前是佔位
+      panels/*.tsx                # 9 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw 目前是佔位
+      page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）與邊界參考線（MarginGuide）
       color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
       icon-button.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
@@ -104,6 +106,7 @@ src/
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
       __tests__/
+    preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）
     dock/                         # 工具面板版面（不含 UI）
       panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide）：面板的單一資料來源，PanelId 由它推導
       dock-layout.ts              # DockLayout 型別與純函式（開關 / 移動 / 拖放 / 收合 / 寬度）、parseDockLayout
@@ -119,7 +122,8 @@ src/
       selection-actions.ts        # 整組選取的刪除 / 複製 / 方向鍵移動 action（快捷鍵與底部動作列共用）
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
-      geometry.ts                 # 物件外框（含旋轉）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT
+      geometry.ts                 # 物件外框（含旋轉）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT、格線吸附 / 抽稀、邊界框
+      page-setup.ts               # 紙張 preset（不分直橫比對）、直式 / 橫式、頁面設定的錯誤檢查（偏好設定對話框用）
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
       stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性
@@ -171,7 +175,8 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
 - `stroke` / `label` / `geometry` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
-- 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、物件沒有 dragBoundFunc；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
+- 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、拖曳不限制在頁面內（`dragBoundFunc` 只在開啟「吸附格線」時用來對齊格線，見「偏好設定」）；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
+- **邊界**：`EditorDocument.margins`（`Margins`，pt，所有頁面共用一組）只在畫布畫參考線，**匯出不讀它**。檔案驗證只檢查每一邊 0–2000 mm（`MARGIN_MAX_PT`），「左 + 右 < 頁寬」只在對話框檢查，縮小紙張不會讓檔案變成不合法。新文件預設四邊 15 mm（`DEFAULT_MARGINS`），v4 之前的檔案讀成全 0（不畫）。
 - 新增物件類型（不是框的東西，例如之後的自由繪圖 `path`）時要改的地方：
   - 前端：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
   - 匯出端：`format.rs` 的 `Element`、`export/render.rs` 的 `build_render`（exhaustive match，漏改會編譯失敗），以及 `template.typ` 的 `draw` 與 EPUB `xhtml.rs` 的 `element_markup`。`template.typ` 是 Typst 腳本，漏改只會**靜默不畫**，要自己記得。
@@ -183,7 +188,8 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）。
+- **不進歷史的 UI 狀態**：`activePageId`、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
+- 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
 - `element/update`（多個物件用 `element/updateMany`，一次 = 一筆復原；有一個 patch 不合法就整批不做）只在 dragend / transformend / 屬性確定時送出。拖曳過程中不要 dispatch。調色板（`ColorPalette`）點選色票寫入一次，不透明度 slider 拖曳時只改預覽、放開（`onValueCommit`）才寫入。
@@ -231,6 +237,24 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **顏色格式**：物件的 `fill` 是 `#rrggbb` 或 `#rrggbbaa`（完全不透明時一律寫 6 位，`withAlpha` 負責）；頁面背景只能是 `#rrggbb`。TS `isElementColor` / `isHexColor` 與 Rust `require_element_color` / `require_background_color` 規則必須一致。
 - `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（屬性面板的填色、邊框、文字顏色）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
 
+### 偏好設定（`preferences-dialog.tsx` + `lib/preferences` + `page-guides.tsx`）
+
+計畫與決定：`docs/Plans/imp-settings.html`。原本的「尺寸」工具面板已移除，功能併入這裡（舊版面紀錄裡的 `resize` 由 `parseDockLayout` 略過）。
+
+- **兩種資料分開存**：
+  - 文件設定（紙張尺寸、邊界）：`history.present`，存進專案檔、可復原、會標記未存檔。
+  - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`）：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
+- **對話框**：`Ctrl+,`（開上次看的分頁）與「頁面設定...」（固定開「頁面」分頁）開同一個對話框。按「確定」才寫入，「取消」/ Esc 全部放棄。
+  - 頁面草稿與格線草稿都放在 `PreferencesForm`，因為 Radix Tabs 會卸載沒顯示的分頁。
+  - **沒動過頁面設定時不 dispatch `document/setPageSetup`**：否則只改格線，就會把頁面尺寸不一致的文件統一成目前頁的尺寸，還多一筆復原。
+  - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
+- **畫布**：格線畫在頁面背景之上、物件之下；邊界參考線（粉紅虛線）畫在物件之上、頁緣線旁。兩者都 `listening={false}`、不算進內容範圍，也不會匯出。線距小於 6 px（`MIN_GRID_GAP_PX`）時只畫每 N 條（`drawnGridSpacing`），畫出來的線仍落在吸附格線上。
+- **吸附格線**（格線隱藏時也可以開）：
+  - 拖曳：`ElementNode` 的 `dragBoundFunc` 交給 `editor-canvas` 的 `dragBound`。**多選時 Konva 會讓每個節點各自呼叫 `dragBoundFunc`，而且 Transformer 在主節點第一次 dragmove 後才讓其他節點開始拖曳**，所以不能各自吸附，也不能用各自的位置推算：第一個呼叫的節點是 lead，記下它的起點與滑鼠偏移，每次從**滑鼠位置**推回 lead 的原始位置再吸附，所有節點都用「自己的起點 + lead 的位移」（相對位置不變）。記錄在 `handleMoveEnd` 清空。
+  - 縮放：Transformer 的 `anchorDragBoundFunc`，只在單選且旋轉 0° 時吸附控制點。
+  - 建立：拖曳框的兩個角吸附（吸附後寬或高為 0 時當成點擊）；點擊建立的物件吸附外框左上角。預覽框不吸附。
+  - 方向鍵與屬性面板輸入不吸附。
+
 ### 其他注意事項
 
 - 字型：canvas 必須等字型載入後才建立 Stage，否則換行寬度會算錯（Konva 不會在字型載入後重新量測）。
@@ -248,7 +272,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 - 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
 - **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
-- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF 已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
+- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF、頁面設定 / 偏好設定（開同一個對話框，前者固定開「頁面」分頁）已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
 - 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
 - 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
@@ -257,7 +281,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
-- `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
+- `設定 → 工具面板`：9 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
 | 快捷鍵 | 指令 |
 |--------|------|
@@ -286,7 +310,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 3；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 4；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
@@ -303,7 +327,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - Rust 端在這些時候刪除備份：`project_save` 成功、`activate()` 換成另一個專案（使用者已處理過未存檔提示）、視窗 `WindowEvent::Destroyed`（只有正常關閉才會觸發，當機不會）。
   - 啟動時有備份檔 → 先問「復原 / 捨棄」（只處理最新一份），選復原就載入備份內容並標記為未存檔，**不**清理沒引用的圖片（備份可能用到上次存檔沒用到的圖片）；選捨棄會刪除備份和未命名專案的暫存資料夾。
   - 備份 id 只接受 UUID 字元（組成檔名）；`recovery_discard` 只刪除位於 `untitled\` 底下的暫存資料夾。
-- **尚未實作**（見 `0-Task/plan-filesystem.md`）：第三階段系統素材庫與範本、匯入其他專案的頁面、「最近開啟」選單；備份間隔目前固定 60 秒（`AUTOSAVE_INTERVAL_MS`），`settings` 資料表等偏好設定實作時再加。
+- **尚未實作**（見 `0-Task/plan-filesystem.md`）：第三階段系統素材庫與範本、匯入其他專案的頁面、「最近開啟」選單；備份間隔目前固定 60 秒（`AUTOSAVE_INTERVAL_MS`）。App 偏好決定存 localStorage（見「偏好設定」），SQLite 的 `settings` 資料表目前不做。
 
 ## 匯出 PDF（`lib/export` + `src-tauri/src/export`）
 
@@ -315,7 +339,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
     - `LABEL_PADDING_PT = 4`：`shape-label.ts` / `render.rs`。
     - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`。虛線 3w + 3w；點線 0 + 2w，圓頭。
     - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
-    - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`：`validation.ts` / `format.rs`。
+    - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`：`validation.ts` / `format.rs`。
   - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
 - **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`export/pdf.rs` 的 `to_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。

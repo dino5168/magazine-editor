@@ -1,4 +1,4 @@
-import type { Bounds, CanvasElement, ElementId, Page, Point, TextElement } from "./types";
+import type { Bounds, CanvasElement, ElementId, Margins, Page, Point, Size, TextElement } from "./types";
 
 export const TEXT_LINE_HEIGHT = 1.2;
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
@@ -190,4 +190,70 @@ export function pageCenter(page: { readonly width: number; readonly height: numb
 export function getContentBounds(page: Page): Bounds {
   const pageRect: Bounds = { minX: 0, minY: 0, maxX: page.width, maxY: page.height };
   return page.elements.reduce((acc, element) => unionBounds(acc, getElementBounds(element)), pageRect);
+}
+
+/**
+ * Rounds a page coordinate to the nearest grid line (the grid starts at the page's top-left corner).
+ *
+ * Args:
+ *   value: Coordinate in pt.
+ *   spacing: Grid spacing in pt; a non-positive spacing leaves the value unchanged.
+ *
+ * Returns:
+ *   Snapped coordinate in pt.
+ */
+export function snapToGrid(value: number, spacing: number): number {
+  if (!(spacing > 0)) return value;
+  // + 0 把 -0 變成 0，避免測試與 JSON 出現 -0
+  return Math.round(value / spacing) * spacing + 0;
+}
+
+/**
+ * Snaps both coordinates of a point to the grid.
+ *
+ * Args:
+ *   point: Point in pt.
+ *   spacing: Grid spacing in pt.
+ *
+ * Returns:
+ *   Snapped point.
+ */
+export function snapPointToGrid(point: Point, spacing: number): Point {
+  return { x: snapToGrid(point.x, spacing), y: snapToGrid(point.y, spacing) };
+}
+
+/** Smallest on-screen gap (px) between drawn grid lines; a denser grid only draws every Nth line. */
+export const MIN_GRID_GAP_PX = 6;
+
+/**
+ * Returns the spacing of the grid lines actually drawn: the grid spacing, or a whole multiple of
+ * it when zoomed out so far that lines would be closer than MIN_GRID_GAP_PX. Drawn lines stay on
+ * the snapping grid.
+ *
+ * Args:
+ *   spacing: Grid spacing in pt.
+ *   zoom: Canvas zoom (screen px per pt).
+ *
+ * Returns:
+ *   Spacing of the drawn lines in pt.
+ */
+export function drawnGridSpacing(spacing: number, zoom: number): number {
+  if (!(spacing > 0 && zoom > 0)) return spacing;
+  return spacing * Math.max(1, Math.ceil(MIN_GRID_GAP_PX / (spacing * zoom)));
+}
+
+/**
+ * Returns the area inside the page margins, where the margin guide is drawn.
+ *
+ * Args:
+ *   size: Page size in pt.
+ *   margins: Margins in pt.
+ *
+ * Returns:
+ *   Bounds inside the margins, or null when every margin is 0 (the guide would sit on the page edge).
+ */
+export function marginBounds(size: Size, margins: Margins): Bounds | null {
+  const { top, right, bottom, left } = margins;
+  if (top === 0 && right === 0 && bottom === 0 && left === 0) return null;
+  return { minX: left, minY: top, maxX: size.width - right, maxY: size.height - bottom };
 }

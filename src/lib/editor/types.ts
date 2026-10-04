@@ -103,8 +103,18 @@ export interface Page {
   readonly elements: readonly CanvasElement[];
 }
 
+/** Page margins in pt, measured inward from each page edge. */
+export interface Margins {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
 export interface EditorDocument {
   readonly name: string;
+  /** Same for every page; drawn as guides on the canvas only, never exported. */
+  readonly margins: Margins;
   readonly pages: readonly Page[];
 }
 

@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>偏好設定實作計畫</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --code: #f3f4f6; --guide: #db2777;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --code: #21262d; --guide: #f472b6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .done { background: var(--ok-soft); color: var(--ok); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .figure { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 16px 0; }
+  .figure svg { max-width: 100%; height: auto; }
+  .caption { text-align: center; color: var(--muted); font-size: .85rem; }
+  svg text { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  .s-frame { fill: var(--card); stroke: var(--line); }
+  .s-head { fill: var(--code); }
+  .s-text { fill: var(--fg); }
+  .s-muted { fill: var(--muted); }
+  .s-line { stroke: var(--line); fill: none; }
+  .s-accent { fill: var(--accent); }
+  .s-accent-soft { fill: var(--accent-soft); }
+  .s-input { fill: var(--bg); stroke: var(--line); }
+  .s-guide { stroke: var(--guide); fill: none; stroke-dasharray: 4 3; }
+  .s-grid { stroke: var(--line); }
+  .s-page { fill: #fff; stroke: #a3a3a3; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>偏好設定（imp-settings）</h1>
+<p class="meta">任務檔：<code>docs/Plans/2026-10-04-偏好設定.md</code>（不 commit）· 建立：2026-10-04 · 對應 commit：<code>c2af9e6</code> · 狀態：<strong>七個步驟全部完成（2026-10-04），尚未 commit；桌面版人工驗證待做</strong></p>
+
+<h2>1. 任務</h2>
+<ol>
+  <li>把「設定 → 工具面板 → 尺寸」（<code>resize</code> 面板，目前只顯示頁面尺寸的佔位）的功能移到「偏好設定」。</li>
+  <li>偏好設定先提供：<strong>紙張尺寸</strong>、<strong>邊界設定</strong>、<strong>顯示格線</strong>。</li>
+</ol>
+
+<h2>2. 已和使用者確認的決定（2026-10-04）</h2>
+<table>
+  <tr><th>項目</th><th>決定</th><th>影響</th></tr>
+  <tr><td>紙張尺寸</td><td><strong>改目前文件的所有頁面</strong>：存進專案檔、可以復原；物件位置不動、不縮放</td><td>新增 reducer action；不改檔案格式（每頁本來就有 <code>width</code> / <code>height</code>）</td></tr>
+  <tr><td>邊界</td><td><strong>存進文件，只當參考線</strong>：每份文件一組上 / 下 / 左 / 右，畫布畫虛線，不輸出到 PDF / EPUB</td><td>改 <code>types.ts</code>、<code>format.rs</code>、fixture、<code>types.html</code>；<code>SCHEMA_VERSION</code> 3 → 4</td></tr>
+  <tr><td>格線</td><td><strong>開關 + 間距 + 吸附</strong></td><td>畫布繪製格線；拖曳、縮放、建立物件時吸附</td></tr>
+  <tr><td>App 偏好的儲存位置</td><td><strong>localStorage</strong>，沿用工具面板版面的做法</td><td>不加 SQLite <code>settings</code> 資料表；瀏覽器模式也能用</td></tr>
+</table>
+
+<h2>3. 現況盤點（不重複造輪子）</h2>
+<table>
+  <tr><th>已經有的</th><th>位置</th><th>這次怎麼用</th></tr>
+  <tr><td>選單指令 <code>settings.preferences</code>（Ctrl+,）與 <code>settings.page</code>「頁面設定...」</td><td><code>lib/menu/commands.ts</code>、<code>menu-structure.ts</code></td><td>目前是佔位 handler；在 <code>home-page.tsx</code> 覆寫成開啟對話框。不新增指令</td></tr>
+  <tr><td>紙張 preset（A4 / B5 / Letter）、mm ↔ pt、<code>findPageSizePreset</code>、<code>formatPageSize</code></td><td><code>lib/editor/units.ts</code></td><td>直接用於紙張下拉選單與顯示</td></tr>
+  <tr><td><code>ResizePanel</code>（顯示目前尺寸）</td><td><code>panels/placeholder-panels.tsx</code></td><td>功能搬進對話框後刪除</td></tr>
+  <tr><td>localStorage 讀寫（<code>getBrowserStorage</code>、讀取一律驗證、損壞回到預設、寫入失敗忽略）</td><td><code>lib/dock/dock-storage.ts</code></td><td>偏好設定照同一個模式；<code>getBrowserStorage</code> 直接 import，不另寫</td></tr>
+  <tr><td><code>parseDockLayout</code> 會丟掉不認得的面板 id</td><td><code>lib/dock/dock-layout.ts</code></td><td>移除 <code>resize</code> 面板後，舊的版面紀錄自動略過它，<strong>不用換 localStorage key</strong></td></tr>
+  <tr><td>shadcn <code>dialog</code>、<code>tabs</code>、<code>select</code>、<code>switch</code>、<code>label</code>、<code>input</code></td><td><code>components/ui/</code></td><td>對話框全部用現有元件，不需要 <code>shadcn add</code></td></tr>
+  <tr><td><code>NumberField</code>（Enter / 失焦才寫入、可選 − / ＋）</td><td><code>components/editor/number-field.tsx</code></td><td>對話框裡的 mm 數字欄位</td></tr>
+  <tr><td>頁緣線（畫在物件上方、<code>strokeWidth = 1 / zoom</code>、<code>listening=false</code>）</td><td><code>editor-canvas.tsx</code></td><td>邊界參考線與格線用同樣的畫法</td></tr>
+  <tr><td>Dialog 內容是 <code>role="dialog"</code>，編輯器快捷鍵不會觸發</td><td>既有規則</td><td>對話框開著時 Delete / 方向鍵不會動到畫布</td></tr>
+</table>
+
+<h2>4. 設計</h2>
+
+<h3>4.1 兩種資料，分開存</h3>
+<table>
+  <tr><th></th><th>文件設定（跟著專案走）</th><th>App 偏好（跟著這台電腦走）</th></tr>
+  <tr><td>內容</td><td>紙張尺寸（所有頁面）、邊界</td><td>顯示格線、格線間距、吸附格線、顯示邊界參考線</td></tr>
+  <tr><td>存在</td><td><code>history.present</code>（<code>EditorDocument</code>）→ <code>project.magproj</code></td><td>localStorage <code>magazine-editor.preferences.v1</code></td></tr>
+  <tr><td>復原</td><td>進復原歷史；按「確定」一次 = 一筆</td><td>不進復原歷史</td></tr>
+  <tr><td>未存檔標記 <code>●</code></td><td>會</td><td>不會</td></tr>
+</table>
+
+<h3>4.2 對話框</h3>
+<p>一個「偏好設定」對話框（shadcn <code>Dialog</code> + <code>Tabs</code>），兩個分頁。<strong>「設定 → 頁面設定...」開同一個對話框的「頁面」分頁</strong>，Ctrl+, 開上次看的分頁（預設「頁面」）。按「確定」才寫入，「取消」/ Esc 全部放棄。</p>
+
+<div class="figure">
+  <div>
+  <svg width="400" height="330" viewBox="0 0 400 330" role="img" aria-label="頁面分頁示意">
+    <rect class="s-frame" x="1" y="1" width="398" height="328" rx="10"/>
+    <text class="s-text" x="20" y="32" font-size="15" font-weight="600">偏好設定</text>
+    <rect class="s-head" x="20" y="46" width="160" height="28" rx="6"/>
+    <rect class="s-frame" x="23" y="49" width="76" height="22" rx="4"/>
+    <text class="s-text" x="47" y="65" font-size="12">頁面</text>
+    <text class="s-muted" x="126" y="65" font-size="12">格線</text>
+    <text class="s-muted" x="20" y="100" font-size="12">紙張（套用到所有頁面）</text>
+    <rect class="s-input" x="20" y="108" width="170" height="28" rx="5"/>
+    <text class="s-text" x="30" y="127" font-size="12">A4 · 210 × 297 mm  ▾</text>
+    <rect class="s-accent-soft" x="200" y="108" width="56" height="28" rx="5"/>
+    <text class="s-text" x="216" y="127" font-size="12">直式</text>
+    <rect class="s-input" x="260" y="108" width="56" height="28" rx="5"/>
+    <text class="s-muted" x="276" y="127" font-size="12">橫式</text>
+    <text class="s-muted" x="20" y="158" font-size="12">寬 (mm)</text>
+    <rect class="s-input" x="20" y="164" width="120" height="26" rx="5"/>
+    <text class="s-text" x="30" y="182" font-size="12">210</text>
+    <text class="s-muted" x="160" y="158" font-size="12">高 (mm)</text>
+    <rect class="s-input" x="160" y="164" width="120" height="26" rx="5"/>
+    <text class="s-text" x="170" y="182" font-size="12">297</text>
+    <text class="s-muted" x="20" y="214" font-size="12">邊界 (mm)</text>
+    <g font-size="12">
+      <text class="s-muted" x="20" y="238">上</text><rect class="s-input" x="36" y="224" width="70" height="24" rx="5"/><text class="s-text" x="46" y="241">15</text>
+      <text class="s-muted" x="116" y="238">下</text><rect class="s-input" x="132" y="224" width="70" height="24" rx="5"/><text class="s-text" x="142" y="241">15</text>
+      <text class="s-muted" x="212" y="238">左</text><rect class="s-input" x="228" y="224" width="70" height="24" rx="5"/><text class="s-text" x="238" y="241">15</text>
+      <text class="s-muted" x="308" y="238">右</text><rect class="s-input" x="324" y="224" width="56" height="24" rx="5"/><text class="s-text" x="334" y="241">15</text>
+    </g>
+    <line class="s-line" x1="20" y1="268" x2="380" y2="268"/>
+    <rect class="s-input" x="226" y="282" width="70" height="30" rx="6"/>
+    <text class="s-text" x="248" y="302" font-size="12">取消</text>
+    <rect class="s-accent" x="304" y="282" width="76" height="30" rx="6"/>
+    <text x="328" y="302" font-size="12" fill="#fff">確定</text>
+  </svg>
+  <div class="caption">「頁面」分頁（文件設定）</div>
+  </div>
+  <div>
+  <svg width="300" height="330" viewBox="0 0 300 330" role="img" aria-label="格線分頁示意">
+    <rect class="s-frame" x="1" y="1" width="298" height="328" rx="10"/>
+    <text class="s-text" x="20" y="32" font-size="15" font-weight="600">偏好設定</text>
+    <rect class="s-head" x="20" y="46" width="160" height="28" rx="6"/>
+    <text class="s-muted" x="47" y="65" font-size="12">頁面</text>
+    <rect class="s-frame" x="101" y="49" width="76" height="22" rx="4"/>
+    <text class="s-text" x="126" y="65" font-size="12">格線</text>
+    <text class="s-text" x="20" y="108" font-size="13">顯示格線</text>
+    <rect class="s-accent" x="236" y="94" width="40" height="22" rx="11"/><circle cx="265" cy="105" r="8" fill="#fff"/>
+    <text class="s-text" x="20" y="146" font-size="13">間距 (mm)</text>
+    <rect class="s-input" x="176" y="130" width="100" height="26" rx="5"/>
+    <text class="s-text" x="186" y="148" font-size="12">−   5   ＋</text>
+    <text class="s-text" x="20" y="184" font-size="13">吸附格線</text>
+    <rect class="s-accent" x="236" y="170" width="40" height="22" rx="11"/><circle cx="265" cy="181" r="8" fill="#fff"/>
+    <text class="s-text" x="20" y="222" font-size="13">顯示邊界參考線</text>
+    <rect class="s-accent" x="236" y="208" width="40" height="22" rx="11"/><circle cx="265" cy="219" r="8" fill="#fff"/>
+    <text class="s-muted" x="20" y="250" font-size="11">這一頁的設定存在這台電腦，不存進專案</text>
+    <line class="s-line" x1="20" y1="268" x2="280" y2="268"/>
+    <rect class="s-input" x="126" y="282" width="70" height="30" rx="6"/>
+    <text class="s-text" x="148" y="302" font-size="12">取消</text>
+    <rect class="s-accent" x="204" y="282" width="76" height="30" rx="6"/>
+    <text x="228" y="302" font-size="12" fill="#fff">確定</text>
+  </svg>
+  <div class="caption">「格線」分頁（App 偏好）</div>
+  </div>
+</div>
+
+<h3>4.3 紙張尺寸</h3>
+<ul>
+  <li>下拉選單：<code>PAGE_SIZE_PRESETS</code>（A4 / B5 / Letter）＋「自訂」。選 preset 時寬高欄位自動填入；手動改寬高時，符合 preset 就顯示該名稱，否則顯示「自訂」（用既有的 <code>findPageSizePreset</code>）。</li>
+  <li>直式 / 橫式：交換寬高。</li>
+  <li>限制：寬、高各 10–2000 mm（UI 與 reducer 檢查；Rust 目前只檢查 &gt; 0，不收緊，以免舊檔開不了）。</li>
+  <li>文件裡各頁尺寸不一樣時（舊檔可能有），對話框顯示目前頁的尺寸並註明「套用後所有頁面都會改成這個尺寸」。</li>
+  <li><strong>物件位置不動、不縮放</strong>；縮小紙張時超出的物件照常顯示（本來就允許超出頁面）。</li>
+  <li>「新增」文件仍是 A4（新文件的預設尺寸不在這次範圍）。</li>
+</ul>
+
+<h3>4.4 邊界（文件模型變更）</h3>
+<pre><code>// types.ts
+export interface Margins {
+  readonly top: number;    // pt
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+export interface EditorDocument {
+  readonly name: string;
+  /** Guides only; not exported. Same for every page. */
+  readonly margins: Margins;
+  readonly pages: readonly Page[];
+}</code></pre>
+<ul>
+  <li>單位 pt（文件模型的規則），對話框顯示 mm。</li>
+  <li><strong>Rust</strong>：<code>format.rs</code> 的 <code>Document</code> 加 <code>#[serde(default)] margins: Margins</code>；<code>SCHEMA_VERSION</code> 升為 4。v1–v3 檔案與沒有版本號的備份檔沒有這個欄位 → 預設全 0（= 不畫參考線，和現在的畫面相同），<strong>不需要升級步驟</strong>。升版本的原因：舊版 App 讀到 v4 檔案存檔時會把 <code>margins</code> 默默丟掉（只保留最上層未知欄位），升版讓舊版直接拒絕開啟。</li>
+  <li>驗證：每一邊是有限值、≥ 0、≤ 2000 mm（TS <code>validation.ts</code> 與 Rust <code>validate_content</code> 規則一致）。「左 + 右 &lt; 頁寬」只在對話框檢查，不寫進檔案驗證（改紙張尺寸時不應該讓檔案變成不合法）。</li>
+  <li>新文件（<code>createBlankDocument</code> / <code>createSampleDocument</code>）預設四邊 <strong>15 mm</strong>。</li>
+  <li>匯出（<code>render.rs</code> / PDF / EPUB）<strong>不讀</strong> <code>margins</code>，輸出不變。</li>
+  <li>同步：<code>tests/fixtures/sample.magproj</code>（加 <code>margins</code>、版本 4；<code>sample-v2.magproj</code> 不動，用來測舊檔預設 0）、<code>docs-website/types.html</code>（圖、說明卡、頁首 commit）。</li>
+</ul>
+
+<h3>4.5 reducer</h3>
+<pre><code>| { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }</code></pre>
+<ul>
+  <li>一次把所有頁面的 <code>width</code> / <code>height</code> 與 <code>margins</code> 改掉 = <strong>一筆復原</strong>（對話框按「確定」只 dispatch 一次）。</li>
+  <li>不合法（尺寸超出範圍、邊界負數）→ no-op；完全沒有變化 → 回傳同一個 state（既有規則）。</li>
+  <li>沒有改到的頁面保留原物件參考。</li>
+</ul>
+
+<h3>4.6 App 偏好（<code>lib/preferences/</code>）</h3>
+<pre><code>export interface Preferences {
+  readonly grid: {
+    readonly visible: boolean;  // 預設 false
+    readonly spacing: number;   // pt，預設 5 mm；範圍 1–100 mm
+    readonly snap: boolean;     // 預設 false
+  };
+  readonly showMargins: boolean; // 預設 true
+}</code></pre>
+<ul>
+  <li><code>preferences.ts</code>：型別、<code>DEFAULT_PREFERENCES</code>、<code>parsePreferences(unknown)</code>（逐欄驗證，壞掉的欄位用預設值，不整份丟掉）。</li>
+  <li><code>preferences-storage.ts</code>：<code>loadPreferences</code> / <code>savePreferences</code>，模式同 <code>dock-storage.ts</code>，<code>getBrowserStorage</code> 直接 import。</li>
+  <li><code>preferences-context.tsx</code>：<code>PreferencesProvider</code> + <code>usePreferences()</code>。畫布（格線、吸附、參考線）、建立工具、對話框都要讀，用 Context 比一路傳 props 簡單；放在 <code>home-page.tsx</code> 的 Provider 層。</li>
+  <li><strong>格線吸附可以在格線隱藏時仍然開著</strong>（兩個獨立開關，和 draw.io / Figma 相同）。</li>
+</ul>
+
+<h3>4.7 畫布顯示</h3>
+<div class="figure">
+  <div>
+  <svg width="280" height="260" viewBox="0 0 280 260" role="img" aria-label="格線與邊界參考線">
+    <rect class="s-page" x="40" y="20" width="200" height="220"/>
+    <g class="s-grid" stroke-width="0.6">
+      <line x1="60" y1="20" x2="60" y2="240"/><line x1="80" y1="20" x2="80" y2="240"/><line x1="100" y1="20" x2="100" y2="240"/>
+      <line x1="120" y1="20" x2="120" y2="240"/><line x1="140" y1="20" x2="140" y2="240"/><line x1="160" y1="20" x2="160" y2="240"/>
+      <line x1="180" y1="20" x2="180" y2="240"/><line x1="200" y1="20" x2="200" y2="240"/><line x1="220" y1="20" x2="220" y2="240"/>
+      <line x1="40" y1="40" x2="240" y2="40"/><line x1="40" y1="60" x2="240" y2="60"/><line x1="40" y1="80" x2="240" y2="80"/>
+      <line x1="40" y1="100" x2="240" y2="100"/><line x1="40" y1="120" x2="240" y2="120"/><line x1="40" y1="140" x2="240" y2="140"/>
+      <line x1="40" y1="160" x2="240" y2="160"/><line x1="40" y1="180" x2="240" y2="180"/><line x1="40" y1="200" x2="240" y2="200"/>
+      <line x1="40" y1="220" x2="240" y2="220"/>
+    </g>
+    <rect x="80" y="80" width="80" height="60" fill="#60a5fa" opacity=".85"/>
+    <rect class="s-guide" x="62" y="42" width="156" height="176" stroke-width="1.2"/>
+    <text class="s-muted" x="140" y="256" font-size="11" text-anchor="middle">格線（物件下方）· 邊界參考線（物件上方）</text>
+  </svg>
+  </div>
+</div>
+<ul>
+  <li><strong>格線</strong>：一個 Konva <code>Shape</code>（<code>sceneFunc</code> 一次畫完所有線，不建立上百個 <code>Line</code> 節點），只畫在頁面範圍內，位於頁面背景之上、物件之下，<code>listening=false</code>，線寬 <code>1 / zoom</code>。縮小到格子小於 6 px 時改成每 N 格畫一條，避免整片變灰。</li>
+  <li><strong>邊界參考線</strong>：粉紅虛線矩形，畫在物件上方（和頁緣線同一層），<code>listening=false</code>。邊界全 0 或「顯示邊界參考線」關閉時不畫。</li>
+  <li>兩者都不進 <code>getContentBounds</code>、不影響框選（<code>listening=false</code>，和頁緣線相同）、不會出現在匯出結果。</li>
+</ul>
+
+<h3>4.8 吸附格線</h3>
+<table>
+  <tr><th>操作</th><th>吸附什麼</th><th>做法</th></tr>
+  <tr><td>拖曳物件（含多選整組）</td><td>被拖曳物件的 <code>x</code> / <code>y</code>（外框左上角）</td><td>節點 <code>dragmove</code> 時把位置四捨五入到格線；多選時 Konva Transformer 依被拖曳節點的位移帶動其他節點，整組一起對齊</td></tr>
+  <tr><td>縮放（Transformer 控制點）</td><td>被拖曳的控制點</td><td>Transformer 的 <code>anchorDragBoundFunc</code>：螢幕座標 → 頁面座標 → 四捨五入 → 換回螢幕座標。<strong>只在旋轉 0° 時吸附</strong>（旋轉後的外框邊不在格線方向上）</td></tr>
+  <tr><td>文字 / 圖形工具建立</td><td>點擊點、拖曳框的兩個角</td><td><code>use-canvas-create.ts</code> 換算頁面座標之後套用</td></tr>
+  <tr><td>方向鍵、屬性面板輸入</td><td>不吸附</td><td>方向鍵是微調；輸入的數字照使用者給的值</td></tr>
+</table>
+<ul>
+  <li>吸附函式 <code>snapToGrid(value, spacing)</code> 放在 <code>lib/editor/geometry.ts</code>（純函式、補測試）。</li>
+  <li>格線原點 = 頁面左上角。</li>
+  <li><strong>風險</strong>：多選拖曳時「我們的 dragmove 先改位置，Transformer 再帶動其他節點」的事件順序要實測；不成立時改成在 Transformer 的 <code>dragmove</code> 裡校正整組。</li>
+</ul>
+
+<h3>4.9 移除「尺寸」工具面板</h3>
+<ul>
+  <li>刪除 <code>PANEL_DEFINITIONS</code> 的 <code>resize</code>、<code>PANELS.resize</code>、<code>PANEL_ICONS.resize</code>、<code>ResizePanel</code>（<code>satisfies Record&lt;PanelId, …&gt;</code> 會提醒漏改）。</li>
+  <li>選單「設定 → 工具面板」自動少一項（由面板定義產生）。</li>
+  <li><code>dock-layout.test.ts</code> 裡用到 <code>"resize"</code> 的測試改用其他面板。</li>
+  <li>已存的版面紀錄裡的 <code>resize</code> 由 <code>parseDockLayout</code> 自動略過。</li>
+</ul>
+
+<h2>5. 執行步驟（一步一步，每步完成後停下等「繼續」）</h2>
+
+<div class="card step">
+  <h3>步驟 1　App 偏好的資料層 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>新增 <code>lib/preferences/preferences.ts</code>、<code>preferences-storage.ts</code> 與測試（預設值、壞資料、部分欄位壞掉、範圍外的間距、存取失敗）。</li>
+    <li><code>snapToGrid</code> 純函式 + 測試。</li>
+    <li>畫面不變。</li>
+    <li><strong>結果</strong>：間距存 pt，超出 1–100 mm 時夾回範圍、非數字回到預設；<code>geometry.ts</code> 加 <code>snapToGrid</code> / <code>snapPointToGrid</code>（間距 ≤ 0 或 NaN 時不吸附）。vitest 212 個通過（+10）。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 2　對話框骨架 + 移除「尺寸」面板 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>components/app/preferences-dialog.tsx</code>（Dialog + Tabs）；<code>PreferencesProvider</code> 接到 <code>home-page.tsx</code>。</li>
+    <li><code>settings.preferences</code>（Ctrl+,）與 <code>settings.page</code> 改成開啟對話框（後者固定開「頁面」分頁）。</li>
+    <li>「頁面」分頁先唯讀顯示目前尺寸（取代 <code>ResizePanel</code>）；「格線」分頁的開關可以存，但畫布還不會畫。</li>
+    <li>移除 <code>resize</code> 面板（4.9）。</li>
+    <li>驗證：無頭 Edge 開關對話框、Ctrl+,、對話框內按 Delete 不刪物件、重新整理後偏好保留、工具面板選單少了「尺寸」。</li>
+    <li><strong>結果</strong>：新增 <code>components/app/preferences-dialog.tsx</code>、<code>lib/preferences/preferences-context.tsx</code>（值與 setter 分開兩個 Context，和 <code>EditorProvider</code> 相同）；<code>PreferencesProvider</code> 放在 <code>ProjectProvider</code> 內、包住 <code>EditorLayout</code>。對話框內容在關閉時卸載，所以每次開啟草稿都從目前的值開始。刪除 <code>ResizePanel</code>。vitest 212 個通過；無頭 Edge 驗證 12 項通過（含舊版面紀錄裡的 <code>resize</code> 被略過）。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 3　文件模型加邊界 + reducer（檔案格式 v4） <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>types.ts</code> 的 <code>Margins</code>、<code>EditorDocument.margins</code>；<code>element-factory</code> 新文件預設 15 mm；<code>validation.ts</code> 的邊界與紙張尺寸檢查。</li>
+    <li>reducer <code>document/setPageSetup</code> + 測試（所有頁面、一筆復原、no-op 回傳同一 state、不合法 no-op）。</li>
+    <li>Rust <code>format.rs</code>：<code>Margins</code>、<code>#[serde(default)]</code>、驗證、<code>SCHEMA_VERSION = 4</code>；測試：v3 / v2 檔與舊備份開啟後邊界為 0、v4 來回存讀一致、負數被拒。</li>
+    <li>fixture <code>sample.magproj</code> 升到 v4；<code>docs-website/types.html</code> 同步。</li>
+    <li>畫面不變（還沒有 UI 與參考線）。</li>
+    <li><strong>結果</strong>：<code>DEFAULT_MARGINS</code>（15 mm）放在 <code>element-factory.ts</code>；<code>validation.ts</code> 加 <code>isPageSize</code>（10–2000 mm）、<code>isMargins</code>、<code>MARGIN_MAX_PT</code>（Rust 同名常數，<strong>改一邊要改兩邊</strong>）。Rust <code>Margins</code> 是 <code>#[serde(default)]</code>，v1–v3 檔與舊備份不需要升級步驟。fixture 的四邊用不同數字（42.52 / 36 / 48 / 30 pt）。vitest 215 個（+3）、Rust 84 個（+2）通過；<code>types.html</code> 加 <code>Margins</code> 方塊與說明卡。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 4　「頁面」分頁：紙張尺寸與邊界 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>紙張下拉（preset + 自訂）、直式 / 橫式、寬高（mm）、四邊邊界（mm）；對話框內檢查「左 + 右 &lt; 寬」「上 + 下 &lt; 高」，錯誤顯示在欄位下方、「確定」停用。</li>
+    <li>「確定」dispatch 一次 <code>document/setPageSetup</code>。</li>
+    <li>驗證：改 A4 → B5 → 橫式，所有頁面都改、物件不動、Ctrl+Z 一次回去、標題出現 <code>●</code>；匯出 PDF 頁面尺寸正確。</li>
+    <li><strong>結果</strong>：純邏輯放在 <code>lib/editor/page-setup.ts</code>（直式 / 橫式、preset 不分方向比對、<code>validatePageSetup</code>）+ 6 個測試。對話框的頁面草稿與格線草稿都放在 <code>PreferencesForm</code>（Radix Tabs 會卸載沒顯示的分頁）。<strong>沒改頁面設定時按「確定」不套用頁面</strong>：避免只改格線就把尺寸不一致的文件統一成目前頁的尺寸，也不會多一筆復原。輸入超出範圍時夾回範圍（寬高 10–2000 mm、邊界 0–2000 mm），只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」；在「格線」分頁時頁尾提示「頁面分頁的設定有錯誤」。「自訂」選項不能直接選，改寬高就會變成自訂。vitest 221 個通過；無頭 Edge 驗證 12 項（兩頁都改成 B5 橫式、物件不動、一次復原、只改格線不產生復原紀錄）。<strong>未驗證</strong>：標題的 <code>●</code> 與匯出 PDF 的頁面尺寸需要桌面版（瀏覽器模式沒有專案）。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 5　畫布：格線與邊界參考線 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>4.7 的兩個圖層；依偏好開關與間距、縮放時線寬不變、縮小時自動抽稀。</li>
+    <li>驗證：無頭 Edge 讀畫布像素確認格線位置與間距、參考線位置；框選與點擊不受影響；匯出 PDF 沒有格線與參考線。</li>
+    <li><strong>結果</strong>：新增 <code>components/editor/page-guides.tsx</code>（<code>PageGrid</code>：一個 Konva <code>Shape</code> 畫完所有線；<code>MarginGuide</code>：粉紅虛線，線寬與虛線長度都除以 zoom）；<code>geometry.ts</code> 加 <code>drawnGridSpacing</code>（線距小於 6 px 時改畫每 N 條，仍落在吸附格線上）與 <code>marginBounds</code>（四邊都是 0 時回傳 null，不畫）+ 5 個測試。vitest 226 個通過；無頭 Edge 讀畫布像素驗證 8 項（預設無格線、格線在間距倍數上、兩線之間沒有線、橫線、點物件仍可選取、點空白處清除選取、關閉參考線後不畫）。匯出只讀文件資料，格線與參考線是畫布元件，不會出現在 PDF / EPUB。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 6　吸附格線 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>拖曳（單選 / 多選）、縮放（旋轉 0°）、文字 / 圖形工具建立（4.8）。</li>
+    <li>驗證：吸附開 / 關各拖一次，比對 dragend 後的 <code>x</code> / <code>y</code> 是否為間距的整數倍；多選整組一起對齊；旋轉過的物件縮放不吸附；Ctrl+Z 一次回去。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li><strong>拖曳</strong>用 Konva 的 <code>dragBoundFunc</code>（在 dragmove 之前套用），由 <code>editor-canvas</code> 的 <code>dragBound</code> 計算，<code>ElementNode</code> 只轉接。</li>
+        <li><strong>實測發現（和 4.8 的風險不同）</strong>：多選拖曳時 Konva 會讓<strong>每個節點各自</strong>呼叫 <code>dragBoundFunc</code>，而且 Transformer 在主拖曳節點第一次 dragmove 之後才讓其他節點開始拖曳，它們的滑鼠偏移已含主節點第一次的吸附修正。第一版讓每個節點各自吸附，結果整組相對位置跑掉。改成：第一個呼叫的節點是 lead，記錄它的起點與滑鼠偏移；每次從<strong>滑鼠位置</strong>推回 lead 的原始位置、吸附，所有節點都用「自己的起點 + lead 的位移」。dragend 時清空這份記錄。</li>
+        <li><strong>縮放</strong>用 Transformer 的 <code>anchorDragBoundFunc</code>，只在單選且旋轉為 0° 時設定。座標換算共用 <code>canvas-elements.tsx</code> 的 <code>snapAbsoluteToGrid</code>。</li>
+        <li><strong>建立</strong>：拖曳框的兩個角先吸附（吸附後寬或高變成 0 時當成點擊）；點擊建立的物件把外框左上角吸附。三角形 / 星形維持比例置中在框內，所以它們自己的左上角不一定在格線上。預覽框沒有吸附（只顯示滑鼠拖出的範圍）。</li>
+      </ul>
+      vitest 226 個通過；無頭 Edge 驗證 9 項（吸附關閉時跟著滑鼠、單一拖曳、一次復原、整組拖曳 A 帶頭與 B 帶頭都保持相對位置、縮放右下角、拖曳建立、點擊建立）。<strong>未在瀏覽器驗證</strong>：旋轉過的物件縮放不吸附（只是條件判斷）。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 7　文件同步 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>CLAUDE.md</code>：新增「偏好設定」一節；目錄結構、文件模型（<code>margins</code>）、檔案系統（schemaVersion 4）、選單列（兩個 handler 已實作）、工具面板（9 個面板）。</li>
+    <li><code>docs/01-overview.md</code> 功能表、<code>docs/02-architecture.md</code> 模組地圖加 <code>lib/preferences</code>；<code>docs/progress.md</code>。</li>
+    <li><strong>結果</strong>：<code>CLAUDE.md</code> 新增「偏好設定」一節（含多選吸附的做法），並改了目前階段、目錄結構、文件模型（邊界、「物件沒有 dragBoundFunc」改寫）、狀態、選單列、工具面板（9 個）、檔案系統（v4）、「改一邊要改兩邊」的常數（<code>MARGIN_MAX_PT</code>）。<code>01-overview.md</code> 加「紙張尺寸、邊界」「格線、吸附」兩列；<code>02-architecture.md</code> 模組地圖與資料夾表加 <code>lib/preferences/</code>。</li>
+  </ul>
+</div>
+
+<h2>6. 不在這次範圍</h2>
+<ul>
+  <li>新文件的預設紙張尺寸、單頁不同尺寸。</li>
+  <li>對頁（左右頁內外側邊界）、出血、裁切線。</li>
+  <li>吸附到邊界參考線、其他物件、頁面中心（智慧參考線）。</li>
+  <li>外觀（淺色 / 深色）切換、自動備份間隔等其他偏好。</li>
+  <li>SQLite <code>settings</code> 資料表（決定用 localStorage）。</li>
+</ul>
+
+<h2>7. 想再確認的細節</h2>
+<div class="ask">
+  <p>以下是我先採用的預設，有不同想法請告訴我，沒有的話就照這樣做：</p>
+  <ol>
+    <li><strong>「頁面設定...」與「偏好設定...」開同一個對話框</strong>（前者直接到「頁面」分頁），而不是兩個不同的對話框。</li>
+    <li>新文件預設邊界 <strong>15 mm</strong>；格線間距預設 <strong>5 mm</strong>；格線與吸附預設<strong>關閉</strong>、邊界參考線預設<strong>開啟</strong>。</li>
+    <li>紙張選單只放現有的 A4 / B5 / Letter + 自訂（要加 A3、A5 等只是多一行資料）。</li>
+    <li>對話框按「確定」才生效（不是改了立即生效）。</li>
+  </ol>
+</div>
+
+</main>
+</body>
+</html>

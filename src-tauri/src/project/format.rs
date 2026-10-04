@@ -10,13 +10,17 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v2: element colors (`fill`) may carry alpha as `#rrggbbaa`. Page backgrounds stay `#rrggbb`.
 /// v3: `rect` / `ellipse` / `polygon` / `star` merged into `shape` (box + geometry, `x` / `y` at the
 /// top-left corner) with optional `stroke` and `label`. Older files are upgraded on read.
-pub const SCHEMA_VERSION: u32 = 3;
+/// v4: `document.margins` (guides only). Older files and backups without it read as all 0; the
+/// version bump stops older apps from opening (and silently dropping) it.
+pub const SCHEMA_VERSION: u32 = 4;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
 /// Most polygon sides / star points a file may contain (each is drawn as vertices); same as
 /// `MAX_VERTEX_COUNT` in `src/lib/editor/validation.ts`.
 pub const MAX_VERTEX_COUNT: u32 = 1000;
+/// Largest page margin (pt), 2000 mm; same as `MARGIN_MAX_PT` in `src/lib/editor/validation.ts`.
+pub const MARGIN_MAX_PT: f64 = 2000.0 * 72.0 / 25.4;
 pub const ASSET_DIR: &str = "assets/images";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -38,7 +42,19 @@ pub struct ProjectFile {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Document {
     pub name: String,
+    /// Canvas guides only; export ignores them. Missing in files before v4 → all 0.
+    #[serde(default)]
+    pub margins: Margins,
     pub pages: Vec<Page>,
+}
+
+/// Page margins in pt, the same for every page.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+pub struct Margins {
+    pub top: f64,
+    pub right: f64,
+    pub bottom: f64,
+    pub left: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -314,6 +330,7 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
     if document.pages.is_empty() {
         return Err(AppError::invalid_project("document has no pages"));
     }
+    validate_margins(&document.margins)?;
     for page in &document.pages {
         require_id(&page.id)?;
         if !(page.width > 0.0 && page.height > 0.0) {
@@ -326,6 +343,17 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
     }
     for asset in assets {
         validate_asset_path(&asset.src)?;
+    }
+    Ok(())
+}
+
+/// Same rules as TS `isMargins`: every side finite and in [0, MARGIN_MAX_PT]. Whether they fit the
+/// page is not checked, so resizing pages never makes a file invalid.
+fn validate_margins(margins: &Margins) -> AppResult<()> {
+    for side in [margins.top, margins.right, margins.bottom, margins.left] {
+        if !(side.is_finite() && (0.0..=MARGIN_MAX_PT).contains(&side)) {
+            return Err(AppError::invalid_project(format!("invalid page margin {side}")));
+        }
     }
     Ok(())
 }
@@ -531,6 +559,32 @@ mod tests {
         };
         assert!((shape.base.x - 110.0).abs() < 1e-9 && (shape.base.y - 80.0).abs() < 1e-9, "{:?}", shape.base);
         assert_eq!((shape.width, shape.height), (40.0, 20.0));
+    }
+
+    #[test]
+    fn files_before_v4_open_with_zero_margins() {
+        assert_eq!(parse_project(FIXTURE_V2).unwrap().document.margins, Margins::default());
+
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(3);
+        value["document"].as_object_mut().unwrap().remove("margins");
+        assert_eq!(parse_project(&value.to_string()).unwrap().document.margins, Margins::default());
+
+        // fixture（v4）的邊界不是 0，確認真的有讀到
+        assert!(parse_project(FIXTURE).unwrap().document.margins.top > 0.0);
+    }
+
+    #[test]
+    fn rejects_invalid_margins() {
+        for (side, number) in [("top", -1.0), ("left", MARGIN_MAX_PT + 1.0)] {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value["document"]["margins"][side] = Value::from(number);
+            assert!(matches!(parse_project(&value.to_string()), Err(AppError::InvalidProject(_))), "{side} {number}");
+        }
+        // 邊界超過頁面尺寸不算錯誤（縮小紙張不能讓檔案變成不合法）
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["document"]["margins"]["right"] = Value::from(5000.0);
+        assert!(parse_project(&value.to_string()).is_ok());
     }
 
     #[test]
