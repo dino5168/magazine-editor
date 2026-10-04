@@ -82,7 +82,7 @@ export function findFontOption(family: string): FontOption | undefined {
 }
 
 /**
- * Lists every distinct `fontFamily` used by text and shape text in the document (all pages).
+ * Lists every distinct `fontFamily` used by text, shape text and page numbers in the document (all pages).
  *
  * Args:
  *   document: The editor document.
@@ -98,6 +98,8 @@ export function usedFontFamilies(document: EditorDocument): string[] {
       else if (element.type === "shape" && element.label) families.add(element.label.fontFamily);
     }
   }
+  // 頁碼不是物件，但同樣畫在畫布上、也會匯出
+  for (const rule of document.pageNumberRules) families.add(rule.style.fontFamily);
   return [...families].sort();
 }
 

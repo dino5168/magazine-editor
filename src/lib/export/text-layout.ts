@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
-import type { TextElement } from "@/lib/editor/types";
+import type { PageNumberStyle, TextElement } from "@/lib/editor/types";
 import type { TextLayout } from "./export-request";
 
 /**
@@ -31,6 +31,26 @@ export function measureTextLayout(element: TextElement): TextLayout {
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
     const lineHeight = element.fontSize * TEXT_LINE_HEIGHT;
     return { lines, baseline: (ascent - descent) / 2 + lineHeight / 2 };
+  } finally {
+    node.destroy();
+  }
+}
+
+/**
+ * Measures the width of one unwrapped line the way the canvas draws it (`MeasureTextWidth` for
+ * page numbers).
+ *
+ * Args:
+ *   text: One line of text.
+ *   style: Font size, family and weight.
+ *
+ * Returns:
+ *   Width in pt (fonts must already be loaded).
+ */
+export function measureLineWidth(text: string, style: Pick<PageNumberStyle, "fontSize" | "fontFamily" | "fontStyle">): number {
+  const node = new Konva.Text({ text, fontSize: style.fontSize, fontFamily: style.fontFamily, fontStyle: style.fontStyle });
+  try {
+    return node.width();
   } finally {
     node.destroy();
   }

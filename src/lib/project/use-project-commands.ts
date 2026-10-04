@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { buildExportRequest } from "@/lib/export/export-request";
-import { measureTextLayout } from "@/lib/export/text-layout";
+import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
 
@@ -118,7 +118,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
     }
     if (chosen.data === null) return false;
     const toastId = toast.loading(`正在匯出「${chosen.data}」…`);
-    const exported = await projectApi.exportPdf(buildExportRequest(document, measureTextLayout));
+    const exported = await projectApi.exportPdf(buildExportRequest(document, measureTextLayout, measureLineWidth));
     if (exported.error) {
       toast.error(`匯出 PDF 失敗：${describeCommandError(exported.error)}`, { id: toastId });
       return false;

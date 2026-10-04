@@ -12,6 +12,7 @@ import {
   type EditorAction,
   type EditorState,
 } from "../editor-reducer";
+import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
 import type { EditorDocument } from "../types";
 
@@ -19,6 +20,7 @@ function blankState(): EditorState {
   const document: EditorDocument = {
     name: "測試文件",
     margins: DEFAULT_MARGINS,
+    pageNumberRules: [],
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
   };
   return createInitialState(document);
@@ -523,6 +525,34 @@ describe("editorReducer / page setup", () => {
   });
 });
 
+describe("editorReducer / page numbering", () => {
+  const front = createPageNumberRule("front", 1, 2);
+  const body = { ...createPageNumberRule("body", 3, 20), start: 1 };
+
+  it("stores the rules sorted by first page in one undo step", () => {
+    const state = blankState();
+    const next = run(state, { type: "document/setPageNumbering", rules: [body, front] });
+
+    expect(next.history.present.pageNumberRules.map((r) => r.id)).toEqual(["front", "body"]);
+    expect(next.history.present.pages).toBe(state.history.present.pages);
+    expect(next.history.past).toHaveLength(1);
+    expect(run(next, { type: "history/undo" }).history.present).toBe(state.history.present);
+    expect(run(next, { type: "document/setPageNumbering", rules: [] }).history.present.pageNumberRules).toEqual([]);
+  });
+
+  it("returns the same state when the rules do not change", () => {
+    const state = run(blankState(), { type: "document/setPageNumbering", rules: [front, body] });
+    expect(editorReducer(state, { type: "document/setPageNumbering", rules: [{ ...body }, { ...front }] })).toBe(state);
+    expect(editorReducer(blankState(), { type: "document/setPageNumbering", rules: [] }).history.past).toHaveLength(0);
+  });
+
+  it("rejects invalid or overlapping rules", () => {
+    const state = blankState();
+    expect(editorReducer(state, { type: "document/setPageNumbering", rules: [front, { ...body, from: 2 }] })).toBe(state);
+    expect(editorReducer(state, { type: "document/setPageNumbering", rules: [{ ...front, to: 0 }] })).toBe(state);
+  });
+});
+
 describe("editorReducer / project", () => {
   const asset = { src: "assets/images/abc.png", name: "封面.png", width: 1600, height: 900 };
 
@@ -542,6 +572,7 @@ describe("editorReducer / project", () => {
     const document: EditorDocument = {
       name: "另一個專案",
       margins: DEFAULT_MARGINS,
+      pageNumberRules: [],
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
     };
 

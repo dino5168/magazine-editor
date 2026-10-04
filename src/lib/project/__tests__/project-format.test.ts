@@ -5,6 +5,7 @@ import {
   createShapeElement,
   createTextElement,
 } from "@/lib/editor/element-factory";
+import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
 import type { CanvasElement, ElementType, GeometryKind, ShapeElement, ShapeLabel, Stroke } from "@/lib/editor/types";
 import type { ProjectContent } from "../project-types";
 // 與 src-tauri 的 cargo test 共用同一份 fixture；兩邊欄位名稱不一致時，其中一邊的測試會失敗
@@ -65,5 +66,16 @@ describe("project file fixture", () => {
     expect(sortedKeys(fixture.document)).toEqual(sortedKeys(blank));
     expect(sortedKeys(fixture.document.pages[0])).toEqual(sortedKeys(blank.pages[0]));
     expect(sortedKeys(fixture.assets[0])).toEqual(["height", "name", "src", "width"]);
+  });
+
+  it("stores page number rules with the TypeScript field names and rules", () => {
+    const rules = fixture.document.pageNumberRules;
+    const factory = createPageNumberRule("x", 1, 1);
+    expect(isPageNumberRules(rules)).toBe(true);
+    expect(rules).toHaveLength(2);
+    expect(sortedKeys(rules[0])).toEqual(sortedKeys(factory));
+    expect(sortedKeys(rules[0].odd)).toEqual(sortedKeys(factory.odd));
+    expect(sortedKeys(rules[0].style)).toEqual(sortedKeys(factory.style));
+    expect(rules[1].style.stroke).not.toBeNull();
   });
 });

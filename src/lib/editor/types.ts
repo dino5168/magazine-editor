@@ -111,10 +111,55 @@ export interface Margins {
   readonly left: number;
 }
 
+/** Where a page number sits; the column decides the text alignment, the middle ones are vertical. */
+export type PageNumberPosition =
+  | "topLeft"
+  | "topCenter"
+  | "topRight"
+  | "middleLeft"
+  | "middleRight"
+  | "bottomLeft"
+  | "bottomCenter"
+  | "bottomRight";
+
+/** Settings for the odd or the even pages of a page number rule. */
+export interface PageNumberFace {
+  readonly position: PageNumberPosition;
+  /** Text before the number, e.g. "第 ". */
+  readonly prefix: string;
+  /** Text after the number, e.g. " 頁". */
+  readonly suffix: string;
+}
+
+/** Look of a page number, shared by the odd and even pages of a rule. */
+export interface PageNumberStyle extends Omit<TextStyle, "align"> {
+  /** null = no border. */
+  readonly stroke: Stroke | null;
+}
+
+/** Page numbering of one run of pages (one row in the page number dialog). */
+export interface PageNumberRule {
+  readonly id: string;
+  /** First page of the run (1-based, inclusive; counted in document order). */
+  readonly from: number;
+  /** Last page of the run (inclusive); may exceed the current page count. */
+  readonly to: number;
+  /** Number shown on page `from`; following pages count up by 1. */
+  readonly start: number;
+  readonly odd: PageNumberFace;
+  readonly even: PageNumberFace;
+  readonly style: PageNumberStyle;
+}
+
 export interface EditorDocument {
   readonly name: string;
   /** Same for every page; drawn as guides on the canvas only, never exported. */
   readonly margins: Margins;
+  /**
+   * Sorted by `from`, ranges never overlap. Pages outside every rule have no number. The numbers
+   * are drawn on the canvas and exported, but are not elements (see `page-numbers.ts`).
+   */
+  readonly pageNumberRules: readonly PageNumberRule[];
   readonly pages: readonly Page[];
 }
 

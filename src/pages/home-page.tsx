@@ -5,6 +5,7 @@ import { DockArea } from "@/components/dock/dock-area";
 import { DockDragGhost } from "@/components/dock/dock-drag-ghost";
 import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
+import { PageNumbersDialog } from "@/components/app/page-numbers-dialog";
 import { PreferencesDialog, type PreferencesTab } from "@/components/app/preferences-dialog";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
@@ -74,9 +75,10 @@ function EditorLayout() {
     [dockLayout],
   );
 
-  // 偏好設定對話框：記住上次看的分頁，Ctrl+, 回到那一頁；「頁面設定...」固定開「頁面」分頁
+  // 偏好設定對話框：記住上次看的分頁，Ctrl+, 回到那一頁
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [preferencesTab, setPreferencesTab] = useState<PreferencesTab>("page");
+  const [pageNumbersOpen, setPageNumbersOpen] = useState(false);
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -88,10 +90,7 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": importImage,
-      "settings.page": () => {
-        setPreferencesTab("page");
-        setPreferencesOpen(true);
-      },
+      "settings.pageNumbers": () => setPageNumbersOpen(true),
       "settings.preferences": () => setPreferencesOpen(true),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
@@ -163,6 +162,7 @@ function EditorLayout() {
         onTabChange={setPreferencesTab}
         onOpenChange={setPreferencesOpen}
       />
+      <PageNumbersDialog open={pageNumbersOpen} onOpenChange={setPageNumbersOpen} />
     </div>
   );
 }

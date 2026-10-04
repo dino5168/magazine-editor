@@ -1,4 +1,5 @@
 import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
+import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
@@ -22,6 +23,7 @@ import type {
   Margins,
   Page,
   PageId,
+  PageNumberRule,
   Size,
 } from "./types";
 
@@ -88,6 +90,8 @@ export type EditorAction =
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
   | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
+  /** Page number dialog: replaces every page number rule in one undo step; invalid rules are a no-op. */
+  | { readonly type: "document/setPageNumbering"; readonly rules: readonly PageNumberRule[] }
   | { readonly type: "history/undo" }
   | { readonly type: "history/redo" }
   /** Selects only this element; null clears the selection. */
@@ -415,6 +419,15 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       margins: marginsChanged ? { ...margins } : current,
       pages: pagesChanged ? pages : document.pages,
     });
+  },
+
+  // 依 from 排序後存；內容相同時回傳同一個 state（對話框沒改動也按「確定」不會多一筆復原）
+  "document/setPageNumbering": (state, action) => {
+    if (!isPageNumberRules(action.rules)) return state;
+    const document = state.history.present;
+    const rules = sortPageNumberRules(action.rules);
+    if (JSON.stringify(rules) === JSON.stringify(document.pageNumberRules)) return state;
+    return commit(state, { ...document, pageNumberRules: rules });
   },
 
   "history/undo": (state) => {

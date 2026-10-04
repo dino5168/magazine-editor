@@ -58,7 +58,7 @@ export const MENUS = [
     label: "設定",
     mnemonic: { code: "KeyS", letter: "S" },
     items: [
-      { kind: "item", command: "settings.page" },
+      { kind: "item", command: "settings.pageNumbers" },
       { kind: "item", command: "settings.preferences" },
       separator,
       {

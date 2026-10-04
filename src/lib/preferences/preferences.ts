@@ -12,6 +12,8 @@ export interface Preferences {
   };
   /** Draw the document margins as guides on the canvas. */
   readonly showMargins: boolean;
+  /** Draw page numbers on the canvas (export always includes them). */
+  readonly showPageNumbers: boolean;
 }
 
 /** Grid spacing range offered by the preferences dialog (pt). */
@@ -20,6 +22,7 @@ export const GRID_SPACING = { min: mmToPt(1), max: mmToPt(100), default: mmToPt(
 export const DEFAULT_PREFERENCES: Preferences = {
   grid: { visible: false, spacing: GRID_SPACING.default, snap: false },
   showMargins: true,
+  showPageNumbers: true,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -55,5 +58,6 @@ export function parsePreferences(value: unknown): Preferences {
       snap: parseBoolean(grid.snap, fallback.grid.snap),
     },
     showMargins: parseBoolean(value.showMargins, fallback.showMargins),
+    showPageNumbers: parseBoolean(value.showPageNumbers, fallback.showPageNumbers),
   };
 }

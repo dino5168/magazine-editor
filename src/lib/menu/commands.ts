@@ -43,7 +43,7 @@ export const COMMANDS = {
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
-  "settings.page": { label: "頁面設定..." },
+  "settings.pageNumbers": { label: "頁碼管理..." },
   "settings.preferences": { label: "偏好設定...", shortcut: { ctrl: true, code: "Comma", keyLabel: "," } },
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },
   "settings.themeDark": { label: "深色", title: "外觀：深色" },

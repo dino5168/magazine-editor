@@ -65,7 +65,8 @@ flowchart TB
 | `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
 | `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
 | `src/lib/preferences/`、`src/components/app/preferences-dialog.tsx` | 約 440 | 偏好設定:格線等 App 偏好(localStorage)、「偏好設定」對話框(紙張、邊界、格線) | 之後再看 |
-| `src/lib/export/` | 約 80 | 匯出前用 Konva 量測每段文字的分行 | 之後再看 |
+| `src/lib/editor/page-numbers.ts`、`src/components/app/page-numbers-dialog.tsx` | 約 750 | 頁碼管理:頁碼規則 → 畫布與匯出用的「虛擬圖形」、「頁碼管理」對話框。頁碼不是物件,只存規則 | 之後再看 |
+| `src/lib/export/` | 約 100 | 匯出前用 Konva 量測每段文字的分行(與頁碼的寬度),並把頁碼加進匯出的副本 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
 | `src/**/__tests__/` | 約 1,500 | 測試 | 之後再看 |

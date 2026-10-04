@@ -165,6 +165,25 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
 }
 
 /**
+ * Draws a shape that is not a document element (the page number): same look as a shape element,
+ * but it cannot be selected, dragged or edited.
+ *
+ * Args:
+ *   props.shape: Shape in page coordinates.
+ *
+ * Returns:
+ *   Konva group that ignores pointer events.
+ */
+export function StaticShape({ shape }: { readonly shape: ShapeElement }) {
+  return (
+    <Group x={shape.x} y={shape.y} rotation={shape.rotation} listening={false}>
+      <ShapeBody shape={shape} />
+      {shape.label && shape.label.text !== "" && <ShapeLabelText shape={shape} label={shape.label} hidden={false} />}
+    </Group>
+  );
+}
+
+/**
  * Renders one canvas element as the matching Konva node.
  *
  * Args:

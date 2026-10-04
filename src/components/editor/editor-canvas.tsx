@@ -14,6 +14,8 @@ import {
   pageCenter,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
+import { pageNumberShape } from "@/lib/editor/page-numbers";
+import { measureLineWidth } from "@/lib/export/text-layout";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
 import {
@@ -27,7 +29,7 @@ import {
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
-import { ElementNode, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
+import { ElementNode, StaticShape, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { MarginGuide, PageGrid } from "./page-guides";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
@@ -76,6 +78,13 @@ export function EditorCanvas() {
   // 開啟用到其他字型的專案時，載入期間畫布會短暫消失
   const usedFamilies = useMemo(() => usedFontFamilies(state.history.present), [state.history.present]);
   const fontsReady = useFontsReady(usedFamilies);
+  const { pages, pageNumberRules, margins } = state.history.present;
+  const pageIndex = pages.indexOf(page);
+  // 量測需要字型：字型載入前不算（畫布本來就還沒畫）
+  const pageNumber = useMemo(
+    () => (fontsReady ? pageNumberShape(page, pageIndex, pageNumberRules, margins, measureLineWidth) : null),
+    [fontsReady, page, pageIndex, pageNumberRules, margins],
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -394,6 +403,8 @@ export function EditorCanvas() {
                     dragBound={dragBound}
                   />
                 ))}
+                {/* 頁碼由文件的頁碼設定算出，不是物件：不能選取、不在圖層面板；「顯示頁碼」關閉時只是不畫，匯出照常 */}
+                {preferences.showPageNumbers && pageNumber && <StaticShape shape={pageNumber} />}
                 {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}
                 {/* 格線與邊界參考線都不攔事件、不算進內容範圍，也不會匯出 */}
                 {preferences.showMargins && <MarginGuide page={page} margins={state.history.present.margins} zoom={zoom} />}

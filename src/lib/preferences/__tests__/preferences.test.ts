@@ -11,7 +11,11 @@ function memoryStorage(initial: Record<string, string> = {}) {
   };
 }
 
-const custom: Preferences = { grid: { visible: true, spacing: 20, snap: true }, showMargins: false };
+const custom: Preferences = {
+  grid: { visible: true, spacing: 20, snap: true },
+  showMargins: false,
+  showPageNumbers: false,
+};
 
 describe("parsePreferences", () => {
   it("returns the defaults for non-objects", () => {
@@ -29,7 +33,11 @@ describe("parsePreferences", () => {
     expect(parsed).toEqual({
       grid: { visible: false, spacing: GRID_SPACING.default, snap: true },
       showMargins: false,
+      // 舊的紀錄沒有這個欄位：回到預設（顯示）
+      showPageNumbers: true,
     });
+    expect(parsePreferences({ showPageNumbers: "no" }).showPageNumbers).toBe(true);
+    expect(parsePreferences({ showPageNumbers: false }).showPageNumbers).toBe(false);
     expect(parsePreferences({ grid: 3 }).grid).toEqual(DEFAULT_PREFERENCES.grid);
   });
 

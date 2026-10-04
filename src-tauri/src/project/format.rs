@@ -12,7 +12,8 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// top-left corner) with optional `stroke` and `label`. Older files are upgraded on read.
 /// v4: `document.margins` (guides only). Older files and backups without it read as all 0; the
 /// version bump stops older apps from opening (and silently dropping) it.
-pub const SCHEMA_VERSION: u32 = 4;
+/// v5: `document.pageNumberRules`. Missing in older files and backups → no page numbers.
+pub const SCHEMA_VERSION: u32 = 5;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -21,6 +22,14 @@ pub const STROKE_WIDTH_MAX: f64 = 100.0;
 pub const MAX_VERTEX_COUNT: u32 = 1000;
 /// Largest page margin (pt), 2000 mm; same as `MARGIN_MAX_PT` in `src/lib/editor/validation.ts`.
 pub const MARGIN_MAX_PT: f64 = 2000.0 * 72.0 / 25.4;
+/// Font size range (pt); same as `FONT_SIZE_MIN` / `FONT_SIZE_MAX` in `src/lib/editor/validation.ts`.
+/// Only page numbers are checked against it; elements rely on the UI.
+pub const FONT_SIZE_MIN: f64 = 6.0;
+pub const FONT_SIZE_MAX: f64 = 400.0;
+/// Largest page number range end / start value; same as `PAGE_NUMBER_MAX` in `src/lib/editor/page-numbers.ts`.
+pub const PAGE_NUMBER_MAX: u32 = 99999;
+/// Longest page number prefix / suffix (characters); same as `PAGE_NUMBER_AFFIX_MAX_LENGTH`.
+pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
 pub const ASSET_DIR: &str = "assets/images";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -45,7 +54,57 @@ pub struct Document {
     /// Canvas guides only; export ignores them. Missing in files before v4 → all 0.
     #[serde(default)]
     pub margins: Margins,
+    /// Missing in files before v5 → no page numbers.
+    #[serde(default, rename = "pageNumberRules")]
+    pub page_number_rules: Vec<PageNumberRule>,
     pub pages: Vec<Page>,
+}
+
+/// Where a page number sits on the page.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PageNumberPosition {
+    TopLeft,
+    TopCenter,
+    TopRight,
+    MiddleLeft,
+    MiddleRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
+/// Settings for the odd or the even pages of a page number rule.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PageNumberFace {
+    pub position: PageNumberPosition,
+    pub prefix: String,
+    pub suffix: String,
+}
+
+/// Look of a page number.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PageNumberStyle {
+    pub font_size: f64,
+    pub font_family: String,
+    pub font_style: FontStyle,
+    pub fill: String,
+    pub stroke: Option<Stroke>,
+}
+
+/// Page numbering of pages `from..=to` (1-based). The frontend turns it into a shape per page
+/// before exporting, so the exporters never read it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PageNumberRule {
+    pub id: String,
+    pub from: u32,
+    pub to: u32,
+    /// Number shown on page `from`.
+    pub start: u32,
+    pub odd: PageNumberFace,
+    pub even: PageNumberFace,
+    pub style: PageNumberStyle,
 }
 
 /// Page margins in pt, the same for every page.
@@ -331,6 +390,7 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
         return Err(AppError::invalid_project("document has no pages"));
     }
     validate_margins(&document.margins)?;
+    validate_page_number_rules(&document.page_number_rules)?;
     for page in &document.pages {
         require_id(&page.id)?;
         if !(page.width > 0.0 && page.height > 0.0) {
@@ -358,6 +418,50 @@ fn validate_margins(margins: &Margins) -> AppResult<()> {
     Ok(())
 }
 
+/// Same rules as TS `isPageNumberRules`: 1 ≤ from ≤ to ≤ PAGE_NUMBER_MAX, start ≤ PAGE_NUMBER_MAX,
+/// single-line prefix / suffix of at most PAGE_NUMBER_AFFIX_MAX_LENGTH characters, font size in
+/// range, valid colors and border, unique ids, and no two ranges sharing a page.
+fn validate_page_number_rules(rules: &[PageNumberRule]) -> AppResult<()> {
+    let invalid = |rule: &PageNumberRule, what: &str| AppError::invalid_project(format!("page number rule {}: {what}", rule.id));
+    let affix_ok = |s: &str| s.chars().count() <= PAGE_NUMBER_AFFIX_MAX_LENGTH && !s.contains(['\r', '\n']);
+    for rule in rules {
+        require_id(&rule.id)?;
+        if !(1 <= rule.from && rule.from <= rule.to && rule.to <= PAGE_NUMBER_MAX && rule.start <= PAGE_NUMBER_MAX) {
+            return Err(invalid(rule, "invalid page range or start"));
+        }
+        if ![&rule.odd, &rule.even].iter().all(|face| affix_ok(&face.prefix) && affix_ok(&face.suffix)) {
+            return Err(invalid(rule, "invalid prefix or suffix"));
+        }
+        if !(FONT_SIZE_MIN..=FONT_SIZE_MAX).contains(&rule.style.font_size) {
+            return Err(invalid(rule, "invalid font size"));
+        }
+        require_element_color(&rule.style.fill)?;
+        if let Some(stroke) = &rule.style.stroke {
+            validate_stroke(stroke)?;
+        }
+    }
+    let mut sorted: Vec<&PageNumberRule> = rules.iter().collect();
+    sorted.sort_by_key(|rule| rule.from);
+    for pair in sorted.windows(2) {
+        if pair[1].from <= pair[0].to {
+            return Err(invalid(pair[1], "overlaps another rule"));
+        }
+    }
+    let ids: std::collections::HashSet<&str> = rules.iter().map(|rule| rule.id.as_str()).collect();
+    if ids.len() != rules.len() {
+        return Err(AppError::invalid_project("duplicate page number rule id"));
+    }
+    Ok(())
+}
+
+fn validate_stroke(stroke: &Stroke) -> AppResult<()> {
+    require_element_color(&stroke.color)?;
+    if !(stroke.width > 0.0 && stroke.width <= STROKE_WIDTH_MAX) {
+        return Err(AppError::invalid_project(format!("invalid stroke width {}", stroke.width)));
+    }
+    Ok(())
+}
+
 fn validate_element(element: &Element) -> AppResult<()> {
     match element {
         Element::Text(e) => {
@@ -369,10 +473,7 @@ fn validate_element(element: &Element) -> AppResult<()> {
             require_element_color(&e.fill)?;
             validate_geometry(&e.geometry)?;
             if let Some(stroke) = &e.stroke {
-                require_element_color(&stroke.color)?;
-                if !(stroke.width > 0.0 && stroke.width <= STROKE_WIDTH_MAX) {
-                    return Err(AppError::invalid_project(format!("invalid stroke width {}", stroke.width)));
-                }
+                validate_stroke(stroke)?;
             }
             if let Some(label) = &e.label {
                 require_element_color(&label.fill)?;
@@ -585,6 +686,66 @@ mod tests {
         let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
         value["document"]["margins"]["right"] = Value::from(5000.0);
         assert!(parse_project(&value.to_string()).is_ok());
+    }
+
+    #[test]
+    fn files_before_v5_open_without_page_numbers() {
+        assert!(parse_project(FIXTURE_V2).unwrap().document.page_number_rules.is_empty());
+
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(4);
+        value["document"].as_object_mut().unwrap().remove("pageNumberRules");
+        assert!(parse_project(&value.to_string()).unwrap().document.page_number_rules.is_empty());
+
+        // fixture（v5）有兩段頁碼，確認真的有讀到
+        let rules = parse_project(FIXTURE).unwrap().document.page_number_rules;
+        assert_eq!(rules.len(), 2);
+        assert_eq!(rules[1].odd.position, PageNumberPosition::MiddleRight);
+    }
+
+    #[test]
+    fn rejects_invalid_page_number_rules() {
+        use serde_json::json;
+        let with = |pointer: &str, replacement: Value| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            *value.pointer_mut(pointer).unwrap() = replacement;
+            parse_project(&value.to_string())
+        };
+        const FIRST: &str = "/document/pageNumberRules/0";
+        assert!(with(&format!("{FIRST}/start"), json!(0)).is_ok());
+        for (field, bad) in [
+            ("from", json!(0)),
+            ("to", json!(PAGE_NUMBER_MAX + 1)),
+            ("start", json!(-1)),
+            ("from", json!(1.5)),
+            ("odd/position", json!("center")),
+            ("odd/prefix", json!("a\nb")),
+            ("even/suffix", json!("字".repeat(PAGE_NUMBER_AFFIX_MAX_LENGTH + 1))),
+            ("style/fontSize", json!(FONT_SIZE_MAX + 1.0)),
+            ("style/fill", json!("red")),
+            ("style/stroke", json!({ "color": "#000000", "width": 0, "dash": "solid" })),
+            ("id", json!("")),
+        ] {
+            assert!(with(&format!("{FIRST}/{field}"), bad.clone()).is_err(), "{field} = {bad}");
+        }
+        // from > to
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["document"]["pageNumberRules"][0]["from"] = json!(5);
+        value["document"]["pageNumberRules"][0]["to"] = json!(4);
+        assert!(parse_project(&value.to_string()).is_err());
+    }
+
+    #[test]
+    fn page_number_rules_may_not_overlap_or_share_ids() {
+        let rules = |edit: &dyn Fn(&mut Value)| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            edit(&mut value["document"]["pageNumberRules"]);
+            parse_project(&value.to_string())
+        };
+        // fixture：第 1–2 頁、第 3–999 頁；順序不影響
+        assert!(rules(&|r| r.as_array_mut().unwrap().reverse()).is_ok());
+        assert!(rules(&|r| r[1]["from"] = Value::from(2)).is_err());
+        assert!(rules(&|r| r[1]["id"] = r[0]["id"].clone()).is_err());
     }
 
     #[test]

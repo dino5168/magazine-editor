@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>頁碼管理實作計畫</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --code: #f3f4f6; --guide: #db2777;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --code: #21262d; --guide: #f472b6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .done { background: var(--ok-soft); color: var(--ok); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .figure { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 16px 0; }
+  .figure svg { max-width: 100%; height: auto; }
+  .caption { text-align: center; color: var(--muted); font-size: .85rem; }
+  svg text { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  .s-frame { fill: var(--card); stroke: var(--line); }
+  .s-head { fill: var(--code); }
+  .s-text { fill: var(--fg); }
+  .s-muted { fill: var(--muted); }
+  .s-line { stroke: var(--line); fill: none; }
+  .s-accent { fill: var(--accent); }
+  .s-accent-soft { fill: var(--accent-soft); }
+  .s-input { fill: var(--bg); stroke: var(--line); }
+  .s-guide { stroke: var(--guide); fill: none; stroke-dasharray: 4 3; }
+  .s-page { fill: #fff; stroke: #a3a3a3; }
+  .s-num { fill: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>頁碼管理（imp-page-settings）</h1>
+<p class="meta">任務檔：<code>docs/Plans/2026-10-04-頁碼管理.md</code>（不 commit）· 建立：2026-10-04 · 對應 commit：<code>0605fe6</code> · 狀態：<strong>七個步驟全部完成（2026-10-04），尚未 commit；桌面版人工驗證待做</strong></p>
+
+<h2>1. 任務</h2>
+<ol>
+  <li>頁碼分<strong>奇數頁 / 偶數頁</strong>分開設定。</li>
+  <li>可以設定頁碼顯示在<strong>八個位置</strong>之一：左上、上中、右上、左中、右中、左下、下中、右下。</li>
+  <li>文字對齊：左邊的位置靠左、中間的位置置中、右邊的位置靠右；<strong>左中、右中用直式書寫</strong>。</li>
+  <li>「頁碼型態」：字型、是否加框線、頁碼顏色；套用在第 n ～ n+x 頁。</li>
+  <li>可以把文件分成多段（1～n、n+1～n+x1、…），每段各自設定。</li>
+  <li>選單「設定 → 頁面設定...」改成「設定 → <strong>頁碼管理...</strong>」（紙張與邊界仍在「偏好設定...」的「頁面」分頁）。</li>
+</ol>
+
+<h2>2. 已和使用者確認的決定（2026-10-04）</h2>
+<table>
+  <tr><th>項目</th><th>決定</th></tr>
+  <tr><td>一段設定的結構</td><td><strong>一段 = 一個頁面範圍</strong>（第 n～m 頁），範圍內的奇數頁、偶數頁各自設定位置與前後置文字；字型、顏色、框線整段共用。範圍不可重疊</td></tr>
+  <tr><td>顯示的數字</td><td>每段可設<strong>起始值</strong>（這段第一頁顯示的數字，預設 = 實際頁序），只用阿拉伯數字</td></tr>
+  <tr><td>位置基準</td><td>上 / 下位置放在<strong>邊界區正中</strong>，左右對齊內容區的邊；邊界為 0（或放不下）時改用距頁緣 10 mm</td></tr>
+  <tr><td>直書</td><td><strong>每個字上下排</strong>（「第／1／2／頁」），沿用現有文字繪製與匯出</td></tr>
+  <tr><td>是否顯示</td><td><strong>只影響畫布</strong>：「顯示頁碼」是 App 偏好（和格線、邊界參考線同類，存 localStorage、不進復原、不存進專案），關掉時編輯畫面不畫頁碼，<strong>匯出照常有頁碼</strong>。預設開啟</td></tr>
+  <tr><td>對話框與選單</td><td>「設定 → 頁面設定...」改成「頁碼管理...」；紙張與邊界仍在「偏好設定...」（Ctrl+,）；按「確定」才寫入，一次 = 一筆復原</td></tr>
+</table>
+
+<h3>參考圖的解讀</h3>
+<div class="figure">
+  <svg width="300" height="230" viewBox="0 0 300 230" role="img" aria-label="頁面上的八個頁碼位置">
+    <rect class="s-page" x="60" y="10" width="180" height="210"/>
+    <rect class="s-guide" x="80" y="32" width="140" height="166"/>
+    <g font-size="11" text-anchor="middle">
+      <text class="s-num" x="88" y="25" text-anchor="start">左上</text>
+      <text class="s-num" x="150" y="25">上中</text>
+      <text class="s-num" x="212" y="25" text-anchor="end">右上</text>
+      <text class="s-num" x="88" y="215" text-anchor="start">左下</text>
+      <text class="s-num" x="150" y="215">下中</text>
+      <text class="s-num" x="212" y="215" text-anchor="end">右下</text>
+      <text class="s-num" x="70" y="104">左</text><text class="s-num" x="70" y="117">中</text>
+      <text class="s-num" x="230" y="104">右</text><text class="s-num" x="230" y="117">中</text>
+    </g>
+    <text class="s-muted" x="150" y="120" font-size="10" text-anchor="middle">內容區（邊界以內）</text>
+  </svg>
+  <svg width="420" height="230" viewBox="0 0 420 230" role="img" aria-label="頁碼管理對話框草圖">
+    <rect class="s-frame" x="1" y="1" width="418" height="228" rx="8"/>
+    <text class="s-text" x="14" y="22" font-size="13" font-weight="600">頁碼管理</text>
+    <rect class="s-input" x="12" y="32" width="240" height="44" rx="4"/>
+    <text class="s-muted" x="20" y="48" font-size="10">頁碼型態：字型 · 字級 · 粗體 · 顏色 · 框線</text>
+    <text class="s-muted" x="20" y="66" font-size="10">頁碼數字：這段第一頁的起始值</text>
+    <text class="s-text" x="14" y="96" font-size="11">套用頁面　第 [ 1 ] 到 [ 12 ] 頁</text>
+    <rect class="s-input" x="12" y="104" width="116" height="62" rx="4"/>
+    <text class="s-text" x="20" y="120" font-size="11" font-weight="600">奇數頁</text>
+    <text class="s-muted" x="20" y="136" font-size="10">位置 [右下 ▾]</text>
+    <text class="s-muted" x="20" y="152" font-size="10">前置 [ ] 後置 [ ]</text>
+    <rect class="s-input" x="136" y="104" width="116" height="62" rx="4"/>
+    <text class="s-text" x="144" y="120" font-size="11" font-weight="600">偶數頁</text>
+    <text class="s-muted" x="144" y="136" font-size="10">位置 [左下 ▾]</text>
+    <text class="s-muted" x="144" y="152" font-size="10">前置 [ ] 後置 [ ]</text>
+    <rect class="s-accent-soft" x="12" y="176" width="70" height="22" rx="4"/>
+    <text class="s-text" x="47" y="191" font-size="10" text-anchor="middle">加入設定</text>
+    <rect class="s-input" x="90" y="176" width="70" height="22" rx="4"/>
+    <text class="s-text" x="125" y="191" font-size="10" text-anchor="middle">修改設定</text>
+    <rect class="s-input" x="168" y="176" width="60" height="22" rx="4"/>
+    <text class="s-text" x="198" y="191" font-size="10" text-anchor="middle">刪除</text>
+    <rect class="s-input" x="264" y="32" width="144" height="166" rx="4"/>
+    <text class="s-text" x="272" y="48" font-size="10" font-weight="600">設定列表（依頁序）</text>
+    <rect class="s-accent-soft" x="268" y="56" width="136" height="20" rx="3"/>
+    <text class="s-text" x="274" y="70" font-size="10">第 1–4 頁：不顯示</text>
+    <text class="s-text" x="274" y="92" font-size="10">第 5–12 頁：奇右下 / 偶左下</text>
+    <text class="s-text" x="274" y="112" font-size="10">第 13–20 頁：下中</text>
+    <rect class="s-input" x="290" y="204" width="56" height="20" rx="4"/>
+    <text class="s-text" x="318" y="218" font-size="10" text-anchor="middle">取消</text>
+    <rect class="s-accent" x="352" y="204" width="56" height="20" rx="4"/>
+    <text x="380" y="218" font-size="10" text-anchor="middle" fill="#fff">確定</text>
+  </svg>
+</div>
+<p class="caption">左：位置示意（八個位置，對齊方式由位置決定）。右：依「頁碼型態設定」參考圖整理的對話框；加了「刪除」與「確定 / 取消」。</p>
+
+<h2>3. 現況盤點（不重複造輪子）</h2>
+<table>
+  <tr><th>已經有的</th><th>位置</th><th>這次怎麼用</th></tr>
+  <tr><td>選單指令 <code>settings.page</code>「頁面設定...」（目前開偏好設定的「頁面」分頁）</td><td><code>lib/menu/commands.ts</code>、<code>menu-structure.ts</code>、<code>home-page.tsx</code></td><td>改成 <code>settings.pageNumbers</code>「頁碼管理...」，handler 改開新對話框。偏好設定的「頁面」分頁仍可由 Ctrl+, 進入</td></tr>
+  <tr><td><code>ShapeElement</code>：外框 + <code>stroke</code>（框線）+ <code>label</code>（文字、字型、顏色、對齊、垂直對齊）</td><td><code>types.ts</code></td><td><strong>頁碼在畫面與輸出時就是一個「虛擬圖形」</strong>：透明填色的矩形、框線用 <code>stroke</code>、數字放在 <code>label</code>。畫布、PDF、EPUB 都走現有的圖形與圖形內文字路徑，不另寫繪製程式</td></tr>
+  <tr><td>圖形內文字的量測與匯出（<code>labelAsText</code>、<code>textLayouts["&lt;id&gt;#label"]</code>、Rust <code>shape_label</code>）</td><td><code>shape-label.ts</code>、<code>export-request.ts</code>、<code>render.rs</code></td><td>匯出前把頁碼圖形加進每頁的 <code>elements</code>，<strong>Rust 的 <code>render.rs</code> / <code>pdf.rs</code> / EPUB 不用改</strong>，換行一樣由畫布量測</td></tr>
+  <tr><td>字型選單 <code>FontFamilySelect</code>、<code>TextStyleControls</code>（字級、粗體、顏色）、<code>StrokeSection</code>（框線顏色 / 線寬 / 虛線）</td><td><code>panels/properties-panel.tsx</code></td><td>抽成可共用的元件（只搬位置、不改行為），對話框的「頁碼型態」直接使用</td></tr>
+  <tr><td><code>ColorPicker</code>、<code>NumberField</code>、<code>loadFontOption</code></td><td><code>color-picker.tsx</code>、<code>number-field.tsx</code>、<code>use-fonts-ready.ts</code></td><td>直接使用；換字型時先載入再寫入</td></tr>
+  <tr><td>偏好設定對話框的模式（草稿在表單、按「確定」一次寫入、Dialog 內快捷鍵不觸發）</td><td><code>preferences-dialog.tsx</code></td><td>頁碼管理對話框照同一個模式</td></tr>
+  <tr><td>文件層級設定 + 一筆復原（<code>document/setPageSetup</code>、<code>margins</code> 與 <code>#[serde(default)]</code> 讓舊檔不需升級）</td><td><code>editor-reducer.ts</code>、<code>format.rs</code></td><td>新增 <code>document/setPageNumbering</code>；Rust 欄位同樣用 <code>#[serde(default)]</code>，舊檔讀成「沒有頁碼」</td></tr>
+  <tr><td>App 偏好 <code>Preferences</code>（<code>showMargins</code> 等、<code>parsePreferences</code> 逐欄驗證、壞掉回預設）</td><td><code>lib/preferences/</code></td><td>加一個 <code>showPageNumbers</code>（預設 true）；舊的 localStorage 紀錄沒有這欄時自動回預設，<strong>不用換 key</strong></td></tr>
+  <tr><td>邊界 <code>margins</code>、<code>marginBounds</code></td><td><code>types.ts</code>、<code>geometry.ts</code></td><td>頁碼的左右位置對齊內容區的邊（見 4.3）</td></tr>
+  <tr><td>畫布上不能點選的圖層（<code>MarginGuide</code>、<code>listening={false}</code>）</td><td><code>page-guides.tsx</code></td><td>頁碼圖層同樣 <code>listening={false}</code>，不能選取、不在圖層面板、不算進內容範圍</td></tr>
+</table>
+
+<h2>4. 設計</h2>
+
+<h3>4.1 資料模型（存進文件 → 專案檔，可復原）</h3>
+<pre><code>type PageNumberPosition =
+  | "topLeft" | "topCenter" | "topRight"
+  | "middleLeft" | "middleRight"
+  | "bottomLeft" | "bottomCenter" | "bottomRight";
+
+/** 奇數頁或偶數頁各自的設定 */
+interface PageNumberFace {
+  readonly position: PageNumberPosition;
+  readonly prefix: string;   // 前置文字，例如「第 」
+  readonly suffix: string;   // 後置文字，例如「 頁」
+}
+
+/** 一段頁面的頁碼設定（對話框列表裡的一列） */
+interface PageNumberRule {
+  readonly id: string;
+  readonly from: number;     // 第幾頁開始（1 起算、含）
+  readonly to: number;       // 到第幾頁（含）
+  readonly odd: PageNumberFace;
+  readonly even: PageNumberFace;
+  readonly style: Omit&lt;TextStyle, "align"&gt; &amp; { readonly stroke: Stroke | null };
+  readonly start: number;    // 第 from 頁顯示的數字（預設 = from），之後逐頁 +1；整數 ≥ 0
+}
+
+interface EditorDocument {
+  …
+  readonly pageNumberRules: readonly PageNumberRule[];   // 依 from 排序、範圍不可重疊
+}</code></pre>
+<ul>
+  <li><strong>奇偶</strong>依頁面在文件中的順序：第 1 頁是奇數頁。沒有被任何一段涵蓋的頁面不顯示頁碼（例如封面）。</li>
+  <li><strong>範圍不可重疊</strong>，<code>from ≤ to</code>；<code>to</code> 可以大於目前頁數（之後加頁會自動套用）。檢查放在純函式，對話框顯示錯誤、reducer 拒絕不合法的設定、Rust 讀檔時同樣驗證。</li>
+  <li>新增 / 刪除 / 移動頁面時，規則<strong>跟著頁序</strong>而不是跟著某一頁（第 5 頁永遠是第 5 頁）。</li>
+  <li>檔案格式：<code>SCHEMA_VERSION</code> 4 → 5，欄位缺少時預設空陣列，舊檔不需要升級步驟。</li>
+</ul>
+
+<h3>4.2 頁碼 → 虛擬圖形（純函式，<code>lib/editor/page-numbers.ts</code>）</h3>
+<ul>
+  <li><code>findPageNumberRule(rules, pageIndex)</code>：這一頁屬於哪一段。</li>
+  <li><code>pageNumberText(rule, pageIndex)</code>：前置 + <code>start + (頁序 − from)</code> + 後置；直書位置時字與字之間加換行。</li>
+  <li><code>pageNumberShape(document, pageIndex)</code>：回傳一個 <code>ShapeElement</code>（或 null），id 固定為 <code>page-number:&lt;pageId&gt;</code>；外框大小由字級與字數估算，位置見 4.3。</li>
+  <li><code>withPageNumbers(document)</code>：把頁碼圖形加到每頁 <code>elements</code> 的<strong>最上層</strong>，只用在匯出前，<strong>不寫回文件</strong>。</li>
+  <li>測試：奇偶、八個位置的座標與對齊、範圍外不顯示、重疊與 <code>from &gt; to</code> 被判為不合法。</li>
+</ul>
+
+<h3>4.3 位置與對齊</h3>
+<table>
+  <tr><th>位置</th><th>水平</th><th>垂直</th><th>文字</th></tr>
+  <tr><td>左上 / 上中 / 右上</td><td>靠內容區左緣 / 頁面中線 / 內容區右緣</td><td>上邊界區（頁緣到上邊界線之間）的中間</td><td>靠左 / 置中 / 靠右，橫書</td></tr>
+  <tr><td>左下 / 下中 / 右下</td><td>同上</td><td>下邊界區的中間</td><td>同上</td></tr>
+  <tr><td>左中 / 右中</td><td>左 / 右邊界區的中間</td><td>頁面中線</td><td><strong>直書</strong>：字與字之間插入換行，外框寬 = 一個字，置中</td></tr>
+</table>
+<p>邊界為 0（或比頁碼小）時，改用距頁緣 10 mm。頁碼可以落在邊界區，本來就不受「物件可以超出頁面」以外的限制。</p>
+
+<h3>4.4 畫布</h3>
+<ul>
+  <li>新的 <code>PageNumberLayer</code>：每頁用 <code>pageNumberShape</code> 產生圖形，交給既有的圖形 renderer 畫在物件上方，<code>listening={false}</code>。</li>
+  <li>不能選取、不在圖層面板、不算進捲動範圍、不進 undo（它只是文件設定的投影）。要改頁碼只能在「頁碼管理」。</li>
+  <li>App 偏好 <code>showPageNumbers</code> 關閉時不畫這個圖層（只影響畫布，匯出不讀這個偏好）。</li>
+  <li>字型：畫布等字型的清單（<code>use-fonts-ready.ts</code>）要包含頁碼用到的字型。</li>
+</ul>
+
+<h3>4.5 對話框（<code>components/app/page-numbers-dialog.tsx</code>）</h3>
+<ul>
+  <li>左邊是表單（頁碼型態 + 套用頁面 + 奇數頁 / 偶數頁），右邊是設定列表（依 <code>from</code> 排序）。</li>
+  <li>點列表的一列 → 表單載入那一段；「加入設定」新增、「修改設定」覆寫選中的那一段、「刪除」移除。範圍重疊時顯示錯誤，按鈕停用。</li>
+  <li>所有修改先在對話框內的草稿，按「確定」才 dispatch 一次 <code>document/setPageNumbering</code>（一筆復原、標記未存檔）；「取消」/ Esc 全部放棄；沒改動時不 dispatch。</li>
+  <li>對話框最上方有「在編輯畫面顯示頁碼」開關（寫入 App 偏好，同樣按「確定」才生效；不會產生復原紀錄，也不會標記未存檔）。</li>
+  <li>位置用 3×3 的按鈕格（中央空白）選，和參考圖一樣直觀；奇數頁預設右下、偶數頁預設左下（雜誌習慣：頁碼在外側）。</li>
+</ul>
+
+<h3>4.6 匯出</h3>
+<p><code>use-project-commands</code> 呼叫 <code>buildExportRequest(withPageNumbers(document), …)</code>。頁碼變成一般圖形 + 圖形內文字，量測與 Rust 端完全沿用；PDF 與 EPUB（接上 UI 之後）都會有頁碼。Rust 的 <code>render.rs</code> 不用改，只有 <code>format.rs</code> 要認得新欄位（匯出請求裡的文件也經過同一個型別）。</p>
+
+<h2>5. 執行步驟（一步一步，每步完成後停下等「繼續」）</h2>
+
+<div class="card step">
+  <h3>步驟 1　純邏輯：頁碼規則與虛擬圖形 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>新增 <code>lib/editor/page-numbers.ts</code>（4.2）與測試；型別先放在這個檔案。</li>
+    <li>畫面不變。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li>函式：<code>createPageNumberRule</code>（預設奇右下 / 偶左下、10 pt）、<code>findPageNumberRule</code>、<code>pageNumberFace</code>、<code>pageNumberText</code>、<code>pageNumberShape</code>、<code>withPageNumbers</code>、<code>isPageNumberRule</code> / <code>isPageNumberRules</code>（範圍、起始值、位置、前後置文字單行 ≤ 20 字、樣式、框線、不重疊、id 不重複）、<code>rulesOverlap</code>、<code>sortPageNumberRules</code>。</li>
+        <li><strong>和計畫不同處</strong>：外框寬度不用估算，改由呼叫端傳入 <code>measure(text, style)</code>（畫布 / 匯出用 Konva 量，測試用假的）。估算若偏小，Konva 會把頁碼折成兩行。寬度另加 1 pt 防止捨入誤差造成換行。</li>
+        <li>對齊的是<strong>文字</strong>而不是外框：靠左時文字左緣 = 左邊界，外框往外多出 4 pt 內距（有框線時框線會略超出邊界線）。</li>
+        <li>函式先收 <code>rules</code> / <code>margins</code> 參數，步驟 2 文件有欄位後由呼叫端傳入。</li>
+        <li>vitest 243 個通過（+15）；<code>tsc</code> 通過。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 2　文件模型 + reducer + 檔案格式 v5 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>型別移進 <code>types.ts</code>，<code>EditorDocument.pageNumberRules</code>；<code>validation.ts</code> 執行時驗證。</li>
+    <li>reducer <code>document/setPageNumbering</code> + 測試（一筆復原、沒變化回傳同一 state、不合法 no-op）。</li>
+    <li>Rust <code>format.rs</code>：型別、<code>#[serde(default)]</code>、驗證（和 TS 同規則）、<code>SCHEMA_VERSION = 5</code>；fixture <code>sample.magproj</code> 加兩段規則；<code>docs-website/types.html</code> 同步。</li>
+    <li>畫面不變。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li><code>types.ts</code> 加 <code>PageNumberPosition</code> / <code>PageNumberFace</code> / <code>PageNumberStyle</code> / <code>PageNumberRule</code> 與 <code>EditorDocument.pageNumberRules</code>；新文件與示範文件是空陣列。</li>
+        <li><strong>和計畫不同處</strong>：驗證（<code>isPageNumberRules</code>）留在 <code>page-numbers.ts</code>，沒有搬進 <code>validation.ts</code>。它需要 <code>sortPageNumberRules</code> / <code>rulesOverlap</code>，放在同一檔比較好找。</li>
+        <li>reducer <code>document/setPageNumbering { rules }</code>：依 <code>from</code> 排序後存；內容相同（以 JSON 比較）時回傳同一個 state；重疊或不合法時 no-op。</li>
+        <li>Rust <code>format.rs</code>：四個型別（<code>from</code> / <code>to</code> / <code>start</code> 是 <code>u32</code>，小數或負數直接解析失敗）；<code>validate_page_number_rules</code>（範圍、起始值、前後置文字、字級 6–400、顏色、框線、不重疊、id 不重複）；新常數 <code>FONT_SIZE_MIN/MAX</code>、<code>PAGE_NUMBER_MAX</code>、<code>PAGE_NUMBER_AFFIX_MAX_LENGTH</code>（<strong>改一邊要改兩邊</strong>）；框線檢查抽成 <code>validate_stroke</code>，與圖形共用。v4 以前的檔案與備份：欄位缺少時 serde 預設空陣列，不需要升級步驟。</li>
+        <li>fixture 升 v5，加兩段：第 1–2 頁（預設樣式）、第 3–999 頁（右中直書、前後置文字、半透明顏色、虛線框）。</li>
+        <li><code>types.html</code>：<code>EditorDocument</code> 方框加欄位；圖下方新增「頁碼設定」一組四個型別與說明卡。</li>
+        <li>vitest 247 個（+4）、Rust 87 個（+3）通過；<code>tsc</code> 通過。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 3　選單改名 + 對話框骨架 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>指令 <code>settings.page</code>「頁面設定...」改成 <code>settings.pageNumbers</code>「頁碼管理...」，handler 開新對話框；<code>menu-structure.test.ts</code> 照常通過。</li>
+    <li>對話框先有列表與加入 / 修改 / 刪除（只有範圍與奇偶位置），按「確定」寫入。</li>
+    <li>驗證（無頭 Edge）：選單文字、開關對話框、加入兩段、重疊時停用、確定後 Ctrl+Z 一次回去。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li>新增 <code>components/app/page-numbers-dialog.tsx</code>：左邊表單（第 / 到 / 起始、奇數頁與偶數頁的 3×3 位置格）、右邊列表（依頁序，點一列載入表單）。這一步已含<strong>起始值</strong>（資料模型本來就有，放在範圍旁邊最自然）。</li>
+        <li>表單規則：選了一段時，「修改設定」覆寫那一段（表單沒變時停用）；「加入設定」用表單內容新增一段；列表右上「新的一段」清空選取、範圍預設接在最後一段之後。重疊或起始頁大於結束頁時顯示錯誤並停用按鈕。改「第」時，如果「起始」原本等於「第」，就一起改。</li>
+        <li>表單改了但還沒按「修改設定」時，頁尾提示「按『確定』不會套用」：照參考圖的「加入 / 修改」按鈕流程，不自動帶入。</li>
+        <li><code>page-numbers.ts</code> 加 <code>PAGE_NUMBER_POSITION_LABELS</code>、<code>nextPageNumberRange</code>、<code>pageNumberRuleError</code>（給使用者看的中文訊息）、<code>describePageRange</code>、<code>describePageNumberRule</code> + 3 個測試。</li>
+        <li>vitest 250 個通過；無頭 Edge 驗證 20 項（選單改名、空列表、預設範圍、加入、接續範圍、重疊錯誤、起始值跟隨、排序、選取載入、修改、未套用提示、確定寫入、刪除後 Esc 不寫入、Ctrl+Z / Ctrl+Y 一次、沒改動按確定不多一筆復原、Ctrl+, 仍開偏好設定）並截圖確認版面。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 4　畫布顯示頁碼 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>PageNumberLayer</code>（4.4），含直書的左中 / 右中。</li>
+    <li>App 偏好加 <code>showPageNumbers</code> + 測試（舊紀錄沒有這欄時為 true）；對話框加開關。</li>
+    <li>驗證：八個位置、奇偶不同、範圍外沒有頁碼、點頁碼位置選不到東西、縮放後位置正確；關掉開關後畫布沒有頁碼、重新整理後仍關閉、復原歷史沒有多一筆。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li>沒有另寫 <code>PageNumberLayer</code>：<code>canvas-elements.tsx</code> 加 <code>StaticShape</code>（同一個 <code>ShapeBody</code> + <code>ShapeLabelText</code>，Group 設 <code>listening={false}</code>），<code>editor-canvas.tsx</code> 用 <code>pageNumberShape</code> 算出目前頁的頁碼，畫在物件之上、邊界參考線之下。字型載入前不計算。</li>
+        <li>量測：<code>lib/export/text-layout.ts</code> 加 <code>measureLineWidth</code>（離畫面的 <code>Konva.Text</code>，和畫布同一套），步驟 6 匯出也用它。</li>
+        <li><code>usedFontFamilies</code> 包含頁碼的字型，畫布會等它載入（+1 個測試斷言）。</li>
+        <li><code>Preferences.showPageNumbers</code>（預設 true，壞值或舊紀錄回到 true）；對話框最上方「在編輯畫面顯示頁碼」開關，按「確定」才寫入，有變才寫。</li>
+        <li>vitest 250 個通過；無頭 Edge 驗證 12 項：沒有規則時沒有頁碼、奇數頁右下文字右緣 = 右邊界、垂直置中於下邊界區（誤差 &lt; 0.01 pt）、點頁碼選不到東西、第 2 頁偶數頁左下顯示 2、右中直書「1／2」兩行並置中於右邊界區與頁面中線、關閉後不畫且存進 localStorage、關閉不產生復原紀錄、重新整理後仍關閉、再打開存回 true；並截圖確認。<strong>未逐一驗證</strong>：八個位置中只測了右下、左下、右中（其餘由步驟 1 的單元測試涵蓋）。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 5　頁碼型態：字型、顏色、框線、前後置文字 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li>從 <code>properties-panel.tsx</code> 抽出 <code>FontFamilySelect</code> / 文字樣式 / <code>StrokeSection</code> 成共用元件（行為不變），對話框使用。</li>
+    <li>驗證：換字型（先載入）、顏色、框線、前後置文字在畫布上正確。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li>新增 <code>components/editor/style-controls.tsx</code>：<code>Row</code>、<code>FontFamilySelect</code>、<code>TextStyleFields</code>（字體、字級 − / ＋、粗體、<strong>可選</strong>的水平 / 垂直對齊、文字顏色）、<code>StrokeFields</code>（開關、顏色、線寬、虛線樣式）。屬性面板的 <code>TextStyleControls</code> / <code>StrokeSection</code> 只剩外框 <code>Section</code>，行為不變。</li>
+        <li>對話框：「頁碼型態（整段共用）」放在最上方（和參考圖一樣），左邊文字樣式、右邊「加框線」；頁碼不顯示對齊按鈕（由位置決定）。奇數頁 / 偶數頁各有「前置文字」「後置文字」輸入框，輸入時就去掉換行、截到 20 個字。對話框加 <code>max-h</code> + 捲動，矮螢幕也看得到按鈕。</li>
+        <li>vitest 250 個通過；無頭 Edge 驗證 14 項：屬性面板的邊框開關、線條樣式、粗體 / 對齊按鈕與寫入仍正常（回歸）；對話框有字型 / 粗體 / 顏色 / 框線、沒有對齊；前後置文字截到 20 字；調色板裡按 Esc 只關調色板；畫布奇數頁「第 1 頁」、偶數頁「- 2 -」；明體、粗體、14 pt、red-600（<code>#e40016</code>）、虛線框；外框 = 量到的字寬 + 1 + 8 pt。截圖確認對話框與畫布。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 6　匯出 PDF 帶頁碼 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>withPageNumbers</code> 接進匯出（4.6）+ 測試（<code>buildExportRequest</code> 有頁碼的 layout）。</li>
+    <li>驗證：<code>export_preview</code> 疊圖比對畫布與 PDF 的頁碼位置；Rust 測試照常通過。</li>
+    <li><strong>結果</strong>：
+      <ul>
+        <li>頁碼加在 <code>buildExportRequest</code> 裡（多一個參數 <code>measureWidth</code>，App 傳 <code>measureLineWidth</code>）：所有匯出（PDF，以及之後接上 UI 的 EPUB）都經過這裡，不會漏。沒有頁碼時 <code>request.document</code> 仍是同一個物件。<strong>Rust 完全沒改</strong>。</li>
+        <li>匯出不讀「顯示頁碼」偏好（那只影響畫布）。</li>
+        <li>vitest 251 個通過（+1：頁碼圖形加在第 2 頁最上層、第 1 頁不在範圍內不加、原文件不變、label 以 <code>&lt;id&gt;#label</code> 量測成「第 2 頁」）。</li>
+        <li>實際輸出比對：在瀏覽器以真的 Konva 量測建立 <code>ExportRequest</code>（示範文件 + 第 2 頁；奇數頁右下「第 11 頁」明體粗體 14 pt 紅色虛線框，偶數頁左中直書「1／2」），交給 <code>export_preview</code>（<code>EXPORT_REQUEST_JSON</code>）用 Typst 算成 2 px/pt PNG，和同樣節點畫出的畫布對照比較文字墨跡範圍：第 1 頁相差 0.5 pt、第 2 頁 0 pt；虛線框有畫出。<code>epub_preview</code> 用同一份 request 產生 EPUB，第 1 頁 XHTML 有「第 11 頁」與虛線 SVG 框。</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 7　文件同步 <span class="badge done">已完成 2026-10-04</span></h3>
+  <ul>
+    <li><code>CLAUDE.md</code>：新增「頁碼管理」一節、目錄結構、文件模型、選單列、檔案系統（v5）。</li>
+    <li><code>docs/01-overview.md</code>、<code>docs/02-architecture.md</code>、<code>docs/progress.md</code>。</li>
+    <li><strong>結果</strong>：<code>CLAUDE.md</code> 新增「頁碼管理」一節（模型、虛擬圖形、量測、位置規則、對話框、顯示偏好），並改了目前階段、目錄結構（4 個新檔 / 新用途）、文件模型（頁碼不是物件）、狀態（<code>document/setPageNumbering</code>）、偏好設定（<code>showPageNumbers</code>、選單不再有「頁面設定...」）、選單列 handler、檔案系統（v5）、「改一邊要改兩邊」的常數（字級範圍、<code>PAGE_NUMBER_MAX</code>、<code>PAGE_NUMBER_AFFIX_MAX_LENGTH</code>）。<code>01-overview.md</code> 功能表加「頁碼」、紙張改由「偏好設定」進入；<code>02-architecture.md</code> 資料夾表加頁碼一列；<code>progress.md</code> 的目前階段、已完成、決定、待辦（桌面版人工驗證）。</li>
+  </ul>
+</div>
+
+<h2>6. 不在這次範圍</h2>
+<ul>
+  <li>頁碼以外的頁首 / 頁尾文字（章名、刊名）。</li>
+  <li>在畫布上直接拖曳或點選頁碼。</li>
+  <li>對頁顯示（左右頁並排）、內外側邊界。</li>
+  <li>目錄自動產生頁碼。</li>
+</ul>
+
+<h2>7. 想再確認的細節</h2>
+<div class="ask">
+  <p>以下是我先採用的預設，有不同想法請告訴我，沒有的話就照這樣做：</p>
+  <ol>
+    <li>新段落預設：奇數頁<strong>右下</strong>、偶數頁<strong>左下</strong>（雜誌外側），字級 10 pt、黑體、黑色、無框線、前後置文字空白、起始值 = 第一頁的頁序。</li>
+    <li>頁碼畫在所有物件的<strong>上方</strong>，畫布上不能點選；要修改只能從「頁碼管理」。</li>
+    <li>新文件與舊檔都沒有頁碼段落（不顯示頁碼），要使用者自己加。</li>
+  </ol>
+</div>
+
+</main>
+</body>
+</html>

@@ -7,6 +7,7 @@ import {
   DEFAULT_MARGINS,
 } from "../element-factory";
 import { DEFAULT_FONT_OPTION, findFontOption, FONT_OPTIONS, fontLoadRequests, fontOptionsFor, usedFontFamilies } from "../fonts";
+import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
 import type { EditorDocument } from "../types";
 
@@ -48,6 +49,7 @@ describe("usedFontFamilies", () => {
     const document: EditorDocument = {
       name: "doc",
       margins: DEFAULT_MARGINS,
+      pageNumberRules: [],
       pages: [
         { ...createPage("P1", SIZE, "#ffffff"), elements: [text, plainShape] },
         { ...createPage("P2", SIZE, "#ffffff"), elements: [labelled, { ...text, id: "t2" }] },
@@ -55,6 +57,10 @@ describe("usedFontFamilies", () => {
     };
 
     expect(usedFontFamilies(document)).toEqual(["Alpha", "Zeta"]);
+
+    const rule = createPageNumberRule("r", 1, 2);
+    const numbered = { ...document, pageNumberRules: [{ ...rule, style: { ...rule.style, fontFamily: "Mid" } }] };
+    expect(usedFontFamilies(numbered)).toEqual(["Alpha", "Mid", "Zeta"]);
   });
 });
 

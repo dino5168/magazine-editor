@@ -296,6 +296,7 @@ export function createBlankDocument(): EditorDocument {
   return {
     name: "未命名文件",
     margins: DEFAULT_MARGINS,
+    pageNumberRules: [],
     pages: [createPage("Page-1", presetToPt(PAGE_SIZE_PRESETS.a4), DEFAULT_PAGE_BACKGROUND)],
   };
 }
@@ -325,7 +326,7 @@ export function createSampleDocument(): EditorDocument {
     { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
     { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
   ];
-  return { name: "未命名文件", margins: DEFAULT_MARGINS, pages: [{ ...page, elements }] };
+  return { name: "未命名文件", margins: DEFAULT_MARGINS, pageNumberRules: [], pages: [{ ...page, elements }] };
 }
 
 const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };

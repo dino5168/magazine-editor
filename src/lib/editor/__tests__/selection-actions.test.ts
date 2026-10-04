@@ -7,7 +7,7 @@ function stateWithTwo() {
   const a = createShapeElement("rect", { x: 100, y: 100 });
   const b = createShapeElement("ellipse", { x: 200, y: 300 });
   const page = { ...createPage("Page-1", { width: 595, height: 842 }, "#ffffff"), elements: [a, b] };
-  const state: EditorState = createInitialState({ name: "測試", margins: DEFAULT_MARGINS, pages: [page] });
+  const state: EditorState = createInitialState({ name: "測試", margins: DEFAULT_MARGINS, pageNumberRules: [], pages: [page] });
   return { a, b, state };
 }
 
