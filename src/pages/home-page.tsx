@@ -5,8 +5,7 @@ import { DockArea } from "@/components/dock/dock-area";
 import { DockDragGhost } from "@/components/dock/dock-drag-ghost";
 import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
-import { PageNumbersDialog } from "@/components/app/page-numbers-dialog";
-import { PreferencesDialog, type PreferencesTab } from "@/components/app/preferences-dialog";
+import { SETTINGS_DIALOGS } from "@/components/app/settings";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
 import { BottomToolbar } from "@/components/editor/bottom-toolbar";
@@ -34,8 +33,15 @@ import { createInitialState } from "@/lib/editor/editor-reducer";
 import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-factory";
 import { pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
-import { createPlaceholderHandlers, panelCommandId, type CommandHandlers, type CommandId } from "@/lib/menu/commands";
+import {
+  createPlaceholderHandlers,
+  panelCommandId,
+  settingsCommandId,
+  type CommandHandlers,
+  type CommandId,
+} from "@/lib/menu/commands";
 import { PreferencesProvider } from "@/lib/preferences/preferences-context";
+import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
@@ -75,10 +81,8 @@ function EditorLayout() {
     [dockLayout],
   );
 
-  // 偏好設定對話框：記住上次看的分頁，Ctrl+, 回到那一頁
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
-  const [preferencesTab, setPreferencesTab] = useState<PreferencesTab>("page");
-  const [pageNumbersOpen, setPageNumbersOpen] = useState(false);
+  // 設定 → 文件 / 偏好設定：同時最多開一個設定對話框
+  const [openSettings, setOpenSettings] = useState<SettingsPageId | null>(null);
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -90,8 +94,7 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": importImage,
-      "settings.pageNumbers": () => setPageNumbersOpen(true),
-      "settings.preferences": () => setPreferencesOpen(true),
+      ...Object.fromEntries(SETTINGS_PAGES.map(({ id }) => [settingsCommandId(id), () => setOpenSettings(id)])),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
@@ -156,13 +159,12 @@ function EditorLayout() {
       <EditorPageBar />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
-      <PreferencesDialog
-        open={preferencesOpen}
-        tab={preferencesTab}
-        onTabChange={setPreferencesTab}
-        onOpenChange={setPreferencesOpen}
-      />
-      <PageNumbersDialog open={pageNumbersOpen} onOpenChange={setPageNumbersOpen} />
+      {SETTINGS_PAGES.map(({ id }) => {
+        const SettingsPageDialog = SETTINGS_DIALOGS[id];
+        return (
+          <SettingsPageDialog key={id} open={openSettings === id} onOpenChange={(open) => setOpenSettings(open ? id : null)} />
+        );
+      })}
     </div>
   );
 }

@@ -1,11 +1,24 @@
 import type { Margins, Size } from "./types";
-import { PAGE_SIZE_PRESETS, findPageSizePreset, presetToPt } from "./units";
+import { PAGE_SIZE_PRESETS, findPageSizePreset, presetToPt, type PageSizeGroupId } from "./units";
 import { isMargins, isPageSize } from "./validation";
 
 export type PageSizePresetId = keyof typeof PAGE_SIZE_PRESETS;
 export type Orientation = "portrait" | "landscape";
 
 export const PAGE_SIZE_PRESET_IDS = Object.keys(PAGE_SIZE_PRESETS) as readonly PageSizePresetId[];
+
+/**
+ * Lists the presets of one paper family, in declaration order (the page setup menu's sections).
+ *
+ * Args:
+ *   group: Paper family.
+ *
+ * Returns:
+ *   Preset ids.
+ */
+export function presetIdsInGroup(group: PageSizeGroupId): readonly PageSizePresetId[] {
+  return PAGE_SIZE_PRESET_IDS.filter((id) => PAGE_SIZE_PRESETS[id].group === group);
+}
 
 /** Problems the page setup dialog shows; an empty object means the setup can be applied. */
 export interface PageSetupErrors {

@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -60,8 +60,13 @@ src/
     app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（上面兩個對話框共用）
-    app/preferences-dialog.tsx    # 「偏好設定」對話框：頁面分頁（紙張 / 邊界，文件設定）與格線分頁（App 偏好），按「確定」才寫入
-    app/page-numbers-dialog.tsx   # 「頁碼管理」對話框：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
+    app/settings/                 # 設定對話框（設定 → 文件 ▸ / 偏好設定 ▸，每項一個對話框，見「設定對話框」）
+      index.ts                    # SETTINGS_DIALOGS：SettingsPageId → 對話框元件（satisfies Record，缺項會編譯失敗）
+      settings-dialog.tsx         # 共用外框 SettingsDialog、頁尾 SettingsDialogFooter（取消 / 確定）、SettingsDialogProps
+      settings-fields.tsx         # 共用欄位：MmField（pt 值以 mm 顯示）、SwitchRow
+      page-setup-dialog.tsx       # 「頁面設定」：紙張（分組下拉選單）/ 直橫 / 寬高、邊界（文件設定，一筆復原）
+      grid-dialog.tsx             # 「格線與參考線」：格線、間距、吸附、邊界參考線（App 偏好）
+      page-numbers-dialog.tsx     # 「頁碼管理」：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     dock/                         # 工具面板（Krita 式停靠）的 UI
       dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
@@ -108,7 +113,7 @@ src/
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
       __tests__/
-    preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）
+    preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）、settings-pages.ts（設定頁清單 SETTINGS_PAGES / SETTINGS_GROUPS）
     dock/                         # 工具面板版面（不含 UI）
       panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide）：面板的單一資料來源，PanelId 由它推導
       dock-layout.ts              # DockLayout 型別與純函式（開關 / 移動 / 拖放 / 收合 / 寬度）、parseDockLayout
@@ -125,7 +130,7 @@ src/
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
       geometry.ts                 # 物件外框（含旋轉）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT、格線吸附 / 抽稀、邊界框
-      page-setup.ts               # 紙張 preset（不分直橫比對）、直式 / 橫式、頁面設定的錯誤檢查（偏好設定對話框用）
+      page-setup.ts               # 紙張 preset（不分直橫比對、presetIdsInGroup 分組）、直式 / 橫式、頁面設定的錯誤檢查（頁面設定對話框用）
       page-numbers.ts             # 頁碼：規則 → 虛擬圖形（pageNumberShape / withPageNumbers）、驗證（isPageNumberRules，和 Rust 同規則）、對話框的說明與錯誤訊息
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
@@ -133,7 +138,7 @@ src/
       text-style.ts               # 文字裝飾：預設值（PLAIN_TEXT_DECORATION、DEFAULT_TEXT_SHADOW）、轉成 Konva 屬性（konvaTextStyle）、陰影偏移換成物件座標（localShadowOffset）
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
-      units.ts                    # mm ↔ pt、頁面尺寸 preset
+      units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
@@ -244,17 +249,28 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **顏色格式**：物件的 `fill` 是 `#rrggbb` 或 `#rrggbbaa`（完全不透明時一律寫 6 位，`withAlpha` 負責）；頁面背景只能是 `#rrggbb`。TS `isElementColor` / `isHexColor` 與 Rust `require_element_color` / `require_background_color` 規則必須一致。
 - `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（屬性面板的填色、邊框、文字顏色）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
 
-### 偏好設定（`preferences-dialog.tsx` + `lib/preferences` + `page-guides.tsx`）
+### 設定對話框（`lib/preferences/settings-pages.ts` + `components/app/settings/`）
 
-計畫與決定：`docs/Plans/imp-settings.html`。原本的「尺寸」工具面板已移除，功能併入這裡（舊版面紀錄裡的 `resize` 由 `parseDockLayout` 略過）。
+計畫與決定：`docs/Plans/imp-偏好設定調整.html`。
+
+- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
+- **單一資料來源**是 `SETTINGS_PAGES`（id / label / group / 可選的 shortcut）與 `SETTINGS_GROUPS`（子選單順序與名稱）：指令 `settings.<id>`（`settingsCommandId`，同 `panelCommandId` 的做法）、子選單、`home-page.tsx` 的 handler 與對話框都由它推導；`SETTINGS_DIALOGS`（`components/app/settings/index.ts`）以 `satisfies Record<SettingsPageId, …>` 檢查完整性。
+- **新增設定頁**：在 `SETTINGS_PAGES` 加一筆 → 寫一個 `({ open, onOpenChange }: SettingsDialogProps)` 對話框（外框用 `SettingsDialog`、頁尾用 `SettingsDialogFooter`）→ 登記到 `SETTINGS_DIALOGS`（漏了會編譯失敗）。要放到新的子選單就加一個 group。
+- `home-page.tsx` 只有一個 state `openSettings: SettingsPageId | null`，同時最多開一個設定對話框。
+- 對話框關閉時 Radix 卸載內容，所以表單草稿每次開啟都從目前的值重新開始；草稿放在各自的表單元件裡。
+
+### 偏好設定與頁面設定（`page-setup-dialog.tsx` / `grid-dialog.tsx` + `lib/preferences` + `page-guides.tsx`）
+
+計畫與決定：`docs/Plans/imp-settings.html`（2026-10-05 拆成兩個對話框，見「設定對話框」）。原本的「尺寸」工具面板已移除，功能併入這裡（舊版面紀錄裡的 `resize` 由 `parseDockLayout` 略過）。
 
 - **兩種資料分開存**：
   - 文件設定（紙張尺寸、邊界）：`history.present`，存進專案檔、可復原、會標記未存檔。
   - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`、`showPageNumbers`（在「頁碼管理」對話框切換））：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
-- **對話框**：`Ctrl+,` 或「設定 → 偏好設定...」開啟，回到上次看的分頁。按「確定」才寫入，「取消」/ Esc 全部放棄。（原本的「頁面設定...」選單項目 2026-10-04 改成「頁碼管理...」，紙張與邊界只從這裡改。）
-  - 頁面草稿與格線草稿都放在 `PreferencesForm`，因為 Radix Tabs 會卸載沒顯示的分頁。
-  - **沒動過頁面設定時不 dispatch `document/setPageSetup`**：否則只改格線，就會把頁面尺寸不一致的文件統一成目前頁的尺寸，還多一筆復原。
+- **頁面設定**（「設定 → 文件 → 頁面設定...」）：按「確定」才寫入，「取消」/ Esc 放棄。
+  - **沒有改動時「確定」不 dispatch `document/setPageSetup`**：否則頁面尺寸不一致的文件會被統一成目前頁的尺寸，還多一筆復原。
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
+  - **紙張**：`units.ts` 的 `PAGE_SIZE_PRESETS`（一律直式存，直 / 橫由按鈕切換，比對時不分直橫）依 `PAGE_SIZE_GROUPS` 分組：ISO A（A3–A6）、JIS B（B4–B6，標示「（JIS）」）、台灣書刊開本（16 開、32 開；25 開和 A5 同尺寸不另列）、美規（Letter、Legal、Tabloid）、電子書（3:4、9:16）。下拉選單分組並附尺寸，觸發鈕只顯示名稱（選項的尺寸是直式）。**兩個 preset 不可同尺寸**（`presetIdOf` 會認錯，測試守著）；id 不要改名（「範本」面板以 id 引用）。紙張清單只在前端，不改檔案格式。
+- **格線與參考線**（「設定 → 偏好設定 → 格線與參考線...」或 Ctrl+,）：按「確定」才寫入 localStorage，不進復原歷史。
 - **畫布**：格線（灰色虛線）畫在頁面背景之上、物件之下，同一層還有**內容區對齊線**：內容區（邊界以內，邊界全 0 時是整頁）寬、高的 1/4、1/2、3/4 處的靛藍虛線，1/2 比 1/4 粗而明顯，只畫在內容區內，跟著「顯示格線」開關（`geometry.ts` 的 `contentGuides`）；對齊線只是視覺參考，吸附仍只對齊格線。邊界參考線（粉紅虛線）畫在物件之上、頁緣線旁。兩者都 `listening={false}`、不算進內容範圍，也不會匯出。線距小於 6 px（`MIN_GRID_GAP_PX`）時只畫每 N 條（`drawnGridSpacing`），畫出來的線仍落在吸附格線上。
 - **吸附格線**（格線隱藏時也可以開）：
   - 拖曳：`ElementNode` 的 `dragBoundFunc` 交給 `editor-canvas` 的 `dragBound`。**多選時 Konva 會讓每個節點各自呼叫 `dragBoundFunc`，而且 Transformer 在主節點第一次 dragmove 後才讓其他節點開始拖曳**，所以不能各自吸附，也不能用各自的位置推算：第一個呼叫的節點是 lead，記下它的起點與滑鼠偏移，每次從**滑鼠位置**推回 lead 的原始位置再吸附，所有節點都用「自己的起點 + lead 的位移」（相對位置不變）。記錄在 `handleMoveEnd` 清空。
@@ -262,7 +278,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 建立：拖曳框的兩個角吸附（吸附後寬或高為 0 時當成點擊）；點擊建立的物件吸附外框左上角。預覽框不吸附。
   - 方向鍵與屬性面板輸入不吸附。
 
-### 頁碼管理（`page-numbers-dialog.tsx` + `lib/editor/page-numbers.ts`）
+### 頁碼管理（`settings/page-numbers-dialog.tsx` + `lib/editor/page-numbers.ts`）
 
 計畫與決定：`docs/Plans/imp-page-settings.html`。
 
@@ -272,7 +288,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 匯出：`buildExportRequest(document, measureTextLayout, measureLineWidth)` 先用 `withPageNumbers` 把頁碼加到每頁**最上層**（只在匯出的副本，不寫回文件），所以 PDF / EPUB 都有頁碼。匯出不讀 `showPageNumbers`。
 - **外框寬度由呼叫端量測**（`MeasureTextWidth`，App 用 `measureLineWidth`），不用估算：估得太窄 Konva 會把頁碼折成兩行。另加 1 pt（`WRAP_SLACK_PT`）防止捨入造成換行。
 - **位置**：上 / 下放在邊界區（頁緣到邊界線）正中；左 / 右欄靠左 / 靠右，**文字**（不是外框）對齊內容區的邊，中欄置中於頁面；左中 / 右中**直書**（字與字之間插入 `\n`，每字一行，外框寬一個字），置中於左 / 右邊界區與頁面中線。邊界為 0 或放不下時改用距頁緣 10 mm（`PAGE_NUMBER_FALLBACK_INSET_PT`）。加框線時，框線比文字多出 4 pt 內距（`LABEL_PADDING_PT`）。
-- **對話框**：「設定 → 頁碼管理...」（`settings.pageNumbers`）。表單與列表都是草稿，「確定」一次 dispatch `document/setPageNumbering`（一筆復原），「取消」/ Esc 放棄。「加入設定」以表單新增一段、「修改設定」覆寫選中的那段（表單沒變時停用）、「刪除」、「新的一段」（範圍接在最後一段之後，`nextPageNumberRange`）。重疊等錯誤由 `pageNumberRuleError` 給中文訊息並停用按鈕。表單改了沒按「修改設定」就按「確定」不會套用（頁尾有提示）。
+- **對話框**：「設定 → 文件 → 頁碼管理...」（`settings.pageNumbers`，`components/app/settings/page-numbers-dialog.tsx`，外框與頁尾用共用的 `SettingsDialog` / `SettingsDialogFooter`）。表單與列表都是草稿，「確定」一次 dispatch `document/setPageNumbering`（一筆復原），「取消」/ Esc 放棄。「加入設定」以表單新增一段、「修改設定」覆寫選中的那段（表單沒變時停用）、「刪除」、「新的一段」（範圍接在最後一段之後，`nextPageNumberRange`）。重疊等錯誤由 `pageNumberRuleError` 給中文訊息並停用按鈕。表單改了沒按「修改設定」就按「確定」不會套用（頁尾有提示）。
 - **「在編輯畫面顯示頁碼」**是 App 偏好 `showPageNumbers`（預設開），在這個對話框切換、「確定」才寫入；只影響畫布。
 - 字型 / 顏色 / 框線控制項和屬性面板共用 `components/editor/style-controls.tsx`（頁碼不顯示對齊按鈕，對齊由位置決定）。前後置文字只能單行、最多 20 個字（`PAGE_NUMBER_AFFIX_MAX_LENGTH`）。
 
@@ -305,7 +321,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 - 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
 - **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
-- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF、頁碼管理、偏好設定已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
+- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF、設定頁（由 `SETTINGS_PAGES` 產生，見「設定對話框」）已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
 - 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
 - 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
@@ -314,13 +330,14 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
+- `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定 → 工具面板`：9 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
 | 快捷鍵 | 指令 |
 |--------|------|
 | Ctrl+N / Ctrl+O | 新增 / 開啟... |
 | Ctrl+S / Ctrl+Shift+S | 儲存 / 另存新檔... |
-| Ctrl+, | 偏好設定... |
+| Ctrl+, | 格線與參考線...（設定 → 偏好設定 ▸） |
 | Alt+F / Alt+S | 開啟「檔案」/「設定」選單 |
 
 ## 工具面板（`lib/dock` + `components/dock`）

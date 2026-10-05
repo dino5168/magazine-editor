@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>偏好設定調整實作計畫</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --code: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --code: #21262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .done { background: var(--ok-soft); color: var(--ok); }
+  .rec { background: var(--ok-soft); color: var(--ok); }
+  .opt { background: var(--warn-soft); color: var(--warn); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .menus { display: flex; flex-wrap: wrap; gap: 16px; }
+  .menus pre { flex: 1 1 260px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>偏好設定調整（imp-偏好設定調整）</h1>
+<p class="meta">任務檔：<code>docs/Plans/2026-10-05-偏好設定調整.md</code>（不 commit）· 建立：2026-10-05 · 對應 commit：<code>06c8290</code> · 狀態：<strong>四個步驟全部完成（2026-10-05），尚未 commit；桌面版人工驗證待做</strong></p>
+
+<h2>1. 任務</h2>
+<ol>
+  <li>「偏好設定」目前是一個對話框 + 兩個分頁（Tabs）；改成用<strong>子選單</strong>拆開，每一項各自開自己的對話框。</li>
+  <li>任務單一化：一個對話框只做一件事，之後要加設定項目不必擠進同一個對話框。</li>
+  <li>紙張目前只有 A4、B5、Letter；增加更多選項（Claude 建議，使用者挑選）。</li>
+</ol>
+
+<h2>2. 現況</h2>
+<div class="table-wrap">
+<table>
+  <tr><th></th><th>現況</th></tr>
+  <tr><td>選單</td><td>「設定」→「頁碼管理...」、「偏好設定...」（Ctrl+,）、工具面板 ▸、外觀 ▸</td></tr>
+  <tr><td>對話框</td><td><code>components/app/preferences-dialog.tsx</code>：一個 <code>PreferencesForm</code> 管兩份草稿（頁面 / 格線），分頁切換用 Radix <code>Tabs</code>；「確定」一次套用兩邊，「取消」全部放棄；<code>home-page.tsx</code> 記住上次看的分頁</td></tr>
+  <tr><td>兩個分頁的性質</td><td>
+    「頁面」：紙張與邊界，<strong>文件設定</strong>（存進專案、可復原，<code>document/setPageSetup</code>）<br>
+    「格線」：格線、吸附、邊界參考線，<strong>App 偏好</strong>（localStorage，<code>PreferencesProvider</code>）</td></tr>
+  <tr><td>紙張</td><td><code>lib/editor/units.ts</code> 的 <code>PAGE_SIZE_PRESETS</code>：A4（210×297）、B5（182×257，其實是 <strong>JIS B5</strong>）、Letter；直 / 橫由按鈕切換，比對時不分直橫（<code>page-setup.ts</code>）。「範本」面板也引用 <code>a4</code> / <code>b5</code> / <code>letter</code> 這三個 id</td></tr>
+</table>
+</div>
+<p>現況兩個分頁其實是兩種不同的東西（文件 vs App），本來就適合拆開；拆開後「沒動過頁面設定時不套用」這類互相牽制的規則也可以拿掉。</p>
+
+<h2>3. 選單結構（待決定）</h2>
+<div class="menus">
+<pre><code>方案 A（建議）：依「改的是什麼」分組
+設定
+├ 文件 ▸
+│   ├ 頁面設定...      （紙張、邊界）
+│   └ 頁碼管理...
+├ 偏好設定 ▸
+│   └ 格線與參考線...  Ctrl+,
+├ ─────────
+├ 工具面板 ▸
+└ 外觀 ▸</code></pre>
+<pre><code>方案 B：全部放進「偏好設定」
+設定
+├ 偏好設定 ▸
+│   ├ 頁面設定...      Ctrl+,
+│   ├ 格線與參考線...
+│   └ 頁碼管理...
+├ ─────────
+├ 工具面板 ▸
+└ 外觀 ▸</code></pre>
+<pre><code>方案 C：只拆現在的兩個分頁
+設定
+├ 頁碼管理...
+├ 偏好設定 ▸
+│   ├ 頁面設定...      Ctrl+,
+│   └ 格線與參考線...
+├ ─────────
+├ 工具面板 ▸
+└ 外觀 ▸</code></pre>
+</div>
+<ul>
+  <li><strong>方案 A</strong>：文件設定（存進專案、可復原）和 App 偏好（存在這台電腦）分開，使用者一看就知道哪些會跟著檔案走；之後的「文件語言、EPUB 中繼資料」可放「文件」，「單位、自動備份間隔、主題」可放「偏好設定」。</li>
+  <li><strong>方案 B</strong>：最少改動使用者的習慣（都在「偏好設定」底下），但文件和 App 的設定混在一起。</li>
+  <li><strong>方案 C</strong>：只做任務字面上的拆分，「頁碼管理」維持原位。</li>
+  <li>Ctrl+, 一般是「App 偏好」，方案 A 建議給「格線與參考線...」；B / C 沿用給第一項（頁面設定）。</li>
+</ul>
+
+<h2>4. 擴充性的做法（不重複造輪子）</h2>
+<p>沿用「工具面板」已經用過的模式：<strong>一份清單是單一資料來源</strong>，選單指令與對話框都從它推導，缺項時編譯失敗。</p>
+<pre><code>// lib/preferences/settings-pages.ts（不含 UI）
+export const SETTINGS_PAGES = [
+  { id: "pageSetup", label: "頁面設定...",     group: "document" },
+  { id: "pageNumbers", label: "頁碼管理...",   group: "document" },
+  { id: "grid",      label: "格線與參考線...", group: "app", shortcut: Ctrl+, },
+] as const;
+export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];
+
+// lib/menu/commands.ts：和 PANEL_COMMANDS 一樣由清單產生 settings.&lt;id&gt; 指令
+// lib/menu/menu-structure.ts：子選單的項目由清單依 group 產生
+// components/app/settings/index.ts：
+export const SETTINGS_DIALOGS = { pageSetup: PageSetupDialog, pageNumbers: PageNumbersDialog, grid: GridDialog }
+  satisfies Record&lt;SettingsPageId, ComponentType&lt;SettingsDialogProps&gt;&gt;;</code></pre>
+<ul>
+  <li><code>home-page.tsx</code> 只留一個 state：<code>openSettings: SettingsPageId | null</code>，handler 也由清單產生；<strong>新增一個設定頁 = 清單加一筆 + 寫一個對話框元件</strong>（漏了任一邊會編譯失敗）。</li>
+  <li>共用的對話框外框（標題、說明、取消 / 確定、Esc）抽成 <code>SettingsDialogShell</code>，每個設定頁只寫自己的表單與「確定時做什麼」。</li>
+  <li>現有表單內容直接搬：「頁面」分頁 → <code>PageSetupDialog</code>，「格線」分頁 → <code>GridDialog</code>；<code>MmField</code>、<code>SwitchRow</code> 移到共用檔。<code>Tabs</code> 與「記住分頁」拿掉。</li>
+  <li>「頁碼管理」對話框已經獨立，只要接到清單（若採方案 A / B）。它比較寬（<code>sm:max-w-4xl</code>），外框要允許各頁指定寬度。</li>
+</ul>
+
+<h2>5. 紙張選項（待挑選）</h2>
+<p>單位 mm（直式）；直 / 橫仍由按鈕切換。下拉選單依系列分組顯示（shadcn <code>SelectGroup</code> / <code>SelectLabel</code>，已安裝）。</p>
+<div class="table-wrap">
+<table>
+  <tr><th>組別</th><th>紙張</th><th>用途</th><th>建議</th></tr>
+  <tr><td>ISO A</td><td>A3 297×420、A5 148×210、A6 105×148（A4 已有）</td><td>A5：小開本雜誌、手冊；A3：海報、跨頁預覽；A6：明信片、口袋書</td><td><span class="badge rec">建議</span></td></tr>
+  <tr><td>JIS B</td><td>B4 257×364、B6 128×182（現有 B5 是 JIS B5，標示改成「B5（JIS）」）</td><td>台灣、日本書刊常用的 B 系列</td><td><span class="badge rec">建議</span></td></tr>
+  <tr><td>台灣書刊開本</td><td>16 開 190×260、25 開 148×210<sup>*</sup>、32 開 130×190</td><td>台灣印刷廠報價常用；<sup>*</sup>25 開和 A5 同尺寸，只列一個</td><td><span class="badge opt">可選</span></td></tr>
+  <tr><td>美規</td><td>Legal 215.9×355.6、Tabloid 279.4×431.8（Letter 已有）</td><td>美規文件、小報</td><td><span class="badge opt">可選</span></td></tr>
+  <tr><td>雜誌 / 社群</td><td>正方形 210×210、美式雜誌 213×276（8⅜×10⅞ 吋）</td><td>Zine、型錄、社群貼文；美國雜誌常見尺寸</td><td><span class="badge opt">可選</span></td></tr>
+  <tr><td>電子書（螢幕比例）</td><td>3:4（例如 150×200）、9:16（例如 112.5×200）</td><td>EPUB 固定版面是本專案主力輸出，平板 / 手機比例</td><td><span class="badge opt">可選</span></td></tr>
+</table>
+</div>
+<ul>
+  <li>現有 id（<code>a4</code> / <code>b5</code> / <code>letter</code>）不變，「範本」面板不用改；新增的用新 id。</li>
+  <li>紙張清單只在前端（Rust 只驗證寬高範圍），<strong>不改檔案格式</strong>。</li>
+  <li>測試：每個預設尺寸都在 10–2000 mm 內、沒有兩個尺寸相同（否則 <code>presetIdOf</code> 會認錯）。</li>
+</ul>
+
+<div class="note"><strong>使用者決定（2026-10-05）</strong>：選單用<strong>方案 A</strong>（文件 ▸ / 偏好設定 ▸，Ctrl+, 開「格線與參考線...」）。紙張加入 <strong>A3、A5、A6、B4（JIS）、B6（JIS）、16 開、32 開、Legal、Tabloid、電子書 3:4、電子書 9:16</strong>；正方形與美式雜誌不加。見第 7 節。</div>
+
+<h2>6. 步驟（每步做完停下來，等使用者說「繼續」）</h2>
+
+<div class="card step">
+  <h3>步驟 1：設定頁清單與選單指令 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>lib/preferences/settings-pages.ts</code>（<code>SETTINGS_GROUPS</code>、<code>SETTINGS_PAGES</code>、<code>SettingsPageId</code>、<code>settingsPagesIn</code>）；<code>commands.ts</code> 以 <code>settingsCommandId</code> 產生 <code>settings.pageSetup</code> / <code>settings.pageNumbers</code> / <code>settings.grid</code>（Ctrl+, 在清單裡宣告），移除 <code>settings.preferences</code>；<code>menu-structure.ts</code> 依群組產生「文件 ▸」「偏好設定 ▸」。<code>home-page.tsx</code> 暫時讓「頁面設定...」「格線與參考線...」打開原本對話框的對應分頁。<br>
+  驗證：vitest 262 個通過（新增選單結構測試）；無頭 Edge 9 項：選單結構、三個項目各開對的畫面、Ctrl+, 開格線、鍵盤 ↓ / → 進子選單。<br>
+  附記：用 CDP 送 Alt+S / Alt+F 時焦點停在選單本身、要再按 ↓ 才會選到第一項，兩個選單都一樣（不是這次造成的；CLAUDE.md 寫「自動聚焦第一個項目」，桌面版人工驗證時順便確認）。</p>
+  <ul>
+    <li><code>lib/preferences/settings-pages.ts</code>（清單、<code>SettingsPageId</code>、<code>settingsCommandId</code>）；<code>commands.ts</code> 由清單產生指令，移除 <code>settings.preferences</code> / <code>settings.pageNumbers</code>；<code>menu-structure.ts</code> 由清單產生子選單。</li>
+    <li>暫時把新指令都接到原本的對話框（打開對應的分頁），畫面上只有選單改變。</li>
+    <li>測試：<code>menu-structure.test.ts</code>（每個指令在選單出現一次、Ctrl+, 指到選定的那一項、快捷鍵不衝突）。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 2：拆成獨立的對話框 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>components/app/settings/</code>：<code>settings-dialog.tsx</code>（<code>SettingsDialog</code> 外框、<code>SettingsDialogFooter</code> 取消 / 確定、<code>SettingsDialogProps</code>）、<code>settings-fields.tsx</code>（<code>MmField</code>、<code>SwitchRow</code>）、<code>page-setup-dialog.tsx</code>、<code>grid-dialog.tsx</code>、<code>index.ts</code>（<code>SETTINGS_DIALOGS satisfies Record&lt;SettingsPageId, …&gt;</code>）。<code>page-numbers-dialog.tsx</code> 以 <code>git mv</code> 搬進同一個資料夾，改用共用外框與頁尾。刪除 <code>preferences-dialog.tsx</code>（含 <code>Tabs</code> 與「記住分頁」）。<code>home-page.tsx</code> 只剩 <code>openSettings</code> 一個 state，handler 與對話框都由 <code>SETTINGS_PAGES</code> 產生。<br>
+  驗證：vitest 262 個通過；無頭 Edge 14 項：三個對話框各自開啟、沒有分頁；頁面設定的取消 / Esc 放棄、沒改動按確定不寫入、確定一筆復原、邊界過大停用確定；格線的取消 / 確定、不進復原歷史、重新整理後仍在；頁碼管理照常存檔。</p>
+  <ul>
+    <li><code>components/app/settings/</code>：<code>SettingsDialogShell</code>、<code>PageSetupDialog</code>、<code>GridDialog</code>、<code>SETTINGS_DIALOGS</code>；表單內容從 <code>preferences-dialog.tsx</code> 搬過來，刪除舊檔與 <code>Tabs</code>。</li>
+    <li><code>home-page.tsx</code>：<code>openSettings</code> 一個 state；頁碼管理也接到清單。</li>
+    <li>每個對話框各自「確定 / 取消」；頁面設定沒有改動時「確定」不 dispatch（沿用原規則）。</li>
+    <li>驗證：無頭 Edge 從選單開每一項、確定 / 取消 / Esc、Ctrl+Z 一次回去、格線設定重新整理後仍在。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 3：紙張選項 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>units.ts</code> 加 <code>PAGE_SIZE_GROUPS</code>（ISO A、JIS B、台灣書刊開本、美規、電子書）與 14 種紙張（<code>PageSizePreset.group</code>；現有 id <code>a4</code> / <code>b5</code> / <code>letter</code> 不變，B5 標成「B5（JIS）」）；<code>page-setup.ts</code> 的 <code>presetIdsInGroup</code>；頁面設定的下拉選單分組、每項附尺寸，觸發鈕只顯示名稱（選項的尺寸是直式，橫式時會和寬、高對不上）。<br>
+  驗證：vitest 265 個通過（新增：每種紙張直式且在 10–2000 mm 內、直 / 橫都認得回來＝沒有重複尺寸、每種紙張恰好在一個分組）；無頭 Edge 11 項：五個分組、14 種紙張、選擇後寬高正確、A5 橫式套用與復原、自訂尺寸顯示「自訂」。</p>
+  <ul>
+    <li><code>units.ts</code> 的 <code>PAGE_SIZE_PRESETS</code> 加入選定的紙張與 <code>group</code>；頁面設定的下拉選單分組。</li>
+    <li>測試：尺寸範圍、沒有重複、每個預設直 / 橫都認得回來（<code>presetIdOf</code>）。</li>
+    <li>驗證：無頭 Edge 選 A5 橫式 → 頁面尺寸正確、Ctrl+Z 回去。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 4：文件同步 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>CLAUDE.md</code> 新增「設定對話框」一節（選單、單一資料來源、新增設定頁的步驟），「偏好設定」一節改寫成兩個對話框並加入紙張清單的規則，同步目前階段、目錄結構、「頁碼管理」路徑、選單列與指令、快捷鍵表；<code>docs/01-overview.md</code> 功能表、<code>docs/02-architecture.md</code> 資料夾表。</p>
+  <ul>
+    <li><code>CLAUDE.md</code>「偏好設定」「頁碼管理」「選單列與指令」各節、目錄結構、快捷鍵表；<code>docs/01</code>/<code>02</code>、<code>docs/progress.md</code>、這份計畫。</li>
+  </ul>
+</div>
+
+<h2>7. 決定紀錄</h2>
+<table>
+  <tr><th>日期</th><th>決定</th><th>來源</th></tr>
+  <tr><td>2026-10-05</td><td>選單方案 A：「設定 → 文件 ▸（頁面設定...、頁碼管理...）」與「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,）」，每項各自一個對話框</td><td>使用者確認</td></tr>
+  <tr><td>2026-10-05</td><td>紙張新增 ISO A3 / A5 / A6、JIS B4 / B6（現有 B5 標成「B5（JIS）」）、16 開、32 開、Legal、Tabloid、電子書 3:4（150×200）、電子書 9:16（112.5×200）；下拉選單分組；現有 id 不變</td><td>使用者確認</td></tr>
+  <tr><td>2026-10-05</td><td>設定頁由 <code>SETTINGS_PAGES</code> 清單推導指令、子選單與對話框（同工具面板的模式）；共用 <code>SettingsDialogShell</code></td><td>計畫建議</td></tr>
+</table>
+
+</main>
+</body>
+</html>

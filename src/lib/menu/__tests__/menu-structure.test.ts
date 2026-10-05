@@ -6,8 +6,10 @@ import {
   getCommand,
   getCommandTitle,
   panelCommandId,
+  settingsCommandId,
 } from "../commands";
 import { PANEL_IDS } from "@/lib/dock/panels";
+import { SETTINGS_PAGES } from "@/lib/preferences/settings-pages";
 import { MENUS, collectCommands, findMenuByMnemonic } from "../menu-structure";
 import { formatShortcut, type KeyboardEventLike } from "../shortcut";
 
@@ -46,6 +48,24 @@ describe("menu structure", () => {
     expect(getCommandTitle(panelCommandId("layers"))).toBe("工具面板：圖層");
   });
 
+  it("opens with 設定 → 文件 ▸ and 偏好設定 ▸, built from the settings page list", () => {
+    const settings = MENUS.find((menu) => menu.id === "settings")!;
+    const [document, preferences] = settings.items;
+
+    expect(document).toEqual({
+      kind: "submenu",
+      label: "文件",
+      children: [
+        { kind: "item", command: "settings.pageSetup" },
+        { kind: "item", command: "settings.pageNumbers" },
+      ],
+    });
+    expect(preferences).toEqual({ kind: "submenu", label: "偏好設定", children: [{ kind: "item", command: "settings.grid" }] });
+    // 每個設定頁都有指令，指令名稱就是選單文字
+    for (const page of SETTINGS_PAGES) expect(getCommand(settingsCommandId(page.id)).label).toBe(page.label);
+    expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
+  });
+
   it("uses unique mnemonics", () => {
     const codes = MENUS.map((menu) => menu.mnemonic.code);
     expect(new Set(codes).size).toBe(codes.length);
@@ -56,7 +76,7 @@ describe("findCommandByEvent", () => {
   it("resolves shortcuts to commands", () => {
     expect(findCommandByEvent(key("KeyS", { ctrlKey: true }))).toBe("file.save");
     expect(findCommandByEvent(key("KeyS", { ctrlKey: true, shiftKey: true }))).toBe("file.saveAs");
-    expect(findCommandByEvent(key("Comma", { ctrlKey: true }))).toBe("settings.preferences");
+    expect(findCommandByEvent(key("Comma", { ctrlKey: true }))).toBe("settings.grid");
     expect(findCommandByEvent(key("KeyZ", { ctrlKey: true }))).toBeNull();
     expect(findCommandByEvent(key("KeyS"))).toBeNull();
   });

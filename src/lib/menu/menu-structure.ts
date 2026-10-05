@@ -1,5 +1,6 @@
 import { PANEL_IDS } from "@/lib/dock/panels";
-import { panelCommandId, type CommandId } from "./commands";
+import { SETTINGS_GROUPS, settingsPagesIn } from "@/lib/preferences/settings-pages";
+import { panelCommandId, settingsCommandId, type CommandId } from "./commands";
 import type { KeyboardEventLike } from "./shortcut";
 
 export type MenuNode =
@@ -58,8 +59,15 @@ export const MENUS = [
     label: "設定",
     mnemonic: { code: "KeyS", letter: "S" },
     items: [
-      { kind: "item", command: "settings.pageNumbers" },
-      { kind: "item", command: "settings.preferences" },
+      // 文件 ▸ / 偏好設定 ▸：由設定頁清單產生，每一項開自己的對話框
+      ...SETTINGS_GROUPS.map(
+        (group) =>
+          ({
+            kind: "submenu",
+            label: group.label,
+            children: settingsPagesIn(group.id).map((page) => ({ kind: "item", command: settingsCommandId(page.id) }) as const),
+          }) as const,
+      ),
       separator,
       {
         kind: "submenu",

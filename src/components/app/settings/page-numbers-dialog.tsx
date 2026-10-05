@@ -1,15 +1,7 @@
 import { useId, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -33,11 +25,7 @@ import {
 import type { PageNumberFace, PageNumberPosition, PageNumberRule, PageNumberStyle } from "@/lib/editor/types";
 import { clamp } from "@/lib/editor/validation";
 import { usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
-
-interface PageNumbersDialogProps {
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-}
+import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "./settings-dialog";
 
 /**
  * 「頁碼管理」dialog: edits the document's page number rules. The list and the form are drafts;
@@ -50,14 +38,11 @@ interface PageNumbersDialogProps {
  * Returns:
  *   Dialog element.
  */
-export function PageNumbersDialog({ open, onOpenChange }: PageNumbersDialogProps) {
+export function PageNumbersDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
-        {/* Radix 關閉時會卸載內容，下次開啟時草稿重新從文件目前的設定開始 */}
-        <PageNumbersForm onDone={() => onOpenChange(false)} />
-      </DialogContent>
-    </Dialog>
+    <SettingsDialog open={open} onOpenChange={onOpenChange} className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
+      <PageNumbersForm onDone={() => onOpenChange(false)} />
+    </SettingsDialog>
   );
 }
 
@@ -161,15 +146,7 @@ function PageNumbersForm({ onDone }: { readonly onDone: () => void }) {
         </div>
         <RuleList rules={rules} selectedId={selectedId} onSelect={select} onNew={() => startNew(rules)} />
       </div>
-      <DialogFooter>
-        {formPending && (
-          <p className="mr-auto self-center text-xs text-muted-foreground">表單的修改還沒有按「修改設定」，按「確定」不會套用。</p>
-        )}
-        <DialogClose asChild>
-          <Button variant="outline">取消</Button>
-        </DialogClose>
-        <Button onClick={apply}>確定</Button>
-      </DialogFooter>
+      <SettingsDialogFooter onApply={apply} note={formPending && "表單的修改還沒有按「修改設定」，按「確定」不會套用。"} />
     </>
   );
 }

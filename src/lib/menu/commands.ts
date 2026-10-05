@@ -1,4 +1,5 @@
 import { PANEL_DEFINITIONS, type PanelId } from "@/lib/dock/panels";
+import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
 import { matchesShortcut, type KeyboardEventLike, type Shortcut } from "./shortcut";
 
 export interface CommandDefinition {
@@ -31,6 +32,29 @@ const PANEL_COMMANDS = Object.fromEntries(
   PANEL_DEFINITIONS.map(({ id, label }) => [panelCommandId(id), { label, title: `工具面板：${label}` }]),
 ) as Record<PanelCommandId, CommandDefinition>;
 
+export type SettingsCommandId = `settings.${SettingsPageId}`;
+
+/**
+ * Returns the menu command that opens a settings page.
+ *
+ * Args:
+ *   id: Settings page id.
+ *
+ * Returns:
+ *   Command id.
+ */
+export function settingsCommandId(id: SettingsPageId): SettingsCommandId {
+  return `settings.${id}`;
+}
+
+// 設定頁的指令由設定頁清單產生，新增設定頁不必改這裡
+const SETTINGS_COMMANDS = Object.fromEntries(
+  SETTINGS_PAGES.map((page) => {
+    const command: CommandDefinition = { label: page.label, ...("shortcut" in page && { shortcut: page.shortcut }) };
+    return [settingsCommandId(page.id), command];
+  }),
+) as Record<SettingsCommandId, CommandDefinition>;
+
 // 選單項目與快捷鍵的單一資料來源；新增指令時必須同時在 CommandHandlers 提供實作（mapped type 會檢查）
 export const COMMANDS = {
   "file.new": { label: "新增", shortcut: { ctrl: true, code: "KeyN", keyLabel: "N" } },
@@ -43,8 +67,7 @@ export const COMMANDS = {
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
-  "settings.pageNumbers": { label: "頁碼管理..." },
-  "settings.preferences": { label: "偏好設定...", shortcut: { ctrl: true, code: "Comma", keyLabel: "," } },
+  ...SETTINGS_COMMANDS,
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },
   "settings.themeDark": { label: "深色", title: "外觀：深色" },
   "settings.themeSystem": { label: "跟隨系統", title: "外觀：跟隨系統" },
