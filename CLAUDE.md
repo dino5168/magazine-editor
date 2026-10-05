@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -72,8 +72,10 @@ src/
       dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
       dock-panel.tsx              # 面板外框：標題列（收合 / 拖曳 / 關閉）+ ScrollArea
       dock-splitter.tsx           # size control bar：拖曳 / 雙擊還原 / 鍵盤 ←→ 調整停靠區寬度
-      use-dock-drag.ts            # 拖曳標題列移動面板（pointer events、命中判斷、Esc 取消）
-      dock-drag-ghost.tsx         # 拖曳時跟著游標的面板名稱
+      use-dock-drag.ts            # 拖曳標題列移動面板（命中判斷；按下 / 門檻 / Esc 交給 pointer-drag.ts）
+      dock-drag-ghost.tsx         # 拖曳時跟著游標的面板 icon + 名稱（DragGhost 的包裝）
+    pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、grabbing 游標、吞掉拖曳後的 click、Esc 取消、清除），工具面板與頁籤拖曳共用
+    drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
@@ -86,8 +88,9 @@ src/
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
       editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
-      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）、滾輪橫捲、`<` `>` 與頁碼輸入框
-      page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面
+      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）/ 拖曳排序（插入線）、滾輪橫捲、`<` `>` 與頁碼輸入框
+      use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
+      page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
       panels/*.tsx                # 9 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw 目前是佔位
       page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）與邊界參考線（MarginGuide）
@@ -142,7 +145,8 @@ src/
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
-      page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵
+      page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
+      page-order.ts               # 頁面排序的純邏輯：isPageOrder、movePage、shiftPage / shiftedPageOrder（選單與快捷鍵）、slotToIndex（拖曳的空隙 → 新位置）
       fonts.ts                    # FONT_OPTIONS（可選的字型）、文件用到的字型、載入參數
       use-fonts-ready.ts          # 字型用到才載入：loadFontOption、useFontsReady（畫布等字型）
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
@@ -200,6 +204,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
 - **不進歷史的 UI 狀態**：`activePageId`、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
+- 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
 - 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
@@ -304,13 +309,25 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **有線又有陰影時，Konva 改用 buffer canvas**：整段文字畫好再投一個陰影在最底下（`RenderShadow.whole_block`）；沒有線時每行各自投陰影。PDF 照兩種情況畫；EPUB 的文字陰影是 `text-shadow`（不複製文字），線的陰影是 `z-index: -1` 的 `span.d.s`（`.t` 有 `z-index: 0`）。
 - **已知限制**：半透明陰影在有線的文字上，重疊處 PDF / EPUB 比畫布深（Typst 沒有群組透明度）；EPUB 逐行畫文字陰影，行與行的陰影重疊時順序可能和畫布不同。
 
+### 頁面排序（`page-order.ts` + `editor-page-bar.tsx` + `page-menu.tsx`）
+
+計畫與決定：`docs/Plans/imp-頁面調整.html`。
+
+- 三種入口，最後都是一次 `page/reorder`（一筆復原），目前頁不變：
+  - **拖曳頁籤**（`use-page-tab-drag.ts`）：按在選單 / 刪除按鈕上或改名中不開始拖曳；4 px 門檻，點擊與雙擊改名照常；只在放下會改變順序時畫插入線；頁籤列上下 48 px 外放開 = 取消；靠近左右邊緣 40 px 自動捲動。插入位置用 `lib/dock` 的 `insertionSlot`（任一軸），空隙換算新位置用 `slotToIndex`。
+  - **目前頁籤的 `˅` 選單**：向左 / 向右 / 移到最前 / 移到最後（`shiftedPageOrder` 回傳 `null` 時停用）；`≡` 選單沒有這些項目。
+  - **Ctrl+Shift+PageUp / PageDown**：往前 / 往後一格（`use-editor-shortcuts.ts`，在換頁之前判斷）。
+- 頁碼規則跟著**頁序**：頁面換位置後頁碼依新位置重新計算。
+- 不做「頁面排序」對話框；**使用者不要「頁面」工具面板**（縮圖清單），不要主動提議。
+
 ### 其他注意事項
 
 - 字型：canvas 必須等字型載入後才建立 Stage，否則換行寬度會算錯（Konva 不會在字型載入後重新量測）。
   - 可選的字型是 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（屬性面板的下拉選單與字型載入的單一資料來源）；第一個是預設（黑體 `"Geist", "Noto Sans TC", sans-serif`）。文件的 `fontFamily` 存 `family` 字串，不在清單中的照常顯示，選單顯示「其他字型」。
   - **用到才載入**（`use-fonts-ready.ts`）：畫布等「預設字型 + 文件所有頁面用到的字型」都載入才畫；屬性面板換字型時先 `loadFontOption` 再寫入，畫布不會閃。中文字型也要等，一份中文雜誌的換行幾乎都由中文字型決定。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
-- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End）焦點在 input、textarea、dialog、menu 內時不觸發。
+- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End / 移動目前頁面 Ctrl+Shift+PageUp・PageDown）焦點在 input、textarea、dialog、menu 內時不觸發。
+  - 一般瀏覽器分頁（`npm run dev`）會自己攔下 Ctrl+Shift+PageUp / PageDown（移動瀏覽器分頁），網頁收不到；桌面版沒有這個問題。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
   - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
 - 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
@@ -353,7 +370,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - `DockLayout`（左右各一個由上到下的面板清單 + 兩側寬度）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。
 - 同一側多個面板上下堆疊，展開的平分高度，收合只剩標題列。一個面板最多出現一次。
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
-- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳；結束後吞掉下一次 click。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
+- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁籤拖曳也用它，改動時兩邊都要測）。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
 - **記憶**：`localStorage` key `magazine-editor.dockLayout.v2`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。只有 v1 時沿用它，並把屬性面板加到右側最上方一次（`loadDockLayout`）。`npm run dev` 與安裝版 origin 不同，各記一份。
 - Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockPanel` 用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正。
 - Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。

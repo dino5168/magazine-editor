@@ -5,27 +5,41 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
+import { PAGE_MOVE_SHORTCUT_LABELS } from "@/lib/editor/page-navigation";
+import { shiftedPageOrder, type PageShift } from "@/lib/editor/page-order";
 
 interface PageMenuProps {
   /** The trigger element (rendered with `asChild`). */
   readonly children: ReactNode;
+  /** Adds the actions on the active page (move left / right / first / last); the `˅` on the active tab. */
+  readonly pageActions?: boolean;
 }
+
+const MOVE_ITEMS: readonly { readonly shift: PageShift; readonly label: string; readonly shortcut?: string }[] = [
+  { shift: "left", label: "向左移動", shortcut: PAGE_MOVE_SHORTCUT_LABELS.left },
+  { shift: "right", label: "向右移動", shortcut: PAGE_MOVE_SHORTCUT_LABELS.right },
+  { shift: "first", label: "移到最前" },
+  { shift: "last", label: "移到最後" },
+];
 
 /**
  * draw.io-style page list menu: insert a page, then every page with the active one checked.
  *
- * The page bar opens it from the `≡` button and from the `˅` on the active tab.
+ * The page bar opens it from the `≡` button and from the `˅` on the active tab; the latter also
+ * lists the moves of the active page.
  *
  * Args:
  *   props.children: Trigger element.
+ *   props.pageActions: Whether to list the active page's moves.
  *
  * Returns:
  *   Dropdown menu opening above the trigger.
  */
-export function PageMenu({ children }: PageMenuProps) {
+export function PageMenu({ children, pageActions = false }: PageMenuProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const { pages } = state.history.present;
@@ -44,6 +58,26 @@ export function PageMenu({ children }: PageMenuProps) {
         <DropdownMenuItem inset onSelect={() => dispatch({ type: "page/add", after: state.activePageId })}>
           插入頁面
         </DropdownMenuItem>
+        {pageActions && (
+          <>
+            <DropdownMenuSeparator />
+            {/* 頁碼跟著頁序：移動後頁碼會依新位置重新計算 */}
+            {MOVE_ITEMS.map(({ shift, label, shortcut }) => {
+              const order = shiftedPageOrder(pages, state.activePageId, shift);
+              return (
+                <DropdownMenuItem
+                  key={shift}
+                  inset
+                  disabled={order === null}
+                  onSelect={() => order && dispatch({ type: "page/reorder", order })}
+                >
+                  {label}
+                  {shortcut && <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>}
+                </DropdownMenuItem>
+              );
+            })}
+          </>
+        )}
         <DropdownMenuSeparator />
         {pages.map((page) => {
           const active = page.id === state.activePageId;

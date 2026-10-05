@@ -1,3 +1,5 @@
+import type { PageShift } from "./page-order";
+
 /** 頁面切換的目標：上一頁 / 下一頁 / 第一頁 / 最後一頁。 */
 export type PageStep = "prev" | "next" | "first" | "last";
 
@@ -57,5 +59,28 @@ export function findPageShortcut(event: PageKeyEvent): PageStep | null {
   if (!mod && event.key === "PageDown") return "next";
   if (mod && event.key === "Home") return "first";
   if (mod && event.key === "End") return "last";
+  return null;
+}
+
+/** Labels of the page move shortcuts, shown in the page menu. */
+export const PAGE_MOVE_SHORTCUT_LABELS: { readonly [S in "left" | "right"]: string } = {
+  left: "Ctrl+Shift+PgUp",
+  right: "Ctrl+Shift+PgDn",
+};
+
+/**
+ * Maps a keydown to moving the active page: Ctrl+Shift+PageUp / PageDown (the browser / VS Code
+ * convention for moving a tab; PageUp / PageDown alone switch pages).
+ *
+ * Args:
+ *   event: The keyboard event (only key and modifiers are read).
+ *
+ * Returns:
+ *   "left" / "right", or null when the key is not a page move shortcut.
+ */
+export function findPageMoveShortcut(event: PageKeyEvent): Extract<PageShift, "left" | "right"> | null {
+  if (!(event.ctrlKey || event.metaKey) || !event.shiftKey || event.altKey) return null;
+  if (event.key === "PageUp") return "left";
+  if (event.key === "PageDown") return "right";
   return null;
 }

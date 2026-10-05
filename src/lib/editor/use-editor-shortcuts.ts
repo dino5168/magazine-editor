@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { selectSelectedElements } from "./editor-reducer";
 import { useEditorDispatch, useEditorState } from "./editor-context";
-import { findPageShortcut, stepPageIndex } from "./page-navigation";
+import { findPageMoveShortcut, findPageShortcut, stepPageIndex } from "./page-navigation";
+import { shiftedPageOrder } from "./page-order";
 import { deleteSelection, duplicateSelection, nudgeSelection } from "./selection-actions";
 import { findToolShortcut } from "./tools";
 
@@ -55,6 +56,14 @@ export function useEditorShortcuts(): void {
       if (mod && !event.shiftKey && !event.altKey && event.code === "KeyD") {
         event.preventDefault();
         if (selected.length > 0) dispatch(duplicateSelection(selected));
+        return;
+      }
+      // Ctrl+Shift+PageUp / PageDown 把目前頁面往前 / 往後移一格（每次一筆復原）
+      const pageMove = findPageMoveShortcut(event);
+      if (pageMove) {
+        event.preventDefault();
+        const order = shiftedPageOrder(pages, activePageId, pageMove);
+        if (order) dispatch({ type: "page/reorder", order });
         return;
       }
       // PageUp / PageDown / Ctrl+Home / Ctrl+End 換頁；按住不放可以連續翻頁

@@ -407,6 +407,30 @@ describe("editorReducer / pages", () => {
     expect(editorReducer(state, { type: "page/add", after: "missing" })).toBe(state);
   });
 
+  it("reorders pages in one undo step and keeps the active page and selection", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const initial = run(blankState(), { type: "page/add" }, { type: "page/add" }, { type: "element/add", element });
+    const [a, b, c] = initial.history.present.pages.map((page) => page.id);
+    const state = run(initial, { type: "page/reorder", order: [c, a, b] });
+
+    expect(state.history.present.pages.map((page) => page.id)).toEqual([c, a, b]);
+    // 頁面物件本身不變（內容、名稱都跟著頁面走）
+    expect(state.history.present.pages[0]).toBe(initial.history.present.pages[2]);
+    expect(state.activePageId).toBe(c);
+    expect(state.selectedIds).toEqual([element.id]);
+    expect(state.history.past).toHaveLength(initial.history.past.length + 1);
+    expect(run(state, { type: "history/undo" }).history.present.pages.map((page) => page.id)).toEqual([a, b, c]);
+  });
+
+  it("ignores an unchanged order and anything that is not a permutation of the pages", () => {
+    const state = run(blankState(), { type: "page/add" });
+    const [a, b] = state.history.present.pages.map((page) => page.id);
+
+    for (const order of [[a, b], [a], [a, a], [a, "missing"], [b, a, "missing"]]) {
+      expect(editorReducer(state, { type: "page/reorder", order })).toBe(state);
+    }
+  });
+
   it("refuses to delete the last page", () => {
     const state = blankState();
     expect(editorReducer(state, { type: "page/delete", id: state.activePageId })).toBe(state);

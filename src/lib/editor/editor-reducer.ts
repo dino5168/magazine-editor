@@ -1,5 +1,6 @@
 import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
+import { isPageOrder } from "./page-order";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
@@ -87,6 +88,8 @@ export type EditorAction =
   | { readonly type: "page/select"; readonly id: PageId }
   | { readonly type: "page/rename"; readonly id: PageId; readonly name: string }
   | { readonly type: "page/delete"; readonly id: PageId }
+  /** New page order (every page id once); anything else is a no-op. The active page stays active. */
+  | { readonly type: "page/reorder"; readonly order: readonly PageId[] }
   | { readonly type: "page/setBackground"; readonly id: PageId; readonly color: string }
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
@@ -386,6 +389,15 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const next = commit(state, { ...document, pages });
     if (state.activePageId !== action.id) return next;
     return { ...next, activePageId: pages[Math.max(0, index - 1)].id, selectedIds: NO_SELECTION };
+  },
+
+  "page/reorder": (state, action) => {
+    const document = state.history.present;
+    const current = document.pages.map((page) => page.id);
+    if (!isPageOrder(current, action.order) || action.order.every((id, index) => id === current[index])) return state;
+    const byId = new Map(document.pages.map((page) => [page.id, page]));
+    // 頁面物件本身不變，只換位置；目前頁與選取都跟著頁面走，不必調整
+    return commit(state, { ...document, pages: action.order.map((id) => byId.get(id)!) });
   },
 
   "page/setBackground": (state, action) => {

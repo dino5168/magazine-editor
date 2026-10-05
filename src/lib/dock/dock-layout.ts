@@ -163,11 +163,12 @@ export function dropPanel(layout: DockLayout, id: PanelId, target: DropTarget): 
 }
 
 /**
- * Finds the insertion slot for a pointer position: the number of panels whose vertical center is above it.
+ * Finds the insertion slot for a pointer position: the number of items whose center is before it.
+ * Works on either axis (dock panels top to bottom, page tabs left to right).
  *
  * Args:
- *   centers: Vertical centers of the panels on one side, top to bottom (screen px).
- *   y: Pointer y (screen px).
+ *   centers: Centers of the items along the axis, in order (screen px).
+ *   y: Pointer position on the same axis (screen px).
  *
  * Returns:
  *   Slot index 0..centers.length.

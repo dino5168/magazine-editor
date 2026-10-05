@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findPageShortcut, parsePageNumber, stepPageIndex } from "../page-navigation";
+import { findPageMoveShortcut, findPageShortcut, parsePageNumber, stepPageIndex } from "../page-navigation";
 
 const key = (k: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }> = {}) => ({
   key: k,
@@ -58,5 +58,22 @@ describe("findPageShortcut", () => {
     expect(findPageShortcut(key("PageUp", { shiftKey: true }))).toBeNull();
     expect(findPageShortcut(key("Home", { ctrlKey: true, altKey: true }))).toBeNull();
     expect(findPageShortcut(key("a"))).toBeNull();
+  });
+});
+
+describe("findPageMoveShortcut", () => {
+  it("maps Ctrl+Shift+PageUp / PageDown to moving the page", () => {
+    expect(findPageMoveShortcut(key("PageUp", { ctrlKey: true, shiftKey: true }))).toBe("left");
+    expect(findPageMoveShortcut(key("PageDown", { metaKey: true, shiftKey: true }))).toBe("right");
+  });
+
+  it("leaves page switching and other combinations alone", () => {
+    expect(findPageMoveShortcut(key("PageUp"))).toBeNull();
+    expect(findPageMoveShortcut(key("PageUp", { shiftKey: true }))).toBeNull();
+    expect(findPageMoveShortcut(key("PageUp", { ctrlKey: true }))).toBeNull();
+    expect(findPageMoveShortcut(key("PageDown", { ctrlKey: true, shiftKey: true, altKey: true }))).toBeNull();
+    expect(findPageMoveShortcut(key("Home", { ctrlKey: true, shiftKey: true }))).toBeNull();
+    // 和換頁的快捷鍵互不重疊
+    expect(findPageShortcut(key("PageUp", { ctrlKey: true, shiftKey: true }))).toBeNull();
   });
 });

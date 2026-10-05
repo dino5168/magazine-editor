@@ -10,7 +10,13 @@
 
 ## 目前階段
 
-- **偏好設定調整(2026-10-05,四個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-05-偏好設定調整.md`(不 commit),計畫 `docs/Plans/imp-偏好設定調整.html`(要 commit)。使用者確認:選單改成「設定 → 文件 ▸(頁面設定...、頁碼管理...)」與「設定 → 偏好設定 ▸(格線與參考線...,Ctrl+,)」,每項一個對話框;紙張加 A3 / A5 / A6、JIS B4 / B6、16 開、32 開、Legal、Tabloid、電子書 3:4 / 9:16。共四個步驟。
+- **頁面排序(2026-10-06,四個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-06-頁面調整.md`(不 commit),計畫 `docs/Plans/imp-頁面調整.html`(要 commit)。使用者確認:拖曳頁籤、目前頁籤 `˅` 選單的「向左 / 向右 / 移到最前 / 移到最後」、Ctrl+Shift+PageUp / PageDown;不做排序對話框;**不要「頁面」工具面板**。共四個步驟。
+  - 步驟 1:`lib/editor/page-order.ts`(`movePage` / `shiftPage` / `slotToIndex`)與 reducer `page/reorder`。vitest 273 個通過。畫面不變。
+  - 步驟 2:目前頁籤 `˅` 選單的「向左 / 向右 / 移到最前 / 移到最後」、Ctrl+Shift+PageUp / PageDown。vitest 276 個通過,無頭 Edge 16 項。注意:一般瀏覽器會攔下 Ctrl+Shift+PgUp / PgDn(移動瀏覽器分頁),要在桌面版確認快捷鍵。
+  - 步驟 3:拖曳頁籤(`use-page-tab-drag.ts`,插入線、邊緣自動捲動、Esc 取消);工具面板拖曳的通用部分抽成 `components/pointer-drag.ts` 與 `components/drag-ghost.tsx`,兩邊共用。無頭 Edge 15 項通過(含工具面板拖曳回歸)。
+  - 步驟 4:`CLAUDE.md` 新增「頁面排序」一節並同步各節;`docs/01`/`02`;`imp-bug-fixed.md` 標註排序已完成。
+  - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-頁面調整.html`、`docs/Plans/imp-bug-fixed.md`、`docs/Plans/imp-偏好設定調整.html`(上次補的 commit 編號);任務檔 `2026-10-06-頁面調整.md` 不 commit。
+- **偏好設定調整(2026-10-05,四個步驟全部完成,commit `e76dd9f`,已推送;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-05-偏好設定調整.md`(不 commit),計畫 `docs/Plans/imp-偏好設定調整.html`(要 commit)。使用者確認:選單改成「設定 → 文件 ▸(頁面設定...、頁碼管理...)」與「設定 → 偏好設定 ▸(格線與參考線...,Ctrl+,)」,每項一個對話框;紙張加 A3 / A5 / A6、JIS B4 / B6、16 開、32 開、Legal、Tabloid、電子書 3:4 / 9:16。共四個步驟。
   - 步驟 1:`lib/preferences/settings-pages.ts`(設定頁清單)→ 指令 `settings.pageSetup` / `settings.pageNumbers` / `settings.grid`(Ctrl+,)與「文件 ▸」「偏好設定 ▸」子選單;`settings.preferences` 移除。暫時仍打開舊對話框的對應分頁。vitest 262 個通過,無頭 Edge 9 項。
   - 步驟 2:`components/app/settings/`(共用外框 `SettingsDialog` / `SettingsDialogFooter`、`PageSetupDialog`、`GridDialog`、搬進來的 `PageNumbersDialog`、`SETTINGS_DIALOGS`);刪除 `preferences-dialog.tsx`;`home-page.tsx` 只剩 `openSettings`。無頭 Edge 14 項通過。
   - 步驟 3:14 種紙張分五組(`units.ts` 的 `PAGE_SIZE_GROUPS` / `PAGE_SIZE_PRESETS`),下拉選單分組並附尺寸。vitest 265 個通過,無頭 Edge 11 項。
@@ -138,6 +144,7 @@
 | 2026-10-04 | **偏好設定**(計畫 `docs/Plans/imp-settings.html`):「偏好設定」對話框(Ctrl+, / 頁面設定...)取代「尺寸」工具面板;紙張尺寸套用到所有頁面、邊界存進文件(`schemaVersion` 4,只畫參考線不輸出);格線顯示 / 間距 / 吸附與邊界參考線開關存 localStorage;吸附涵蓋拖曳(多選整組依被拖曳的物件對齊)、縮放(旋轉 0°)、建立。vitest 226 個、Rust 84 個通過,無頭 Edge 驗證 41 項 |
 | 2026-10-04 | **頁碼管理**(計畫 `docs/Plans/imp-page-settings.html`):「設定 → 頁碼管理...」取代「頁面設定...」;文件分段設定頁碼(範圍、起始值、奇偶頁位置與前後置文字、字型 / 顏色 / 框線),左中 / 右中直書;頁碼以虛擬圖形畫在畫布與匯出(PDF / EPUB),不是物件;「顯示頁碼」只影響畫布;`schemaVersion` 5。vitest 251 個、Rust 87 個通過,無頭 Edge 驗證 46 項 |
 | 2026-10-05 | **文字屬性調整**(計畫 `docs/Plans/imp-text-attribute.html`):文字樣式加斜體(模擬斜切 0.25)、底線、刪除線(照 Konva 10.5.0 的公式)、硬陰影(方向以頁面為準、無模糊);屬性面板與頁碼對話框共用控制項;畫布、PDF、EPUB 一致(墨跡相差 ≤ 0.5 pt);`schemaVersion` 6。vitest 261 個、Rust 97 個通過 |
+| 2026-10-06 | **頁面排序**(計畫 `docs/Plans/imp-頁面調整.html`):`page/reorder`;拖曳頁籤(插入線、邊緣自動捲動)、目前頁籤 `˅` 選單的移動項目、Ctrl+Shift+PageUp / PageDown;工具面板與頁籤拖曳共用 `pointer-drag.ts` / `drag-ghost.tsx`。vitest 276 個通過,無頭 Edge 驗證 31 項 |
 | 2026-10-05 | **偏好設定調整**(計畫 `docs/Plans/imp-偏好設定調整.html`):「設定」選單拆成「文件 ▸ / 偏好設定 ▸」,頁面設定、頁碼管理、格線與參考線各自一個對話框(共用外框,由 `SETTINGS_PAGES` 產生);紙張增加到 14 種並分組。vitest 265 個通過,無頭 Edge 驗證 34 項 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
@@ -193,6 +200,7 @@
 | 頁碼:一段 = 一個頁面範圍(奇偶頁各自設位置與前後置文字);每段可設起始值(只有阿拉伯數字);上下放在邊界區正中;左中 / 右中每字上下排;「顯示頁碼」是只影響畫布的 App 偏好;「頁面設定...」改成「頁碼管理...」 | 使用者確認(2026-10-04),見 `docs/Plans/imp-page-settings.html` |
 | 頁碼**不是物件**,文件只存規則,畫布與匯出時算成「虛擬圖形」(透明矩形 + 框線 + 圖形內文字) | 實作時決定(2026-10-04):沿用既有的圖形繪製、量測與 PDF / EPUB 匯出,Rust render 不用改;頁碼也不會被誤選、誤刪 |
 | 文字新增**斜體 / 底線 / 刪除線 / 硬陰影**(加在 `TextStyle`,頁碼也有);斜體是 boolean、以模擬斜切呈現;陰影無模糊、方向固定朝頁面;文字背景 / 邊框不做(用圖形 + 圖形內文字) | 使用者確認(2026-10-05),見 `docs/Plans/imp-text-attribute.html` |
+| 頁面排序:拖曳頁籤 + 目前頁選單的移動項目 + Ctrl+Shift+PageUp / PageDown;不做排序對話框;**不要「頁面」工具面板**(不是延後,不要主動提) | 使用者確認(2026-10-06),見 `docs/Plans/imp-頁面調整.html` |
 | 設定選單改成「文件 ▸(頁面設定、頁碼管理)/ 偏好設定 ▸(格線與參考線,Ctrl+,)」,每項一個對話框;設定頁由 `SETTINGS_PAGES` 清單推導;紙張 14 種分五組 | 使用者確認(2026-10-05),見 `docs/Plans/imp-偏好設定調整.html` |
 | 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/imp-tldraw-bar.md` |
 
@@ -202,6 +210,11 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**頁面排序**(Claude 只用瀏覽器模式驗證過):
+  - 拖曳頁籤到前面 / 最後;頁面多時拖到頁籤列邊緣會自動捲動;Esc 取消;標題出現 `●`、Ctrl+Z 一次回去;存檔重開順序仍在
+  - 目前頁籤 `˅` 選單的四個移動項目
+  - **Ctrl+Shift+PageUp / PageDown 在桌面版有沒有作用**(瀏覽器分頁會被瀏覽器攔下,無頭測試碰不到這一層)
+  - 有頁碼規則時,移動頁面後頁碼依新順序重新計算
 - [ ] 在 `npm run tauri dev` 手動驗證**設定選單**(Claude 只用瀏覽器模式驗證過):
   - 「設定 → 文件 ▸」「設定 → 偏好設定 ▸」的三個項目各開自己的對話框;Ctrl+, 開「格線與參考線」
   - 頁面設定選 A5 橫式 → 標題出現 `●`、Ctrl+Z 一次回去;存檔重開仍是 A5
@@ -285,7 +298,7 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 97 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 265 個(2026-10-05)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:118` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **目前的自動化測試:** Rust 97 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 276 個(2026-10-06)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:118` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
 - **圖形內文字的已知限制(2026-10-01)**:
   - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
   - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。

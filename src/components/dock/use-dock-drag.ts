@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { insertionSlot, type DockSide, type DropTarget } from "@/lib/dock/dock-layout";
 import type { PanelId } from "@/lib/dock/panels";
-
-/** Pointer movement before a press on a title bar becomes a drag; shorter presses stay clicks (collapse). */
-const DRAG_THRESHOLD_PX = 4;
+import { moveDragGhost } from "../drag-ghost";
+import { startPointerDrag } from "../pointer-drag";
 
 export interface DockDrag {
   readonly id: PanelId;
@@ -29,16 +28,6 @@ function hitTest(x: number, y: number): DropTarget | null {
 
 function sameTarget(a: DropTarget | null, b: DropTarget | null): boolean {
   return a === b || (a !== null && b !== null && a.side === b.side && a.slot === b.slot);
-}
-
-// 拖曳結束時瀏覽器仍會對標題列送出 click，不能讓它變成「收合」
-function swallowNextClick(): void {
-  const stop = (event: MouseEvent): void => {
-    event.stopPropagation();
-    event.preventDefault();
-  };
-  window.addEventListener("click", stop, { capture: true, once: true });
-  setTimeout(() => window.removeEventListener("click", stop, { capture: true }), 0);
 }
 
 /**
@@ -69,68 +58,28 @@ export function useDockDrag(onDrop: (id: PanelId, target: DropTarget) => void) {
 
   const startDrag = useCallback((id: PanelId, event: ReactPointerEvent) => {
     if (event.button !== 0 || cleanupRef.current) return;
-    const { pointerId } = event;
-    const start = { x: event.clientX, y: event.clientY };
-    let active = false;
     let target: DropTarget | null = null;
-
-    const moveGhost = (x: number, y: number): void => {
-      if (ghostRef.current) ghostRef.current.style.transform = `translate(${x + 14}px, ${y + 14}px)`;
-    };
-
-    const onMove = (e: PointerEvent): void => {
-      if (e.pointerId !== pointerId) return;
-      if (!active) {
-        if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < DRAG_THRESHOLD_PX) return;
-        active = true;
-        document.body.style.cursor = "grabbing";
-        document.body.style.userSelect = "none";
+    cleanupRef.current = startPointerDrag(event, {
+      onStart: (e) => {
         target = hitTest(e.clientX, e.clientY);
         setDrag({ id, target });
-      } else {
+      },
+      onMove: (e) => {
         const next = hitTest(e.clientX, e.clientY);
         if (!sameTarget(next, target)) {
           target = next;
           setDrag({ id, target });
         }
-      }
-      moveGhost(e.clientX, e.clientY);
-    };
-
-    const finish = (commit: boolean): void => {
-      cleanupRef.current?.();
-      if (!active) return;
-      swallowNextClick();
-      setDrag(null);
-      if (commit && target) onDropRef.current(id, target);
-    };
-    const onUp = (e: PointerEvent): void => {
-      if (e.pointerId === pointerId) finish(true);
-    };
-    const onCancel = (e: PointerEvent): void => {
-      if (e.pointerId === pointerId) finish(false);
-    };
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key !== "Escape") return;
-      // 只取消拖曳，不要同時觸發編輯器的 Esc（取消選取）
-      e.preventDefault();
-      e.stopPropagation();
-      finish(false);
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
-    window.addEventListener("keydown", onKeyDown, { capture: true });
-    cleanupRef.current = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      cleanupRef.current = null;
-    };
+        moveDragGhost(ghostRef.current, e.clientX, e.clientY);
+      },
+      onEnd: (commit) => {
+        setDrag(null);
+        if (commit && target) onDropRef.current(id, target);
+      },
+      onDone: () => {
+        cleanupRef.current = null;
+      },
+    });
   }, []);
 
   return { drag, startDrag, ghostRef };

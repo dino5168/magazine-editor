@@ -64,6 +64,8 @@ flowchart TB
 | `src/lib/project/` | 約 750 | 新增 / 開啟 / 儲存 / 另存、匯入圖片、自動備份、關閉前提示;呼叫 Rust 的地方 | 之後再看(06 會講) |
 | `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
 | `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
+| `src/components/pointer-drag.ts`、`src/components/drag-ghost.tsx` | 約 130 | 拖曳的共用流程(門檻、Esc 取消、拖曳後不誤觸點擊)與跟著游標的標籤;工具面板與頁籤拖曳共用 | 之後再看 |
+| `src/lib/editor/page-order.ts`、`src/components/editor/use-page-tab-drag.ts` | 約 210 | 頁面排序:新順序的計算、拖曳頁籤(插入線、邊緣自動捲動) | 之後再看 |
 | `src/lib/preferences/`、`src/components/app/settings/`(頁碼管理以外) | 約 500 | 設定:設定頁清單(選單與對話框都由它產生)、格線等 App 偏好(localStorage)、「頁面設定」「格線與參考線」對話框與共用外框 | 之後再看 |
 | `src/lib/editor/page-numbers.ts`、`src/components/app/settings/page-numbers-dialog.tsx` | 約 750 | 頁碼管理:頁碼規則 → 畫布與匯出用的「虛擬圖形」、「頁碼管理」對話框。頁碼不是物件,只存規則 | 之後再看 |
 | `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 400 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影怎麼轉成畫布的屬性 | 之後再看 |

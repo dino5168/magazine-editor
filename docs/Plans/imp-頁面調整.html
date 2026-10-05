@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>頁面排序實作計畫</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --code: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --code: #21262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .done { background: var(--ok-soft); color: var(--ok); }
+  .rec { background: var(--ok-soft); color: var(--ok); }
+  .opt { background: var(--warn-soft); color: var(--warn); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .figure { display: flex; justify-content: center; margin: 16px 0; }
+  .figure svg { max-width: 100%; height: auto; }
+  .caption { text-align: center; color: var(--muted); font-size: .85rem; }
+  svg text { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  .s-bar { fill: var(--card); stroke: var(--line); }
+  .s-tab { fill: var(--bg); stroke: var(--line); }
+  .s-active { fill: var(--accent-soft); stroke: var(--accent); }
+  .s-text { fill: var(--fg); }
+  .s-muted { fill: var(--muted); }
+  .s-ghost { fill: var(--accent-soft); stroke: var(--accent); stroke-dasharray: 4 3; opacity: .9; }
+  .s-line { stroke: var(--accent); stroke-width: 3; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>頁面排序（imp-頁面調整）</h1>
+<p class="meta">任務檔：<code>docs/Plans/2026-10-06-頁面調整.md</code>（不 commit）· 建立：2026-10-06 · 對應 commit：<code>e76dd9f</code> · 狀態：<strong>四個步驟全部完成（2026-10-06），尚未 commit；桌面版人工驗證待做</strong></p>
+
+<h2>1. 任務</h2>
+<ol>
+  <li>頁面目前新增後只能接在後面（「+」加在最後、選單的「插入頁面」插在目前頁之後），<strong>做好之後無法調整順序</strong>。</li>
+  <li>能否用<strong>拖曳</strong>調整頁面順序？</li>
+  <li>評估其他調整順序的方式。</li>
+</ol>
+
+<h2>2. 現況與先前的決定</h2>
+<ul>
+  <li>頁籤列 <code>editor-page-bar.tsx</code>：點擊切換、雙擊改名、<code>×</code> 刪除；<code>≡</code> 與目前頁籤的 <code>˅</code> 開同一份頁面選單（<code>page-menu.tsx</code>：插入頁面、頁面清單）。</li>
+  <li>reducer 有 <code>page/add</code> / <code>select</code> / <code>rename</code> / <code>delete</code> / <code>setBackground</code>，<strong>沒有排序</strong>。</li>
+  <li>2026-10-01 的頁籤列計畫（<code>docs/Plans/imp-bug-fixed.md</code>）已經決定、但暫停沒做的部分：
+    <ul>
+      <li><code>page/reorder { order: PageId[] }</code>：給完整的新順序，必須剛好是現有頁面的排列，否則 no-op；沒變回傳同一個 state。<strong>這次沿用</strong>。</li>
+      <li>目前頁面選單加「向左 / 向右移動」；「頁面排序」對話框（拖曳 + 上 / 下移）；之後的「頁面」工具面板（縮圖、拖曳排序）可以取代排序對話框。</li>
+    </ul>
+  </li>
+  <li><strong>頁碼規則跟著頁序</strong>（頁碼管理）：頁面換位置後，頁碼會依新位置重新計算；這是預期行為，但要讓使用者知道。</li>
+</ul>
+
+<h2>3. 可行的做法</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>做法</th><th>操作</th><th>適合</th><th>工作量</th><th>建議</th></tr>
+  <tr>
+    <td><strong>A. 拖曳頁籤</strong></td>
+    <td>在頁籤列按住頁籤左右拖，放開就換位置；拖曳時頁籤間出現插入線，拖到頁籤列左右邊緣會自動捲動；Esc 取消</td>
+    <td>附近幾頁的調整，最直覺（draw.io、瀏覽器分頁都這樣）</td>
+    <td>中</td>
+    <td><span class="badge rec">建議</span></td>
+  </tr>
+  <tr>
+    <td><strong>B. 頁面選單的移動項目</strong></td>
+    <td>目前頁籤的 <code>˅</code> 選單加「向左移動 / 向右移動 / 移到最前 / 移到最後」</td>
+    <td>鍵盤與精確操作；頁面多時一步到頭尾</td>
+    <td>小</td>
+    <td><span class="badge rec">建議</span></td>
+  </tr>
+  <tr>
+    <td>C. 快捷鍵</td>
+    <td>Ctrl+Shift+PageUp / PageDown 把目前頁面往前 / 往後移一格（Chrome、VS Code 移動分頁的慣例；換頁已是 PageUp / PageDown）</td>
+    <td>常用鍵盤的人</td>
+    <td>小（和 B 共用動作）</td>
+    <td><span class="badge opt">可選</span></td>
+  </tr>
+  <tr>
+    <td>D. 頁面排序對話框</td>
+    <td>清單裡拖曳或上 / 下移，按「確定」才套用</td>
+    <td>一次大幅調整</td>
+    <td>中</td>
+    <td><span class="badge opt">有 A + B 時可省略</span></td>
+  </tr>
+  <tr>
+    <td>E. 「頁面」工具面板</td>
+    <td>縮圖清單，直向拖曳排序，可多選一起搬</td>
+    <td>幾十頁以上的雜誌；最完整</td>
+    <td>大（縮圖要快取、清單要虛擬化）</td>
+    <td><span class="badge opt">建議另開任務</span></td>
+  </tr>
+</table>
+</div>
+
+<div class="figure">
+  <svg width="640" height="110" viewBox="0 0 640 110" role="img" aria-label="拖曳頁籤的示意圖">
+    <rect class="s-bar" x="0.5" y="40.5" width="639" height="40" rx="4"/>
+    <rect class="s-tab" x="60" y="44" width="90" height="32"/>
+    <text class="s-text" x="105" y="65" font-size="13" text-anchor="middle">封面</text>
+    <rect class="s-tab" x="150" y="44" width="90" height="32"/>
+    <text class="s-text" x="195" y="65" font-size="13" text-anchor="middle">目錄</text>
+    <line class="s-line" x1="241" y1="42" x2="241" y2="78"/>
+    <rect class="s-active" x="242" y="44" width="90" height="32" opacity=".35"/>
+    <text class="s-muted" x="287" y="65" font-size="13" text-anchor="middle">內文 1</text>
+    <rect class="s-tab" x="332" y="44" width="90" height="32"/>
+    <text class="s-text" x="377" y="65" font-size="13" text-anchor="middle">內文 2</text>
+    <rect class="s-tab" x="422" y="44" width="90" height="32"/>
+    <text class="s-text" x="467" y="65" font-size="13" text-anchor="middle">封底</text>
+    <rect class="s-ghost" x="196" y="6" width="90" height="28" rx="4"/>
+    <text class="s-text" x="241" y="25" font-size="12" text-anchor="middle">內文 2</text>
+    <text class="s-muted" x="520" y="25" font-size="11">← 拖到邊緣自動捲動</text>
+  </svg>
+</div>
+<p class="caption">拖曳「內文 2」：游標旁跟著頁籤名稱，插入線出現在「目錄」與「內文 1」之間，放開後「內文 2」變成第 3 頁。</p>
+
+<h2>4. 設計（A + B 的情況）</h2>
+<h3>4.1 資料與 reducer（不含 UI，先寫、可測）</h3>
+<ul>
+  <li><code>page/reorder { order: readonly PageId[] }</code>：照 2026-10-01 的決定。一次 = 一筆復原；<code>activePageId</code> 不變（移動的頁面仍是目前頁）；順序沒變、不是排列時回傳同一個 state。</li>
+  <li><code>lib/editor/page-order.ts</code> 純函式：<code>movePage(order, id, toIndex)</code>（拖曳放下）、<code>shiftPage(order, id, "left" | "right" | "first" | "last")</code>（選單與快捷鍵）、拖曳時依游標位置算插入位置。都補 vitest。</li>
+  <li>不改檔案格式（頁面本來就是陣列，順序即存檔順序）。</li>
+</ul>
+<h3>4.2 拖曳頁籤（不重複造輪子）</h3>
+<ul>
+  <li>照工具面板拖曳（<code>use-dock-drag.ts</code>）已驗證的做法：<strong>pointer events</strong>（不用 HTML5 drag &amp; drop：它在可捲動的頁籤列裡不好控制捲動、拖曳影像也無法自訂）、按下後移動 4 px 才算拖曳（點擊、雙擊改名照舊）、結束後吞掉下一次 click、Esc 取消、React state 只在插入位置改變時更新、跟著游標的標籤直接改 style。</li>
+  <li>新增 <code>use-page-tab-drag.ts</code>；插入線畫在頁籤之間；靠近頁籤列左右邊緣時自動捲動（頁面多時才拖得到遠處）。</li>
+  <li>放下時 dispatch 一次 <code>page/reorder</code>；位置沒變不 dispatch。</li>
+</ul>
+<h3>4.3 頁面選單</h3>
+<ul>
+  <li>只在目前頁籤的 <code>˅</code> 選單（作用在目前頁）加一段：向左移動、向右移動、移到最前、移到最後；第一頁 / 最後一頁時對應項目停用。<code>≡</code> 選單維持「插入頁面 + 頁面清單」。</li>
+  <li><code>PageMenu</code> 加一個 prop 決定是否顯示目前頁的動作，兩個入口仍用同一個元件。</li>
+</ul>
+
+<div class="note"><strong>使用者決定（2026-10-06）</strong>：做 <strong>A 拖曳頁籤、B 頁面選單移動項目、C 快捷鍵（Ctrl+Shift+PageUp / PageDown）</strong>；D 排序對話框不做；<strong>E「頁面」工具面板不要</strong>（不是延後）。見第 6 節。</div>
+
+<h2>5. 步驟（每步做完停下來，等使用者說「繼續」；依選擇調整）</h2>
+
+<div class="card step">
+  <h3>步驟 1：<code>page/reorder</code> 與排序純函式 <span class="badge done">完成 2026-10-06</span></h3>
+  <p class="note">實作：<code>lib/editor/page-order.ts</code>（<code>isPageOrder</code>、<code>movePage</code>、<code>shiftPage</code>（left / right / first / last）、<code>slotToIndex</code>（拖曳的空隙 → 新位置））；<code>editor-reducer.ts</code> 加 <code>page/reorder</code>（不是排列或順序沒變 → 同一個 state；頁面物件本身不變，目前頁與選取跟著頁面走）。vitest 273 個通過（新增 8 個）。畫面不變。</p>
+  <ul>
+    <li><code>editor-reducer.ts</code> 加 <code>page/reorder</code>；<code>lib/editor/page-order.ts</code>；vitest（排列檢查、沒變回傳同一個 state、一筆復原、目前頁不變、移到頭尾）。畫面不變。</li>
+  </ul>
+</div>
+<div class="card step">
+  <h3>步驟 2：頁面選單的移動項目（B，與 C 的快捷鍵） <span class="badge done">完成 2026-10-06</span></h3>
+  <p class="note">實作：<code>page-order.ts</code> 加 <code>shiftedPageOrder</code>（新順序，或不能移時 <code>null</code>，選單用來停用項目）；<code>page-navigation.ts</code> 加 <code>findPageMoveShortcut</code> 與 <code>PAGE_MOVE_SHORTCUT_LABELS</code>；<code>use-editor-shortcuts.ts</code> 接 Ctrl+Shift+PageUp / PageDown（在換頁之前判斷，焦點在輸入框 / 對話框 / 選單時不觸發）；<code>PageMenu</code> 加 <code>pageActions</code>，只有目前頁籤的 <code>˅</code> 顯示「向左移動 / 向右移動 / 移到最前 / 移到最後」（附快捷鍵提示），<code>≡</code> 不變。<br>
+  驗證：vitest 276 個通過；無頭 Edge 16 項：停用狀態、四種移動、目前頁不變、一筆復原、<code>≡</code> 沒有移動項目、快捷鍵往左右移且到頭不再寫入、單獨 PageUp 仍是換頁、Ctrl+Z。<br>
+  附記：一般瀏覽器分頁（<code>npm run dev</code>）會自己攔下 Ctrl+Shift+PgUp / PgDn 來移動瀏覽器分頁，網頁收不到；桌面版（WebView2）沒有分頁，應該收得到，人工驗證時確認。</p>
+  <ul>
+    <li><code>page-menu.tsx</code> 的目前頁動作；若選 C，<code>use-editor-shortcuts.ts</code> 加 Ctrl+Shift+PageUp / PageDown（和選單快捷鍵不衝突，<code>menu-structure.test.ts</code> 的編輯器快捷鍵清單一併更新）。</li>
+    <li>驗證：無頭 Edge 從選單移動、停用狀態、Ctrl+Z 回去。</li>
+  </ul>
+</div>
+<div class="card step">
+  <h3>步驟 3：拖曳頁籤（A） <span class="badge done">完成 2026-10-06</span></h3>
+  <p class="note">實作（不重複造輪子）：把工具面板拖曳裡通用的部分抽成 <code>components/pointer-drag.ts</code> 的 <code>startPointerDrag</code>（4 px 門檻、游標、吞掉拖曳後的 click、Esc 取消且不傳到編輯器、清除），跟著游標的標籤抽成 <code>components/drag-ghost.tsx</code>（<code>DragGhost</code>、<code>moveDragGhost</code>）；<code>use-dock-drag.ts</code> / <code>DockDragGhost</code> 改用它們。新增 <code>components/editor/use-page-tab-drag.ts</code>：插入位置沿用 <code>lib/dock</code> 的 <code>insertionSlot</code>（改成任一軸），頁籤列上下 48 px 內才算放在頁籤列上，靠近左右邊緣 40 px 會自動捲動（越靠邊越快）。<code>editor-page-bar.tsx</code>：按在選單 / 刪除按鈕或改名中不開始拖曳；只在放下會改變順序時畫插入線；拖曳中的頁籤半透明；放下時一次 <code>page/reorder</code>。<br>
+  驗證：vitest 276 個通過；無頭 Edge 15 項：插入線 / 標籤 / 半透明、拖到前面與最後、目前頁不變、一筆復原、放回原位不寫入、Esc 取消、拖離頁籤列不寫入、點擊與雙擊改名照常、40 頁時拖到右邊緣自動捲動後放下、Ctrl+Z、工具面板拖曳仍可換邊。</p>
+  <ul>
+    <li><code>use-page-tab-drag.ts</code>、插入線、跟著游標的標籤、邊緣自動捲動、Esc 取消。</li>
+    <li>驗證：無頭 Edge 以滑鼠事件拖曳：往前 / 往後、拖到原位不寫入、點擊與雙擊改名不受影響、Esc 取消、邊緣自動捲動、Ctrl+Z 一次回去。</li>
+  </ul>
+</div>
+<div class="card step">
+  <h3>步驟 4：文件同步 <span class="badge done">完成 2026-10-06</span></h3>
+  <p class="note">實作：<code>CLAUDE.md</code> 新增「頁面排序」一節，同步目前階段、目錄結構（<code>pointer-drag.ts</code>、<code>drag-ghost.tsx</code>、<code>use-page-tab-drag.ts</code>、<code>page-order.ts</code>、<code>page-menu.tsx</code>、<code>page-navigation.ts</code>）、狀態（<code>page/reorder</code>）、快捷鍵、工具面板的拖曳停靠；<code>docs/01</code> 功能表、<code>docs/02</code> 資料夾表；<code>imp-bug-fixed.md</code> 標註排序已完成、排序對話框與頁面面板不做。</p>
+  <ul>
+    <li><code>CLAUDE.md</code>（頁籤列的說明、目錄結構、快捷鍵）、<code>docs/01</code>/<code>02</code>、<code>docs/progress.md</code>、<code>imp-bug-fixed.md</code> 標註步驟 4 的排序已由這份計畫完成。</li>
+  </ul>
+</div>
+
+<h2>6. 決定紀錄</h2>
+<table>
+  <tr><th>日期</th><th>決定</th><th>來源</th></tr>
+  <tr><td>2026-10-06</td><td>做拖曳頁籤（A）、目前頁籤 <code>˅</code> 選單的「向左 / 向右 / 移到最前 / 移到最後」（B）、Ctrl+Shift+PageUp / PageDown（C）</td><td>使用者確認</td></tr>
+  <tr><td>2026-10-06</td><td>不做「頁面排序」對話框（2026-10-01 計畫的步驟 5 排序部分取消）；<strong>不要「頁面」工具面板</strong></td><td>使用者確認</td></tr>
+  <tr><td>2026-10-06</td><td>沿用 2026-10-01 決定的 <code>page/reorder { order }</code>；拖曳用 pointer events，照 <code>use-dock-drag.ts</code> 的做法</td><td>計畫建議</td></tr>
+</table>
+
+</main>
+</body>
+</html>
