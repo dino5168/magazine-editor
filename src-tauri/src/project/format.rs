@@ -13,7 +13,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v4: `document.margins` (guides only). Older files and backups without it read as all 0; the
 /// version bump stops older apps from opening (and silently dropping) it.
 /// v5: `document.pageNumberRules`. Missing in older files and backups → no page numbers.
-pub const SCHEMA_VERSION: u32 = 5;
+/// v6: text styles (text elements, shape labels, page numbers) gain `italic` / `underline` /
+/// `strikethrough` / `shadow`. Missing in older files and backups → plain text.
+pub const SCHEMA_VERSION: u32 = 6;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -30,6 +32,8 @@ pub const FONT_SIZE_MAX: f64 = 400.0;
 pub const PAGE_NUMBER_MAX: u32 = 99999;
 /// Longest page number prefix / suffix (characters); same as `PAGE_NUMBER_AFFIX_MAX_LENGTH`.
 pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
+/// Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in `src/lib/editor/validation.ts`.
+pub const TEXT_SHADOW_OFFSET_MAX: f64 = 50.0;
 pub const ASSET_DIR: &str = "assets/images";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -89,6 +93,8 @@ pub struct PageNumberStyle {
     pub font_size: f64,
     pub font_family: String,
     pub font_style: FontStyle,
+    #[serde(flatten)]
+    pub decoration: TextDecoration,
     pub fill: String,
     pub stroke: Option<Stroke>,
 }
@@ -141,6 +147,28 @@ pub enum FontStyle {
     Bold,
 }
 
+/// Hard text shadow: the text drawn again at an offset, without blur.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TextShadow {
+    pub color: String,
+    /// pt, towards the page's right / bottom whatever the element's rotation.
+    pub offset_x: f64,
+    pub offset_y: f64,
+}
+
+/// Italic / underline / strikethrough / shadow of a text style (TS `TextDecoration`). Missing in
+/// files before v6, which read as plain text.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct TextDecoration {
+    /// Slanted by the renderer: no italic font files are bundled.
+    pub italic: bool,
+    pub underline: bool,
+    pub strikethrough: bool,
+    pub shadow: Option<TextShadow>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Align {
@@ -159,6 +187,8 @@ pub struct TextElement {
     pub font_size: f64,
     pub font_family: String,
     pub font_style: FontStyle,
+    #[serde(flatten)]
+    pub decoration: TextDecoration,
     pub align: Align,
     pub fill: String,
 }
@@ -194,6 +224,8 @@ pub struct ShapeLabel {
     pub font_size: f64,
     pub font_family: String,
     pub font_style: FontStyle,
+    #[serde(flatten)]
+    pub decoration: TextDecoration,
     pub align: Align,
     pub vertical_align: VerticalAlign,
     pub fill: String,
@@ -436,6 +468,7 @@ fn validate_page_number_rules(rules: &[PageNumberRule]) -> AppResult<()> {
             return Err(invalid(rule, "invalid font size"));
         }
         require_element_color(&rule.style.fill)?;
+        validate_text_decoration(&rule.style.decoration)?;
         if let Some(stroke) = &rule.style.stroke {
             validate_stroke(stroke)?;
         }
@@ -462,11 +495,25 @@ fn validate_stroke(stroke: &Stroke) -> AppResult<()> {
     Ok(())
 }
 
+/// Same rules as TS `isTextShadow`: element color, both offsets finite and within
+/// ±TEXT_SHADOW_OFFSET_MAX. The flags need no check (serde already requires booleans).
+fn validate_text_decoration(decoration: &TextDecoration) -> AppResult<()> {
+    let Some(shadow) = &decoration.shadow else { return Ok(()) };
+    require_element_color(&shadow.color)?;
+    for offset in [shadow.offset_x, shadow.offset_y] {
+        if !(offset.is_finite() && offset.abs() <= TEXT_SHADOW_OFFSET_MAX) {
+            return Err(AppError::invalid_project(format!("invalid text shadow offset {offset}")));
+        }
+    }
+    Ok(())
+}
+
 fn validate_element(element: &Element) -> AppResult<()> {
     match element {
         Element::Text(e) => {
             require_id(&e.base.id)?;
-            require_element_color(&e.fill)
+            require_element_color(&e.fill)?;
+            validate_text_decoration(&e.decoration)
         }
         Element::Shape(e) => {
             require_id(&e.base.id)?;
@@ -477,6 +524,7 @@ fn validate_element(element: &Element) -> AppResult<()> {
             }
             if let Some(label) = &e.label {
                 require_element_color(&label.fill)?;
+                validate_text_decoration(&label.decoration)?;
             }
             Ok(())
         }
@@ -642,8 +690,52 @@ mod tests {
                         (a, b) => assert_eq!(a, b),
                     }
                 }
+                // v6 之前沒有文字裝飾：讀成預設值，其他欄位不變
+                (Element::Text(old), Element::Text(new)) => {
+                    assert_eq!(old.decoration, TextDecoration::default());
+                    assert_eq!(*old, TextElement { decoration: TextDecoration::default(), ..new.clone() });
+                }
                 (old, new) => assert_eq!(old, new),
             }
+        }
+    }
+
+    #[test]
+    fn reads_text_decoration_and_defaults_it_in_older_files() {
+        let project = parse_project(FIXTURE).unwrap();
+        let Element::Text(text) = &project.document.pages[0].elements[0] else { panic!("expected text") };
+        let shadow = TextShadow { color: "#00000080".to_owned(), offset_x: 2.0, offset_y: -1.5 };
+        assert_eq!(
+            text.decoration,
+            TextDecoration { italic: true, underline: true, strikethrough: true, shadow: Some(shadow) }
+        );
+        assert!(project.document.page_number_rules[1].style.decoration.italic);
+
+        // v5 檔案沒有這些欄位
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(5);
+        for key in ["italic", "underline", "strikethrough", "shadow"] {
+            value.pointer_mut("/document/pages/0/elements/0").unwrap().as_object_mut().unwrap().remove(key);
+        }
+        let Element::Text(text) = &parse_project(&value.to_string()).unwrap().document.pages[0].elements[0] else {
+            panic!("expected text")
+        };
+        assert_eq!(text.decoration, TextDecoration::default());
+    }
+
+    #[test]
+    fn rejects_invalid_text_shadows() {
+        let with_shadow = |pointer: &str, shadow: Value| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value.pointer_mut(pointer).unwrap()["shadow"] = shadow;
+            parse_project(&value.to_string())
+        };
+        let ok = serde_json::json!({ "color": "#000000", "offsetX": 50, "offsetY": -50 });
+        for pointer in ["/document/pages/0/elements/0", "/document/pages/0/elements/2/label", "/document/pageNumberRules/0/style"] {
+            assert!(with_shadow(pointer, ok.clone()).is_ok(), "{pointer}");
+            assert!(with_shadow(pointer, serde_json::json!({ "color": "#000000", "offsetX": 50.5, "offsetY": 0 })).is_err());
+            assert!(with_shadow(pointer, serde_json::json!({ "color": "black", "offsetX": 0, "offsetY": 0 })).is_err());
+            assert!(with_shadow(pointer, serde_json::json!({ "color": "#000000", "offsetX": 0 })).is_err());
         }
     }
 

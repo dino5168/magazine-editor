@@ -101,6 +101,37 @@ describe("editorReducer / elements", () => {
     ).toBe(state);
   });
 
+  it("sets text decoration and a shadow, ignoring invalid ones", () => {
+    const element = createTextElement("body", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const shadow = { color: "#00000080", offsetX: -3, offsetY: 50 };
+    const patch = { italic: true, underline: true, strikethrough: true, shadow };
+
+    expect(selectSelectedElement(run(state, { type: "element/update", id: element.id, patch }))).toMatchObject(patch);
+    for (const bad of [
+      { italic: "yes" },
+      { underline: 1 },
+      { shadow: { ...shadow, offsetX: 51 } },
+      { shadow: { ...shadow, color: "black" } },
+      { shadow: { ...shadow, offsetY: Number.NaN } },
+    ]) {
+      expect(editorReducer(state, { type: "element/update", id: element.id, patch: bad as never })).toBe(state);
+    }
+  });
+
+  it("rejects a label with invalid text decoration", () => {
+    const element = createShapeElement("ellipse", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const label = createLabel("文字");
+
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { label: { ...label, italic: undefined as never } } })).toBe(
+      state,
+    );
+    expect(
+      editorReducer(state, { type: "element/update", id: element.id, patch: { label: { ...label, shadow: { color: "#000000" } as never } } }),
+    ).toBe(state);
+  });
+
   it("changes the geometry and ignores invalid geometry", () => {
     const element = createShapeElement("star", { x: 100, y: 100 });
     const state = run(blankState(), { type: "element/add", element });

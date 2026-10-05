@@ -4,9 +4,12 @@ import {
   AlignVerticalJustifyEnd,
   AlignVerticalJustifyStart,
   Bold,
+  Italic,
+  Strikethrough,
   TextAlignCenter,
   TextAlignEnd,
   TextAlignStart,
+  Underline,
   type LucideIcon,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,12 +18,14 @@ import { cn } from "@/lib/utils";
 import { findFontOption, FONT_OPTIONS } from "@/lib/editor/fonts";
 import { loadFontOption } from "@/lib/editor/use-fonts-ready";
 import { DEFAULT_STROKE, dashPattern } from "@/lib/editor/stroke";
-import type { ShapeLabel, Stroke, TextStyle } from "@/lib/editor/types";
+import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
+import type { ShapeLabel, Stroke, TextShadow, TextStyle } from "@/lib/editor/types";
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   STROKE_WIDTH_MAX,
   STROKE_WIDTH_MIN,
+  TEXT_SHADOW_OFFSET_MAX,
   clamp,
   clampFontSize,
 } from "@/lib/editor/validation";
@@ -54,6 +59,16 @@ const VERTICAL_ALIGN_OPTIONS: readonly {
   { value: "top", label: "靠上對齊", icon: AlignVerticalJustifyStart },
   { value: "middle", label: "垂直置中", icon: AlignVerticalJustifyCenter },
   { value: "bottom", label: "靠下對齊", icon: AlignVerticalJustifyEnd },
+];
+
+const DECORATION_TOGGLES: readonly {
+  readonly key: "italic" | "underline" | "strikethrough";
+  readonly label: string;
+  readonly icon: LucideIcon;
+}[] = [
+  { key: "italic", label: "斜體", icon: Italic },
+  { key: "underline", label: "底線", icon: Underline },
+  { key: "strikethrough", label: "刪除線", icon: Strikethrough },
 ];
 
 /** 文件裡的字型不在 FONT_OPTIONS（舊專案、手改的檔案）時，下拉選單顯示的值 */
@@ -114,7 +129,7 @@ interface TextStyleFieldsProps {
 }
 
 /**
- * Font, font size, bold, optional alignment and color.
+ * Font, font size, bold / italic / underline / strikethrough, optional alignment, color and shadow.
  *
  * Args:
  *   props: Current style, change callback and the optional alignment controls.
@@ -143,6 +158,17 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign }: T
         >
           <Bold />
         </IconButton>
+        {DECORATION_TOGGLES.map(({ key, label, icon: Icon }) => (
+          <IconButton
+            key={key}
+            label={label}
+            aria-pressed={style[key]}
+            className={cn(style[key] && "bg-muted")}
+            onClick={() => onChange({ [key]: !style[key] })}
+          >
+            <Icon />
+          </IconButton>
+        ))}
         {align && (
           <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
@@ -179,6 +205,56 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign }: T
       <Row label="文字顏色">
         <ColorPicker value={style.fill} label="文字顏色" onCommit={(fill) => onChange({ fill })} />
       </Row>
+      <ShadowFields id={id} shadow={style.shadow} onChange={(shadow) => onChange({ shadow })} />
+    </>
+  );
+}
+
+/** 陰影偏移的 − / ＋：每按一下 0.5 pt */
+const SHADOW_OFFSET_STEP = { size: 0.5, min: -TEXT_SHADOW_OFFSET_MAX, max: TEXT_SHADOW_OFFSET_MAX } as const;
+
+const clampShadowOffset = (value: number) => clamp(value, -TEXT_SHADOW_OFFSET_MAX, TEXT_SHADOW_OFFSET_MAX);
+
+// 硬陰影：開關 + 顏色 + 水平 / 垂直偏移（方向以頁面為準，物件旋轉時不跟著轉）
+function ShadowFields({
+  id,
+  shadow,
+  onChange,
+}: {
+  readonly id: string;
+  readonly shadow: TextShadow | null;
+  readonly onChange: (shadow: TextShadow | null) => void;
+}) {
+  const setShadow = (patch: Partial<TextShadow>) => shadow && onChange({ ...shadow, ...patch });
+  return (
+    <>
+      <label className="flex items-center gap-2 text-sm">
+        <Switch size="sm" checked={shadow !== null} onCheckedChange={(on) => onChange(on ? DEFAULT_TEXT_SHADOW : null)} />
+        陰影
+      </label>
+      {shadow && (
+        <>
+          <Row label="陰影顏色">
+            <ColorPicker value={shadow.color} label="陰影顏色" onCommit={(color) => setShadow({ color })} />
+          </Row>
+          <NumberField
+            key={`${id}-shadow-x-${shadow.offsetX}`}
+            label="水平"
+            unit="pt"
+            value={shadow.offsetX}
+            step={SHADOW_OFFSET_STEP}
+            onCommit={(offsetX) => setShadow({ offsetX: clampShadowOffset(offsetX) })}
+          />
+          <NumberField
+            key={`${id}-shadow-y-${shadow.offsetY}`}
+            label="垂直"
+            unit="pt"
+            value={shadow.offsetY}
+            step={SHADOW_OFFSET_STEP}
+            onCommit={(offsetY) => setShadow({ offsetY: clampShadowOffset(offsetY) })}
+          />
+        </>
+      )}
     </>
   );
 }

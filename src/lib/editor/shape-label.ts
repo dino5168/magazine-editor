@@ -1,5 +1,6 @@
 import { DEFAULT_FONT_FAMILY, DEFAULT_TEXT_FILL } from "./element-factory";
 import { TEXT_LINE_HEIGHT } from "./geometry";
+import { PLAIN_TEXT_DECORATION } from "./text-style";
 import type { Point, ShapeElement, ShapeLabel, TextElement } from "./types";
 
 /**
@@ -13,6 +14,7 @@ const DEFAULT_LABEL: Omit<ShapeLabel, "text"> = {
   fontSize: 14,
   fontFamily: DEFAULT_FONT_FAMILY,
   fontStyle: "normal",
+  ...PLAIN_TEXT_DECORATION,
   align: "center",
   verticalAlign: "middle",
   fill: DEFAULT_TEXT_FILL,

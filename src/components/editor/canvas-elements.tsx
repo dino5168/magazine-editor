@@ -7,6 +7,7 @@ import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, TEXT_LINE_HEIGHT, snapPointToGrid }
 import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
+import { konvaTextStyle } from "@/lib/editor/text-style";
 import type { CanvasElement, ElementId, ElementPatch, ImageElement, ShapeElement, ShapeLabel } from "@/lib/editor/types";
 import { measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "@/lib/project/project-context";
@@ -137,7 +138,7 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
       text={label.text}
       fontSize={label.fontSize}
       fontFamily={label.fontFamily}
-      fontStyle={label.fontStyle}
+      {...konvaTextStyle(label)}
       align={label.align}
       fill={label.fill}
       lineHeight={TEXT_LINE_HEIGHT}
@@ -223,7 +224,7 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
           width={element.width}
           fontSize={element.fontSize}
           fontFamily={element.fontFamily}
-          fontStyle={element.fontStyle}
+          {...konvaTextStyle(element)}
           align={element.align}
           fill={element.fill}
           lineHeight={TEXT_LINE_HEIGHT}

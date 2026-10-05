@@ -11,8 +11,9 @@ import type {
   ShapeElement,
   TextStyle,
 } from "./types";
+import { PLAIN_TEXT_DECORATION } from "./text-style";
 import { mmToPt } from "./units";
-import { FONT_SIZE_MAX, FONT_SIZE_MIN, isElementColor, isStroke } from "./validation";
+import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, isStroke } from "./validation";
 
 /**
  * 頁碼管理的純邏輯。頁碼不是文件裡的物件：畫布與匯出時，由規則算出一個「虛擬圖形」
@@ -85,6 +86,7 @@ export function createPageNumberRule(id: string, from: number, to: number): Page
       fontSize: PAGE_NUMBER_DEFAULT_FONT_SIZE,
       fontFamily: DEFAULT_FONT_FAMILY,
       fontStyle: "normal",
+      ...PLAIN_TEXT_DECORATION,
       fill: DEFAULT_TEXT_FILL,
       stroke: null,
     },
@@ -281,6 +283,7 @@ function isPageNumberStyle(value: unknown): value is PageNumberStyle {
     style.fontSize <= FONT_SIZE_MAX &&
     typeof style.fontFamily === "string" &&
     (style.fontStyle === "normal" || style.fontStyle === "bold") &&
+    hasValidTextDecoration(style) &&
     typeof style.fill === "string" &&
     isElementColor(style.fill) &&
     (style.stroke === null || isStroke(style.stroke))

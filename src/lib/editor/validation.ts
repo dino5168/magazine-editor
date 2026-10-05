@@ -1,4 +1,4 @@
-import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke } from "./types";
+import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow } from "./types";
 import { mmToPt } from "./units";
 
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
@@ -189,6 +189,7 @@ export function isShapeLabel(value: unknown): value is ShapeLabel {
     label.fontSize <= FONT_SIZE_MAX &&
     typeof label.fontFamily === "string" &&
     (label.fontStyle === "normal" || label.fontStyle === "bold") &&
+    hasValidTextDecoration(label) &&
     ["left", "center", "right"].includes(label.align as string) &&
     ["top", "middle", "bottom"].includes(label.verticalAlign as string) &&
     typeof label.fill === "string" &&
@@ -216,6 +217,45 @@ export function isStroke(value: unknown): value is Stroke {
     width > 0 &&
     width <= STROKE_WIDTH_MAX &&
     (STROKE_DASHES as readonly unknown[]).includes(dash)
+  );
+}
+
+/** Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in Rust `format.rs`. */
+export const TEXT_SHADOW_OFFSET_MAX = 50;
+
+/**
+ * Checks whether a value is a valid text shadow (same rules as Rust `validate_text_shadow`):
+ * element color, both offsets finite and within ±TEXT_SHADOW_OFFSET_MAX.
+ *
+ * Args:
+ *   value: Candidate shadow (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `TextStyle.shadow`.
+ */
+export function isTextShadow(value: unknown): value is TextShadow {
+  if (typeof value !== "object" || value === null) return false;
+  const { color, offsetX, offsetY } = value as Record<string, unknown>;
+  const offset = (n: unknown) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= TEXT_SHADOW_OFFSET_MAX;
+  return typeof color === "string" && isElementColor(color) && offset(offsetX) && offset(offsetY);
+}
+
+/**
+ * Checks the decoration fields of a text style: italic / underline / strikethrough are booleans and
+ * the shadow is null or valid.
+ *
+ * Args:
+ *   style: Candidate style (a label, a page number style...).
+ *
+ * Returns:
+ *   True when all four fields are valid.
+ */
+export function hasValidTextDecoration(style: Record<string, unknown>): boolean {
+  return (
+    typeof style.italic === "boolean" &&
+    typeof style.underline === "boolean" &&
+    typeof style.strikethrough === "boolean" &&
+    (style.shadow === null || isTextShadow(style.shadow))
   );
 }
 

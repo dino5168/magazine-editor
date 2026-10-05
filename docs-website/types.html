@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-04
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-05
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -207,12 +207,12 @@
   <line class="edge dep" x1="910" y1="305" x2="877" y2="305" marker-end="url(#dep)"/>
   <line class="edge dep" x1="1027.5" y1="358" x2="1027.5" y2="380" marker-end="url(#dep)"/>
   <line class="edge dep" x1="985" y1="730" x2="962" y2="664" marker-end="url(#dep)"/>
-  <path class="note" d="M15 990 H388 L400 1002 V1100 H15 Z M388 990 V1002 H400"/>
-  <text class="prose" x="27" y="1014">x / y 與 rotation</text>
-  <text class="prose" x="27" y="1036">・所有物件：外框（旋轉前）的左上角</text>
-  <text class="prose" x="27" y="1058">・rotation：角度，順時針，繞 (x, y) 旋轉</text>
-  <text class="prose" x="27" y="1080">・圖形的外框就是 width × height</text>
-  <line class="edge dep" x1="400" y1="1045" x2="470" y2="1045"/>
+  <path class="note" d="M15 1046 H388 L400 1058 V1156 H15 Z M388 1046 V1058 H400"/>
+  <text class="prose" x="27" y="1070">x / y 與 rotation</text>
+  <text class="prose" x="27" y="1092">・所有物件：外框（旋轉前）的左上角</text>
+  <text class="prose" x="27" y="1114">・rotation：角度，順時針，繞 (x, y) 旋轉</text>
+  <text class="prose" x="27" y="1136">・圖形的外框就是 width × height</text>
+  <line class="edge dep" x1="400" y1="1101" x2="470" y2="1101"/>
   <rect class="group" x="755" y="980" width="390" height="183" rx="8"/>
   <text class="glabel" x="770" y="1002">計算用的值（不存在文件裡）</text>
   <a href="#t-EditorState" class="node ui ext">
@@ -415,17 +415,37 @@
   </a>
   <a href="#t-TextStyle" class="node doc">
     <title>TextStyle：點擊查看說明</title>
-    <rect class="body" x="15" y="790" width="240" height="156" rx="6"/>
+    <rect class="body" x="15" y="790" width="240" height="236" rx="6"/>
     <path class="hdr" d="M15 834 V796 a6 6 0 0 1 6 -6 H249 a6 6 0 0 1 6 6 V834 Z"/>
     <line class="sep" x1="15" y1="834" x2="255" y2="834"/>
-    <rect class="frame" x="15" y="790" width="240" height="156" rx="6"/>
-    <text class="st" x="135" y="807">«interface» · 文字與圖形內文字共用</text>
+    <rect class="frame" x="15" y="790" width="240" height="236" rx="6"/>
+    <text class="st" x="135" y="807">«interface» · 文字、圖形內文字、頁碼共用</text>
     <text class="nm" x="135" y="825">TextStyle</text>
       <text class="field" x="25" y="854">fontSize<tspan class="ft">: number</tspan></text>
       <text class="field" x="25" y="874">fontFamily<tspan class="ft">: string</tspan></text>
       <text class="field" x="25" y="894">fontStyle<tspan class="ft">: "normal"|"bold"</tspan></text>
-      <text class="field" x="25" y="914">align<tspan class="ft">: "left"|"center"|"right"</tspan></text>
-      <text class="field" x="25" y="934">fill<tspan class="ft">: string</tspan></text>
+      <text class="field" x="25" y="914">italic<tspan class="ft">: boolean</tspan></text>
+      <text class="field" x="25" y="934">underline<tspan class="ft">: boolean</tspan></text>
+      <text class="field" x="25" y="954">strikethrough<tspan class="ft">: boolean</tspan></text>
+      <text class="field" x="25" y="974">shadow<tspan class="ft">: TextShadow | null</tspan></text>
+      <text class="field" x="25" y="994">align<tspan class="ft">: "left"|"center"|"right"</tspan></text>
+      <text class="field" x="25" y="1014">fill<tspan class="ft">: string</tspan></text>
+  </a>
+  <!-- TextStyle 擁有 shadow（0 或 1 個） -->
+  <polygon class="diamond" points="255,970 267,964 279,970 267,976"/>
+  <line class="edge" x1="279" y1="970" x2="300" y2="970"/>
+  <text class="mult" x="296" y="987" text-anchor="end">0..1</text>
+  <a href="#t-TextShadow" class="node doc">
+    <title>TextShadow：點擊查看說明</title>
+    <rect class="body" x="300" y="912" width="160" height="116" rx="6"/>
+    <path class="hdr" d="M300 956 V918 a6 6 0 0 1 6 -6 H454 a6 6 0 0 1 6 6 V956 Z"/>
+    <line class="sep" x1="300" y1="956" x2="460" y2="956"/>
+    <rect class="frame" x="300" y="912" width="160" height="116" rx="6"/>
+    <text class="st" x="380" y="929">«interface» · 硬陰影</text>
+    <text class="nm" x="380" y="947">TextShadow</text>
+      <text class="field" x="310" y="976">color<tspan class="ft">: string</tspan></text>
+      <text class="field" x="310" y="996">offsetX<tspan class="ft">: number</tspan></text>
+      <text class="field" x="310" y="1016">offsetY<tspan class="ft">: number</tspan></text>
   </a>
   <a href="#t-ShapeLabel" class="node doc">
     <title>ShapeLabel：點擊查看說明</title>
@@ -505,9 +525,9 @@
   <polygon class="diamond" points="280,1290 292,1284 304,1290 292,1296"/>
   <line class="edge" x1="304" y1="1290" x2="330" y2="1290"/>
   <text class="mult" x="326" y="1307" text-anchor="end">1</text>
-  <polygon class="diamond" points="280,1385 292,1379 304,1385 292,1391"/>
-  <path class="edge" d="M304 1385 H615 V1268 H640"/>
-  <text class="elabel" x="420" y="1402">odd / even　各 1</text>
+  <polygon class="diamond" points="280,1400 292,1394 304,1400 292,1406"/>
+  <path class="edge" d="M304 1400 H615 V1268 H640"/>
+  <text class="elabel" x="420" y="1418">odd / even　各 1</text>
   <line class="edge dep" x1="960" y1="1268" x2="983" y2="1268" marker-end="url(#dep)"/>
   <a href="#t-PageNumberRule" class="node doc">
     <title>PageNumberRule：點擊查看說明</title>
@@ -527,17 +547,18 @@
   </a>
   <a href="#t-PageNumberStyle" class="node doc">
     <title>PageNumberStyle：點擊查看說明</title>
-    <rect class="body" x="330" y="1214" width="260" height="156" rx="6"/>
+    <rect class="body" x="330" y="1214" width="260" height="176" rx="6"/>
     <path class="hdr" d="M330 1258 V1220 a6 6 0 0 1 6 -6 H584 a6 6 0 0 1 6 6 V1258 Z"/>
     <line class="sep" x1="330" y1="1258" x2="590" y2="1258"/>
-    <rect class="frame" x="330" y="1214" width="260" height="156" rx="6"/>
+    <rect class="frame" x="330" y="1214" width="260" height="176" rx="6"/>
     <text class="st" x="460" y="1231">«interface» · TextStyle 去掉 align</text>
     <text class="nm" x="460" y="1249">PageNumberStyle</text>
       <text class="field" x="340" y="1278">fontSize<tspan class="ft">: number</tspan></text>
       <text class="field" x="340" y="1298">fontFamily<tspan class="ft">: string</tspan></text>
       <text class="field" x="340" y="1318">fontStyle<tspan class="ft">: "normal"|"bold"</tspan></text>
-      <text class="field" x="340" y="1338">fill<tspan class="ft">: string</tspan></text>
-      <text class="field" x="340" y="1358">stroke<tspan class="ft">: Stroke | null</tspan></text>
+      <text class="field" x="340" y="1338">italic … shadow<tspan class="ft">: 同 TextStyle</tspan></text>
+      <text class="field" x="340" y="1358">fill<tspan class="ft">: string</tspan></text>
+      <text class="field" x="340" y="1378">stroke<tspan class="ft">: Stroke | null</tspan></text>
   </a>
   <a href="#t-PageNumberFace" class="node doc">
     <title>PageNumberFace：點擊查看說明</title>
@@ -677,7 +698,7 @@
   <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定），再加上框線。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
-    <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>fill</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
+    <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> / <code>fill</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
     <tr><td><code>stroke</code></td><td><code>Stroke | null</code></td><td>框線；<code>null</code> = 沒有框線</td></tr>
   </table></div>
 </section>
@@ -742,16 +763,31 @@
 <section class="card doc" id="t-TextStyle">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>TextStyle</code><span class="badge">interface</span></h4>
-  <p>文字的樣式。<code>TextElement</code> 與圖形內文字 <code>ShapeLabel</code> 都 extends 它，屬性面板的「文字」分頁也只寫一份控制項（<code>TextStyleControls</code>）同時給兩者用。</p>
+  <p>文字的樣式。<code>TextElement</code> 與圖形內文字 <code>ShapeLabel</code> 都 extends 它，頁碼的 <code>PageNumberStyle</code> 是它去掉 <code>align</code>。屬性面板與頁碼對話框共用一份控制項（<code>style-controls.tsx</code> 的 <code>TextStyleFields</code>）。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>fontSize</code></td><td><code>number</code></td><td>字級（pt），6–400</td></tr>
     <tr><td><code>fontFamily</code></td><td><code>string</code></td><td>CSS font-family 字串，值來自字體選單 <code>FONT_OPTIONS</code>（<code>lib/editor/fonts.ts</code>）：黑體（預設）<code>"Geist", "Noto Sans TC", sans-serif</code>、明體、楷體、圓體。匯出時只認得內嵌在 <code>fonts/</code> 的字型</td></tr>
-    <tr><td><code>fontStyle</code></td><td><code>"normal" | "bold"</code></td><td>只能是這兩個字串之一（字型只內嵌 Regular 與 Bold，沒有斜體）</td></tr>
+    <tr><td><code>fontStyle</code></td><td><code>"normal" | "bold"</code></td><td><strong>字重</strong>：選 Regular 或 Bold 字型檔。斜體不在這裡（見 <code>italic</code>）</td></tr>
+    <tr><td><code>italic</code></td><td><code>boolean</code></td><td>斜體。沒有斜體字型檔，由畫布 / PDF / EPUB 把字形斜切（字寬不變，換行不受影響）</td></tr>
+    <tr><td><code>underline</code> / <code>strikethrough</code></td><td><code>boolean</code></td><td>底線 / 刪除線，可以同時開</td></tr>
+    <tr><td><code>shadow</code></td><td><a href="#t-TextShadow"><code>TextShadow</code></a><code> | null</code></td><td>硬陰影；<code>null</code> = 沒有陰影。修改時整個取代（<code>{ shadow: { ...shadow, color } }</code>）</td></tr>
     <tr><td><code>align</code></td><td><code>"left" | "center" | "right"</code></td><td>水平對齊</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>文字顏色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code>（半透明）</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>components/editor/panels/properties-panel.tsx</code>；其他檔案都透過 <code>TextElement</code> / <code>ShapeLabel</code> 使用</p>
+  <p><code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> 是 2026-10-05 加的（<code>schemaVersion</code> 6），新文字的預設值是 <code>text-style.ts</code> 的 <code>PLAIN_TEXT_DECORATION</code>；v6 之前的檔案讀成全部關閉。</p>
+  <p class="uses">使用位置：<code>components/editor/style-controls.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/text-style.ts</code>；其他檔案都透過 <code>TextElement</code> / <code>ShapeLabel</code> / <code>PageNumberStyle</code> 使用</p>
+</section>
+
+<section class="card doc" id="t-TextShadow">
+  <a class="back" href="#diagram">↑ 回到圖</a>
+  <h4><code>TextShadow</code><span class="badge">interface</span></h4>
+  <p>硬陰影：把文字（含底線、刪除線）用陰影色在偏移處再畫一次，<strong>沒有模糊</strong>（PDF 畫不出模糊，三種輸出才會一樣）。</p>
+  <div class="table-wrap"><table>
+    <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+    <tr><td><code>color</code></td><td><code>string</code></td><td><code>#rrggbb</code> 或 <code>#rrggbbaa</code>；開啟陰影時預設 <code>#00000080</code>（黑色 50%）</td></tr>
+    <tr><td><code>offsetX</code> / <code>offsetY</code></td><td><code>number</code></td><td>偏移（pt），正值往右 / 往下，各限 −50～50（<code>TEXT_SHADOW_OFFSET_MAX</code>，Rust 也檢查）；預設 2 / 2。方向以<strong>頁面</strong>為準，物件旋轉時陰影仍朝同一個方向</td></tr>
+  </table></div>
 </section>
 
 <section class="card doc" id="t-ShapeElement">

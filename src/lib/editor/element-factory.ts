@@ -1,5 +1,6 @@
 import { DEFAULT_FONT_OPTION } from "./fonts";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
+import { PLAIN_TEXT_DECORATION } from "./text-style";
 import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
 import type {
   Bounds,
@@ -79,6 +80,7 @@ export function createTextElement(preset: TextPreset, center: Point): TextElemen
     fontSize: config.fontSize,
     fontFamily: DEFAULT_FONT_FAMILY,
     fontStyle: config.fontStyle,
+    ...PLAIN_TEXT_DECORATION,
     align: "center",
     fill: DEFAULT_TEXT_FILL,
   };
@@ -232,6 +234,7 @@ export function createToolText(start: Point, box: Bounds | null): TextElement {
     fontSize: config.fontSize,
     fontFamily: DEFAULT_FONT_FAMILY,
     fontStyle: config.fontStyle,
+    ...PLAIN_TEXT_DECORATION,
     align: "left",
     fill: DEFAULT_TEXT_FILL,
   };

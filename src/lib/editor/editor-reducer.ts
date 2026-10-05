@@ -11,6 +11,7 @@ import {
   isShapeGeometry,
   isShapeLabel,
   isStroke,
+  isTextShadow,
   validateName,
 } from "./validation";
 import { clampZoom } from "./viewport";
@@ -240,12 +241,17 @@ function reconcileSelection(state: EditorState): EditorState {
   };
 }
 
+const TEXT_FLAGS = ["italic", "underline", "strikethrough"] as const;
+
 // 屬性面板的數字欄位、拖曳結果都直接來自使用者操作：不合法的 patch 一律不接受
 function isValidPatch(patch: ElementPatch): boolean {
   if ("fill" in patch && (typeof patch.fill !== "string" || !isElementColor(patch.fill))) return false;
   if ("stroke" in patch && patch.stroke !== null && !isStroke(patch.stroke)) return false;
   if ("label" in patch && patch.label !== null && !isShapeLabel(patch.label)) return false;
   if ("geometry" in patch && !isShapeGeometry(patch.geometry)) return false;
+  if ("shadow" in patch && patch.shadow !== null && !isTextShadow(patch.shadow)) return false;
+  const fields: Record<string, unknown> = patch;
+  if (TEXT_FLAGS.some((flag) => flag in fields && typeof fields[flag] !== "boolean")) return false;
   // NaN / Infinity 一律不接受
   return !Object.values(patch).some((value) => typeof value === "number" && !Number.isFinite(value));
 }

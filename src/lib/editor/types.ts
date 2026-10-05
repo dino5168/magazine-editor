@@ -17,11 +17,27 @@ export interface BaseElement {
   readonly rotation: number;
 }
 
-/** Text style shared by text elements and the text inside shapes. */
+/** Hard text shadow: the text drawn again at an offset, without blur. */
+export interface TextShadow {
+  /** `#rrggbb` or `#rrggbbaa`. */
+  readonly color: string;
+  /** pt, towards the page's right / bottom whatever the element's rotation. */
+  readonly offsetX: number;
+  readonly offsetY: number;
+}
+
+/** Text style shared by text elements, the text inside shapes and page numbers. */
 export interface TextStyle {
   readonly fontSize: number;
   readonly fontFamily: string;
+  /** Weight: picks the regular or the bold font file. */
   readonly fontStyle: "normal" | "bold";
+  /** Slanted by the renderer (no italic font files are bundled). */
+  readonly italic: boolean;
+  readonly underline: boolean;
+  readonly strikethrough: boolean;
+  /** null = no shadow. */
+  readonly shadow: TextShadow | null;
   readonly align: "left" | "center" | "right";
   /** Text color. */
   readonly fill: string;

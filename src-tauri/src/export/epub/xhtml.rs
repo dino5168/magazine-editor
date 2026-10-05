@@ -5,7 +5,10 @@
 
 use super::{EpubImages, LANGUAGE};
 use crate::export::fonts::{bundled_family, bundled_generic};
-use crate::export::render::{RenderElement, RenderKind, RenderPage, RenderStroke, RenderText, STROKE_MITER_LIMIT};
+use crate::export::render::{
+    DecorationLine, RenderElement, RenderKind, RenderPage, RenderStroke, RenderText, STROKE_MITER_LIMIT,
+    SYNTHETIC_ITALIC_SLANT,
+};
 use crate::project::format::Align;
 use std::fmt::Write;
 
@@ -148,17 +151,52 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
         css_color(&text.fill),
         align_name(text.align),
     );
+    // 文字的陰影用 text-shadow（不複製文字，搜尋、選取、朗讀才不會出現兩次）；偏移已是文字框座標，隨框旋轉
+    if let Some(shadow) = &text.shadow {
+        let _ = write!(style, ";text-shadow:{}px {}px 0 {}", num(shadow.dx), num(shadow.dy), css_color(&shadow.color));
+    }
     rotate(&mut style, element.rotation);
+    // 斜體：照瀏覽器的模擬斜體，以基線為軸斜切每一行（不用 font-style，斜率才不會因閱讀器而不同）
+    let italic = if text.italic {
+        format!(
+            r#" style="transform:skewX({}deg);transform-origin:0 {}px""#,
+            num(-SYNTHETIC_ITALIC_SLANT.atan().to_degrees()),
+            num(text.baseline)
+        )
+    } else {
+        String::new()
+    };
     let _ = write!(out, r#"<div class="el t" style="{style}">"#);
     for line in &text.lines {
         if line.is_empty() {
             // 空行沒有行框，高度會塌成 0；明確給一行的高度，後面的行才會在正確位置
             let _ = write!(out, r#"<div style="height:{}px"></div>"#, num(text.line_height));
         } else {
-            let _ = write!(out, "<div>{}</div>", escape(line));
+            let _ = write!(out, "<div{italic}>{}</div>", escape(line));
         }
     }
+    // 底線 / 刪除線：位置由 render model 照 Konva 的公式算好（CSS 的 text-decoration 位置由字型決定，對不上）。
+    // 線的陰影放在 z-index −1：和畫布一樣在所有文字底下
+    for line in &text.decorations {
+        if let Some(shadow) = &text.shadow {
+            decoration_bar(out, line, text.decoration_thickness, &shadow.color, (shadow.dx, shadow.dy), " s");
+        }
+        decoration_bar(out, line, text.decoration_thickness, &text.fill, (0.0, 0.0), "");
+    }
     out.push_str("</div>\n");
+}
+
+/// One underline / strikethrough (or its shadow) as a bar in the text box's coordinates.
+fn decoration_bar(out: &mut String, line: &DecorationLine, thickness: f64, color: &str, (dx, dy): (f64, f64), class: &str) {
+    let _ = write!(
+        out,
+        r#"<span class="d{class}" style="left:{}px;top:{}px;width:{}px;height:{}px;background:{}"></span>"#,
+        num(line.x + dx),
+        num(line.y - thickness / 2.0 + dy),
+        num(line.length),
+        num(thickness),
+        css_color(color),
+    );
 }
 
 fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages) {

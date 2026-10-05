@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -87,7 +87,7 @@ src/
       panels/*.tsx                # 9 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw 目前是佔位
       page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）與邊界參考線（MarginGuide）
       color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
-      style-controls.tsx          # 文字樣式（TextStyleFields：字體 / 字級 / 粗體 / 可選的對齊 / 顏色）與邊框（StrokeFields）控制項，屬性面板與頁碼管理共用
+      style-controls.tsx          # 文字樣式（TextStyleFields：字體 / 字級 / 粗體・斜體・底線・刪除線 / 可選的對齊 / 顏色 / 陰影）與邊框（StrokeFields）控制項，屬性面板與頁碼管理共用
       icon-button.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
   lib/
@@ -116,7 +116,7 @@ src/
       __tests__/
     export/                       # 匯出 PDF 的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
-      text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行與基線；measureLineWidth：單行寬度（頁碼外框）
+      text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行、基線與每行寬度；measureLineWidth：單行寬度（頁碼外框）
       __tests__/
     editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
       types.ts                    # 文件模型（CanvasElement discriminated union）
@@ -130,6 +130,7 @@ src/
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
       stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性
+      text-style.ts               # 文字裝飾：預設值（PLAIN_TEXT_DECORATION、DEFAULT_TEXT_SHADOW）、轉成 Konva 屬性（konvaTextStyle）、陰影偏移換成物件座標（localShadowOffset）
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、頁面尺寸 preset
@@ -176,7 +177,8 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 雙擊圖形編輯（`TextEditorOverlay` 的 `frame` 模式）。清空文字 = `label: null`。
 - **邊框**（`Stroke`）畫在外框線的**中心**（Konva / Typst / SVG 都是）；Transformer 設 `ignoreStroke`，控制框不含邊線。
 - **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
-- `stroke` / `label` / `geometry` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
+- **文字樣式**（`TextStyle`，文字物件、圖形內文字、頁碼共用）：`fontStyle`（`normal` / `bold`，選字型檔）之外還有 `italic` / `underline` / `strikethrough`（boolean）與 `shadow: TextShadow | null`（v6 起；舊檔讀成全部關閉）。怎麼畫見「文字裝飾」。
+- `stroke` / `label` / `geometry` / `shadow` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
 - 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、拖曳不限制在頁面內（`dragBoundFunc` 只在開啟「吸附格線」時用來對齊格線，見「偏好設定」）；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
 - **邊界**：`EditorDocument.margins`（`Margins`，pt，所有頁面共用一組）只在畫布畫參考線，**匯出不讀它**。檔案驗證只檢查每一邊 0–2000 mm（`MARGIN_MAX_PT`），「左 + 右 < 頁寬」只在對話框檢查，縮小紙張不會讓檔案變成不合法。新文件預設四邊 15 mm（`DEFAULT_MARGINS`），v4 之前的檔案讀成全 0（不畫）。
@@ -264,7 +266,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 計畫與決定：`docs/Plans/imp-page-settings.html`。
 
-- **模型**：`PageNumberRule` = 一段頁面（`from`–`to`，1 起算、含兩端，`to` 可以超過目前頁數）+ `start`（第 `from` 頁顯示的數字）+ `odd` / `even`（各自的 `position` 與 `prefix` / `suffix`）+ `style`（字型、字級、粗體、顏色、`stroke` 框線，整段共用）。第 1 頁是奇數頁；規則跟著**頁序**，不跟著某一頁。沒有規則涵蓋的頁面不顯示頁碼。
+- **模型**：`PageNumberRule` = 一段頁面（`from`–`to`，1 起算、含兩端，`to` 可以超過目前頁數）+ `start`（第 `from` 頁顯示的數字）+ `odd` / `even`（各自的 `position` 與 `prefix` / `suffix`）+ `style`（字型、字級、粗體、斜體 / 底線 / 刪除線 / 陰影、顏色、`stroke` 框線，整段共用）。第 1 頁是奇數頁；規則跟著**頁序**，不跟著某一頁。沒有規則涵蓋的頁面不顯示頁碼。
 - **頁碼 = 虛擬圖形**：`pageNumberShape()` 把規則算成一個 `ShapeElement`（透明矩形 + `stroke` + `label`，id `page-number:<pageId>`），畫布與匯出都沿用既有的圖形 / 圖形內文字路徑，**不新增物件類型、Rust 的 render 不用改**。
   - 畫布：`editor-canvas` 用 `StaticShape`（`listening={false}`）畫在物件之上、邊界參考線之下；不能選取、不在圖層面板、不算進捲動範圍。字型載入前不計算；`usedFontFamilies` 包含頁碼字型。
   - 匯出：`buildExportRequest(document, measureTextLayout, measureLineWidth)` 先用 `withPageNumbers` 把頁碼加到每頁**最上層**（只在匯出的副本，不寫回文件），所以 PDF / EPUB 都有頁碼。匯出不讀 `showPageNumbers`。
@@ -273,6 +275,18 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **對話框**：「設定 → 頁碼管理...」（`settings.pageNumbers`）。表單與列表都是草稿，「確定」一次 dispatch `document/setPageNumbering`（一筆復原），「取消」/ Esc 放棄。「加入設定」以表單新增一段、「修改設定」覆寫選中的那段（表單沒變時停用）、「刪除」、「新的一段」（範圍接在最後一段之後，`nextPageNumberRange`）。重疊等錯誤由 `pageNumberRuleError` 給中文訊息並停用按鈕。表單改了沒按「修改設定」就按「確定」不會套用（頁尾有提示）。
 - **「在編輯畫面顯示頁碼」**是 App 偏好 `showPageNumbers`（預設開），在這個對話框切換、「確定」才寫入；只影響畫布。
 - 字型 / 顏色 / 框線控制項和屬性面板共用 `components/editor/style-controls.tsx`（頁碼不顯示對齊按鈕，對齊由位置決定）。前後置文字只能單行、最多 20 個字（`PAGE_NUMBER_AFFIX_MAX_LENGTH`）。
+
+### 文字裝飾（`lib/editor/text-style.ts` + `style-controls.tsx` + 匯出）
+
+計畫與決定：`docs/Plans/imp-text-attribute.html`。
+
+- **UI**：`TextStyleFields` 粗體旁的「斜體」「底線」「刪除線」，文字顏色下方的「陰影」開關（開啟時寫入 `DEFAULT_TEXT_SHADOW`：黑色 50%、偏移 2 / 2 pt；偏移限制 ±50 pt，`TEXT_SHADOW_OFFSET_MAX`）。屬性面板與頁碼對話框共用。文字背景 / 外框不做：用「圖形 + 圖形內文字」。
+- **畫布**：一律經 `konvaTextStyle()` 轉成 Konva 屬性（文字物件、圖形內文字、頁碼、`measureTextLayout` 共用），每個 key 都給值，關掉陰影時節點才會真的移除；陰影透明度拆成 `shadowOpacity`，`shadowBlur` 固定 0（PDF 畫不出模糊）。斜體與線都不改字寬，換行不變。
+- **斜體是模擬的**（沒有斜體字型檔）：瀏覽器以基線為軸斜切 1/4（實測五種字型都是 0.25）。PDF 用 Typst `skew`、EPUB 用每行 `skewX`，斜率是 Rust `render.rs` 的 `SYNTHETIC_ITALIC_SLANT`。EPUB **不用** `font-style: italic`（斜率會隨閱讀器而變）。
+- **底線 / 刪除線**的位置照 Konva 10.5.0 的 `Text._sceneFunc`：基線 ± `round(字級 / 4)`、粗 `字級 / 15`、長 `round(該行寬)`，由 `render.rs` 的 `decoration_lines` 算好，PDF 畫 `line`、EPUB 畫絕對定位的 `span.d`（不用 CSS `text-decoration`，位置對不上）。行寬由 `TextLayout.lineWidths` 從前端傳來。**升級 Konva 時要重查這組公式。**
+- **陰影方向以頁面為準**，不隨物件旋轉（Canvas 2D 的 shadow offset 不受旋轉影響）。匯出與文字編輯框在旋轉後的框裡畫，所以偏移要反向旋轉（TS `localShadowOffset`、Rust `render_shadow`）。陰影的透明度 = 陰影色 × 文字顏色的透明度。
+- **有線又有陰影時，Konva 改用 buffer canvas**：整段文字畫好再投一個陰影在最底下（`RenderShadow.whole_block`）；沒有線時每行各自投陰影。PDF 照兩種情況畫；EPUB 的文字陰影是 `text-shadow`（不複製文字），線的陰影是 `z-index: -1` 的 `span.d.s`（`.t` 有 `z-index: 0`）。
+- **已知限制**：半透明陰影在有線的文字上，重疊處 PDF / EPUB 比畫布深（Typst 沒有群組透明度）；EPUB 逐行畫文字陰影，行與行的陰影重疊時順序可能和畫布不同。
 
 ### 其他注意事項
 
@@ -329,7 +343,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 5；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 6；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
@@ -351,14 +365,15 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 ## 匯出 PDF（`lib/export` + `src-tauri/src/export`）
 
 - **Typst 以 crate 形式內嵌**（沒有外部執行檔、沒有 sidecar）：`typst` + `typst-layout` + `typst-pdf`，版本鎖 `=0.15.1`。升級時三個要一起改，而且 `World` trait 與 `RootedPath` / `VirtualRoot` 這些 API 每版都會變動。
-- **換行由編輯器決定，Typst 只負責定位**（所見即所得的關鍵）：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 畫的節點完全相同）取得 `lines` 與 `baseline`，`buildExportRequest()` 把每個 text 物件的結果放進 `ExportRequest.textLayouts`（以 element id 為 key）。模板逐行 `place`，不讓 Typst 再斷行。
+- **換行由編輯器決定，Typst 只負責定位**（所見即所得的關鍵）：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 畫的節點完全相同）取得 `lines`、`baseline` 與 `lineWidths`（底線 / 刪除線的長度），`buildExportRequest()` 把每個 text 物件的結果放進 `ExportRequest.textLayouts`（以 element id 為 key）。模板逐行 `place`，不讓 Typst 再斷行。
   - 因此 `measureTextLayout` **必須在字型載入後**呼叫（編輯器已顯示即符合），否則量出來的行寬是錯的。
   - **前端與 Rust 各有一份、改一邊要改兩邊的常數**（兩邊的測試用同一組數字守著）：
     - `TEXT_LINE_HEIGHT = 1.2`：`geometry.ts` / `export/render.rs`。
     - `LABEL_PADDING_PT = 4`：`shape-label.ts` / `render.rs`。
     - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`。虛線 3w + 3w；點線 0 + 2w，圓頭。
     - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
-    - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`：`validation.ts` / `format.rs`。
+    - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`、陰影偏移上限 `TEXT_SHADOW_OFFSET_MAX`：`validation.ts` / `format.rs`。
+    - 底線 / 刪除線的公式與模擬斜體的斜率只在 Rust（`render.rs`），對應的是 **Konva 與瀏覽器本身的行為**，不是前端常數：升級 Konva 時重查（見「文字裝飾」）。
     - 字級範圍 `FONT_SIZE_MIN` / `FONT_SIZE_MAX`（`validation.ts`）、`PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）：`format.rs` 的頁碼驗證（`validate_page_number_rules`）。
   - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
@@ -367,7 +382,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **字型**：畫面、PDF、EPUB **共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face` 與 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（字體選單），Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一處就要改其他處**。新增字型的步驟、修改過的字型檔與 `patch_font.py` 見 `fonts/README.md`。
   - Typst 讀到的家族名稱不一定等於 CSS 名稱（霞鶩文楷是「霞鶩文楷 TC」）：`BUNDLED_FONTS.typst_family` 記錄它，`pdf.rs` 用 `typst_family()` 轉換。測試 `typst_sees_the_declared_family_and_weight` 守著。
   - 霞鶩文楷沒有 Bold，粗體用 Medium（CSS 宣告為 700、`bold: true`）。
-  - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。
+  - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。沒有斜體字型檔：`italic` 是模擬斜切（見「文字裝飾」），加入真的斜體字型會讓畫面與輸出的斜體不一致。
   - 不讀系統字型，所以 `load_fonts()` 不會失敗，匯出結果在每台機器上都一樣。字型在第一次匯出時解析並快取在 `ExportState` 的 `OnceLock`。
   - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，再套 `LEGACY_FAMILIES`（`"Geist Variable"` → `"Geist"`、`"Microsoft JhengHei"` → `"Noto Sans TC"`）。**這個對應表不能刪**：內嵌字型之前存檔的專案仍然帶著舊名稱，而且沒有 schema 遷移會改寫它。
   - `font-display` 用 `block`：讓瀏覽器先以 fallback 畫再換字，會讓 Konva 已經量好的行寬失效。

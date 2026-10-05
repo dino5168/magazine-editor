@@ -149,7 +149,8 @@ function StyleTab({ shape, update }: { readonly shape: ShapeElement; readonly up
 }
 
 /**
- * Font, font size, bold, alignment and color: shared by text elements and the text inside shapes.
+ * Font, font size, bold / italic / lines, alignment, color and shadow: shared by text elements and
+ * the text inside shapes.
  * `verticalAlign` is only given for shape text.
  */
 function TextStyleControls({

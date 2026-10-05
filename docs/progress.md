@@ -4,13 +4,22 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-04
+最後更新:2026-10-05(文字屬性調整完成)
 
 ---
 
 ## 目前階段
 
-- **頁碼管理(2026-10-04,七個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-04-頁碼管理.md`(不 commit),計畫 `docs/Plans/imp-page-settings.html`(要 commit)。規則寫在 `CLAUDE.md`「頁碼管理」一節。
+- **文字屬性調整(2026-10-05,六個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-05-文字屬性調整.md`(不 commit),計畫 `docs/Plans/imp-text-attribute.html`(要 commit)。使用者確認:新增斜體、底線、刪除線、硬陰影(無模糊),加在 `TextStyle`,頁碼也有;背景 / 邊框、直書不做。共六個步驟,每步做完等使用者說「繼續」。
+  - 步驟 1:`TextStyle` 加 `italic` / `underline` / `strikethrough` / `shadow`(`TextShadow`),`lib/editor/text-style.ts` 放預設值;TS / Rust 驗證(陰影偏移 ±50 pt,`TEXT_SHADOW_OFFSET_MAX`);Rust `SCHEMA_VERSION` 6,舊檔讀成全部關閉;fixture、`types.html`。vitest 254 個、Rust 89 個通過。畫面還沒有變化。**v6 存檔後舊版 App 無法開啟。**
+  - 步驟 2:畫布(文字、圖形內文字、頁碼)、量測、文字編輯框套用新屬性(`text-style.ts` 的 `konvaTextStyle` 等共用函式)。vitest 261 個通過,無頭 Edge 15 項:換行與選取框不變、陰影也落在底線 / 刪除線上、旋轉後陰影仍朝頁面右下。還沒有 UI 按鈕(步驟 3)。
+  - 步驟 3:`TextStyleFields` 加斜體 / 底線 / 刪除線按鈕與陰影(開關、顏色、水平 / 垂直偏移),屬性面板與頁碼對話框共用。無頭 Edge 21 項通過(一次操作 = 一筆復原)。**匯出(PDF / EPUB)還不會畫這些效果**(步驟 4、5)。
+  - 步驟 4:PDF 畫出斜體(Typst `skew`,斜率 0.25 = 瀏覽器模擬斜體)、底線 / 刪除線(照 Konva 10.5.0 的公式,`TextLayout.lineWidths` 傳行寬)、硬陰影(有線時整段一個陰影在最下面,和 Konva 的 buffer canvas 一樣)。Rust 96 個通過;畫布與 PDF 疊圖墨跡相差 ≤ 0.5 pt。已知限制:半透明陰影在有線的文字上,重疊處 PDF 較深。**EPUB 還不會畫**(步驟 5)。
+  - 步驟 5:EPUB 斜體用每行 `skewX`(不用 `font-style`,斜率才固定)、線用絕對定位的 span(位置同 PDF)、文字陰影用 `text-shadow`(不複製文字)、線的陰影 `z-index: -1`。Rust 97 個通過;EPUB 截圖和畫布比對墨跡外框 ≤ 0.5 pt(一處 1 pt)。
+  - 步驟 6:`CLAUDE.md` 新增「文字裝飾」一節並同步各節;`fonts/README.md`、`docs/01`/`02`。
+  - 之後要 commit 的範圍:程式碼(前端與 Rust)、`tests/fixtures/sample.magproj`、`docs-website/types.html`、`CLAUDE.md`、`fonts/README.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-text-attribute.html`;任務檔 `2026-10-05-文字屬性調整.md` 與 `docs/Plans/Images/` 不 commit。
+  - 測試腳本注意:從 React fiber 讀 state 時要從 `root[__reactContainer$…].stateNode.current` 開始,直接用 `root[key]` 會讀到交替的舊樹。
+- **頁碼管理(2026-10-04,七個步驟全部完成,commit `5a99008`,已推送;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-04-頁碼管理.md`(不 commit),計畫 `docs/Plans/imp-page-settings.html`(要 commit)。規則寫在 `CLAUDE.md`「頁碼管理」一節。
   - 步驟 1:`lib/editor/page-numbers.ts`(規則 → 虛擬圖形、驗證、對話框用的說明與錯誤訊息)。
   - 步驟 2:`EditorDocument.pageNumberRules`、reducer `document/setPageNumbering`、Rust `format.rs` 驗證、`SCHEMA_VERSION` 5、fixture、`types.html`。
   - 步驟 3:「設定 → 頁面設定...」改成「頁碼管理...」(`settings.pageNumbers`)、`components/app/page-numbers-dialog.tsx`。
@@ -122,6 +131,7 @@
 | 2026-10-03 | **多選與一起移動**(計畫 `docs/Plans/imp-muiti-select-move.md`):`selectedId` → `selectedIds`;Ctrl + 點擊多選(畫布與圖層面板)、整組拖曳交給 Konva Transformer(放開時一次 `element/updateMany` = 一筆復原)、多選隱藏縮放 / 旋轉;框選(完全包住才選、Ctrl 加入、Esc 取消);Delete / 方向鍵 / Ctrl+D / 動作列作用在整組;屬性面板「已選取 N 個」。vitest 202 個通過,無頭 Edge 驗證 41 項 |
 | 2026-10-04 | **偏好設定**(計畫 `docs/Plans/imp-settings.html`):「偏好設定」對話框(Ctrl+, / 頁面設定...)取代「尺寸」工具面板;紙張尺寸套用到所有頁面、邊界存進文件(`schemaVersion` 4,只畫參考線不輸出);格線顯示 / 間距 / 吸附與邊界參考線開關存 localStorage;吸附涵蓋拖曳(多選整組依被拖曳的物件對齊)、縮放(旋轉 0°)、建立。vitest 226 個、Rust 84 個通過,無頭 Edge 驗證 41 項 |
 | 2026-10-04 | **頁碼管理**(計畫 `docs/Plans/imp-page-settings.html`):「設定 → 頁碼管理...」取代「頁面設定...」;文件分段設定頁碼(範圍、起始值、奇偶頁位置與前後置文字、字型 / 顏色 / 框線),左中 / 右中直書;頁碼以虛擬圖形畫在畫布與匯出(PDF / EPUB),不是物件;「顯示頁碼」只影響畫布;`schemaVersion` 5。vitest 251 個、Rust 87 個通過,無頭 Edge 驗證 46 項 |
+| 2026-10-05 | **文字屬性調整**(計畫 `docs/Plans/imp-text-attribute.html`):文字樣式加斜體(模擬斜切 0.25)、底線、刪除線(照 Konva 10.5.0 的公式)、硬陰影(方向以頁面為準、無模糊);屬性面板與頁碼對話框共用控制項;畫布、PDF、EPUB 一致(墨跡相差 ≤ 0.5 pt);`schemaVersion` 6。vitest 261 個、Rust 97 個通過 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
 
 ---
@@ -175,6 +185,7 @@
 | 沒動過頁面設定時按「確定」**不套用頁面**;多選拖曳吸附時**整組依被拖曳的物件對齊、相對位置不變** | 實作時決定(2026-10-04):前者避免只改格線就統一頁面尺寸;後者避免整組形狀被吸附打亂 |
 | 頁碼:一段 = 一個頁面範圍(奇偶頁各自設位置與前後置文字);每段可設起始值(只有阿拉伯數字);上下放在邊界區正中;左中 / 右中每字上下排;「顯示頁碼」是只影響畫布的 App 偏好;「頁面設定...」改成「頁碼管理...」 | 使用者確認(2026-10-04),見 `docs/Plans/imp-page-settings.html` |
 | 頁碼**不是物件**,文件只存規則,畫布與匯出時算成「虛擬圖形」(透明矩形 + 框線 + 圖形內文字) | 實作時決定(2026-10-04):沿用既有的圖形繪製、量測與 PDF / EPUB 匯出,Rust render 不用改;頁碼也不會被誤選、誤刪 |
+| 文字新增**斜體 / 底線 / 刪除線 / 硬陰影**(加在 `TextStyle`,頁碼也有);斜體是 boolean、以模擬斜切呈現;陰影無模糊、方向固定朝頁面;文字背景 / 邊框不做(用圖形 + 圖形內文字) | 使用者確認(2026-10-05),見 `docs/Plans/imp-text-attribute.html` |
 | 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/imp-tldraw-bar.md` |
 
 ---
@@ -183,6 +194,11 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**文字屬性**(Claude 只用瀏覽器模式、`export_preview`、`epub_preview` 驗證過):
+  - 文字物件、圖形內文字、頁碼各試一次斜體 / 底線 / 刪除線 / 陰影,Ctrl+Z 一步一步回去;存檔重開仍在
+  - 旋轉的文字加陰影:陰影應該一直朝頁面右下(不跟著轉)
+  - 實際按「匯出 PDF」:斜體、線、陰影和畫面一致;半透明陰影 + 底線時,重疊處稍深是已知限制
+  - 存成 v6 後**舊版 App 會拒絕開啟**
 - [ ] 在 `npm run tauri dev` 手動驗證**頁碼管理**(Claude 只用瀏覽器模式與 `export_preview` 驗證過):
   - 「設定 → 頁碼管理...」加兩段(例如封面不設、第 3 頁起從 1 起算),奇偶頁位置不同、加前後置文字與框線 → 標題出現 `●`、Ctrl+Z 一次回去;存檔重開設定仍在
   - 實際按「匯出 PDF」:每頁頁碼的位置、字型、顏色、框線和畫面一致;關掉「在編輯畫面顯示頁碼」後匯出仍有頁碼
@@ -257,7 +273,7 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 87 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 251 個(2026-10-04)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:113` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **目前的自動化測試:** Rust 97 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 261 個(2026-10-05)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:118` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
 - **圖形內文字的已知限制(2026-10-01)**:
   - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
   - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。

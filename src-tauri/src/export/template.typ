@@ -17,22 +17,46 @@
   if el.rotation == 0 { body } else { rotate(el.rotation * 1deg, origin: origin, reflow: false, body) }
 }
 
+// 一行文字。top-edge / bottom-edge 設為 baseline：box 的上緣就是基線，dy 直接對應編輯器算出的基線位置
+#let text-line(el, i, line, paint, dx, dy) = {
+  let body = box(text(
+    font: el.fonts,
+    size: pt(el.size),
+    weight: if el.bold { "bold" } else { "regular" },
+    fill: paint,
+    top-edge: "baseline",
+    bottom-edge: "baseline",
+    line,
+  ))
+  // 斜體：沒有斜體字型檔，照瀏覽器的模擬斜體以基線為軸斜切（Typst 不會自己模擬）
+  let body = if el.slant == 0 { body } else { skew(ax: -calc.atan(el.slant), origin: top + left, reflow: false, body) }
+  place(top + alignments.at(el.align), dx: pt(dx), dy: pt(el.baseline + i * el.lineHeight + dy), body)
+}
+
+// 底線 / 刪除線：位置與長度由 Rust 照 Konva 的公式算好（render.rs 的 decoration_lines）
+#let decoration(el, d, paint, dx, dy) = place(top + left, line(
+  start: (pt(d.x + dx), pt(d.y + dy)),
+  end: (pt(d.x + d.length + dx), pt(d.y + dy)),
+  stroke: (paint: paint, thickness: pt(el.decorationThickness), cap: "butt"),
+))
+
+// 和 Konva 每一行的繪製順序相同：底線 → 文字 → 刪除線
+#let line-parts(el, i, line, paint, dx, dy) = {
+  for d in el.decorations.filter(d => d.line == i and d.kind == "underline") { decoration(el, d, paint, dx, dy) }
+  text-line(el, i, line, paint, dx, dy)
+  for d in el.decorations.filter(d => d.line == i and d.kind == "strikethrough") { decoration(el, d, paint, dx, dy) }
+}
+
 #let draw-text(el) = block(width: pt(el.width), height: pt(el.lines.len() * el.lineHeight), {
+  let shadow = el.shadow
+  // 有底線 / 刪除線時，Konva 先把整段文字畫好再投一個陰影：所有陰影在最下面
+  if shadow != none and shadow.wholeBlock {
+    for (i, line) in el.lines.enumerate() { line-parts(el, i, line, rgb(shadow.color), shadow.dx, shadow.dy) }
+  }
   for (i, line) in el.lines.enumerate() {
-    // top-edge / bottom-edge 設為 baseline：文字框的上緣就是基線，dy 直接對應編輯器算出的基線位置
-    place(
-      top + alignments.at(el.align),
-      dy: pt(el.baseline + i * el.lineHeight),
-      box(text(
-        font: el.fonts,
-        size: pt(el.size),
-        weight: if el.bold { "bold" } else { "regular" },
-        fill: rgb(el.fill),
-        top-edge: "baseline",
-        bottom-edge: "baseline",
-        line,
-      )),
-    )
+    // 沒有線時每一行各自投陰影，緊接在該行之前
+    if shadow != none and not shadow.wholeBlock { line-parts(el, i, line, rgb(shadow.color), shadow.dx, shadow.dy) }
+    line-parts(el, i, line, rgb(el.fill), 0, 0)
   }
 })
 

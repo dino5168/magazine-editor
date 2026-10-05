@@ -28,6 +28,10 @@ pub struct TextLayout {
     pub lines: Vec<String>,
     /// Distance (pt) from the element's top to the first line's baseline.
     pub baseline: f64,
+    /// Width (pt) of each line as Konva measured it, for the underline / strikethrough. Empty in
+    /// requests captured before it existed; the lines then span the text box.
+    #[serde(default, rename = "lineWidths")]
+    pub line_widths: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize)]

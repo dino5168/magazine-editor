@@ -9,7 +9,8 @@
 use super::{ExportRequest, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
-    validate_content, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash, VerticalAlign,
+    validate_content, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow,
+    VerticalAlign,
 };
 use crate::project::shape;
 use std::collections::HashMap;
@@ -86,6 +87,144 @@ pub struct RenderText {
     pub bold: bool,
     pub align: Align,
     pub fill: String,
+    /// Slanted like the browser's synthetic italic (no italic font files are bundled).
+    pub italic: bool,
+    /// Underline / strikethrough segments, in line order (underline before strikethrough).
+    pub decorations: Vec<DecorationLine>,
+    /// Thickness (pt) of every decoration line.
+    pub decoration_thickness: f64,
+    pub shadow: Option<RenderShadow>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecorationKind {
+    /// Konva draws it before the line's text.
+    Underline,
+    /// Konva draws it after the line's text.
+    Strikethrough,
+}
+
+/// One underline or strikethrough, in the text box's coordinates (pt, origin at the box's top-left).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DecorationLine {
+    /// Index of the text line it belongs to.
+    pub line: usize,
+    pub kind: DecorationKind,
+    pub x: f64,
+    /// Centre of the line's thickness.
+    pub y: f64,
+    pub length: f64,
+}
+
+/// Hard text shadow, ready to draw inside the (rotated) text box.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderShadow {
+    /// Shadow color with the text's own alpha multiplied in: the canvas shadow takes the alpha of
+    /// what is drawn.
+    pub color: String,
+    /// Offset in the text box's coordinates (the stored offset points along the page axes).
+    pub dx: f64,
+    pub dy: f64,
+    /// With an underline or strikethrough, Konva draws the whole text off-screen first and casts a
+    /// single shadow under all of it; otherwise each line casts its own shadow just before it.
+    pub whole_block: bool,
+}
+
+/// Slope of the browser's synthetic italic: Skia skews glyphs by 1/4 around the baseline (measured
+/// the same for every bundled font). PDF and EPUB slant by this much.
+pub const SYNTHETIC_ITALIC_SLANT: f64 = 0.25;
+/// Konva 10 `Text._sceneFunc` (non-legacy text rendering): the underline sits `round(size / 4)`
+/// below the baseline and the strikethrough as far above it, both `size / 15` thick and
+/// `round(line width)` long. Recheck when upgrading Konva.
+const DECORATION_OFFSET_RATIO: f64 = 0.25;
+const DECORATION_THICKNESS_RATIO: f64 = 1.0 / 15.0;
+
+/// Text properties shared by text elements and the text inside shapes.
+struct TextStyleRef<'a> {
+    size: f64,
+    family: &'a str,
+    font_style: FontStyle,
+    decoration: &'a TextDecoration,
+    align: Align,
+    fill: &'a str,
+}
+
+/// Underline / strikethrough segments of every line, placed like Konva places them.
+fn decoration_lines(layout: &TextLayout, box_width: f64, line_height: f64, style: &TextStyleRef) -> Vec<DecorationLine> {
+    let TextDecoration { underline, strikethrough, .. } = *style.decoration;
+    if !underline && !strikethrough {
+        return Vec::new();
+    }
+    let offset = (style.size * DECORATION_OFFSET_RATIO).round();
+    let mut out = Vec::new();
+    for line in 0..layout.lines.len() {
+        // 舊的 request 沒有行寬時，線畫滿整個文字框
+        let width = layout.line_widths.get(line).copied().unwrap_or(box_width);
+        let length = width.round();
+        if length <= 0.0 {
+            continue;
+        }
+        let x = match style.align {
+            Align::Left => 0.0,
+            Align::Center => (box_width - width) / 2.0,
+            Align::Right => box_width - width,
+        };
+        let baseline = layout.baseline + line as f64 * line_height;
+        if underline {
+            out.push(DecorationLine { line, kind: DecorationKind::Underline, x, y: baseline + offset, length });
+        }
+        if strikethrough {
+            out.push(DecorationLine { line, kind: DecorationKind::Strikethrough, x, y: baseline - offset, length });
+        }
+    }
+    out
+}
+
+/// Alpha (0–1) of a validated `#rrggbb` / `#rrggbbaa` color.
+fn color_alpha(color: &str) -> f64 {
+    color.get(7..9).and_then(|hex| u8::from_str_radix(hex, 16).ok()).map_or(1.0, |byte| f64::from(byte) / 255.0)
+}
+
+/// `#rrggbb` of `color` with `alpha` (written as 6 digits when opaque).
+fn with_alpha(color: &str, alpha: f64) -> String {
+    let byte = (alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+    if byte == 255 {
+        color[..7].to_owned()
+    } else {
+        format!("{}{byte:02x}", &color[..7])
+    }
+}
+
+fn render_shadow(shadow: &TextShadow, fill: &str, rotation: f64, whole_block: bool) -> RenderShadow {
+    // 偏移以頁面為準：反向旋轉成文字框（已旋轉）裡的座標
+    let (sin, cos) = rotation.to_radians().sin_cos();
+    RenderShadow {
+        color: with_alpha(&shadow.color, color_alpha(&shadow.color) * color_alpha(fill)),
+        dx: shadow.offset_x * cos + shadow.offset_y * sin,
+        dy: -shadow.offset_x * sin + shadow.offset_y * cos,
+        whole_block,
+    }
+}
+
+fn render_text(layout: TextLayout, box_width: f64, rotation: f64, style: &TextStyleRef) -> RenderText {
+    let line_height = style.size * TEXT_LINE_HEIGHT;
+    let decorations = decoration_lines(&layout, box_width, line_height, style);
+    let shadow = style.decoration.shadow.as_ref().map(|shadow| render_shadow(shadow, style.fill, rotation, !decorations.is_empty()));
+    RenderText {
+        lines: layout.lines,
+        baseline: layout.baseline,
+        line_height,
+        width: box_width,
+        size: style.size,
+        fonts: font_families(style.family),
+        bold: style.font_style == FontStyle::Bold,
+        align: style.align,
+        fill: style.fill.to_owned(),
+        italic: style.decoration.italic,
+        decorations,
+        decoration_thickness: style.size * DECORATION_THICKNESS_RATIO,
+        shadow,
+    }
 }
 
 /// Outline of a shape, centred on the shape's edge (as on the canvas).
@@ -199,7 +338,12 @@ fn shape_kind(shape: &ShapeElement) -> RenderKind {
 
 fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size: f64) -> AppResult<TextLayout> {
     match layouts.get(id) {
-        Some(layout) if layout.lines.len() > MAX_LINES_PER_TEXT || !layout.baseline.is_finite() => {
+        Some(layout)
+            if layout.lines.len() > MAX_LINES_PER_TEXT
+                || !layout.baseline.is_finite()
+                || !(layout.line_widths.is_empty() || layout.line_widths.len() == layout.lines.len())
+                || !layout.line_widths.iter().all(|width| width.is_finite() && *width >= 0.0) =>
+        {
             Err(AppError::invalid_input("文字排版資料不正確"))
         }
         Some(layout) => Ok(layout.clone()),
@@ -207,6 +351,7 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
         None => Ok(TextLayout {
             lines: text.split('\n').map(str::to_owned).collect(),
             baseline: size * (TEXT_LINE_HEIGHT / 2.0 + 0.35),
+            line_widths: Vec::new(),
         }),
     }
 }
@@ -219,6 +364,14 @@ fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> A
     let Some(label) = shape.label.as_ref().filter(|label| !label.text.is_empty()) else { return Ok(None) };
     let layout = text_layout(layouts, &format!("{}#label", shape.base.id), &label.text, label.font_size)?;
     let line_height = label.font_size * TEXT_LINE_HEIGHT;
+    let style = TextStyleRef {
+        size: label.font_size,
+        family: &label.font_family,
+        font_style: label.font_style,
+        decoration: &label.decoration,
+        align: label.align,
+        fill: &label.fill,
+    };
     let frame_width = (shape.width - 2.0 * LABEL_PADDING_PT).max(1.0);
     let frame_height = (shape.height - 2.0 * LABEL_PADDING_PT).max(0.0);
     let text_height = layout.lines.len() as f64 * line_height;
@@ -234,17 +387,7 @@ fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> A
         x: shape.base.x + local_x * cos - local_y * sin,
         y: shape.base.y + local_x * sin + local_y * cos,
         rotation: shape.base.rotation,
-        kind: RenderKind::Text(RenderText {
-            lines: layout.lines,
-            baseline: layout.baseline,
-            line_height,
-            width: frame_width,
-            size: label.font_size,
-            fonts: font_families(&label.font_family),
-            bold: label.font_style == FontStyle::Bold,
-            align: label.align,
-            fill: label.fill.clone(),
-        }),
+        kind: RenderKind::Text(render_text(layout, frame_width, shape.base.rotation, &style)),
     }))
 }
 
@@ -266,18 +409,15 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
             let (base, kind) = match element {
                 Element::Text(e) => {
                     let layout = text_layout(&request.text_layouts, &e.base.id, &e.text, e.font_size)?;
-                    let text = RenderText {
-                        lines: layout.lines,
-                        baseline: layout.baseline,
-                        line_height: e.font_size * TEXT_LINE_HEIGHT,
-                        width: e.width,
+                    let style = TextStyleRef {
                         size: e.font_size,
-                        fonts: font_families(&e.font_family),
-                        bold: e.font_style == FontStyle::Bold,
+                        family: &e.font_family,
+                        font_style: e.font_style,
+                        decoration: &e.decoration,
                         align: e.align,
-                        fill: e.fill.clone(),
+                        fill: &e.fill,
                     };
-                    (&e.base, RenderKind::Text(text))
+                    (&e.base, RenderKind::Text(render_text(layout, e.width, e.base.rotation, &style)))
                 }
                 Element::Shape(e) => {
                     elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind: shape_kind(e) });
@@ -364,7 +504,7 @@ mod tests {
         // fixture 的橢圓：外框 (120, 440) 120 × 80，文字 14 pt、置中、垂直置中
         let root = project_with_image();
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0 });
+        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![] });
         let (document, _) = build_render(root.path(), &req).unwrap();
         let (element, text) = label_of(&document);
         assert_eq!(text.lines, vec!["圖形內", "文字"], "uses the editor's line breaks");
@@ -443,10 +583,102 @@ mod tests {
         assert_eq!(text.lines, vec!["雜誌標題", "副標"]);
     }
 
+    /// The fixture's text element (36 pt, 420 pt wide, centred; italic, underline, strikethrough and
+    /// a `#00000080` shadow offset (2, −1.5)) rendered with a two-line layout.
+    fn decorated_text(edit: impl FnOnce(&mut crate::project::format::TextElement)) -> (RenderElement, RenderText) {
+        let mut document = fixture_document();
+        let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+        edit(text);
+        let mut req = request(document);
+        req.text_layouts.insert(
+            "el-text".into(),
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into(), String::new()], baseline: 30.0, line_widths: vec![144.4, 72.0, 0.0] },
+        );
+        let root = project_with_image();
+        let (rendered, _) = build_render(root.path(), &req).unwrap();
+        let element = rendered.pages[0].elements[0].clone();
+        let RenderKind::Text(text) = element.kind.clone() else { panic!("expected text") };
+        (element, text)
+    }
+
+    #[test]
+    fn decorations_follow_konvas_formula() {
+        let (_, text) = decorated_text(|_| {});
+        assert!(text.italic);
+        // 36 pt：位移 round(9) = 9、線粗 2.4；置中：x = (420 − 寬) / 2，長度取整數；空行不畫
+        let line = |line, kind, x, y, length| DecorationLine { line, kind, x, y, length };
+        let second = 30.0 + 36.0 * TEXT_LINE_HEIGHT;
+        assert_eq!(
+            text.decorations,
+            vec![
+                line(0, DecorationKind::Underline, 137.8, 39.0, 144.0),
+                line(0, DecorationKind::Strikethrough, 137.8, 21.0, 144.0),
+                line(1, DecorationKind::Underline, 174.0, second + 9.0, 72.0),
+                line(1, DecorationKind::Strikethrough, 174.0, second - 9.0, 72.0),
+            ]
+        );
+        assert!((text.decoration_thickness - 2.4).abs() < 1e-12);
+
+        let (_, right) = decorated_text(|t| (t.align, t.decoration.strikethrough) = (Align::Right, false));
+        assert_eq!(right.decorations.iter().map(|d| d.x).collect::<Vec<_>>(), vec![420.0 - 144.4, 420.0 - 72.0]);
+        let (_, plain) = decorated_text(|t| (t.decoration.underline, t.decoration.strikethrough) = (false, false));
+        assert!(plain.decorations.is_empty());
+    }
+
+    #[test]
+    fn shadows_point_along_the_page_and_take_the_text_alpha() {
+        let (_, text) = decorated_text(|_| {});
+        let shadow = text.shadow.unwrap();
+        assert_eq!((shadow.color.as_str(), shadow.dx, shadow.dy, shadow.whole_block), ("#00000080", 2.0, -1.5, true));
+
+        // 物件順時針轉 90°：頁面上的 (2, −1.5) 是文字框裡的 (−1.5, −2)
+        let (_, rotated) = decorated_text(|t| t.base.rotation = 90.0);
+        let shadow = rotated.shadow.unwrap();
+        assert!((shadow.dx + 1.5).abs() < 1e-12 && (shadow.dy + 2.0).abs() < 1e-12, "{shadow:?}");
+
+        // 半透明文字的陰影也變淡（50% × 50% ≈ 25%）；沒有線時每行各自投陰影
+        let (_, faint) = decorated_text(|t| {
+            t.fill = "#17171780".into();
+            (t.decoration.underline, t.decoration.strikethrough) = (false, false);
+        });
+        let shadow = faint.shadow.unwrap();
+        assert_eq!((shadow.color.as_str(), shadow.whole_block), ("#00000040", false));
+        let (_, none) = decorated_text(|t| t.decoration = TextDecoration::default());
+        assert!(none.shadow.is_none() && !none.italic);
+    }
+
+    #[test]
+    fn shape_labels_carry_their_decoration() {
+        let mut document = fixture_document();
+        let Element::Shape(ellipse) = &mut document.pages[0].elements[2] else { panic!("expected the ellipse") };
+        let label = ellipse.label.as_mut().unwrap();
+        label.decoration = TextDecoration {
+            italic: true,
+            underline: true,
+            strikethrough: false,
+            shadow: Some(TextShadow { color: "#ff0000".into(), offset_x: 1.0, offset_y: 1.0 }),
+        };
+        let root = project_with_image();
+        let (rendered, _) = build_render(root.path(), &request(document)).unwrap();
+        let (_, text) = label_of(&rendered);
+        assert!(text.italic && text.shadow.is_some());
+        assert!(!text.decorations.is_empty() && text.decorations.iter().all(|d| d.kind == DecorationKind::Underline));
+    }
+
+    #[test]
+    fn rejects_line_widths_that_do_not_match_the_lines() {
+        let root = project_with_image();
+        for widths in [vec![10.0], vec![10.0, f64::NAN], vec![10.0, -1.0]] {
+            let mut req = request(fixture_document());
+            req.text_layouts.insert("el-text".into(), TextLayout { lines: vec!["a".into(), "b".into()], baseline: 10.0, line_widths: widths });
+            assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
+        }
+    }
+
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![] });
         let root = project_with_image();
         assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
     }

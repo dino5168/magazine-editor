@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
+import { localShadowOffset, textDecorationLine } from "@/lib/editor/text-style";
 import type { Point, ShapeLabel, TextElement } from "@/lib/editor/types";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,13 @@ const JUSTIFY: { readonly [K in ShapeLabel["verticalAlign"]]: CSSProperties["jus
   middle: "center",
   bottom: "flex-end",
 };
+
+// CSS 的 text-shadow 跟著 textarea 一起旋轉，偏移要先轉回物件座標，才會和畫布一樣朝頁面的方向
+function cssTextShadow(element: TextElement, zoom: number): string {
+  if (!element.shadow) return "none";
+  const { x, y } = localShadowOffset(element.shadow, element.rotation);
+  return `${x * zoom}px ${y * zoom}px 0 ${element.shadow.color}`;
+}
 
 /**
  * In-place textarea positioned over a Konva text node for editing.
@@ -103,6 +111,9 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
         lineHeight: TEXT_LINE_HEIGHT,
         fontFamily: element.fontFamily,
         fontWeight: element.fontStyle === "bold" ? 700 : 400,
+        fontStyle: element.italic ? "italic" : "normal",
+        textDecorationLine: textDecorationLine(element) || "none",
+        textShadow: cssTextShadow(element, zoom),
         textAlign: element.align,
         color: element.fill,
       }}

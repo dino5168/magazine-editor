@@ -142,7 +142,7 @@ fn user_text_is_data_not_markup() {
     document.name = format!("{hostile}\u{0}");
     document.pages[0].name = hostile.to_owned();
     let mut req = request(document);
-    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0 });
+    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0, line_widths: vec![] });
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
 
@@ -331,6 +331,56 @@ fn baseline_matches_css_line_box() {
     }
 }
 
+/// The fixture's text element (italic, underline, strikethrough, `#00000080` shadow (2, −1.5), 36 pt)
+/// as XHTML, with a two-line layout.
+fn decorated_page(edit: impl FnOnce(&mut crate::project::format::TextElement)) -> String {
+    let mut document = fixture_document();
+    let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+    edit(text);
+    let mut req = request(document);
+    req.text_layouts.insert(
+        "el-text".into(),
+        TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![144.0, 72.0] },
+    );
+    let root = project_with_image();
+    let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
+    text_of(&entries, "OEBPS/pages/page-1.xhtml").to_owned()
+}
+
+#[test]
+fn text_decoration_is_drawn_like_the_pdf() {
+    let xhtml = decorated_page(|_| {});
+    let page = parse(&xhtml);
+    let text = page.descendants().find(|n| n.attribute("class") == Some("el t")).unwrap();
+    let style = text.attribute("style").unwrap();
+    // 陰影用 text-shadow（不複製文字），8 位 hex 轉成 rgba
+    assert!(style.contains(";text-shadow:2px -1.5px 0 rgba(0,0,0,0.502)"), "{style}");
+    assert!(!style.contains("font-style"), "italic is a skew, not the reader's own oblique");
+
+    // 每一行以基線為軸斜切 atan(0.25) ≈ 14.0362°
+    let lines: Vec<_> = text.children().filter(|n| n.has_tag_name("div")).collect();
+    assert_eq!(lines.len(), 2);
+    for line in &lines {
+        assert_eq!(line.attribute("style"), Some("transform:skewX(-14.0362deg);transform-origin:0 30px"));
+    }
+
+    // 線：每行底線 + 刪除線，各有一個在下層的陰影；位置和 render model 一樣（36 pt：中心 ±9、粗 2.4）
+    let bars: Vec<(&str, &str)> = text
+        .children()
+        .filter(|n| n.has_tag_name("span"))
+        .map(|n| (n.attribute("class").unwrap(), n.attribute("style").unwrap()))
+        .collect();
+    assert_eq!(bars.len(), 8);
+    assert_eq!(bars.iter().filter(|(class, _)| *class == "d s").count(), 4);
+    // 第一行底線：x = (420 − 144) / 2 = 138、上緣 = 39 − 1.2
+    assert_eq!(bars[1], ("d", "left:138px;top:37.8px;width:144px;height:2.4px;background:#171717"));
+    assert_eq!(bars[0], ("d s", "left:140px;top:36.3px;width:144px;height:2.4px;background:rgba(0,0,0,0.502)"));
+    // 線是文字以外的元素，抽出的文字仍然只有原本那兩行
+    assert_eq!(lines.iter().filter_map(|n| n.text()).collect::<Vec<_>>(), vec!["雜誌標題", "副標"]);
+
+    let plain = decorated_page(|t| t.decoration = crate::project::format::TextDecoration::default());
+    assert!(!plain.contains("skewX") && !plain.contains("text-shadow") && !plain.contains(r#"class="d"#));
+}
 
 /// Writes `preview.epub` for opening in a reading system or running epubcheck (not part of the
 /// normal run; the export command is wired up in a later stage).

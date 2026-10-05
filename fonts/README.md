@@ -49,6 +49,7 @@ python fonts/patch_font.py <原始>/GenSenRounded2TW-B.otf   fonts/GenSenRounded
 ## 規則
 
 - **只放靜態字重**，不要放可變字型。文件模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能有細微差異，混用會讓畫面與輸出對不上。
+- **不放斜體字型**：文字的「斜體」是模擬的（瀏覽器以基線為軸斜切 1/4，PDF / EPUB 照同樣斜率斜切，見 `CLAUDE.md`「文字裝飾」）。加了真的斜體檔，畫面會改用它，輸出就對不上。
 - 換字型或升級版本時，**所有引用點要一起改**（`index.css`、`BUNDLED_FONTS`、`FONT_OPTIONS`），並重新確認既有專案的版面（字寬改變會讓文字位移）。
 - 字族名稱必須和 `FONT_OPTIONS`（`family` 與 `faces`）、`@font-face` 的 `font-family`、Rust `BUNDLED_FONTS` 的 `family` 一致。
 - **`FONT_OPTIONS` 的 `family` 字串一旦發布就不要改**：它會存進專案檔，改了之後舊專案的文字會變成「其他字型」。

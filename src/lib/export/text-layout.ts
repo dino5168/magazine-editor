@@ -1,5 +1,6 @@
 import Konva from "konva";
 import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
+import { konvaFontStyle, konvaTextStyle } from "@/lib/editor/text-style";
 import type { PageNumberStyle, TextElement } from "@/lib/editor/types";
 import type { TextLayout } from "./export-request";
 
@@ -11,7 +12,7 @@ import type { TextLayout } from "./export-request";
  *   element: Text element (fonts must already be loaded, as they are once the editor is shown).
  *
  * Returns:
- *   The wrapped lines and the first line's baseline offset.
+ *   The wrapped lines, the first line's baseline offset and each line's width.
  */
 export function measureTextLayout(element: TextElement): TextLayout {
   const node = new Konva.Text({
@@ -19,7 +20,7 @@ export function measureTextLayout(element: TextElement): TextLayout {
     width: element.width,
     fontSize: element.fontSize,
     fontFamily: element.fontFamily,
-    fontStyle: element.fontStyle,
+    ...konvaTextStyle(element),
     align: element.align,
     lineHeight: TEXT_LINE_HEIGHT,
   });
@@ -30,7 +31,7 @@ export function measureTextLayout(element: TextElement): TextLayout {
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
     const lineHeight = element.fontSize * TEXT_LINE_HEIGHT;
-    return { lines, baseline: (ascent - descent) / 2 + lineHeight / 2 };
+    return { lines, baseline: (ascent - descent) / 2 + lineHeight / 2, lineWidths: node.textArr.map((line) => line.width) };
   } finally {
     node.destroy();
   }
@@ -42,13 +43,17 @@ export function measureTextLayout(element: TextElement): TextLayout {
  *
  * Args:
  *   text: One line of text.
- *   style: Font size, family and weight.
+ *   style: Font size, family, weight and italic (italic is a slant and keeps the width, but the
+ *     node is set up like the drawn one anyway).
  *
  * Returns:
  *   Width in pt (fonts must already be loaded).
  */
-export function measureLineWidth(text: string, style: Pick<PageNumberStyle, "fontSize" | "fontFamily" | "fontStyle">): number {
-  const node = new Konva.Text({ text, fontSize: style.fontSize, fontFamily: style.fontFamily, fontStyle: style.fontStyle });
+export function measureLineWidth(
+  text: string,
+  style: Pick<PageNumberStyle, "fontSize" | "fontFamily" | "fontStyle" | "italic">,
+): number {
+  const node = new Konva.Text({ text, fontSize: style.fontSize, fontFamily: style.fontFamily, fontStyle: konvaFontStyle(style) });
   try {
     return node.width();
   } finally {

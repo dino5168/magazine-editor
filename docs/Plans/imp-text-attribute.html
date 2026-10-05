@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文字屬性調整實作計畫</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --code: #f3f4f6; --no: #b91c1c; --no-soft: #fee2e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --code: #21262d; --no: #f87171; --no-soft: #450a0a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .done { background: var(--ok-soft); color: var(--ok); }
+  .yes { background: var(--ok-soft); color: var(--ok); }
+  .maybe { background: var(--warn-soft); color: var(--warn); }
+  .no { background: var(--no-soft); color: var(--no); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .figure { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin: 16px 0; }
+  .figure svg { max-width: 100%; height: auto; }
+  .caption { text-align: center; color: var(--muted); font-size: .85rem; }
+  svg text { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  .s-frame { fill: var(--card); stroke: var(--line); }
+  .s-text { fill: var(--fg); }
+  .s-muted { fill: var(--muted); }
+  .s-btn { fill: var(--bg); stroke: var(--line); }
+  .s-on { fill: var(--accent-soft); stroke: var(--accent); }
+  .s-new { fill: none; stroke: var(--accent); stroke-dasharray: 4 3; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>文字屬性調整（imp-text-attribute）</h1>
+<p class="meta">任務檔：<code>docs/Plans/2026-10-05-文字屬性調整.md</code>（不 commit）· 參考圖：<code>docs/Plans/Images/文字屬性調整.png</code> · 建立：2026-10-05 · 對應 commit：<code>5a99008</code> · 狀態：<strong>六個步驟全部完成（2026-10-05），尚未 commit；桌面版人工驗證待做</strong></p>
+
+<h2>1. 任務</h2>
+<ol>
+  <li>位置：「設定 → 工具面板 → 屬性」面板的文字設定（文字物件的「文字」分頁、圖形的「文字」分頁）。</li>
+  <li>目前只有粗體，<strong>新增斜體、底線</strong>。</li>
+  <li>依參考設計圖（draw.io 的文字面板）新增需要的屬性。</li>
+  <li>列出候選項目，讓使用者選擇是否新增。</li>
+</ol>
+
+<h2>2. 現況</h2>
+<ul>
+  <li>文字樣式是 <code>types.ts</code> 的 <code>TextStyle</code>（<code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle: "normal" | "bold"</code> / <code>align</code> / <code>fill</code>），由三處共用：
+    <ul>
+      <li><code>TextElement</code>（文字物件）</li>
+      <li><code>ShapeLabel</code>（圖形內文字，另有 <code>verticalAlign</code>）</li>
+      <li><code>PageNumberStyle</code>（頁碼，<code>Omit&lt;TextStyle, "align"&gt;</code>）</li>
+    </ul>
+  </li>
+  <li>控制項在 <code>components/editor/style-controls.tsx</code> 的 <code>TextStyleFields</code>，<strong>屬性面板與「頁碼管理」對話框共用</strong>。改它，兩邊都會出現新按鈕。</li>
+  <li>字型只內嵌 <strong>Regular + Bold</strong>，沒有斜體字型檔（中文字型本來就沒有斜體）。</li>
+  <li>文字要在三個地方畫出一樣的結果：畫布（Konva）、PDF（Typst <code>template.typ</code>）、EPUB（<code>epub/xhtml.rs</code> 的 CSS）。</li>
+</ul>
+
+<h2>3. 參考圖逐項對照</h2>
+<div class="figure">
+  <img src="Images/文字屬性調整.png" alt="參考設計圖：draw.io 的文字面板" style="max-width:300px;border:1px solid var(--line);border-radius:8px">
+</div>
+<div class="table-wrap">
+<table>
+  <tr><th>參考圖的項目</th><th>目前</th><th>建議</th><th>說明</th></tr>
+  <tr><td><strong>B</strong> 粗體</td><td>有</td><td><span class="badge done">已有</span></td><td></td></tr>
+  <tr><td><em>I</em> 斜體</td><td>無</td><td><span class="badge yes">做（任務指定）</span></td><td>沒有斜體字型檔，用<strong>模擬傾斜</strong>（和瀏覽器的 synthetic italic 一樣把字形斜切，字寬不變，所以不影響換行）。</td></tr>
+  <tr><td><u>U</u> 底線</td><td>無</td><td><span class="badge yes">做（任務指定）</span></td><td>Konva 支援 <code>textDecoration</code>；PDF / EPUB 要照 Konva 的位置與粗細畫，才會一致。</td></tr>
+  <tr><td>（設計圖沒有）刪除線</td><td>無</td><td><span class="badge maybe">可選，成本低</span></td><td>和底線同一套做法（Konva <code>line-through</code>），多一個按鈕。</td></tr>
+  <tr><td>字級（px）</td><td>有（pt，− / ＋）</td><td><span class="badge done">已有</span></td><td>本專案單位一律 pt，不改。</td></tr>
+  <tr><td>左 / 中 / 右對齊</td><td>有</td><td><span class="badge done">已有</span></td><td></td></tr>
+  <tr><td>上 / 中 / 下對齊</td><td>圖形內文字有</td><td><span class="badge done">已有</span></td><td>文字物件沒有固定高度（高度隨行數），垂直對齊沒有意義。</td></tr>
+  <tr><td>旋轉文字（A↗ 圖示）</td><td>物件可旋轉</td><td><span class="badge no">不做</span></td><td>draw.io 用來把文字轉 90°；本專案「調整」分頁已能設任意角度。</td></tr>
+  <tr><td>位置（置中 / 上 / 下 / 左 / 右）</td><td>無</td><td><span class="badge no">建議暫不做</span></td><td>draw.io 的 labelPosition：把圖形內文字放到圖形<strong>外面</strong>。要改文字框計算、量測與匯出，用途少。</td></tr>
+  <tr><td>書寫方向（自動 / 左到右 / 右到左）</td><td>無</td><td><span class="badge no">不做</span></td><td>給阿拉伯文、希伯來文用，中文用不到。中文需要的是<strong>直書</strong>，見下一列。</td></tr>
+  <tr><td>（延伸）直書</td><td>只有頁碼左中 / 右中</td><td><span class="badge maybe">建議另開任務</span></td><td>Konva 不支援直書；標點要轉向、英數要橫躺，還要量測與匯出一致，工作量遠大於這次其他項目。</td></tr>
+  <tr><td>文字顏色</td><td>有</td><td><span class="badge done">已有</span></td><td>draw.io 的勾選框是「無顏色」，本專案不需要。</td></tr>
+  <tr><td>背景顏色</td><td>無</td><td><span class="badge maybe">可選</span></td><td>文字物件加底色。<strong>但「圖形 + 圖形內文字」已經能做到</strong>（填色 = 背景、邊框 = 外框），重做一份屬於重複造輪子。若要做，文字物件在畫布要改成 Group（底框 + 文字），會動到 Transformer 與 <code>bakeTransform</code>。</td></tr>
+  <tr><td>邊框顏色</td><td>圖形有</td><td><span class="badge maybe">可選（和背景一起）</span></td><td>同上。</td></tr>
+  <tr><td>陰影</td><td>無</td><td><span class="badge maybe">可選，有限制</span></td><td>Konva 有模糊陰影，但 Typst（PDF）<strong>畫不出模糊</strong>。可做「硬陰影」：顏色 + 偏移、無模糊，三邊都能一模一樣（PDF 多畫一次文字、EPUB 用 <code>text-shadow</code> 0 模糊）。</td></tr>
+</table>
+</div>
+
+<div class="note">
+  <strong>使用者決定（2026-10-05）</strong>：這次做<strong>斜體、底線、刪除線、硬陰影</strong>；背景 / 邊框、直書不做；新屬性也出現在「頁碼管理」對話框。見第 8 節。
+</div>
+
+<h2>4. 畫面草圖</h2>
+<div class="figure">
+  <svg width="320" height="256" viewBox="0 0 320 256" role="img" aria-label="屬性面板文字區的草圖">
+    <rect class="s-frame" x="0.5" y="0.5" width="319" height="255" rx="8"/>
+    <text class="s-muted" x="14" y="26" font-size="12">字體</text>
+    <rect class="s-btn" x="50" y="12" width="256" height="22" rx="4"/>
+    <text class="s-text" x="58" y="28" font-size="12">黑體</text>
+    <text class="s-muted" x="14" y="58" font-size="12">字級</text>
+    <rect class="s-btn" x="50" y="44" width="256" height="22" rx="4"/>
+    <text class="s-text" x="58" y="60" font-size="12">− 19 pt ＋</text>
+    <!-- B I U | align -->
+    <rect class="s-on" x="14" y="78" width="26" height="26" rx="4"/>
+    <text class="s-text" x="22" y="96" font-size="14" font-weight="700">B</text>
+    <rect class="s-btn" x="44" y="78" width="26" height="26" rx="4"/>
+    <text class="s-text" x="53" y="96" font-size="14" font-style="italic">I</text>
+    <rect class="s-btn" x="74" y="78" width="26" height="26" rx="4"/>
+    <text class="s-text" x="82" y="96" font-size="14" text-decoration="underline">U</text>
+    <rect class="s-btn" x="104" y="78" width="26" height="26" rx="4"/>
+    <text class="s-text" x="112" y="96" font-size="14" text-decoration="line-through">S</text>
+    <rect class="s-new" x="40" y="74" width="94" height="34" rx="6"/>
+    <line x1="142" y1="82" x2="142" y2="100" stroke="var(--line)"/>
+    <rect class="s-btn" x="150" y="78" width="26" height="26" rx="4"/>
+    <rect class="s-btn" x="180" y="78" width="26" height="26" rx="4"/>
+    <rect class="s-btn" x="210" y="78" width="26" height="26" rx="4"/>
+    <text class="s-muted" x="152" y="96" font-size="10">左</text>
+    <text class="s-muted" x="182" y="96" font-size="10">中</text>
+    <text class="s-muted" x="212" y="96" font-size="10">右</text>
+    <text class="s-text" x="14" y="132" font-size="12">文字顏色</text>
+    <rect class="s-btn" x="270" y="118" width="36" height="20" rx="4"/>
+    <!-- shadow -->
+    <rect class="s-new" x="6" y="152" width="308" height="94" rx="6"/>
+    <rect x="14" y="164" width="24" height="14" rx="7" fill="var(--accent)"/>
+    <circle cx="31" cy="171" r="5" fill="#fff"/>
+    <text class="s-text" x="46" y="176" font-size="12">陰影</text>
+    <text class="s-text" x="14" y="204" font-size="12">顏色</text>
+    <rect class="s-btn" x="270" y="190" width="36" height="20" rx="4"/>
+    <text class="s-muted" x="14" y="234" font-size="12">X</text>
+    <rect class="s-btn" x="30" y="220" width="120" height="22" rx="4"/>
+    <text class="s-text" x="38" y="236" font-size="12">2 pt</text>
+    <text class="s-muted" x="164" y="234" font-size="12">Y</text>
+    <rect class="s-btn" x="180" y="220" width="126" height="22" rx="4"/>
+    <text class="s-text" x="188" y="236" font-size="12">2 pt</text>
+  </svg>
+</div>
+<p class="caption">虛線框是新增的部分：粗體右邊依序是「斜體」「底線」「刪除線」（和參考圖相同順序）；「文字顏色」下方是「陰影」開關，開啟後才顯示顏色與 X / Y 偏移（和邊框的 <code>StrokeFields</code> 同一種排法）。</p>
+
+<h2>5. 設計</h2>
+<h3>5.1 資料模型</h3>
+<pre><code>/** Hard text shadow: the text drawn again, offset, without blur. */
+export interface TextShadow {
+  /** `#rrggbb` or `#rrggbbaa`. */
+  readonly color: string;
+  /** pt; positive = right / down. */
+  readonly offsetX: number;
+  readonly offsetY: number;
+}
+
+export interface TextStyle {
+  readonly fontSize: number;
+  readonly fontFamily: string;
+  readonly fontStyle: "normal" | "bold";   // 不動：粗體仍是字重
+  readonly italic: boolean;                // 新增
+  readonly underline: boolean;             // 新增
+  readonly strikethrough: boolean;         // 新增
+  readonly shadow: TextShadow | null;      // 新增；null = 沒有陰影
+  readonly align: "left" | "center" | "right";
+  readonly fill: string;
+}</code></pre>
+<ul>
+  <li><strong>斜體用獨立的 boolean，不擴充 <code>fontStyle</code></strong>：粗體是換字型檔（字重），斜體是同一個字型檔斜切，兩者性質不同；而且舊檔的 <code>fontStyle</code> 完全不用改寫。畫 Konva 時再組成 <code>"italic bold"</code> 之類的字串。</li>
+  <li>底線、刪除線各用一個 boolean（不照 Konva 存 <code>"underline line-through"</code> 字串），驗證與按鈕切換都比較單純。</li>
+  <li>陰影照 <code>Stroke</code> 的慣例：物件或 <code>null</code>，<code>element/update</code> 的 patch 整個取代。開啟時的預設：<code>#00000080</code>（黑色 50%）、偏移 2 pt / 2 pt；偏移限制 −50～50 pt（TS / Rust 同一個上限常數）。<strong>沒有模糊</strong>：Typst（PDF）畫不出模糊，做了也只有畫布看得到。</li>
+  <li>加在 <code>TextStyle</code>，所以文字物件、圖形內文字、頁碼<strong>同時具備</strong>。</li>
+  <li>檔案格式：Rust 欄位加 <code>#[serde(default)]</code>，v5 檔讀成 <code>false</code>，<strong>不需要升級步驟</strong>；照慣例 <code>SCHEMA_VERSION</code> 升到 6（舊版 App 會拒絕開 v6，而不是悄悄丟掉斜體與底線）。</li>
+</ul>
+
+<h3>5.2 三邊怎麼畫成一樣</h3>
+<div class="table-wrap">
+<table>
+  <tr><th></th><th>畫布（Konva）</th><th>PDF（Typst）</th><th>EPUB（CSS）</th></tr>
+  <tr><td>斜體</td>
+    <td><code>fontStyle="italic"</code>：字型沒有斜體時，瀏覽器以固定斜率斜切（synthetic italic）</td>
+    <td>Typst <strong>不會</strong>模擬斜體（沒有斜體字型時只會畫正體），所以每行用 <code>skew(ax: …)</code> 以基線為軸斜切，角度和瀏覽器相同</td>
+    <td><code>font-style: italic</code>（閱讀器同樣模擬斜切）；若實測角度和畫布不同，改用 <code>transform: skewX()</code></td></tr>
+  <tr><td>底線</td>
+    <td><code>textDecoration="underline"</code></td>
+    <td>不用 Typst 的 <code>underline()</code>（位置由字型決定，和 Konva 不同），照 Konva 的公式自己畫線：位置、線粗由字級算出、長度 = 該行寬度、顏色 = 文字顏色</td>
+    <td><code>text-decoration: underline</code> + <code>text-decoration-thickness</code> / <code>text-underline-offset</code> 指定成和 Konva 相同的數字</td></tr>
+  <tr><td>刪除線</td>
+    <td><code>textDecoration="line-through"</code>（可和底線同時：<code>"underline line-through"</code>）</td>
+    <td>同底線，照 Konva 公式自己畫</td>
+    <td>CSS 的 <code>line-through</code> 位置由字型決定、無法指定位移，所以<strong>刪除線改成每行一條絕對定位的線</strong>（底線若也實測對不上，同樣改用這個做法）</td></tr>
+  <tr><td>硬陰影</td>
+    <td><code>shadowColor</code> / <code>shadowOffset</code>、<code>shadowBlur=0</code></td>
+    <td>先用陰影色在偏移處畫一次同樣的文字（含斜切與線），再畫本體</td>
+    <td><code>text-shadow: Xpx Ypx 0 color</code>（CSS 的 text-shadow 也會套在底線 / 刪除線上）</td></tr>
+</table>
+</div>
+<ul>
+  <li>斜切角度與底線公式會成為新的「<strong>前端與 Rust 各一份、改一邊要改兩邊</strong>」常數，寫進 <code>CLAUDE.md</code> 的清單，兩邊測試用同一組數字守著。實際數字在步驟 4 從 Konva 原始碼確認，並用 <code>export_preview</code> 疊圖比對。</li>
+  <li>斜體、底線、刪除線、陰影都<strong>不改變字寬</strong>，所以換行（<code>measureTextLayout</code>）結果不變；量測時仍傳相同屬性，維持「量測節點和畫布節點完全相同」的原則。</li>
+  <li>陰影在畫布上要確認兩件事（步驟 2 實測）：Konva 的陰影是否也套在底線 / 刪除線上（要和 CSS 一致）；以及文字物件的陰影不能撐大選取框（Transformer 只看文字框）。</li>
+  <li><strong>陰影方向固定朝頁面的右下（像固定的光源），不跟著物件旋轉</strong>：Canvas 2D 的 shadow offset 本來就不受旋轉影響（Konva 只換算縮放），畫布不用額外處理。PDF / EPUB 是在旋轉後的框裡畫，所以匯出時把偏移量反向旋轉成物件內的座標（Rust <code>render.rs</code> 算一次，PDF 與 EPUB 共用），三邊才會一致。步驟 4 用旋轉 30° 的文字疊圖驗證。</li>
+  <li>文字編輯中的 textarea（<code>text-editor-overlay.tsx</code>）也要套 <code>font-style</code> / <code>text-decoration</code>，輸入時看到的樣子才一致。</li>
+  <li>斜體的右上角會略為超出文字框（字形往右傾）；畫布、PDF、EPUB 都不裁切，和現在「超出照常顯示」一致。</li>
+</ul>
+
+<h2>6. 步驟（每步做完停下來，等使用者說「繼續」）</h2>
+<p>先把斜體 / 底線 / 刪除線從模型一路做到匯出（步驟 1–5），陰影另外走一輪（步驟 6），每一步都能單獨驗證。</p>
+
+<div class="card step">
+  <h3>步驟 1：資料模型與檔案格式（四個屬性一次加） <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：新增 <code>lib/editor/text-style.ts</code>（<code>PLAIN_TEXT_DECORATION</code>、<code>DEFAULT_TEXT_SHADOW</code>）；<code>validation.ts</code> 的 <code>isTextShadow</code> / <code>hasValidTextDecoration</code>、<code>TEXT_SHADOW_OFFSET_MAX</code>；Rust 以 <code>#[serde(flatten)] decoration: TextDecoration</code>（欄位皆 <code>#[serde(default)]</code>）加到三個結構，<code>validate_text_decoration</code>。vitest 254 個、Rust 89 個通過。</p>
+  <ul>
+    <li><code>types.ts</code>：<code>TextShadow</code>，<code>TextStyle</code> 加 <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code>。</li>
+    <li>預設值：<code>element-factory.ts</code>、<code>shape-label.ts</code>、<code>page-numbers.ts</code>（<code>false</code> / <code>null</code>）。</li>
+    <li>驗證：<code>validation.ts</code>（圖形內文字、陰影顏色與偏移）、<code>page-numbers.ts</code> 的 <code>isPageNumberRules</code>；reducer 的 <code>element/update</code> 檢查陰影。</li>
+    <li>Rust <code>format.rs</code>：<code>TextElement</code> / <code>ShapeLabel</code> / <code>PageNumberStyle</code> 加欄位（<code>#[serde(default)]</code>）與驗證、<code>SCHEMA_VERSION</code> 6；<code>tests/fixtures/sample.magproj</code> 放一個斜體 + 底線 + 刪除線 + 陰影的文字；<code>docs-website/types.html</code>。</li>
+    <li>測試：v5 檔讀成預設值、fixture 兩邊一致、非法陰影被拒。<strong>畫面不變。</strong></li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 2：畫布與文字編輯框 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>text-style.ts</code> 加 <code>konvaFontStyle</code>（"italic bold"）、<code>textDecorationLine</code>、<code>konvaTextStyle</code>（每個 key 都給值，關掉陰影時節點真的移除；陰影透明度拆成 <code>shadowOpacity</code>）、<code>localShadowOffset</code>（編輯框的 CSS 陰影會跟著旋轉，要先轉回物件座標）。<code>canvas-elements.tsx</code>（文字、圖形內文字、頁碼）、<code>measureTextLayout</code> / <code>measureLineWidth</code>、<code>text-editor-overlay.tsx</code> 套用。<br>
+  實測（無頭 Edge 15 項）：換行不變；選取框大小不受陰影影響；<strong>Konva 的陰影也套在底線 / 刪除線上</strong>（和 CSS 一致）；旋轉 90° 後陰影仍朝頁面右下；編輯框陰影偏移已轉回物件座標。vitest 261 個通過。</p>
+  <ul>
+    <li><code>lib/editor</code> 加一個小函式把 <code>TextStyle</code> 轉成 Konva 屬性（<code>fontStyle</code> / <code>textDecoration</code> / 陰影），文字物件、圖形內文字、頁碼、<code>measureTextLayout</code> / <code>measureLineWidth</code> 共用，不各寫一份 ＋ 測試。</li>
+    <li><code>canvas-elements.tsx</code>、<code>text-layout.ts</code>、<code>text-editor-overlay.tsx</code> 套用。</li>
+    <li>驗證：無頭 Edge 改文件資料後讀畫布像素：有斜切 / 線 / 陰影，換行位置不變，選取框大小不變。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 3：屬性面板與頁碼對話框 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>style-controls.tsx</code> 的 <code>TextStyleFields</code> 在粗體後加「斜體」「底線」「刪除線」（<code>DECORATION_TOGGLES</code>），文字顏色下方加 <code>ShadowFields</code>（開關、陰影顏色、水平 / 垂直偏移，− / ＋ 每次 0.5 pt，輸入值夾在 ±50 pt）。頁碼對話框共用，自動出現。<br>
+  實測（無頭 Edge 21 項）：每個按鈕 / 欄位一次 = 一筆復原，Ctrl+Z 正確回去；關掉陰影再復原會回到原本的設定；調色板選的陰影顏色保留 50% 透明度；圖形「文字」分頁寫進 <code>label</code>；頁碼規則存下新屬性且畫布頁碼套用。vitest 261 個通過。</p>
+  <ul>
+    <li><code>TextStyleFields</code>：粗體右邊加「斜體」「底線」「刪除線」（lucide <code>Italic</code> / <code>Underline</code> / <code>Strikethrough</code>，使用前確認名稱）；文字顏色下方加陰影（開關 + 顏色 + X / Y，<code>NumberField</code> 與 <code>ColorPicker</code> 沿用）。每次改變 = 一筆復原。</li>
+    <li>頁碼對話框共用同一組控制項，自動出現。</li>
+    <li>驗證：無頭 Edge 點按鈕 → 畫布改變 → Ctrl+Z 一次回去；頁碼對話框設定後畫布頁碼改變。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 4：匯出 PDF <span class="badge done">完成 2026-10-05</span></h3>
+  <div class="note">
+    <p><strong>確認的數字</strong>（Konva 10.5.0 原始碼 <code>Text._sceneFunc</code>；斜率以瀏覽器實測）：</p>
+    <ul>
+      <li>底線中心 = 基線 + <code>round(字級 / 4)</code>；刪除線 = 基線 − <code>round(字級 / 4)</code>；線粗 <code>字級 / 15</code>；長度 <code>round(該行寬)</code>，起點是該行的對齊位移；butt 端點。</li>
+      <li>每行順序：底線 → 文字 → 刪除線。</li>
+      <li><strong>有線又有陰影</strong>時 Konva 改用 buffer canvas：整段文字畫好後投<strong>一個</strong>陰影在最下面；沒有線時每行各自投陰影、緊接在該行之前。</li>
+      <li>模擬斜體：以基線為軸，每升高 1 往右 0.25（Skia 的 −1/4 斜切），五種字型、一般 / 粗體實測都是 0.25。</li>
+      <li>陰影透明度 = 陰影色的透明度 × 文字顏色的透明度（canvas 陰影取被畫內容的 alpha）。</li>
+    </ul>
+    <p><strong>實作</strong>：<code>TextLayout</code> 加 <code>lineWidths</code>（Konva 量的行寬；TS 必填、Rust <code>#[serde(default)]</code>，舊的 request 沒有時線畫滿文字框，長度不符就拒絕）；<code>render.rs</code> 的 <code>RenderText</code> 加 <code>italic</code>、<code>decorations</code>（<code>decoration_lines</code> 照上面的公式算）、<code>decoration_thickness</code>、<code>shadow</code>（<code>RenderShadow</code>：偏移反向旋轉成文字框座標、alpha 相乘、<code>whole_block</code>），文字物件與圖形內文字共用 <code>render_text</code>；<code>SYNTHETIC_ITALIC_SLANT = 0.25</code>；<code>template.typ</code> 的 <code>text-line</code>（<code>skew</code>）/ <code>decoration</code> / <code>line-parts</code>。</p>
+    <p><strong>驗證</strong>：Rust 96 個通過（新增：線的位置與長度、陰影方向與 alpha、圖形內文字、行寬驗證；Typst 點陣圖量斜體斜率、線的位置、陰影位置）。畫布與 <code>export_preview</code> 疊圖（2 px/pt，四個物件：粗斜體 + 兩種線 + 半透明陰影、明體斜體旋轉 30°、楷體底線靠右三行以上、圓體刪除線旋轉 −15° 負偏移陰影）：文字、線、陰影的墨跡外框都相差 ≤ 0.5 pt。</p>
+    <p><strong>已知限制</strong>：<strong>半透明</strong>陰影在「有線」的文字上，線的陰影和字的陰影重疊處 PDF 會比畫布深（Konva 把整段陰影當一層畫；Typst 沒有群組透明度）。測試頁約 4% 的陰影像素。不透明陰影完全一致。</p>
+  </div>
+  <ul>
+    <li><code>render.rs</code> 的 <code>RenderText</code> 加斜體 / 線 / 陰影（偏移在這裡換成物件內座標）；<code>pdf.rs</code> 傳給 <code>data.json</code>；<code>template.typ</code> 的 <code>draw-text</code>：先畫陰影，再每行斜切、畫底線 / 刪除線。</li>
+    <li>從 Konva 原始碼確認斜切比例、底線 / 刪除線的位置與線粗，前後端各定義一份常數並加測試。</li>
+    <li>驗證：<code>export_preview</code> 點陣圖與畫布疊圖比對（目標和現在一樣 ≤ 0.5 pt），含旋轉 30° 的陰影文字。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 5：匯出 EPUB <span class="badge done">完成 2026-10-05</span></h3>
+  <div class="note">
+    <p><strong>做法（和計畫不同處）</strong>：三種效果都不交給閱讀器自己決定，畫法和 PDF 用同一份 render model。</p>
+    <ul>
+      <li>斜體：每一行 <code>transform: skewX(-14.0362deg)</code>，<code>transform-origin</code> 在基線（第一行基線距離 = Konva 量的 <code>baseline</code>，和 CSS 行框的基線公式相同）。<strong>不用 <code>font-style: italic</code></strong>：模擬斜體的斜率由閱讀引擎決定，不保證是 0.25。</li>
+      <li>底線 / 刪除線：絕對定位的 <code>&lt;span class="d"&gt;</code>，位置與長度直接用 <code>RenderText.decorations</code>（CSS <code>text-decoration</code> 的位置由字型決定、刪除線無法指定位移）。</li>
+      <li>陰影：文字用 <code>text-shadow</code>（<strong>不複製文字</strong>，搜尋、選取、朗讀不會出現兩次），偏移用文字框座標；線的陰影是 <code>.d.s</code>，<code>z-index: -1</code> 畫在這段文字底下（<code>.t</code> 加 <code>z-index: 0</code> 自成一層，不影響物件之間的順序）。</li>
+    </ul>
+    <p><strong>驗證</strong>：Rust 97 個通過（新增 EPUB 標記測試：text-shadow、skewX 與 origin、8 個線 / 線陰影的位置、文字只有原本兩行）。用步驟 4 的同一頁做 EPUB，無頭 Edge 以 2 px/pt 截圖和畫布比對：四個物件的文字 / 線 / 陰影墨跡外框相差 ≤ 0.5 pt（明體旋轉的一個邊 1 pt）；粗字的重疊率 0.8–0.9，細筆畫（明體、楷體）0.45，是 HTML 文字和 canvas 文字反鋸齒不同造成的次像素差，疊圖看不出位移。</p>
+    <p><strong>已知限制</strong>：和 PDF 相同，半透明陰影在有線的文字上，重疊處會較深；行與行的陰影若重疊（負的垂直偏移），HTML 是逐行畫陰影，和畫布「整段一層」的順序可能不同。</p>
+  </div>
+  <ul>
+    <li><code>epub/xhtml.rs</code> 的 <code>text()</code>：<code>font-style</code>、底線 / 刪除線、<code>text-shadow</code>（8 位 hex 照既有規則轉 <code>rgba()</code>）；<code>css.rs</code> 的 <code>.t { font-style: normal }</code> 要讓斜體能覆寫。</li>
+    <li>驗證：<code>epub_preview</code> 用無頭 Edge 開啟，和 PDF 點陣圖比對。</li>
+  </ul>
+</div>
+
+<div class="card step">
+  <h3>步驟 6：文件同步 <span class="badge done">完成 2026-10-05</span></h3>
+  <p class="note">實作：<code>CLAUDE.md</code> 新增「文字裝飾」一節，並更新目前階段、目錄結構（<code>text-style.ts</code>、<code>style-controls.tsx</code>、<code>text-layout.ts</code>）、文件模型、頁碼的 <code>style</code>、檔案系統（<code>schemaVersion</code> 6）、匯出 PDF 的 <code>lineWidths</code> 與「改一邊要改兩邊」清單、字型一節（沒有斜體字型檔）；<code>fonts/README.md</code> 加「不放斜體字型」；<code>docs/01-overview.md</code> 功能表、<code>docs/02-architecture.md</code> 資料夾表；<code>docs-website/types.html</code> 已在步驟 1 更新。</p>
+  <ul>
+    <li><code>CLAUDE.md</code>：文件模型、「改一邊要改兩邊」的常數清單（斜切比例、線的位置 / 粗細、陰影偏移上限）、字型一節補充「斜體是模擬的，沒有斜體字型檔」、陰影方向固定朝頁面。</li>
+    <li><code>docs/01-overview.md</code> / <code>02-architecture.md</code>、<code>docs/progress.md</code>、這份計畫的狀態。</li>
+  </ul>
+</div>
+
+<h2>7. 決定紀錄</h2>
+<table>
+  <tr><th>日期</th><th>決定</th><th>來源</th></tr>
+  <tr><td>2026-10-05</td><td>新增斜體、底線、<strong>刪除線</strong>、<strong>硬陰影</strong>；背景 / 邊框（用「圖形 + 圖形內文字」）、直書、位置、書寫方向、旋轉文字不做</td><td>使用者確認</td></tr>
+  <tr><td>2026-10-05</td><td>新屬性加在 <code>TextStyle</code>，文字物件、圖形內文字、<strong>頁碼</strong>都有（頁碼對話框共用控制項）</td><td>使用者確認</td></tr>
+  <tr><td>2026-10-05</td><td>斜體為 boolean、不擴充 <code>fontStyle</code>；以模擬斜切呈現，不加字型檔</td><td>計畫建議</td></tr>
+  <tr><td>2026-10-05</td><td>陰影無模糊；預設黑色 50%、偏移 2 / 2 pt；方向固定朝頁面，不隨物件旋轉</td><td>計畫建議</td></tr>
+  <tr><td>2026-10-05</td><td><code>SCHEMA_VERSION</code> 6，新欄位有預設值，不需升級步驟</td><td>計畫建議（照既有慣例）</td></tr>
+</table>
+
+</main>
+</body>
+</html>

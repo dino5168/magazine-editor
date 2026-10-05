@@ -8,6 +8,8 @@ export interface TextLayout {
   readonly lines: readonly string[];
   /** Distance (pt) from the element's top to the first line's baseline. */
   readonly baseline: number;
+  /** Width (pt) of each line as Konva measured it; the underline / strikethrough follow it. */
+  readonly lineWidths: readonly number[];
 }
 
 /** Payload of the `export_pdf` command. */

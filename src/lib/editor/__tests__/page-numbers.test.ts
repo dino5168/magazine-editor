@@ -167,6 +167,11 @@ describe("validation", () => {
     expect(isPageNumberRule({ ...rule, even: { ...rule.even, suffix: "字".repeat(21) } })).toBe(false);
     expect(isPageNumberRule({ ...rule, style: { ...rule.style, fill: "red" } })).toBe(false);
     expect(isPageNumberRule({ ...rule, style: { ...rule.style, stroke: { color: "#000000", width: 0, dash: "solid" } } })).toBe(false);
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, italic: true, shadow: { color: "#000000", offsetX: 1, offsetY: 1 } } })).toBe(
+      true,
+    );
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, underline: "no" as never } })).toBe(false);
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, shadow: { color: "#000000", offsetX: 99, offsetY: 0 } } })).toBe(false);
   });
 
   it("rejects overlapping ranges and duplicate ids", () => {

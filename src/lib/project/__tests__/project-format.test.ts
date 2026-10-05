@@ -6,6 +6,8 @@ import {
   createTextElement,
 } from "@/lib/editor/element-factory";
 import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
+import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
+import { isTextShadow } from "@/lib/editor/validation";
 import type { CanvasElement, ElementType, GeometryKind, ShapeElement, ShapeLabel, Stroke } from "@/lib/editor/types";
 import type { ProjectContent } from "../project-types";
 // 與 src-tauri 的 cargo test 共用同一份 fixture；兩邊欄位名稱不一致時，其中一邊的測試會失敗
@@ -53,7 +55,19 @@ describe("project file fixture", () => {
   it("uses the TypeScript field names for strokes and labels", () => {
     const stroke: Stroke = { color: "#000000", width: 1, dash: "solid" };
     const label: ShapeLabel = { ...createTextElement("body", center), text: "", verticalAlign: "middle" };
-    const labelKeys = ["align", "fill", "fontFamily", "fontSize", "fontStyle", "text", "verticalAlign"];
+    const labelKeys = [
+      "align",
+      "fill",
+      "fontFamily",
+      "fontSize",
+      "fontStyle",
+      "italic",
+      "shadow",
+      "strikethrough",
+      "text",
+      "underline",
+      "verticalAlign",
+    ];
     const withStroke = shapes.find((shape) => shape.stroke !== null);
     const withLabel = shapes.find((shape) => shape.label !== null);
     expect(sortedKeys(withStroke!.stroke!)).toEqual(sortedKeys(stroke));
@@ -77,5 +91,12 @@ describe("project file fixture", () => {
     expect(sortedKeys(rules[0].odd)).toEqual(sortedKeys(factory.odd));
     expect(sortedKeys(rules[0].style)).toEqual(sortedKeys(factory.style));
     expect(rules[1].style.stroke).not.toBeNull();
+  });
+
+  it("stores text decoration with the TypeScript field names and rules", () => {
+    const text = elements.find((element) => element.type === "text");
+    expect(text).toMatchObject({ italic: true, underline: true, strikethrough: true });
+    expect(text?.type === "text" && text.shadow && isTextShadow(text.shadow)).toBe(true);
+    expect(sortedKeys(text?.type === "text" ? text.shadow! : {})).toEqual(sortedKeys(DEFAULT_TEXT_SHADOW));
   });
 });

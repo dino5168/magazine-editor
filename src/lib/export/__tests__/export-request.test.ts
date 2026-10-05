@@ -27,12 +27,12 @@ describe("buildExportRequest", () => {
 
     const request = buildExportRequest(document, (element) => {
       measured.push(element.id);
-      return { lines: [element.text], baseline: element.fontSize };
+      return { lines: [element.text], baseline: element.fontSize, lineWidths: [100] };
     }, measureWidth);
 
     expect(request.document).toBe(document);
     expect(measured).toEqual([title.id, body.id]);
-    expect(request.textLayouts[title.id]).toEqual({ lines: [title.text], baseline: title.fontSize });
+    expect(request.textLayouts[title.id]).toEqual({ lines: [title.text], baseline: title.fontSize, lineWidths: [100] });
     expect(Object.keys(request.textLayouts)).toHaveLength(2);
   });
 
@@ -51,7 +51,7 @@ describe("buildExportRequest", () => {
 
     const request = buildExportRequest(document, (element) => {
       widths.push(element.width);
-      return { lines: [element.text], baseline: 10 };
+      return { lines: [element.text], baseline: 10, lineWidths: [100] };
     }, measureWidth);
 
     expect(Object.keys(request.textLayouts)).toEqual([`${labelled.id}#label`]);
@@ -70,7 +70,7 @@ describe("buildExportRequest", () => {
       pages: [first, { ...second, elements: [createShapeElement("rect", { x: 50, y: 50 })] }],
     };
 
-    const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10 }), measureWidth);
+    const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
 
     // 原本的文件不變；匯出的副本在第 2 頁最上層多一個頁碼圖形，第 1 頁不在範圍內
     expect(source.pages[1].elements).toHaveLength(1);

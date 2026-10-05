@@ -4,7 +4,10 @@
 //! [`super::render`]), so the PDF wraps exactly like the canvas.
 
 use super::fonts::typst_family;
-use super::render::{build_render, RenderDocument, RenderElement, RenderKind, RenderStroke, STROKE_MITER_LIMIT};
+use super::render::{
+    build_render, DecorationKind, RenderDocument, RenderElement, RenderKind, RenderStroke, STROKE_MITER_LIMIT,
+    SYNTHETIC_ITALIC_SLANT,
+};
 use super::world::ExportWorld;
 use super::{ExportOutput, ExportRequest};
 use crate::error::{AppError, AppResult};
@@ -104,6 +107,14 @@ fn element_data(element: &RenderElement) -> Value {
             "fonts": e.fonts.iter().map(|font| typst_family(font)).collect::<Vec<_>>(),
             "bold": e.bold, "align": align_name(e.align), "fill": e.fill,
             "lines": e.lines, "baseline": e.baseline, "lineHeight": e.line_height,
+            "slant": if e.italic { SYNTHETIC_ITALIC_SLANT } else { 0.0 },
+            "decorations": e.decorations.iter().map(|d| json!({
+                "line": d.line,
+                "kind": match d.kind { DecorationKind::Underline => "underline", DecorationKind::Strikethrough => "strikethrough" },
+                "x": d.x, "y": d.y, "length": d.length,
+            })).collect::<Vec<_>>(),
+            "decorationThickness": e.decoration_thickness,
+            "shadow": e.shadow.as_ref().map(|s| json!({ "color": s.color, "dx": s.dx, "dy": s.dy, "wholeBlock": s.whole_block })),
         }),
         RenderKind::Rect(e) => json!({
             "kind": "rect", "x": x, "y": y, "rotation": rotation,
@@ -166,7 +177,7 @@ mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, fonts, project_with_image, request};
     use crate::export::TextLayout;
-    use crate::project::format::{Element, ShapeGeometry, Stroke, StrokeDash};
+    use crate::project::format::{Element, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow};
 
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();
@@ -228,7 +239,7 @@ mod tests {
             text.text = tricky.to_owned();
         }
         let mut req = request(document);
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0 });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![] });
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
     }
@@ -236,7 +247,7 @@ mod tests {
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![] });
         let root = project_with_image();
         assert!(matches!(render_pdf(root.path(), &req, fonts()), Err(AppError::InvalidInput(_))));
     }
@@ -263,8 +274,12 @@ mod tests {
 
     /// The page rendered at 1 px/pt.
     fn render_page(document: crate::project::format::Document) -> Raster {
+        render_request(&request(document))
+    }
+
+    fn render_request(req: &ExportRequest) -> Raster {
         let root = project_with_image();
-        let compiled = compiled_pages(root.path(), &request(document));
+        let compiled = compiled_pages(root.path(), req);
         let pixmap =
             typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() });
         let pixels = pixmap
@@ -375,6 +390,84 @@ mod tests {
         let has_alpha_state = |pdf: &[u8]| pdf.windows(4).any(|w| w == b"/ca ");
         assert!(!has_alpha_state(&opaque));
         assert!(has_alpha_state(&half), "PDF has no fill-opacity graphics state");
+    }
+
+    /// A lone black 100 pt text at (100, 100), 400 pt wide, left-aligned, on a white page, laid out
+    /// as one line with its baseline at y = 190 and the given width.
+    fn single_text(line: &str, width: f64, edit: impl FnOnce(&mut crate::project::format::TextElement)) -> ExportRequest {
+        let mut document = fixture_document();
+        let page = &mut document.pages[0];
+        page.background = "#ffffff".into();
+        page.elements.retain(|e| matches!(e, Element::Text(_)));
+        let Element::Text(text) = &mut page.elements[0] else { unreachable!() };
+        (text.base.x, text.base.y, text.base.rotation) = (100.0, 100.0, 0.0);
+        (text.width, text.font_size, text.fill, text.align) = (400.0, 100.0, "#000000".into(), Align::Left);
+        text.font_style = crate::project::format::FontStyle::Normal;
+        text.decoration = TextDecoration::default();
+        edit(text);
+        let mut req = request(document);
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![line.into()], baseline: 90.0, line_widths: vec![width] });
+        req
+    }
+
+    const BASELINE_Y: u32 = 190;
+
+    fn is_black(p: [u8; 3]) -> bool {
+        p.iter().all(|&c| c < 64)
+    }
+
+    fn is_red(p: [u8; 3]) -> bool {
+        p[0] > 200 && p[1] < 64 && p[2] < 64
+    }
+
+    /// Leftmost dark pixel of a row, between x = 100 and 500.
+    fn left_edge(raster: &Raster, y: u32) -> u32 {
+        (100..500).find(|&x| is_black(rgb_at(raster, x, y))).expect("no dark pixel in the row")
+    }
+
+    #[test]
+    fn italic_slants_like_the_browser_around_the_baseline() {
+        // 直的筆畫「丨」：斜體每高 1 pt 往右 0.25 pt，基線不動
+        let upright = render_request(&single_text("丨", 100.0, |_| {}));
+        let italic = render_request(&single_text("丨", 100.0, |t| t.decoration.italic = true));
+        for y in [130, 160, 185] {
+            let shift = f64::from(left_edge(&italic, y)) - f64::from(left_edge(&upright, y));
+            let expected = SYNTHETIC_ITALIC_SLANT * f64::from(BASELINE_Y - y);
+            assert!((shift - expected).abs() <= 1.5, "row {y}: shift {shift}, expected {expected}");
+        }
+    }
+
+    #[test]
+    fn underline_and_strikethrough_sit_where_konva_draws_them() {
+        // 100 pt：底線中心在基線下 25（y = 215）、刪除線在基線上 25（y = 165），粗 6.67，從 x = 100 到 200
+        let raster = render_request(&single_text("  ", 100.0, |t| (t.decoration.underline, t.decoration.strikethrough) = (true, true)));
+        for (x, y) in [(102, 215), (150, 213), (150, 217), (198, 215), (150, 165)] {
+            assert!(is_black(rgb_at(&raster, x, y)), "({x}, {y}) should be on a line");
+        }
+        for (x, y) in [(97, 215), (203, 215), (150, 220), (150, 210), (150, 190), (150, 170)] {
+            assert_eq!(rgb_at(&raster, x, y), WHITE, "({x}, {y}) should be off the lines");
+        }
+    }
+
+    #[test]
+    fn shadows_are_drawn_under_the_text_at_the_offset() {
+        // 有底線：整段的陰影在最下面，底線本體蓋在陰影上
+        let shadow = Some(TextShadow { color: "#ff0000".into(), offset_x: 5.0, offset_y: 5.0 });
+        let raster = render_request(&single_text("  ", 100.0, |t| {
+            t.decoration.underline = true;
+            t.decoration.shadow = shadow.clone();
+        }));
+        assert!(is_black(rgb_at(&raster, 150, 215)), "the line covers its shadow");
+        assert!(is_red(rgb_at(&raster, 150, 222)) && is_red(rgb_at(&raster, 203, 220)), "shadow below and to the right");
+        assert_eq!(rgb_at(&raster, 150, 209), WHITE);
+
+        // 沒有線：每行的陰影緊接在該行之前，往右 8 pt
+        let raster = render_request(&single_text("丨", 100.0, |t| {
+            t.decoration.shadow = Some(TextShadow { color: "#ff0000".into(), offset_x: 8.0, offset_y: 0.0 });
+        }));
+        let right_edge = (100..500).rev().find(|&x| is_black(rgb_at(&raster, x, 160))).unwrap();
+        assert!(is_red(rgb_at(&raster, right_edge + 4, 160)), "red right of the stroke");
+        assert!(!is_red(rgb_at(&raster, left_edge(&raster, 160) - 3, 160)), "nothing left of the stroke");
     }
 
     /// Writes PNG previews (2 px/pt) for visual comparison with the canvas. Renders the fixture, or

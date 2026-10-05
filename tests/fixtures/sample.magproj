@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -25,6 +25,10 @@
           "fontSize": 10,
           "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
           "fontStyle": "normal",
+          "italic": false,
+          "underline": false,
+          "strikethrough": false,
+          "shadow": null,
           "fill": "#171717",
           "stroke": null
         }
@@ -40,6 +44,10 @@
           "fontSize": 9,
           "fontFamily": "\"Noto Serif TC\", serif",
           "fontStyle": "bold",
+          "italic": true,
+          "underline": true,
+          "strikethrough": false,
+          "shadow": { "color": "#be123c", "offsetX": 1, "offsetY": 1 },
           "fill": "#4f46e580",
           "stroke": { "color": "#be123c", "width": 0.5, "dash": "dashed" }
         }
@@ -64,6 +72,10 @@
             "fontSize": 36,
             "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
             "fontStyle": "bold",
+            "italic": true,
+            "underline": true,
+            "strikethrough": true,
+            "shadow": { "color": "#00000080", "offsetX": 2, "offsetY": -1.5 },
             "align": "center",
             "fill": "#171717"
           },
@@ -96,6 +108,10 @@
               "fontSize": 14,
               "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
               "fontStyle": "normal",
+              "italic": false,
+              "underline": false,
+              "strikethrough": false,
+              "shadow": null,
               "align": "center",
               "verticalAlign": "middle",
               "fill": "#171717"
