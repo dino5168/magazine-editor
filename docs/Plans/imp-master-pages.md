@@ -1,6 +1,6 @@
 # 主頁（Master Pages）與動態變數：實作計畫
 
-- 任務檔：`docs/07-階層式主頁.md`（不 commit）；參考截圖 `docs/images/Affinity-Master-Pages.png`、`docs/Plans/Images/Affinity-addpages.png`
+- 任務檔：`docs/01-Plans/07-階層式主頁.md`（不 commit）；參考截圖 `docs/images/Affinity-Master-Pages.png`、`docs/Plans/Images/Affinity-addpages.png`
 - 狀態：**八個步驟全部完成（2026-10-07）**，尚未 commit；桌面版人工驗證待做（見 `docs/progress.md`）。決定見第 6 節，進度與和計畫不同的地方見第 7 節。
 - 建立：2026-10-07
 

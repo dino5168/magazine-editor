@@ -42,7 +42,7 @@
   - 步驟 4(完成):`use-section-resize.ts`(按住「頁面」標題列拖曳、拖曳中直接改 DOM、放開才存、Esc 取消、雙擊還原、↑ / ↓);`startPointerDrag` 加可選 `cursor`;收合鈕縮成只有箭頭,標題文字可以拖。無頭 Edge 16 項。
   - 步驟 5(完成):`CLAUDE.md`(「頁面」面板、工具面板的 `scroll: "self"`、目錄結構)、`docs/01`。
   - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`progress.md`、`docs/Plans/imp-fix-master.md`;任務檔 `docs/Plans/2026-10-07-Master頁面調整.md` 與參考圖不 commit。
-- **主頁與動態變數(2026-10-07,八個步驟全部完成,commit `b9ed0c3`,已推送;桌面版人工驗證待做)**:任務檔 `docs/07-階層式主頁.md`(不 commit),計畫 `docs/Plans/imp-master-pages.md`(要 commit)。仿 Affinity:主頁(可以主頁為基礎形成階層)、`{頁碼}` 等動態變數、新增頁面 / 新增主頁對話框;只做單頁。使用者確認:新增「頁面」工具面板(主頁 + 頁面,真縮圖,頁籤列保留,**取代 2026-10-06「不要頁面面板」的決定**);`{頁碼}` 跟頁碼規則;刪除主頁時接到父主頁;背景不繼承。共八個步驟,每步做完等使用者說「繼續」;步驟 2(檔案格式 v7)必須在任何 UI 能產生主頁之前完成。
+- **主頁與動態變數(2026-10-07,八個步驟全部完成,commit `b9ed0c3`,已推送;桌面版人工驗證待做)**:任務檔 `docs/01-Plans/07-階層式主頁.md`(不 commit),計畫 `docs/Plans/imp-master-pages.md`(要 commit)。仿 Affinity:主頁(可以主頁為基礎形成階層)、`{頁碼}` 等動態變數、新增頁面 / 新增主頁對話框;只做單頁。使用者確認:新增「頁面」工具面板(主頁 + 頁面,真縮圖,頁籤列保留,**取代 2026-10-06「不要頁面面板」的決定**);`{頁碼}` 跟頁碼規則;刪除主頁時接到父主頁;背景不繼承。共八個步驟,每步做完等使用者說「繼續」;步驟 2(檔案格式 v7)必須在任何 UI 能產生主頁之前完成。
   - 步驟 1(完成):模型(`Sheet` / `MasterPage` / `masterId` / `masters`)、`lib/editor/master-pages.ts`、reducer 七個新 action、`selectActivePage` 回傳 `Sheet`;Rust 只先加 serde 欄位(預設空),驗證與 v7 在步驟 2。vitest 303 個、Rust 97 個通過。畫面不變。
   - 步驟 2(完成):Rust `SCHEMA_VERSION` 7、主頁驗證(`validate_master_graph`)、`referenced_assets` 包含主頁圖片(否則開檔清理會刪掉)、fixture 兩層主頁、`types.html`。vitest 304 個、Rust 100 個通過。畫面不變。**v7 存檔後舊版 App 無法開啟。**
   - 步驟 3(完成):畫布畫出主頁內容(`StaticElement`,不能選取)、編輯主頁模式(`master-edit-banner.tsx`、`lastPageId` / 「回到頁面」、頁籤列與頁碼欄的狀態)、字型含主頁。vitest 306 個,無頭 Edge 15 項。還沒有 UI 能建立主頁(步驟 4)。
@@ -50,7 +50,7 @@
   - 步驟 5(完成):「新增頁面」(主頁 / 頁數 / 之前・之後 / 頁)與「新增主頁」(名稱 / 以…為基礎)對話框(`page-dialogs.tsx`、純邏輯 `add-pages.ts`);頁籤列「+」、「插入頁面...」、面板按鈕都開對話框。vitest 315 個,無頭 Edge 15 項。
   - 步驟 6(完成):動態變數 `{頁碼}` `{總頁數}` `{文件名稱}` `{頁面名稱}`(`variables.ts`;`{頁碼}` 依頁碼規則,`displayedPageNumber`);畫布與頁面縮圖換成各頁的值、主頁照原文、編輯框是原文;屬性面板「插入變數」。vitest 322 個,無頭 Edge 12 項。
   - 步驟 8(完成):`CLAUDE.md` 新增「主頁與動態變數」一節並同步目錄結構、文件模型、狀態、頁面排序、檔案系統(v7)、匯出;`docs/01`/`02`。
-  - 之後要 commit 的範圍:程式碼(前端與 Rust)、`tests/fixtures/sample.magproj`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-master-pages.md`;任務檔 `docs/07-階層式主頁.md` 與參考截圖不 commit。**v7 存檔後舊版 App 無法開啟。**
+  - 之後要 commit 的範圍:程式碼(前端與 Rust)、`tests/fixtures/sample.magproj`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-master-pages.md`;任務檔 `docs/01-Plans/07-階層式主頁.md` 與參考截圖不 commit。**v7 存檔後舊版 App 無法開啟。**
   - 步驟 7(完成):`buildExportRequest` 把主頁內容展開到每頁最下面並換變數(id 用 `master:<頁序>:<n>`,因為 Rust 限制 id ≤ 64 字),Rust 不用改。vitest 324 個;用瀏覽器擷取的真實匯出內容跑 `export_preview` / `epub_preview`,PDF 與畫布一致、EPUB 各頁頁尾數字正確。
 - **頁面排序(2026-10-06,四個步驟全部完成,commit `f3ec788`,已推送;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-06-頁面調整.md`(不 commit),計畫 `docs/Plans/imp-頁面調整.html`(要 commit)。使用者確認:拖曳頁籤、目前頁籤 `˅` 選單的「向左 / 向右 / 移到最前 / 移到最後」、Ctrl+Shift+PageUp / PageDown;不做排序對話框;**不要「頁面」工具面板**。共四個步驟。
   - 步驟 1:`lib/editor/page-order.ts`(`movePage` / `shiftPage` / `slotToIndex`)與 reducer `page/reorder`。vitest 273 個通過。畫面不變。
@@ -107,17 +107,17 @@
   - 圖形可加邊框、可輸入圖形內文字;多邊形 / 星形可自由拉伸,也能調邊數、角數、內徑與圓角。
   - 規則寫在 `CLAUDE.md`「文件模型」「工具面板」「匯出 PDF」各節,型別圖在 `docs-website/types.html`。
   - **還沒有桌面版的人工驗證**,見「待辦 → 使用者」。
-- **未 commit 的變更**:`docs/progress.md`(這份,記錄 2026-10-01 下午段落的結束);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
-- **匯出 EPUB**:計畫在 `docs/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;階段 3、4 暫緩(見上)。檔案系統第一、二階段與「匯出 PDF」已完成並推送。
+- **未 commit 的變更**:`docs/progress.md`(這份,記錄 2026-10-01 下午段落的結束);`README.md`(使用者自己加的段落);`docs/README.md`(對話開始前就有修改,目前看起來只剩換行符號差異)。`.claude/`、`.obsidian/` 要不要 commit 仍待使用者決定。`docs/01-Plans/imp-color-picker.md` 開頭寫「尚未 commit」已過時(實際已 commit),下次改到時一併修正。
+- **匯出 EPUB**:計畫在 `docs/01-Plans/Imp-Plan-ExportEpub.md`(已經使用者檢核),階段 1(`RenderModel` 抽出)、階段 2(EPUB 產生器)已完成;階段 3、4 暫緩(見上)。檔案系統第一、二階段與「匯出 PDF」已完成並推送。
 
-- **畫面調整(2026-09-30,已完成)**:任務檔 `docs/03-畫面調整.md`,計畫 `docs/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
-- **底部工具列(2026-09-30,已完成)**:任務檔 `docs/04-tldraw.md`,計畫 `docs/imp-tldraw-bar.md`。參考 tldraw 在畫布下方加浮動工具列(工具模式:選取 / 手形 / 文字 / 圖形 / 圖片,點擊或拖曳建立)與動作列(復原 / 重做 / 刪除 / 複製 / ⋮),手形 / 空白鍵 / 中鍵平移。五個步驟全部完成,規則寫在 `CLAUDE.md`「底部工具列與畫布工具」一節。下一步回到匯出 EPUB 階段 3(封面)。
-- **調色板(2026-09-30 起)**:任務檔 `docs/05-調色板.md`,計畫 `docs/imp-color-picker.md`。把原生選色器換成 Tailwind 色票(22 色系 × 11 深淺 + 黑白)與透明度 slider;透明度存成 `#rrggbbaa`(檔案格式變更,`SCHEMA_VERSION` 升為 2);頁面背景也用調色板但不含透明度;不保留自訂顏色。六個步驟**全部完成**,commit `c3ce372`(已推送);規則寫在 `CLAUDE.md`「調色板」一節。
-- **MCP server 評估(2026-09-30)**:`docs/eval-mcp-server.md`。結論:不需要先做腳本功能;先做「自動化指令層」,再在 Rust 端內嵌只接受本機連線的 MCP server。**只是評估,尚未排入實作**,等匯出 EPUB 告一段落後由使用者決定;文件第 9 節有待決定的問題。
+- **畫面調整(2026-09-30,已完成)**:任務檔 `docs/01-Plans/03-畫面調整.md`,計畫 `docs/01-Plans/imp-tool-bar.md`。左側按鈕列改成 Krita 式工具面板(`設定 → 工具面板` 勾選、左右停靠、拖曳移動、三欄 + 分隔條、版面記在 `localStorage`)。七個步驟全部完成並 commit(`4fe677d`,已快轉合併到 `main` 並推送),規則寫在 `CLAUDE.md`「工具面板」一節;任務檔與參考截圖(`docs/images/`)不 commit。下一步回到匯出 EPUB 階段 2。
+- **底部工具列(2026-09-30,已完成)**:任務檔 `docs/01-Plans/04-tldraw.md`,計畫 `docs/01-Plans/imp-tldraw-bar.md`。參考 tldraw 在畫布下方加浮動工具列(工具模式:選取 / 手形 / 文字 / 圖形 / 圖片,點擊或拖曳建立)與動作列(復原 / 重做 / 刪除 / 複製 / ⋮),手形 / 空白鍵 / 中鍵平移。五個步驟全部完成,規則寫在 `CLAUDE.md`「底部工具列與畫布工具」一節。下一步回到匯出 EPUB 階段 3(封面)。
+- **調色板(2026-09-30 起)**:任務檔 `docs/01-Plans/05-調色板.md`,計畫 `docs/01-Plans/imp-color-picker.md`。把原生選色器換成 Tailwind 色票(22 色系 × 11 深淺 + 黑白)與透明度 slider;透明度存成 `#rrggbbaa`(檔案格式變更,`SCHEMA_VERSION` 升為 2);頁面背景也用調色板但不含透明度;不保留自訂顏色。六個步驟**全部完成**,commit `c3ce372`(已推送);規則寫在 `CLAUDE.md`「調色板」一節。
+- **MCP server 評估(2026-09-30)**:`docs/01-Plans/eval-mcp-server.md`。結論:不需要先做腳本功能;先做「自動化指令層」,再在 Rust 端內嵌只接受本機連線的 MCP server。**只是評估,尚未排入實作**,等匯出 EPUB 告一段落後由使用者決定;文件第 9 節有待決定的問題。
 - 第一、二階段:存檔 / 開啟、自動備份與當機復原。第一階段的對話框流程(開啟 / 另存)還沒有正式的人工測試紀錄;使用者已經在實際使用(建立過自己的專案)。
 - **匯出 PDF(2026-09-18 實作)**:內嵌 Typst 把所有頁面排版成 PDF,換行位置由編輯器量測後交給 Typst,規則寫在 `CLAUDE.md`「匯出 PDF」一節。**人工驗證(字型嵌入、中文可搜尋、疊圖比對)還沒有紀錄**,見下方「待辦 → 使用者」。
 - **方向調整(2026-09-22)**:使用者決定把**排版與輸出的主軸改成 EPUB 3 固定版面**,PDF 降為衍生輸出。重構方案在 `0-Task/plan-epubv2.md`(不在 repo,目前這台機器上也沒有);**階段 0(字型自備化)已完成**。
-- **匯出 EPUB(2026-09-23 起)**:計畫 `docs/Imp-Plan-ExportEpub.md`(任務檔 `docs/Task-Plan-ExportEpub.md`),共五個階段:① `RenderModel` 抽出 ② EPUB 產生器 ③ 封面 ④ command 與前端接線 ⑤ 文件同步。**階段 1 已完成**,PDF 輸出經比對未改變。
+- **匯出 EPUB(2026-09-23 起)**:計畫 `docs/01-Plans/Imp-Plan-ExportEpub.md`(任務檔 `docs/01-Plans/Task-Plan-ExportEpub.md`),共五個階段:① `RenderModel` 抽出 ② EPUB 產生器 ③ 封面 ④ command 與前端接線 ⑤ 文件同步。**階段 1 已完成**,PDF 輸出經比對未改變。
 - 檔案系統第三階段**暫緩**:使用者重新提出前不要實作。重新開始時,先問下方「待辦 → Claude」列的四個規格問題。
 - 同時仍在理解追趕期:前端編輯器 v1 加上檔案系統的程式碼超過了使用者目前的理解程度,正在透過 `docs/` 的學習文件追上。**建議:** 讀完 `04-state-and-undo.md` 之前,先不要新增功能。
 - 檔案系統計畫共三階段(專案存取 → 自動備份 → 系統素材庫與範本),每個階段完成後等使用者確認才進行下一個。計畫檔放在 `0-Task/plan-filesystem.md`(不在 repo)。
@@ -148,7 +148,7 @@
 | 2026-09-22 | EPUB 可行性評估(`0-Task/plan-epub.md`)→ 使用者改為「以 EPUB 3 固定版面為主」→ 重構方案(`0-Task/plan-epubv2.md`) |
 | 2026-09-22 | **EPUB 重構階段 0:字型自備化**。新增 `fonts/`(Geist + Noto Sans TC,Regular/Bold,皆 SIL OFL),畫面與 Rust 匯出共用同一批檔案;移除對系統微軟正黑體的依賴與「找不到字型」的失敗路徑;`font_families()` 加 `LEGACY_FAMILIES` 讓舊專案仍能正確對應 |
 | 2026-09-23 | 從 GitHub pull 同步(`b7255ed..99cdfc3`:匯出 PDF、EPUB 選單項目、字型自備化);`CLAUDE.md` 的長期目標改寫成以 EPUB 3 固定版面為主 |
-| 2026-09-23 | **匯出 EPUB 實作計畫**(`docs/Imp-Plan-ExportEpub.md`)並經使用者檢核 |
+| 2026-09-23 | **匯出 EPUB 實作計畫**(`docs/01-Plans/Imp-Plan-ExportEpub.md`)並經使用者檢核 |
 | 2026-09-23 | **匯出 EPUB 階段 1:`RenderModel` 抽出**。`src-tauri/src/export/` 拆成 `render.rs`(文件 → 可繪製元素,含分行、頂點、字型對應、圖片略過)、`pdf.rs`(render model → Typst 的 `data.json`)、`mod.rs`(共用型別);測試 fixture 抽到 `test_support.rs`。`ExportOutput.pdf` 改名 `bytes`。PDF 輸出未改變(以 `export_preview` 的點陣圖 hash 比對) |
 | 2026-09-30 | **工具面板步驟 1**:新增 `src/lib/dock/`(`panels.ts` 面板定義、`dock-layout.ts` 停靠版面純函式與 `parseDockLayout`、19 個測試);`SIDER_BUTTONS` 與 `PANELS` 改由 `PanelId` 推導。畫面不變 |
 | 2026-09-30 | **工具面板步驟 2**:`MenuNode` 新增 `checkbox`(勾選狀態由 `AppMenubar` 的 `isChecked` 傳入);`COMMANDS` 由面板定義產生 9 個 `panel.<id>`;`設定 → 工具面板` 子選單。暫時接到原本的單一面板(勾選 = 開啟該面板) |
@@ -158,7 +158,7 @@
 | 2026-09-30 | **工具面板步驟 6**:`lib/dock/dock-storage.ts`(`localStorage`,損壞 / 無法存取時回到預設)+ 5 個測試;`panel.resetLayout`「重設版面」放在 `設定 → 工具面板` 最下方。以無頭 Edge 驗證重新整理後保留、選單重設、損壞資料回到預設 |
 | 2026-09-30 | **工具面板步驟 7**:刪除 `app-siderbutton.tsx`、`sider-panel.tsx`(使用者決定);`CLAUDE.md` 新增「工具面板」一節並更新目錄結構、狀態、選單列;`docs/01-overview.md` 的畫面對應圖、`docs/02-architecture.md` 的目錄表 / 例子 / 自我檢查題改成工具面板 |
 | 2026-09-30 | 工具面板 commit `4fe677d`,連同 `f8ee3df`(EPUB 階段 1)推送到新的遠端分支 `refactor/render-model` |
-| 2026-09-30 | **MCP server 評估文件**(`docs/eval-mcp-server.md`):現況盤點(`element/*` 不做執行時驗證、只作用在目前頁面、沒有批次復原)、架構選項、第一批工具草案、安全性、分階段建議 |
+| 2026-09-30 | **MCP server 評估文件**(`docs/01-Plans/eval-mcp-server.md`):現況盤點(`element/*` 不做執行時驗證、只作用在目前頁面、沒有批次復原)、架構選項、第一批工具草案、安全性、分階段建議 |
 | 2026-09-30 | **匯出 EPUB 階段 2:EPUB 產生器**(`src-tauri/src/export/epub/`,尚未接 UI)。新增 `zip` 8.6(只開 `deflate-flate2`);字型清單抽到 `export/fonts.rs` 與 PDF 共用;17 個新測試(ZIP 結構、manifest 完整、XML 格式正確、使用者文字不變成標記、六種物件、略過圖片、只內嵌用到的字型、字型度量一致)。以 headless Edge 對照 PDF 點陣圖:文字位置相差 ≤ 0.5 pt。和計畫不同處記在計畫文件階段 2 |
 | 2026-09-30 | EPUB 階段 2 commit `ee24f50` 並推送到 `main` |
 | 2026-09-30 | **底部工具列步驟 1**:`EditorState` 加 `tool` / `shapeKind`,新增 `tool/set`、`element/duplicate`(新 id 由 action 帶入,reducer 保持純函式)、`lib/editor/tools.ts`(工具與快捷鍵的單一資料來源);12 個新測試。畫面不變 |
@@ -193,6 +193,7 @@
 | 2026-10-07 | **主頁與動態變數**(計畫 `docs/Plans/imp-master-pages.md`):主頁(`masters`,可以「以另一個主頁為基礎」形成階層,最多 8 層)、頁面以 `masterId` 套用;Affinity 式「頁面」面板(主頁 / 頁面縮圖、套用主頁、以…為基礎);「新增頁面」「新增主頁」對話框;動態變數 `{頁碼}` `{總頁數}` `{文件名稱}` `{頁面名稱}`;匯出時展開到每頁;`schemaVersion` 7。vitest 324 個、Rust 100 個通過,無頭 Edge 驗證 59 項,另以真實匯出內容比對 PDF / EPUB |
 | 2026-10-05 | **偏好設定調整**(計畫 `docs/Plans/imp-偏好設定調整.html`):「設定」選單拆成「文件 ▸ / 偏好設定 ▸」,頁面設定、頁碼管理、格線與參考線各自一個對話框(共用外框,由 `SETTINGS_PAGES` 產生);紙張增加到 14 種並分組。vitest 265 個通過,無頭 Edge 驗證 34 項 |
 | 2026-10-01 | **型別重構步驟 6:文件同步**。`docs-website/types.html` 重畫關係圖與 x / y 圖、改寫說明卡;`CLAUDE.md` 文件模型 / 工具面板 / 檔案系統 / 匯出各節(含「改一邊要改兩邊」的常數清單);`docs/01-overview.md`、`docs/02-architecture.md` 更新 |
+| 2026-10-08 | **整理 `docs/`**:最上層的任務檔與計畫(`03-畫面調整`、`04-tldraw`、`05-調色板`、`07-階層式主頁`、`Task-Plan-ExportEpub`、`Imp-Plan-ExportEpub`、`imp-tool-bar`、`imp-tldraw-bar`、`imp-color-picker`、`eval-mcp-server`)搬到 `docs/01-Plans/`(有追蹤的用 `git mv`);`01-overview.md`、`02-architecture.md`、`progress.md`、`README.md` 與子資料夾 `Plans/`、`images/`、`參考文件/` 不動。`CLAUDE.md`、這份檔案(含歷史紀錄)、`docs/Plans/imp-master-pages.md`、`epub/mod.rs` 的註解改成新路徑 |
 
 ---
 
@@ -235,9 +236,9 @@
 | 工具列**不做「匯出」下拉**,直接並排兩顆按鈕 | 兩個輸出都一鍵可及。使用者確認(2026-09-23) |
 | 語言碼這次固定 `zh-TW`,但**集中在單一常數** | 文件模型還沒有語言欄位;後續要做多語系,集中定義才不用全域搜尋替換 |
 | PDF 與 EPUB **共用 `RenderModel`**,格式專屬的細節不進模型 | 座標、旋轉、分行、字型對應、圖片略過只定義一次;媒體型別之類的打包細節留在各自的產生器 |
-| 工具面板:9 個工具**各自是獨立面板**,同側**上下堆疊**,三欄之間是**可拖曳的分隔條**(不是縮放滑桿),**自行實作不加套件** | 使用者確認(2026-09-30),見 `docs/imp-tool-bar.md` |
+| 工具面板:9 個工具**各自是獨立面板**,同側**上下堆疊**,三欄之間是**可拖曳的分隔條**(不是縮放滑桿),**自行實作不加套件** | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-tool-bar.md` |
 | 工具面板版面記在 **`localStorage`**,不進專案檔、不進 SQLite | 是 App 偏好不是文件內容;SQLite 的 `settings` 資料表還沒做,等偏好設定實作時再搬。計畫中的建議值,使用者未提出異議(2026-09-30) |
-| 顏色**只能從 Tailwind v4 色票選**(經典 22 色系 + 黑白),不保留自訂顏色;頁面背景也用調色板 | 使用者確認(2026-09-30),見 `docs/imp-color-picker.md` |
+| 顏色**只能從 Tailwind v4 色票選**(經典 22 色系 + 黑白),不保留自訂顏色;頁面背景也用調色板 | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-color-picker.md` |
 | 透明度存成顏色字串 **`#rrggbbaa`**(不另加 `opacity` 欄位),頁面背景不可透明;`SCHEMA_VERSION` 升為 2 | 不用改 `types.ts`,Konva / Typst 直接支援。使用者確認(2026-09-30) |
 | EPUB 輸出前把 8 位 hex 轉成 CSS `rgba()` / SVG `fill-opacity` | SVG 1.1 不允許 8 位 hex,較舊的閱讀引擎也不支援 |
 | rect / ellipse / polygon / star 合併成 **`shape` + `geometry`**,所有物件以外框左上角定位;draw.io 式**屬性面板**取代上方選取工具列;圖形內文字超出時照常顯示;自由繪圖這次不做 | 使用者確認(2026-10-01),見 `docs/Plans/imp-refactory-types.md` |
@@ -250,7 +251,7 @@
 | 跨頁物件:物件仍屬一頁,跨過書背的部分在對頁也畫、也匯出(依雜誌配對,和畫面模式無關);放開時中心在另一頁就換頁(**取代**單頁 / 雙頁時的「拖過書背不換頁」);圖片「在書背切開」另排任務 | 使用者確認(2026-10-07),見 `docs/Plans/imp-edit-crose-page.md` |
 | 主頁:主頁另存 `masters`,頁面以 `masterId` 套用、主頁以 `parentId` 形成階層;主頁物件在頁面上不能選取;新增「頁面」工具面板(真縮圖,頁籤列保留,**取代上一列「不要頁面面板」**);`{頁碼}` 跟頁碼規則;刪除主頁接到父主頁;背景不繼承;只做單頁 | 使用者確認(2026-10-07),見 `docs/Plans/imp-master-pages.md` |
 | 設定選單改成「文件 ▸(頁面設定、頁碼管理)/ 偏好設定 ▸(格線與參考線,Ctrl+,)」,每項一個對話框;設定頁由 `SETTINGS_PAGES` 清單推導;紙張 14 種分五組 | 使用者確認(2026-10-05),見 `docs/Plans/imp-偏好設定調整.html` |
-| 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/imp-tldraw-bar.md` |
+| 底部工具列採 **tldraw 的工具模式**(先選工具再到畫布點擊 / 拖曳建立,建立後回到選取);第一版只做現有物件類型;復原 / 重做移到底部動作列 | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-tldraw-bar.md` |
 
 ---
 
@@ -339,7 +340,7 @@
 - [ ] 之後撰寫的文件要涵蓋匯出 PDF:`03-document-model.md` 說明 pt 單位和 Typst 的對應;`06-rust-ipc.md` 說明 `ExportWorld` 為什麼是沙箱、為什麼換行由前端量測
 - [ ] `03-document-model.md` 要說明 `ImageElement.src` 是專案相對路徑,以及為什麼圖片要複製進專案
 - [ ] `06-rust-ipc.md` 要涵蓋 `AppError`、`ProjectState`、「前端不傳路徑」的設計
-- [ ] **匯出 EPUB 階段 3(封面)——暫緩,待後續討論**(2026-09-30)。重新開始前先和使用者討論封面做法(原計畫:用 Typst + `typst-render` 把第 1 頁算成 PNG,失敗時略過封面),見 `docs/Imp-Plan-ExportEpub.md` 階段 3
+- [ ] **匯出 EPUB 階段 3(封面)——暫緩,待後續討論**(2026-09-30)。重新開始前先和使用者討論封面做法(原計畫:用 Typst + `typst-render` 把第 1 頁算成 PNG,失敗時略過封面),見 `docs/01-Plans/Imp-Plan-ExportEpub.md` 階段 3
 - [ ] **檔案系統第三階段(系統素材庫與範本)——暫緩,等使用者重新提出**。重新開始時先問以下四題(括號內是建議):
   1. 套用範本時:**插入為新頁面**(在目前頁面之後,可復原)還是取代目前頁面?(建議:插入)
   2. 內建範本:把 8 個漸層佔位換成**3–4 個真正可套用的簡單版面**(含原本的示範內容),還是 8 個全部做成真的、或只放示範內容?(建議:3–4 個)

@@ -7,6 +7,7 @@
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
+  - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
@@ -250,7 +251,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ### 底部工具列與畫布工具（`bottom-toolbar.tsx` + `lib/editor/tools.ts`）
 
-參考 tldraw 的**工具模式**：先選工具，再到畫布上點擊或拖曳建立，建立後回到選取工具。計畫與決定：`docs/imp-tldraw-bar.md`。
+參考 tldraw 的**工具模式**：先選工具，再到畫布上點擊或拖曳建立，建立後回到選取工具。計畫與決定：`docs/01-Plans/imp-tldraw-bar.md`。
 
 - `EditorState.tool`（`select` / `hand` / `text` / `shape`）與 `shapeKind`（圖形工具建立的圖形，也是按鈕上顯示的「最近用過的圖形」）是 UI 狀態，不進復原歷史。圖片不是工具模式：按鈕直接開選檔對話框（和「檔案 → 匯入 → 圖片」共用 `home-page.tsx` 的 `importImage`）。
 - 工具列疊在畫布上（`absolute`），不佔版面，不影響畫布尺寸計算。
@@ -262,7 +263,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ### 調色板（`color-picker.tsx` + `lib/editor/palette.ts`）
 
-計畫與決定：`docs/imp-color-picker.md`。
+計畫與決定：`docs/01-Plans/imp-color-picker.md`。
 
 - 顏色**只能從 Tailwind v4 色票選**：經典 22 個色系 × 11 階深淺 + 黑、白，沒有自訂顏色輸入。不在色票裡的既有顏色（舊專案、示範內容）照常顯示與匯出，只是不會標示位置。
 - `palette.ts` 的資料照抄 Tailwind 的 oklch，載入時用 `oklchToHex` 換成 hex；**模型只存 hex**，Rust 驗證與匯出不認識 oklch。超出 sRGB 的顏色以「保持明度與色相、降低彩度」處理，少數飽和色和 Tailwind 官方 hex 差幾個數值。
@@ -437,7 +438,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ## 工具面板（`lib/dock` + `components/dock`）
 
-參考 Krita 的 Docker。計畫與決定：`docs/imp-tool-bar.md`。
+參考 Krita 的 Docker。計畫與決定：`docs/01-Plans/imp-tool-bar.md`。
 
 - **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
 - **屬性面板**（`properties`，預設在右側最上方）取代了原本的上方選取工具列：

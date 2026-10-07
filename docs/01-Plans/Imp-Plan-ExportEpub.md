@@ -1,6 +1,6 @@
 # 匯出 EPUB 實作計畫
 
-> 對應任務：`docs/Task-Plan-ExportEpub.md`（`menu-structure.ts:48` 的 `file.exportEpub` 尚未實作）
+> 對應任務：`docs/01-Plans/Task-Plan-ExportEpub.md`（`menu-structure.ts:48` 的 `file.exportEpub` 尚未實作）
 > 狀態：**階段 1、2 已完成**（2026-09-30），**階段 3（封面）暫緩，待後續討論**（2026-09-30 使用者決定）。原第 8 節的四個待決事項已於 2026-09-23 回覆，併入第 2 節
 > 撰寫日期：2026-09-23
 

@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Language of the publication and of every page. The document model has no language yet; this is
-/// the single place to replace once it does (see `docs/Imp-Plan-ExportEpub.md` §8).
+/// the single place to replace once it does (see `docs/01-Plans/Imp-Plan-ExportEpub.md` §8).
 pub const LANGUAGE: &str = "zh-TW";
 
 const UNTITLED_DOCUMENT: &str = "未命名文件";
