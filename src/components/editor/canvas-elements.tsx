@@ -8,7 +8,15 @@ import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
 import { konvaTextStyle } from "@/lib/editor/text-style";
-import type { CanvasElement, ElementId, ElementPatch, ImageElement, ShapeElement, ShapeLabel } from "@/lib/editor/types";
+import type {
+  CanvasElement,
+  ElementId,
+  ElementPatch,
+  ImageElement,
+  ShapeElement,
+  ShapeLabel,
+  TextElement,
+} from "@/lib/editor/types";
 import { measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "@/lib/project/project-context";
 
@@ -103,7 +111,15 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
   }
 }
 
-function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps }) {
+/** Position of a node drawn from an element that cannot be selected (master page content). */
+interface StaticNodeProps {
+  readonly x: number;
+  readonly y: number;
+  readonly rotation: number;
+  readonly listening: false;
+}
+
+function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps | StaticNodeProps }) {
   // react-konva 的 Stage 會橋接 React context，Konva 子樹內可以直接讀取專案 context
   const { resolveSrc } = useProject();
   const [image, status] = useImage(resolveSrc(element.src));
@@ -184,6 +200,46 @@ export function StaticShape({ shape }: { readonly shape: ShapeElement }) {
   );
 }
 
+// 文字節點的內容與樣式；可編輯的 ElementNode 與靜態的 StaticElement 共用，兩邊才不會畫得不一樣
+function textAttrs(element: TextElement) {
+  return {
+    text: element.text,
+    width: element.width,
+    fontSize: element.fontSize,
+    fontFamily: element.fontFamily,
+    ...konvaTextStyle(element),
+    align: element.align,
+    fill: element.fill,
+    lineHeight: TEXT_LINE_HEIGHT,
+  };
+}
+
+/**
+ * Draws an element that cannot be selected, dragged or edited: the content a page inherits from
+ * its master pages. Looks exactly like the same element drawn by `ElementNode`.
+ *
+ * Args:
+ *   props.element: Element in page coordinates.
+ *
+ * Returns:
+ *   Konva node that ignores pointer events.
+ */
+export function StaticElement({ element }: { readonly element: CanvasElement }) {
+  const position: StaticNodeProps = { x: element.x, y: element.y, rotation: element.rotation, listening: false };
+  switch (element.type) {
+    case "text":
+      return <Text {...position} {...textAttrs(element)} />;
+    case "shape":
+      return <StaticShape shape={element} />;
+    case "image":
+      return <ImageNode element={element} common={position} />;
+    default: {
+      const exhaustive: never = element;
+      return exhaustive;
+    }
+  }
+}
+
 /**
  * Renders one canvas element as the matching Konva node.
  *
@@ -220,14 +276,7 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
       return (
         <Text
           {...common}
-          text={element.text}
-          width={element.width}
-          fontSize={element.fontSize}
-          fontFamily={element.fontFamily}
-          {...konvaTextStyle(element)}
-          align={element.align}
-          fill={element.fill}
-          lineHeight={TEXT_LINE_HEIGHT}
+          {...textAttrs(element)}
           onDblClick={editOnDblClick}
           onDblTap={() => onEditText(element.id)}
           onTransform={(event) => {

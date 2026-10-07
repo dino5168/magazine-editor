@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   createBlankDocument,
   createImageElement,
+  createMasterPage,
   createShapeElement,
   createTextElement,
 } from "@/lib/editor/element-factory";
+import { isMasterGraphValid, masterChain } from "@/lib/editor/master-pages";
 import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
 import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
 import { isTextShadow } from "@/lib/editor/validation";
@@ -91,6 +93,15 @@ describe("project file fixture", () => {
     expect(sortedKeys(rules[0].odd)).toEqual(sortedKeys(factory.odd));
     expect(sortedKeys(rules[0].style)).toEqual(sortedKeys(factory.style));
     expect(rules[1].style.stroke).not.toBeNull();
+  });
+
+  it("stores master pages with the TypeScript field names and rules", () => {
+    const { masters, pages } = fixture.document;
+    const factory = createMasterPage("x", { width: 1, height: 1 }, "#ffffff", null);
+    expect(masters.map((master) => sortedKeys(master))).toEqual([sortedKeys(factory), sortedKeys(factory)]);
+    expect(isMasterGraphValid(fixture.document)).toBe(true);
+    // 兩層：頁面套用的主頁有父主頁，兩層的物件都會畫在頁面底下
+    expect(masterChain(masters, pages[0].masterId).map((master) => master.id)).toEqual(["master-a", "master-b"]);
   });
 
   it("stores text decoration with the TypeScript field names and rules", () => {

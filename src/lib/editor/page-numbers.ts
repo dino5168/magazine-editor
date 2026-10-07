@@ -9,6 +9,7 @@ import type {
   PageNumberRule,
   PageNumberStyle,
   ShapeElement,
+  Sheet,
   TextStyle,
 } from "./types";
 import { PLAIN_TEXT_DECORATION } from "./text-style";
@@ -140,8 +141,24 @@ export function isVerticalPosition(position: PageNumberPosition): boolean {
  */
 export function pageNumberText(rule: PageNumberRule, pageIndex: number): string {
   const face = pageNumberFace(rule, pageIndex);
-  const text = `${face.prefix}${rule.start + (pageIndex + 1 - rule.from)}${face.suffix}`;
+  const text = `${face.prefix}${displayedPageNumber([rule], pageIndex)}${face.suffix}`;
   return isVerticalPosition(face.position) ? Array.from(text).join("\n") : text;
+}
+
+/**
+ * The number a page shows: counted by the rule covering it (with its start value), or the page's
+ * position in the document when no rule covers it. The `{頁碼}` text variable uses it.
+ *
+ * Args:
+ *   rules: Page number rules.
+ *   pageIndex: 0-based page index in the document.
+ *
+ * Returns:
+ *   The page number.
+ */
+export function displayedPageNumber(rules: readonly PageNumberRule[], pageIndex: number): number {
+  const rule = findPageNumberRule(rules, pageIndex);
+  return rule ? rule.start + (pageIndex + 1 - rule.from) : pageIndex + 1;
 }
 
 /** Id of a page's page number shape; never collides with element ids (they are UUIDs). */
@@ -177,7 +194,7 @@ function horizontalAlign(position: PageNumberPosition): TextStyle["align"] {
  * A margin of 0 (or too small for the box) falls back to PAGE_NUMBER_FALLBACK_INSET_PT from the edge.
  *
  * Args:
- *   page: The page.
+ *   page: The page (a master page passes pageIndex -1 and gets no number).
  *   pageIndex: 0-based index of the page in the document.
  *   rules: Page number rules.
  *   margins: Document margins.
@@ -187,7 +204,7 @@ function horizontalAlign(position: PageNumberPosition): TextStyle["align"] {
  *   Shape element in page coordinates, or null when no rule covers the page.
  */
 export function pageNumberShape(
-  page: Page,
+  page: Sheet,
   pageIndex: number,
   rules: readonly PageNumberRule[],
   margins: Margins,

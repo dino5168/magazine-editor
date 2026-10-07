@@ -50,6 +50,7 @@ describe("usedFontFamilies", () => {
       name: "doc",
       margins: DEFAULT_MARGINS,
       pageNumberRules: [],
+      masters: [],
       pages: [
         { ...createPage("P1", SIZE, "#ffffff"), elements: [text, plainShape] },
         { ...createPage("P2", SIZE, "#ffffff"), elements: [labelled, { ...text, id: "t2" }] },

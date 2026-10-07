@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -53,6 +53,69 @@
         }
       }
     ],
+    "masters": [
+      {
+        "id": "master-a",
+        "name": "Master A",
+        "width": 595.2755905511812,
+        "height": 841.8897637795276,
+        "background": "#ffffff",
+        "parentId": null,
+        "elements": [
+          {
+            "id": "el-master-band",
+            "type": "shape",
+            "x": 0,
+            "y": 0,
+            "rotation": 0,
+            "width": 595.2755905511812,
+            "height": 24,
+            "geometry": { "kind": "rect", "cornerRadius": 0 },
+            "fill": "#4f46e5",
+            "stroke": null,
+            "label": null
+          }
+        ]
+      },
+      {
+        "id": "master-b",
+        "name": "Master B",
+        "width": 595.2755905511812,
+        "height": 841.8897637795276,
+        "background": "#fef3c7",
+        "parentId": "master-a",
+        "elements": [
+          {
+            "id": "el-master-footer",
+            "type": "text",
+            "x": 30,
+            "y": 800,
+            "rotation": 0,
+            "text": "範例雜誌 · {頁碼}",
+            "width": 535,
+            "fontSize": 9,
+            "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+            "fontStyle": "normal",
+            "italic": false,
+            "underline": false,
+            "strikethrough": false,
+            "shadow": null,
+            "align": "right",
+            "fill": "#525252"
+          },
+          {
+            "id": "el-master-logo",
+            "type": "image",
+            "x": 30,
+            "y": 790,
+            "rotation": 0,
+            "src": "assets/images/fedcba9876543210fedcba9876543210.png",
+            "width": 40,
+            "height": 30
+          }
+        ]
+      }
+    ],
     "pages": [
       {
         "id": "page-1",
@@ -60,6 +123,7 @@
         "width": 595.2755905511812,
         "height": 841.8897637795276,
         "background": "#ffffff",
+        "masterId": "master-b",
         "elements": [
           {
             "id": "el-text",

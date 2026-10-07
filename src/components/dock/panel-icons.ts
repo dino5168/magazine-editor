@@ -1,5 +1,6 @@
 import {
   CloudUpload,
+  Files,
   Image,
   LayoutTemplate,
   Layers,
@@ -21,6 +22,7 @@ export const PANEL_ICONS = {
   draw: Pencil,
   upload: CloudUpload,
   background: PaintBucket,
+  pages: Files,
   properties: SlidersHorizontal,
   layers: Layers,
 } as const satisfies Record<PanelId, LucideIcon>;

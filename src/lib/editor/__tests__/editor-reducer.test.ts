@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MARGINS, createPage, createShapeElement, createTextElement } from "../element-factory";
+import {
+  DEFAULT_MARGINS,
+  createMasterPage,
+  createPage,
+  createShapeElement,
+  createTextElement,
+} from "../element-factory";
 import {
   DUPLICATE_OFFSET_PT,
   HISTORY_LIMIT,
@@ -7,6 +13,7 @@ import {
   editorReducer,
   selectActivePage,
   selectIsDirty,
+  selectReturnPageId,
   selectSelectedElement,
   selectSelectedElements,
   type EditorAction,
@@ -14,13 +21,14 @@ import {
 } from "../editor-reducer";
 import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
-import type { EditorDocument } from "../types";
+import type { EditorDocument, MasterPage, Page } from "../types";
 
 function blankState(): EditorState {
   const document: EditorDocument = {
     name: "測試文件",
     margins: DEFAULT_MARGINS,
     pageNumberRules: [],
+    masters: [],
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
   };
   return createInitialState(document);
@@ -466,6 +474,205 @@ describe("editorReducer / pages", () => {
   });
 });
 
+describe("editorReducer / master pages", () => {
+  const SIZE = { width: 595, height: 842 };
+  const master = (id: string, parentId: string | null = null): MasterPage => ({
+    ...createMasterPage(`Master ${id}`, SIZE, "#ffffff", parentId),
+    id,
+  });
+  const page = (id: string, masterId: string | null = null): Page => ({
+    ...createPage(id, SIZE, "#ffffff", masterId),
+    id,
+  });
+
+  it("adds a master page, switches to it and edits its elements like a page", () => {
+    const initial = blankState();
+    const element = createShapeElement("rect", { x: 10, y: 10 });
+    const state = run(initial, { type: "master/add", master: master("A") }, { type: "element/add", element });
+
+    expect(state.activePageId).toBe("A");
+    expect(selectActivePage(state)).toBe(state.history.present.masters[0]);
+    expect(state.history.present.masters[0].elements).toEqual([element]);
+    // 頁面沒有被動到
+    expect(state.history.present.pages).toBe(initial.history.present.pages);
+    expect(run(state, { type: "history/undo" }, { type: "history/undo" }).activePageId).toBe(initial.activePageId);
+  });
+
+  it("rejects a master with a used id, a missing parent, a bad name or size", () => {
+    const state = run(blankState(), { type: "master/add", master: master("A") });
+    const pageId = state.history.present.pages[0].id;
+
+    for (const bad of [
+      master("A"),
+      { ...master("B"), id: pageId },
+      master("B", "missing"),
+      { ...master("B"), name: " " },
+      { ...master("B"), width: 0 },
+    ]) {
+      expect(editorReducer(state, { type: "master/add", master: bad })).toBe(state);
+    }
+    expect(run(state, { type: "master/add", master: master("B", "A") }).history.present.masters[1].parentId).toBe("A");
+  });
+
+  it("renames and recolours a master page with the page actions", () => {
+    const state = run(
+      blankState(),
+      { type: "master/add", master: master("A") },
+      { type: "page/rename", id: "A", name: "刊頭" },
+      { type: "page/setBackground", id: "A", color: "#fef3c7" },
+    );
+    expect(state.history.present.masters[0]).toMatchObject({ name: "刊頭", background: "#fef3c7", parentId: null });
+  });
+
+  it("re-parents a master page but never into a cycle", () => {
+    const state = run(
+      blankState(),
+      { type: "master/add", master: master("A") },
+      { type: "master/add", master: master("B", "A") },
+      { type: "master/add", master: master("C") },
+    );
+    const moved = run(state, { type: "master/setParent", id: "C", parentId: "B" });
+    expect(moved.history.present.masters.find((m) => m.id === "C")?.parentId).toBe("B");
+
+    expect(editorReducer(moved, { type: "master/setParent", id: "A", parentId: "C" })).toBe(moved);
+    expect(editorReducer(moved, { type: "master/setParent", id: "A", parentId: "A" })).toBe(moved);
+    expect(editorReducer(moved, { type: "master/setParent", id: "C", parentId: "B" })).toBe(moved);
+    expect(editorReducer(moved, { type: "master/setParent", id: "missing", parentId: null })).toBe(moved);
+  });
+
+  it("deletes a master page: its pages and child masters move to its parent", () => {
+    const initial = run(
+      blankState(),
+      { type: "master/add", master: master("A") },
+      { type: "master/add", master: master("B", "A") },
+      { type: "master/add", master: master("C", "B") },
+      { type: "page/addMany", pages: [page("p2", "B"), page("p3", "A")], index: 1 },
+      { type: "page/select", id: "B" },
+    );
+    const state = run(initial, { type: "master/delete", id: "B" });
+    const { masters, pages } = state.history.present;
+
+    expect(masters.map((m) => [m.id, m.parentId])).toEqual([["A", null], ["C", "A"]]);
+    expect(pages.map((p) => p.masterId)).toEqual([null, "A", "A"]);
+    // 正在編輯被刪除的主頁 → 回到第一頁
+    expect(state.activePageId).toBe(pages[0].id);
+    expect(run(state, { type: "history/undo" }).history.present).toBe(initial.history.present);
+    expect(editorReducer(state, { type: "master/delete", id: "B" })).toBe(state);
+  });
+
+  it("returns to the first page when an undo removes the master being edited", () => {
+    const state = run(blankState(), { type: "master/add", master: master("A") });
+    const undone = run(state, { type: "history/undo" });
+    expect(undone.activePageId).toBe(undone.history.present.pages[0].id);
+  });
+
+  it("duplicates a master page with new element ids right after it", () => {
+    const element = createShapeElement("rect", { x: 10, y: 10 });
+    const state = run(
+      blankState(),
+      { type: "master/add", master: master("A", null) },
+      { type: "element/add", element },
+      { type: "master/add", master: master("B") },
+    );
+    const copied = run(state, { type: "master/duplicate", id: "A", newId: "A2", elementIds: ["e2"] });
+    const { masters } = copied.history.present;
+
+    expect(masters.map((m) => m.id)).toEqual(["A", "A2", "B"]);
+    expect(masters[1]).toMatchObject({ name: "Master A 複本", parentId: null });
+    expect(masters[1].elements).toEqual([{ ...element, id: "e2" }]);
+    expect(copied.activePageId).toBe("A2");
+    // id 數量不符、新 id 已被使用
+    expect(editorReducer(state, { type: "master/duplicate", id: "A", newId: "A2", elementIds: [] })).toBe(state);
+    expect(editorReducer(state, { type: "master/duplicate", id: "A", newId: "B", elementIds: ["e2"] })).toBe(state);
+  });
+
+  it("adds several pages at an index in one undo step and activates the first", () => {
+    const initial = run(blankState(), { type: "master/add", master: master("A") });
+    const first = initial.history.present.pages[0].id;
+    const state = run(initial, { type: "page/addMany", pages: [page("x", "A"), page("y")], index: 0 });
+
+    expect(state.history.present.pages.map((p) => p.id)).toEqual(["x", "y", first]);
+    expect(state.history.present.pages[0].masterId).toBe("A");
+    expect(state.activePageId).toBe("x");
+    expect(state.history.past).toHaveLength(initial.history.past.length + 1);
+  });
+
+  it("rejects pages with a used id, a missing master or a bad index", () => {
+    const state = run(blankState(), { type: "master/add", master: master("A") });
+    for (const action of [
+      { pages: [], index: 0 },
+      { pages: [page("x")], index: 2 },
+      { pages: [page("x")], index: 0.5 },
+      { pages: [page("x"), page("x")], index: 0 },
+      { pages: [page("A")], index: 0 },
+      { pages: [page("x", "missing")], index: 0 },
+      { pages: [{ ...page("x"), background: "red" }], index: 0 },
+    ]) {
+      expect(editorReducer(state, { type: "page/addMany", ...action })).toBe(state);
+    }
+  });
+
+  it("applies a master page to pages and ignores no-op or invalid requests", () => {
+    const state = run(
+      blankState(),
+      { type: "master/add", master: master("A") },
+      { type: "page/addMany", pages: [page("x"), page("y")], index: 1 },
+    );
+    const applied = run(state, { type: "page/setMaster", ids: ["x", "y"], masterId: "A" });
+    expect(applied.history.present.pages.map((p) => p.masterId)).toEqual([null, "A", "A"]);
+
+    expect(editorReducer(applied, { type: "page/setMaster", ids: ["x"], masterId: "A" })).toBe(applied);
+    expect(editorReducer(applied, { type: "page/setMaster", ids: ["x"], masterId: "missing" })).toBe(applied);
+    expect(editorReducer(applied, { type: "page/setMaster", ids: ["A"], masterId: null })).toBe(applied);
+    expect(editorReducer(applied, { type: "page/setMaster", ids: [], masterId: null })).toBe(applied);
+  });
+
+  it("duplicates a page with its master and elements", () => {
+    const element = createShapeElement("rect", { x: 10, y: 10 });
+    const state = run(
+      blankState(),
+      { type: "master/add", master: master("A") },
+      { type: "page/addMany", pages: [page("x", "A")], index: 1 },
+      { type: "element/add", element },
+    );
+    const copied = run(state, { type: "page/duplicate", id: "x", newId: "x2", elementIds: ["e2"] });
+    const pages = copied.history.present.pages;
+
+    expect(pages.map((p) => p.id).slice(1)).toEqual(["x", "x2"]);
+    expect(pages[2]).toMatchObject({ name: "x 複本", masterId: "A", elements: [{ ...element, id: "e2" }] });
+    expect(copied.activePageId).toBe("x2");
+  });
+
+  it("gives a page added while editing a master that master", () => {
+    const state = run(blankState(), { type: "master/add", master: master("A") }, { type: "page/add" });
+    expect(state.history.present.pages[1].masterId).toBe("A");
+    // 從頁面新增：沿用該頁的主頁
+    expect(run(state, { type: "page/add" }).history.present.pages[2].masterId).toBe("A");
+  });
+
+  it("remembers the page shown before editing a master page", () => {
+    const initial = run(blankState(), { type: "page/addMany", pages: [page("x"), page("y")], index: 1 });
+    const state = run(initial, { type: "page/select", id: "x" }, { type: "master/add", master: master("A") });
+    expect(state.activePageId).toBe("A");
+    expect(selectReturnPageId(state)).toBe("x");
+    // 記住的頁面被刪除 → 回到第一頁
+    const deleted = run(state, { type: "page/delete", id: "x" });
+    expect(selectReturnPageId(deleted)).toBe(deleted.history.present.pages[0].id);
+    // 沒有變化時仍回傳同一個 state
+    expect(editorReducer(state, { type: "page/select", id: "A" })).toBe(state);
+  });
+
+  it("resizes master pages with the page setup", () => {
+    const state = run(blankState(), { type: "master/add", master: master("A") });
+    const resized = run(state, {
+      type: "document/setPageSetup",
+      size: { width: 400, height: 600 },
+      margins: state.history.present.margins,
+    });
+    expect(resized.history.present.masters[0]).toMatchObject({ width: 400, height: 600 });
+  });
+});
+
 describe("editorReducer / history", () => {
   it("undoes and redoes document changes", () => {
     const element = createShapeElement("rect", { x: 0, y: 0 });
@@ -628,6 +835,7 @@ describe("editorReducer / project", () => {
       name: "另一個專案",
       margins: DEFAULT_MARGINS,
       pageNumberRules: [],
+      masters: [],
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
     };
 

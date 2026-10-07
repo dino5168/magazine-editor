@@ -3,6 +3,7 @@ import type { PanelId } from "@/lib/dock/panels";
 import { BackgroundPanel } from "./background-panel";
 import { ElementsPanel } from "./elements-panel";
 import { LayersPanel } from "./layers-panel";
+import { PagesPanel } from "./pages-panel";
 import { PhotosPanel } from "./photos-panel";
 import { DrawPanel } from "./placeholder-panels";
 import { PropertiesPanel } from "./properties-panel";
@@ -19,6 +20,7 @@ export const PANELS = {
   draw: DrawPanel,
   upload: UploadPanel,
   background: BackgroundPanel,
+  pages: PagesPanel,
   properties: PropertiesPanel,
   layers: LayersPanel,
 } as const satisfies Record<PanelId, ComponentType>;

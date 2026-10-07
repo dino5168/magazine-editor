@@ -15,7 +15,7 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v5: `document.pageNumberRules`. Missing in older files and backups → no page numbers.
 /// v6: text styles (text elements, shape labels, page numbers) gain `italic` / `underline` /
 /// `strikethrough` / `shadow`. Missing in older files and backups → plain text.
-pub const SCHEMA_VERSION: u32 = 6;
+pub const SCHEMA_VERSION: u32 = 7;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -30,6 +30,8 @@ pub const FONT_SIZE_MIN: f64 = 6.0;
 pub const FONT_SIZE_MAX: f64 = 400.0;
 /// Largest page number range end / start value; same as `PAGE_NUMBER_MAX` in `src/lib/editor/page-numbers.ts`.
 pub const PAGE_NUMBER_MAX: u32 = 99999;
+/// Longest chain of master pages, counting the top one; same as `MASTER_DEPTH_MAX` in `src/lib/editor/master-pages.ts`.
+pub const MASTER_DEPTH_MAX: usize = 8;
 /// Longest page number prefix / suffix (characters); same as `PAGE_NUMBER_AFFIX_MAX_LENGTH`.
 pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
 /// Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in `src/lib/editor/validation.ts`.
@@ -61,6 +63,10 @@ pub struct Document {
     /// Missing in files before v5 → no page numbers.
     #[serde(default, rename = "pageNumberRules")]
     pub page_number_rules: Vec<PageNumberRule>,
+    /// Content shared by the pages that use it. The frontend draws it into each page before
+    /// exporting, so the exporters never read it. Missing in older files → none.
+    #[serde(default)]
+    pub masters: Vec<MasterPage>,
     pub pages: Vec<Page>,
 }
 
@@ -130,6 +136,22 @@ pub struct Page {
     pub height: f64,
     pub background: String,
     pub elements: Vec<Element>,
+    /// Master page drawn under the elements. Missing in older files → none.
+    #[serde(default, rename = "masterId")]
+    pub master_id: Option<String>,
+}
+
+/// A master page: like a page, plus the master page it is based on.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MasterPage {
+    pub id: String,
+    pub name: String,
+    pub width: f64,
+    pub height: f64,
+    pub background: String,
+    pub elements: Vec<Element>,
+    #[serde(default, rename = "parentId")]
+    pub parent_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -424,17 +446,59 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
     validate_margins(&document.margins)?;
     validate_page_number_rules(&document.page_number_rules)?;
     for page in &document.pages {
-        require_id(&page.id)?;
-        if !(page.width > 0.0 && page.height > 0.0) {
-            return Err(AppError::invalid_project(format!("page {} has a non-positive size", page.id)));
-        }
-        require_background_color(&page.background)?;
-        for element in &page.elements {
-            validate_element(element)?;
-        }
+        validate_sheet(&page.id, page.width, page.height, &page.background, &page.elements)?;
     }
+    for master in &document.masters {
+        validate_sheet(&master.id, master.width, master.height, &master.background, &master.elements)?;
+    }
+    validate_master_graph(document)?;
     for asset in assets {
         validate_asset_path(&asset.src)?;
+    }
+    Ok(())
+}
+
+/// What pages and master pages have in common.
+fn validate_sheet(id: &str, width: f64, height: f64, background: &str, elements: &[Element]) -> AppResult<()> {
+    require_id(id)?;
+    if !(width > 0.0 && height > 0.0) {
+        return Err(AppError::invalid_project(format!("page {id} has a non-positive size")));
+    }
+    require_background_color(background)?;
+    for element in elements {
+        validate_element(element)?;
+    }
+    Ok(())
+}
+
+/// Same rules as TS `isMasterGraphValid`: page and master ids unique across both lists, every
+/// `masterId` / `parentId` names an existing master, no cycles, chains at most MASTER_DEPTH_MAX long.
+fn validate_master_graph(document: &Document) -> AppResult<()> {
+    use std::collections::{HashMap, HashSet};
+    let ids: Vec<&str> = document.pages.iter().map(|p| p.id.as_str()).chain(document.masters.iter().map(|m| m.id.as_str())).collect();
+    if ids.iter().collect::<HashSet<_>>().len() != ids.len() {
+        return Err(AppError::invalid_project("duplicate page or master page id"));
+    }
+    let parents: HashMap<&str, Option<&str>> =
+        document.masters.iter().map(|m| (m.id.as_str(), m.parent_id.as_deref())).collect();
+    let missing = |id: &Option<String>| id.as_deref().is_some_and(|id| !parents.contains_key(id));
+    if let Some(page) = document.pages.iter().find(|page| missing(&page.master_id)) {
+        return Err(AppError::invalid_project(format!("page {} uses a missing master page", page.id)));
+    }
+    if let Some(master) = document.masters.iter().find(|master| missing(&master.parent_id)) {
+        return Err(AppError::invalid_project(format!("master page {} is based on a missing master page", master.id)));
+    }
+    // 每個主頁往上走到最上層：走超過上限（含循環）就不合法
+    for master in &document.masters {
+        let mut depth = 1;
+        let mut parent = master.parent_id.as_deref();
+        while let Some(id) = parent {
+            depth += 1;
+            if depth > MASTER_DEPTH_MAX {
+                return Err(AppError::invalid_project(format!("master page {} is nested too deeply or in a cycle", master.id)));
+            }
+            parent = parents[id];
+        }
     }
     Ok(())
 }
@@ -605,8 +669,10 @@ pub fn validate_asset_path(src: &str) -> AppResult<()> {
 
 /// Returns every asset path referenced by the document or listed in the asset panel.
 pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) -> impl Iterator<Item = &'a str> {
-    let from_elements = document.pages.iter().flat_map(|page| {
-        page.elements.iter().filter_map(|element| match element {
+    // 主頁上的圖片也算：否則開檔清理會刪掉只用在主頁上的圖片
+    let sheets = document.pages.iter().map(|page| &page.elements).chain(document.masters.iter().map(|master| &master.elements));
+    let from_elements = sheets.flat_map(|elements| {
+        elements.iter().filter_map(|element| match element {
             Element::Image(image) => Some(image.src.as_str()),
             _ => None,
         })
@@ -968,5 +1034,68 @@ mod tests {
         let refs: Vec<_> = referenced_assets(&project.document, &project.assets).collect();
         assert!(refs.iter().all(|src| src.starts_with("assets/images/")));
         assert!(refs.len() >= 2);
+        // 只用在主頁上的圖片也要算進去，開檔清理才不會刪掉它
+        assert!(refs.contains(&"assets/images/fedcba9876543210fedcba9876543210.png"));
+    }
+
+    #[test]
+    fn reads_master_pages_and_defaults_them_in_older_files() {
+        let document = parse_project(FIXTURE).unwrap().document;
+        assert_eq!(document.masters.len(), 2);
+        assert_eq!(document.masters[1].parent_id.as_deref(), Some("master-a"));
+        assert_eq!(document.pages[0].master_id.as_deref(), Some("master-b"));
+
+        // v6 檔案沒有主頁
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(6);
+        value["document"].as_object_mut().unwrap().remove("masters");
+        value["document"]["pages"][0].as_object_mut().unwrap().remove("masterId");
+        let document = parse_project(&value.to_string()).unwrap().document;
+        assert!(document.masters.is_empty());
+        assert_eq!(document.pages[0].master_id, None);
+        assert!(parse_project(FIXTURE_V2).unwrap().document.masters.is_empty());
+    }
+
+    #[test]
+    fn rejects_invalid_master_references() {
+        let with = |edit: &dyn Fn(&mut Value)| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            edit(&mut value["document"]);
+            parse_project(&value.to_string())
+        };
+        assert!(with(&|_| {}).is_ok());
+        let cases: [(&str, &dyn Fn(&mut Value)); 6] = [
+            ("page uses a missing master", &|d| d["pages"][0]["masterId"] = Value::from("missing")),
+            ("master based on a missing master", &|d| d["masters"][0]["parentId"] = Value::from("missing")),
+            ("cycle", &|d| d["masters"][0]["parentId"] = Value::from("master-b")),
+            ("based on itself", &|d| d["masters"][0]["parentId"] = Value::from("master-a")),
+            ("master id used by a page", &|d| d["masters"][0]["id"] = Value::from("page-1")),
+            ("invalid master background", &|d| d["masters"][1]["background"] = Value::from("#fef3c780")),
+        ];
+        for (what, edit) in cases {
+            assert!(matches!(with(edit), Err(AppError::InvalidProject(_))), "{what}");
+        }
+    }
+
+    #[test]
+    fn limits_how_deeply_master_pages_nest() {
+        let chain = |length: usize| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            let template = value["document"]["masters"][0].clone();
+            let masters: Vec<Value> = (0..length)
+                .map(|i| {
+                    let mut master = template.clone();
+                    master["id"] = Value::from(format!("m{i}"));
+                    master["elements"] = Value::Array(vec![]);
+                    master["parentId"] = if i == 0 { Value::Null } else { Value::from(format!("m{}", i - 1)) };
+                    master
+                })
+                .collect();
+            value["document"]["masters"] = Value::Array(masters);
+            value["document"]["pages"][0]["masterId"] = Value::from(format!("m{}", length - 1));
+            parse_project(&value.to_string())
+        };
+        assert!(chain(MASTER_DEPTH_MAX).is_ok());
+        assert!(matches!(chain(MASTER_DEPTH_MAX + 1), Err(AppError::InvalidProject(_))));
     }
 }

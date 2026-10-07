@@ -24,7 +24,7 @@ import type { Margins, Page, PageNumberPosition, PageNumberRule } from "../types
 // 假的量測：每個字寬 = 字級的一半
 const measure: MeasureTextWidth = (text, style) => Array.from(text).length * style.fontSize * 0.5;
 
-const page = (id: string): Page => ({ id, name: id, width: 600, height: 800, background: "#ffffff", elements: [] });
+const page = (id: string): Page => ({ id, name: id, width: 600, height: 800, background: "#ffffff", elements: [], masterId: null });
 const margins: Margins = { top: 60, right: 50, bottom: 40, left: 30 };
 
 function ruleAt(position: PageNumberPosition, from = 1, to = 10): PageNumberRule {

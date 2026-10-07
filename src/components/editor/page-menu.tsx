@@ -11,6 +11,7 @@ import {
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { PAGE_MOVE_SHORTCUT_LABELS } from "@/lib/editor/page-navigation";
 import { shiftedPageOrder, type PageShift } from "@/lib/editor/page-order";
+import { usePageDialogs } from "./page-dialogs";
 
 interface PageMenuProps {
   /** The trigger element (rendered with `asChild`). */
@@ -42,6 +43,7 @@ const MOVE_ITEMS: readonly { readonly shift: PageShift; readonly label: string; 
 export function PageMenu({ children, pageActions = false }: PageMenuProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
+  const { openAddPages } = usePageDialogs();
   const { pages } = state.history.present;
 
   return (
@@ -55,8 +57,9 @@ export function PageMenu({ children, pageActions = false }: PageMenuProps) {
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => event.stopPropagation()}
       >
-        <DropdownMenuItem inset onSelect={() => dispatch({ type: "page/add", after: state.activePageId })}>
-          插入頁面
+        {/* 開「新增頁面」對話框，預設插在目前頁之後（編輯主頁時沒有目前頁，預設加在最後） */}
+        <DropdownMenuItem inset onSelect={() => openAddPages("current")}>
+          插入頁面...
         </DropdownMenuItem>
         {pageActions && (
           <>

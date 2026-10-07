@@ -3,7 +3,7 @@ import { DEFAULT_MARGINS, createPage, createShapeElement, createTextElement } fr
 import { createPageNumberRule, pageNumberShapeId } from "@/lib/editor/page-numbers";
 import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
 import type { EditorDocument } from "@/lib/editor/types";
-import { buildExportRequest } from "../export-request";
+import { buildExportRequest, masterCopyId } from "../export-request";
 
 // 假的量測：每個字寬 = 字級的一半
 const measureWidth = (text: string, style: { fontSize: number }) => Array.from(text).length * style.fontSize * 0.5;
@@ -18,6 +18,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       pageNumberRules: [],
+      masters: [],
       pages: [
         { ...first, elements: [title, createShapeElement("rect", { x: 50, y: 50 })] },
         { ...second, elements: [body] },
@@ -45,6 +46,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       pageNumberRules: [],
+      masters: [],
       pages: [{ ...page, elements: [shape, labelled, empty] }],
     };
     const widths: number[] = [];
@@ -67,6 +69,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       pageNumberRules: [{ ...rule, even: { ...rule.even, prefix: "第 ", suffix: " 頁" } }],
+      masters: [],
       pages: [first, { ...second, elements: [createShapeElement("rect", { x: 50, y: 50 })] }],
     };
 
@@ -80,5 +83,48 @@ describe("buildExportRequest", () => {
     const pageNumber = numbered[1];
     expect(pageNumber.id).toBe(pageNumberShapeId(second.id));
     expect(request.textLayouts[`${pageNumber.id}#label`].lines).toEqual(["第 2 頁"]);
+  });
+
+  it("draws master page content under each page with per-page ids and resolved variables", () => {
+    const size = { width: 595, height: 842 };
+    const band = createShapeElement("rect", { x: 50, y: 50 });
+    const footer = { ...createTextElement("body", { x: 100, y: 800 }), text: "{文件名稱} {頁碼}/{總頁數}" };
+    const own = { ...createTextElement("body", { x: 100, y: 300 }), text: "{頁面名稱}" };
+    const first = { ...createPage("封面", size, "#ffffff"), elements: [own] };
+    const second = { ...createPage("內頁", size, "#ffffff", "B"), elements: [createShapeElement("star", { x: 0, y: 0 })] };
+    const third = createPage("內頁 2", size, "#ffffff", "B");
+    const source: EditorDocument = {
+      name: "十月號",
+      margins: DEFAULT_MARGINS,
+      pageNumberRules: [],
+      masters: [
+        { id: "A", name: "Master A", ...size, background: "#ffffff", parentId: null, elements: [band] },
+        { id: "B", name: "Master B", ...size, background: "#ffffff", parentId: "A", elements: [footer] },
+      ],
+      pages: [first, second, third],
+    };
+
+    const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
+    const [p1, p2, p3] = request.document.pages;
+
+    // 沒有主頁的頁面：只換變數
+    expect(p1.elements).toEqual([{ ...own, text: "封面" }]);
+    // 有主頁：祖先主頁的物件在最下面、自己的物件在上面，id 每頁不同
+    expect(p2.elements.map((e) => e.id)).toEqual([masterCopyId(1, 0), masterCopyId(1, 1), second.elements[0].id]);
+    expect(p2.elements[0]).toEqual({ ...band, id: masterCopyId(1, 0) });
+    expect(p3.elements.map((e) => e.id)).toEqual([masterCopyId(2, 0), masterCopyId(2, 1)]);
+    expect(request.textLayouts[masterCopyId(1, 1)].lines).toEqual(["十月號 2/3"]);
+    expect(request.textLayouts[masterCopyId(2, 1)].lines).toEqual(["十月號 3/3"]);
+    // Rust 只接受 64 字以內的 id
+    expect(request.document.pages.flatMap((page) => page.elements).every((e) => e.id.length <= 64)).toBe(true);
+    // 原本的文件不變
+    expect(source.pages[1].elements).toHaveLength(1);
+  });
+
+  it("returns the same document when there are no masters, variables or page numbers", () => {
+    const page = { ...createPage("P", { width: 595, height: 842 }, "#ffffff"), elements: [createTextElement("body", { x: 0, y: 0 })] };
+    const source: EditorDocument = { name: "測試", margins: DEFAULT_MARGINS, pageNumberRules: [], masters: [], pages: [page] };
+    const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
+    expect(request.document).toBe(source);
   });
 });

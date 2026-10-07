@@ -82,7 +82,8 @@ export function findFontOption(family: string): FontOption | undefined {
 }
 
 /**
- * Lists every distinct `fontFamily` used by text, shape text and page numbers in the document (all pages).
+ * Lists every distinct `fontFamily` used by text, shape text and page numbers in the document (all
+ * pages and master pages).
  *
  * Args:
  *   document: The editor document.
@@ -92,8 +93,8 @@ export function findFontOption(family: string): FontOption | undefined {
  */
 export function usedFontFamilies(document: EditorDocument): string[] {
   const families = new Set<string>();
-  for (const page of document.pages) {
-    for (const element of page.elements) {
+  for (const sheet of [...document.pages, ...document.masters]) {
+    for (const element of sheet.elements) {
       if (element.type === "text") families.add(element.fontFamily);
       else if (element.type === "shape" && element.label) families.add(element.label.fontFamily);
     }

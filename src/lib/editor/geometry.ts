@@ -1,4 +1,4 @@
-import type { Bounds, CanvasElement, ElementId, Margins, Page, Point, Size, TextElement } from "./types";
+import type { Bounds, CanvasElement, ElementId, Margins, Point, Sheet, Size, TextElement } from "./types";
 
 export const TEXT_LINE_HEIGHT = 1.2;
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
@@ -187,7 +187,7 @@ export function pageCenter(page: { readonly width: number; readonly height: numb
  * Returns:
  *   Union of the page rectangle and all element bounds, in pt.
  */
-export function getContentBounds(page: Page): Bounds {
+export function getContentBounds(page: Sheet): Bounds {
   const pageRect: Bounds = { minX: 0, minY: 0, maxX: page.width, maxY: page.height };
   return page.elements.reduce((acc, element) => unionBounds(acc, getElementBounds(element)), pageRect);
 }

@@ -1,4 +1,5 @@
-import { createPage, createSampleDocument, type ShapeKind } from "./element-factory";
+import { createPage, createSampleDocument, nextPageNames, type ShapeKind } from "./element-factory";
+import { canSetParent, copyElements, deleteMaster, findSheet, isMasterId } from "./master-pages";
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
 import { isPageOrder } from "./page-order";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
@@ -23,9 +24,11 @@ import type {
   ElementId,
   ElementPatch,
   Margins,
+  MasterPage,
   Page,
   PageId,
   PageNumberRule,
+  Sheet,
   Size,
 } from "./types";
 
@@ -50,6 +53,8 @@ export interface EditorState {
   readonly history: EditorHistory;
   // 以下為 UI 狀態，不進入 undo 歷史
   readonly activePageId: PageId;
+  /** The page shown last (never a master page): 「回到頁面」 returns here after editing a master page. */
+  readonly lastPageId: PageId;
   /** Selected elements on the active page, in the order they were selected; empty when nothing is selected. */
   readonly selectedIds: readonly ElementId[];
   readonly view: EditorView;
@@ -85,12 +90,39 @@ export type EditorAction =
   | { readonly type: "element/duplicate"; readonly copies: readonly ElementCopy[] }
   /** `after` 省略時加在最後（「+」按鈕），有值時插在該頁後面（「插入頁面」） */
   | { readonly type: "page/add"; readonly after?: PageId }
+  /** Add Pages dialog: inserts these pages (built by the caller, ids included) before `index`. */
+  | { readonly type: "page/addMany"; readonly pages: readonly Page[]; readonly index: number }
+  /** Copies a page and its elements (`elementIds`: one new id per element) right after it. */
+  | {
+      readonly type: "page/duplicate";
+      readonly id: PageId;
+      readonly newId: PageId;
+      readonly elementIds: readonly ElementId[];
+    }
+  /** Applies a master page (null = none) to these pages. */
+  | { readonly type: "page/setMaster"; readonly ids: readonly PageId[]; readonly masterId: PageId | null }
+  /** Switches to a page, or to a master page to edit it. */
   | { readonly type: "page/select"; readonly id: PageId }
+  /** Renames a page or a master page. */
   | { readonly type: "page/rename"; readonly id: PageId; readonly name: string }
   | { readonly type: "page/delete"; readonly id: PageId }
   /** New page order (every page id once); anything else is a no-op. The active page stays active. */
   | { readonly type: "page/reorder"; readonly order: readonly PageId[] }
+  /** Background of a page or a master page. */
   | { readonly type: "page/setBackground"; readonly id: PageId; readonly color: string }
+  /** Adds a master page (built by the caller) at the end and switches to it. */
+  | { readonly type: "master/add"; readonly master: MasterPage }
+  /** Copies a master page and its elements right after it and switches to the copy. */
+  | {
+      readonly type: "master/duplicate";
+      readonly id: PageId;
+      readonly newId: PageId;
+      readonly elementIds: readonly ElementId[];
+    }
+  /** Bases a master page on another one (null = top level); a cycle or a too deep chain is a no-op. */
+  | { readonly type: "master/setParent"; readonly id: PageId; readonly parentId: PageId | null }
+  /** Removes a master page; whatever was based on it moves to its parent. */
+  | { readonly type: "master/delete"; readonly id: PageId }
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
   | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
@@ -137,6 +169,7 @@ export function createInitialState(
   return {
     history: { past: [], present: document, future: [] },
     activePageId: document.pages[0].id,
+    lastPageId: document.pages[0].id,
     selectedIds: NO_SELECTION,
     view: { zoom: 1, fitRequest: 1 },
     tool: DEFAULT_TOOL,
@@ -161,17 +194,32 @@ export function selectIsDirty(state: EditorState): boolean {
 }
 
 /**
- * Returns the active page; falls back to the first page if the id is stale.
+ * Returns the page or master page being edited; falls back to the first page if the id is stale.
  *
  * Args:
  *   state: Editor state.
  *
  * Returns:
- *   Active page.
+ *   Active page or master page.
  */
-export function selectActivePage(state: EditorState): Page {
+export function selectActivePage(state: EditorState): Sheet {
+  const document = state.history.present;
+  return findSheet(document, state.activePageId) ?? document.pages[0];
+}
+
+/**
+ * The page to go back to from a master page: the page shown last, or the first page when it was
+ * deleted since.
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   A page id.
+ */
+export function selectReturnPageId(state: EditorState): PageId {
   const { pages } = state.history.present;
-  return pages.find((page) => page.id === state.activePageId) ?? pages[0];
+  return pages.some((page) => page.id === state.lastPageId) ? state.lastPageId : pages[0].id;
 }
 
 /**
@@ -211,30 +259,54 @@ function commit(state: EditorState, next: EditorDocument): EditorState {
   return { ...state, history: { past, present: next, future: [] } };
 }
 
-function updateActivePage(state: EditorState, update: (page: Page) => Page): EditorState {
+/**
+ * Updates one page or master page. `update` only replaces common fields (spreading the sheet), so
+ * the result keeps the kind and the `masterId` / `parentId` of the original.
+ */
+function updateSheet(state: EditorState, id: PageId, update: (sheet: Sheet) => Sheet): EditorState {
   const document = state.history.present;
-  const active = selectActivePage(state);
-  const next = update(active);
-  if (next === active) return state;
-  return commit(state, {
-    ...document,
-    pages: document.pages.map((page) => (page.id === active.id ? next : page)),
-  });
-}
-
-function updatePage(state: EditorState, id: PageId, update: (page: Page) => Page): EditorState {
-  const document = state.history.present;
-  const target = document.pages.find((page) => page.id === id);
+  const target = findSheet(document, id);
   if (!target) return state;
   const next = update(target);
   if (next === target) return state;
-  return commit(state, { ...document, pages: document.pages.map((page) => (page.id === id ? next : page)) });
+  return commit(
+    state,
+    isMasterId(document, id)
+      ? { ...document, masters: document.masters.map((master) => (master.id === id ? (next as MasterPage) : master)) }
+      : { ...document, pages: document.pages.map((page) => (page.id === id ? (next as Page) : page)) },
+  );
+}
+
+function updateActivePage(state: EditorState, update: (sheet: Sheet) => Sheet): EditorState {
+  return updateSheet(state, selectActivePage(state).id, update);
+}
+
+// 複本的名稱：原名加「複本」，超過長度上限時截斷原名
+function copyName(name: string): string {
+  const suffix = " 複本";
+  return Array.from(name).slice(0, PAGE_NAME_MAX_LENGTH - suffix.length).join("") + suffix;
+}
+
+/** Inserts a copy right after the sheet with `id`; returns null when the ids do not fit. */
+function duplicateIn<S extends Sheet>(
+  sheets: readonly S[],
+  document: EditorDocument,
+  action: { readonly id: PageId; readonly newId: PageId; readonly elementIds: readonly ElementId[] },
+): S[] | null {
+  const index = sheets.findIndex((sheet) => sheet.id === action.id);
+  if (index === -1 || findSheet(document, action.newId)) return null;
+  const source = sheets[index];
+  if (new Set(action.elementIds).size !== action.elementIds.length) return null;
+  const elements = copyElements(source.elements, action.elementIds);
+  if (!elements) return null;
+  const copy: S = { ...source, id: action.newId, name: copyName(source.name), elements };
+  return [...sheets.slice(0, index + 1), copy, ...sheets.slice(index + 1)];
 }
 
 /** undo/redo 後頁面或物件可能已不存在，校正 UI 狀態避免指向失效的 id。 */
 function reconcileSelection(state: EditorState): EditorState {
-  const { pages } = state.history.present;
-  const activePage = pages.find((page) => page.id === state.activePageId) ?? pages[0];
+  const document = state.history.present;
+  const activePage = findSheet(document, state.activePageId) ?? document.pages[0];
   const existing = new Set(activePage.elements.map((element) => element.id));
   const valid = state.selectedIds.filter((id) => existing.has(id));
   return {
@@ -286,14 +358,6 @@ function updateElements(state: EditorState, entries: readonly ElementPatchEntry[
 
 function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
-}
-
-function nextPageName(pages: readonly Page[]): string {
-  const used = pages
-    .map((page) => /^Page-(\d+)$/.exec(page.name))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => Number(match[1]));
-  return `Page-${Math.max(pages.length, ...used) + 1}`;
 }
 
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
@@ -356,28 +420,77 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     return { ...next, selectedIds: action.copies.map((copy) => copy.newId) };
   },
 
-  // 新頁面沿用目前頁面的尺寸與背景
+  // 新頁面沿用目前頁面的尺寸、背景與主頁（目前在編輯主頁時，新頁面套用該主頁）
   "page/add": (state, action) => {
     const document = state.history.present;
     const active = selectActivePage(state);
     const afterIndex = action.after === undefined ? -1 : document.pages.findIndex((p) => p.id === action.after);
     if (action.after !== undefined && afterIndex === -1) return state;
-    const page = createPage(nextPageName(document.pages), active, active.background);
+    const masterId = isMasterId(document, active.id) ? active.id : (active as Page).masterId;
+    const page = createPage(nextPageNames(document.pages, 1)[0], active, active.background, masterId);
     const pages = [...document.pages];
     pages.splice(afterIndex === -1 ? pages.length : afterIndex + 1, 0, page);
     return { ...commit(state, { ...document, pages }), activePageId: page.id, selectedIds: NO_SELECTION };
   },
 
+  // 新頁面由呼叫端建立（id、名稱、主頁）；任何一頁不合法就整批不做
+  "page/addMany": (state, action) => {
+    const document = state.history.present;
+    const { index } = action;
+    const ids = action.pages.map((page) => page.id);
+    const masterIds = new Set(document.masters.map((master) => master.id));
+    if (
+      action.pages.length === 0 ||
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index > document.pages.length ||
+      new Set(ids).size !== ids.length ||
+      action.pages.some(
+        (page) =>
+          findSheet(document, page.id) !== undefined ||
+          (page.masterId !== null && !masterIds.has(page.masterId)) ||
+          !isPageSize(page) ||
+          !isHexColor(page.background) ||
+          validateName(page.name, PAGE_NAME_MAX_LENGTH).data !== page.name,
+      )
+    ) {
+      return state;
+    }
+    const pages = [...document.pages.slice(0, index), ...action.pages, ...document.pages.slice(index)];
+    return { ...commit(state, { ...document, pages }), activePageId: action.pages[0].id, selectedIds: NO_SELECTION };
+  },
+
+  "page/duplicate": (state, action) => {
+    const document = state.history.present;
+    const pages = duplicateIn(document.pages, document, action);
+    if (!pages) return state;
+    return { ...commit(state, { ...document, pages }), activePageId: action.newId, selectedIds: NO_SELECTION };
+  },
+
+  "page/setMaster": (state, action) => {
+    const document = state.history.present;
+    if (action.masterId !== null && !isMasterId(document, action.masterId)) return state;
+    const ids = new Set(action.ids);
+    if (ids.size === 0 || ![...ids].every((id) => document.pages.some((page) => page.id === id))) return state;
+    let changed = false;
+    const pages = document.pages.map((page) => {
+      if (!ids.has(page.id) || page.masterId === action.masterId) return page;
+      changed = true;
+      return { ...page, masterId: action.masterId };
+    });
+    return changed ? commit(state, { ...document, pages }) : state;
+  },
+
   "page/select": (state, action) => {
     if (action.id === state.activePageId) return state;
-    if (!state.history.present.pages.some((page) => page.id === action.id)) return state;
+    if (!findSheet(state.history.present, action.id)) return state;
     return { ...state, activePageId: action.id, selectedIds: NO_SELECTION };
   },
 
   "page/rename": (state, action) => {
     const result = validateName(action.name, PAGE_NAME_MAX_LENGTH);
     if (result.error) return state;
-    return updatePage(state, action.id, (page) => (page.name === result.data ? page : { ...page, name: result.data }));
+    return updateSheet(state, action.id, (sheet) => (sheet.name === result.data ? sheet : { ...sheet, name: result.data }));
   },
 
   "page/delete": (state, action) => {
@@ -402,9 +515,55 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   "page/setBackground": (state, action) => {
     if (!isHexColor(action.color)) return state;
-    return updatePage(state, action.id, (page) =>
-      page.background === action.color ? page : { ...page, background: action.color },
+    return updateSheet(state, action.id, (sheet) =>
+      sheet.background === action.color ? sheet : { ...sheet, background: action.color },
     );
+  },
+
+  "master/add": (state, action) => {
+    const document = state.history.present;
+    const { master } = action;
+    if (
+      findSheet(document, master.id) ||
+      !canSetParent(document.masters, master.id, master.parentId) ||
+      !isPageSize(master) ||
+      !isHexColor(master.background) ||
+      validateName(master.name, PAGE_NAME_MAX_LENGTH).data !== master.name
+    ) {
+      return state;
+    }
+    const next = commit(state, { ...document, masters: [...document.masters, master] });
+    return { ...next, activePageId: master.id, selectedIds: NO_SELECTION };
+  },
+
+  "master/duplicate": (state, action) => {
+    const document = state.history.present;
+    const masters = duplicateIn(document.masters, document, action);
+    if (!masters) return state;
+    return { ...commit(state, { ...document, masters }), activePageId: action.newId, selectedIds: NO_SELECTION };
+  },
+
+  "master/setParent": (state, action) => {
+    const document = state.history.present;
+    const target = document.masters.find((master) => master.id === action.id);
+    if (!target || target.parentId === action.parentId) return state;
+    if (!canSetParent(document.masters, action.id, action.parentId)) return state;
+    return commit(state, {
+      ...document,
+      masters: document.masters.map((master) =>
+        master.id === action.id ? { ...master, parentId: action.parentId } : master,
+      ),
+    });
+  },
+
+  // 正在編輯被刪除的主頁時回到第一頁
+  "master/delete": (state, action) => {
+    const document = state.history.present;
+    const nextDocument = deleteMaster(document, action.id);
+    if (nextDocument === document) return state;
+    const next = commit(state, nextDocument);
+    if (state.activePageId !== action.id) return next;
+    return { ...next, activePageId: nextDocument.pages[0].id, selectedIds: NO_SELECTION };
   },
 
   "document/rename": (state, action) => {
@@ -419,12 +578,18 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const { size, margins } = action;
     if (!isPageSize(size) || !isMargins(margins)) return state;
     const document = state.history.present;
-    let pagesChanged = false;
-    const pages = document.pages.map((page) => {
-      if (page.width === size.width && page.height === size.height) return page;
-      pagesChanged = true;
-      return { ...page, width: size.width, height: size.height };
-    });
+    // 主頁和頁面同尺寸，主頁的物件才會落在頁面的同一個位置
+    const resizeAll = <S extends Sheet>(sheets: readonly S[]): readonly S[] => {
+      const resized = sheets.map((sheet) =>
+        sheet.width === size.width && sheet.height === size.height
+          ? sheet
+          : { ...sheet, width: size.width, height: size.height },
+      );
+      return resized.some((sheet, index) => sheet !== sheets[index]) ? resized : sheets;
+    };
+    const pages = resizeAll(document.pages);
+    const masters = resizeAll(document.masters);
+    const pagesChanged = pages !== document.pages || masters !== document.masters;
     const current = document.margins;
     const marginsChanged =
       current.top !== margins.top ||
@@ -435,7 +600,8 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     return commit(state, {
       ...document,
       margins: marginsChanged ? { ...margins } : current,
-      pages: pagesChanged ? pages : document.pages,
+      pages,
+      masters,
     });
   },
 
@@ -544,5 +710,12 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   // 以 mapped type 保證每個 action type 都有 handler；此處的 cast 只是把關聯型別交給 TS
   const handler = HANDLERS[action.type] as ActionHandler<EditorAction["type"]>;
-  return handler(state, action);
+  return rememberPage(handler(state, action));
+}
+
+// 切到頁面（不是主頁）時記下來，從主頁回來時用；沒有變化時回傳同一個 state
+function rememberPage(state: EditorState): EditorState {
+  if (state.activePageId === state.lastPageId) return state;
+  if (!state.history.present.pages.some((page) => page.id === state.activePageId)) return state;
+  return { ...state, lastPageId: state.activePageId };
 }

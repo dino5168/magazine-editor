@@ -6,7 +6,7 @@ import {
   type EditorAction,
   type EditorState,
 } from "./editor-reducer";
-import type { Page } from "./types";
+import type { Sheet } from "./types";
 
 // state 與 dispatch 分開：只 dispatch 的元件（如面板按鈕）不會因狀態變化而重新 render
 const EditorStateContext = createContext<EditorState | null>(null);
@@ -72,6 +72,6 @@ export function useEditorDispatch(): Dispatch<EditorAction> {
  * Returns:
  *   Active page of the document.
  */
-export function useActivePage(): Page {
+export function useActivePage(): Sheet {
   return selectActivePage(useEditorState());
 }

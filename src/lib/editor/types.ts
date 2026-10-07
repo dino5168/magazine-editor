@@ -109,7 +109,9 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** Partial update for any element kind; `id` and `type` are immutable. */
 export type ElementPatch = Partial<DistributiveOmit<CanvasElement, "id" | "type">>;
 
-export interface Page {
+/** What pages and master pages have in common: everything the canvas needs to draw and edit one. */
+export interface Sheet {
+  /** Unique across pages and master pages. */
   readonly id: PageId;
   readonly name: string;
   readonly width: number;
@@ -117,6 +119,20 @@ export interface Page {
   readonly background: string;
   /** Z-order: index 0 is the bottom-most element. */
   readonly elements: readonly CanvasElement[];
+}
+
+export interface Page extends Sheet {
+  /** Master page drawn under this page's elements; null = none. */
+  readonly masterId: PageId | null;
+}
+
+/**
+ * Content shared by the pages that use it (see `master-pages.ts`). Its background is only the
+ * default of new pages; pages keep their own background.
+ */
+export interface MasterPage extends Sheet {
+  /** Master page this one is based on (drawn under it); null = top level. */
+  readonly parentId: PageId | null;
 }
 
 /** Page margins in pt, measured inward from each page edge. */
@@ -176,6 +192,8 @@ export interface EditorDocument {
    * are drawn on the canvas and exported, but are not elements (see `page-numbers.ts`).
    */
   readonly pageNumberRules: readonly PageNumberRule[];
+  /** Kept apart from `pages`: page order, page numbers and export only ever see pages. */
+  readonly masters: readonly MasterPage[];
   readonly pages: readonly Page[];
 }
 

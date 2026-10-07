@@ -8,7 +8,9 @@ import type {
   EditorDocument,
   ImageElement,
   Margins,
+  MasterPage,
   Page,
+  PageId,
   Point,
   ShapeElement,
   ShapeGeometry,
@@ -281,12 +283,48 @@ export function createImageElement(src: string, natural: Size, page: Size, cente
  *   name: Page name.
  *   size: Page size in pt.
  *   background: Background color.
+ *   masterId: Master page the page uses; null = none.
  *
  * Returns:
  *   New page without elements.
  */
-export function createPage(name: string, size: Size, background: string): Page {
-  return { id: createId(), name, width: size.width, height: size.height, background, elements: [] };
+export function createPage(name: string, size: Size, background: string, masterId: PageId | null = null): Page {
+  return { id: createId(), name, width: size.width, height: size.height, background, elements: [], masterId };
+}
+
+/**
+ * Creates an empty master page.
+ *
+ * Args:
+ *   name: Master page name.
+ *   size: Page size in pt.
+ *   background: Background color (the default of pages added with it).
+ *   parentId: Master page it is based on; null = top level.
+ *
+ * Returns:
+ *   New master page without elements.
+ */
+export function createMasterPage(name: string, size: Size, background: string, parentId: PageId | null): MasterPage {
+  return { id: createId(), name, width: size.width, height: size.height, background, elements: [], parentId };
+}
+
+/**
+ * Names for new pages: `Page-N` after the largest number already used (or the page count).
+ *
+ * Args:
+ *   pages: Existing pages.
+ *   count: How many names to return.
+ *
+ * Returns:
+ *   `count` unused names in increasing order.
+ */
+export function nextPageNames(pages: readonly Page[], count: number): string[] {
+  const used = pages
+    .map((page) => /^Page-(\d+)$/.exec(page.name))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map((match) => Number(match[1]));
+  const first = Math.max(pages.length, ...used) + 1;
+  return Array.from({ length: count }, (_, index) => `Page-${first + index}`);
 }
 
 /**
@@ -300,6 +338,7 @@ export function createBlankDocument(): EditorDocument {
     name: "未命名文件",
     margins: DEFAULT_MARGINS,
     pageNumberRules: [],
+    masters: [],
     pages: [createPage("Page-1", presetToPt(PAGE_SIZE_PRESETS.a4), DEFAULT_PAGE_BACKGROUND)],
   };
 }
@@ -329,7 +368,7 @@ export function createSampleDocument(): EditorDocument {
     { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
     { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
   ];
-  return { name: "未命名文件", margins: DEFAULT_MARGINS, pageNumberRules: [], pages: [{ ...page, elements }] };
+  return { name: "未命名文件", margins: DEFAULT_MARGINS, pageNumberRules: [], masters: [], pages: [{ ...page, elements }] };
 }
 
 const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };

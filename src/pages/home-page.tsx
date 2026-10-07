@@ -10,6 +10,8 @@ import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
 import { BottomToolbar } from "@/components/editor/bottom-toolbar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
+import { MasterEditBanner } from "@/components/editor/master-edit-banner";
+import { PageDialogsProvider } from "@/components/editor/page-dialogs";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
 import { useAddImage } from "@/components/editor/panels/use-add-image";
@@ -144,6 +146,7 @@ function EditorLayout() {
           {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <EditorCanvas />
+            <MasterEditBanner className="absolute inset-x-0 top-3 z-10" />
             <BottomToolbar onImportImage={importImage} className="absolute inset-x-0 bottom-6 z-10" />
           </div>
         </div>
@@ -186,7 +189,9 @@ export function HomePage() {
     <EditorProvider initialState={initialState}>
       <ProjectProvider confirmRecovery={confirmRecovery}>
         <PreferencesProvider>
-          <EditorLayout />
+          <PageDialogsProvider>
+            <EditorLayout />
+          </PageDialogsProvider>
         </PreferencesProvider>
         {recoveryDialog}
       </ProjectProvider>

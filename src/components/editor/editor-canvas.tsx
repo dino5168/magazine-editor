@@ -14,6 +14,8 @@ import {
   pageCenter,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
+import { inheritedElements } from "@/lib/editor/master-pages";
+import { resolveElementsVariables, variableValues } from "@/lib/editor/variables";
 import { pageNumberShape } from "@/lib/editor/page-numbers";
 import { measureLineWidth } from "@/lib/export/text-layout";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
@@ -29,7 +31,7 @@ import {
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
-import { ElementNode, StaticShape, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
+import { ElementNode, StaticElement, StaticShape, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { MarginGuide, PageGrid } from "./page-guides";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
@@ -78,8 +80,17 @@ export function EditorCanvas() {
   // 開啟用到其他字型的專案時，載入期間畫布會短暫消失
   const usedFamilies = useMemo(() => usedFontFamilies(state.history.present), [state.history.present]);
   const fontsReady = useFontsReady(usedFamilies);
-  const { pages, pageNumberRules, margins } = state.history.present;
-  const pageIndex = pages.indexOf(page);
+  const { pages, pageNumberRules, margins, masters } = state.history.present;
+  // 變數（{頁碼} 等）換成這一頁的值；編輯主頁時是 null，照原文顯示。文字編輯框仍編輯原文（page.elements）
+  const variables = useMemo(() => variableValues(state.history.present, page.id), [state.history.present, page.id]);
+  // 主頁（含父主頁）的物件畫在這一頁的物件底下；不能選取，要改就切去編輯主頁
+  const inherited = useMemo(
+    () => resolveElementsVariables(inheritedElements(masters, page), variables),
+    [masters, page, variables],
+  );
+  const shownElements = useMemo(() => resolveElementsVariables(page.elements, variables), [page.elements, variables]);
+  // 編輯主頁時是 -1：主頁不畫頁碼
+  const pageIndex = pages.findIndex((candidate) => candidate.id === page.id);
   // 量測需要字型：字型載入前不算（畫布本來就還沒畫）
   const pageNumber = useMemo(
     () => (fontsReady ? pageNumberShape(page, pageIndex, pageNumberRules, margins, measureLineWidth) : null),
@@ -391,7 +402,10 @@ export function EditorCanvas() {
                     zoom={zoom}
                   />
                 )}
-                {page.elements.map((element) => (
+                {inherited.map((element) => (
+                  <StaticElement key={`master:${element.id}`} element={element} />
+                ))}
+                {shownElements.map((element) => (
                   <ElementNode
                     key={element.id}
                     element={element}

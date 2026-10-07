@@ -68,8 +68,9 @@ flowchart TB
 | `src/lib/editor/page-order.ts`、`src/components/editor/use-page-tab-drag.ts` | 約 210 | 頁面排序:新順序的計算、拖曳頁籤(插入線、邊緣自動捲動) | 之後再看 |
 | `src/lib/preferences/`、`src/components/app/settings/`(頁碼管理以外) | 約 500 | 設定:設定頁清單(選單與對話框都由它產生)、格線等 App 偏好(localStorage)、「頁面設定」「格線與參考線」對話框與共用外框 | 之後再看 |
 | `src/lib/editor/page-numbers.ts`、`src/components/app/settings/page-numbers-dialog.tsx` | 約 750 | 頁碼管理:頁碼規則 → 畫布與匯出用的「虛擬圖形」、「頁碼管理」對話框。頁碼不是物件,只存規則 | 之後再看 |
+| `src/lib/editor/master-pages.ts`、`variables.ts`、`add-pages.ts`、`src/components/editor/panels/pages-panel.tsx`、`page-dialogs.tsx`、`sheet-thumbnail.tsx` | 約 1,300 | 主頁與動態變數:主頁的階層(以…為基礎)、頁面上要畫哪些主頁內容、`{頁碼}` 等變數換成各頁的值、「頁面」面板(縮圖)、「新增頁面」「新增主頁」對話框 | 之後再看 |
 | `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 400 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影怎麼轉成畫布的屬性 | 之後再看 |
-| `src/lib/export/` | 約 100 | 匯出前用 Konva 量測每段文字的分行(與每行寬度、頁碼的寬度),並把頁碼加進匯出的副本 | 之後再看 |
+| `src/lib/export/` | 約 150 | 匯出前用 Konva 量測每段文字的分行(與每行寬度、頁碼的寬度),並在匯出的副本上把主頁內容展開到每一頁、換掉變數、加上頁碼 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |
 | `src/**/__tests__/` | 約 1,500 | 測試 | 之後再看 |
@@ -103,10 +104,11 @@ flowchart TB
 EditorState
 ├── history                ← 會被「復原/重做」影響
 │   ├── past     過去的文件(最多 100 份)
-│   ├── present  目前的文件(頁面、物件都在這裡)
+│   ├── present  目前的文件(頁面、主頁、物件都在這裡)
 │   └── future   復原後可以重做的文件
 │
-├── activePageId           ← 以下都不會被復原/重做影響
+├── activePageId           ← 以下都不會被復原/重做影響(也可以是主頁的 id:正在編輯主頁)
+├── lastPageId             ← 最後看的頁面,從主頁「回到頁面」用
 ├── selectedIds            ← 選取的物件(可以多選;空陣列 = 沒有選取)
 ├── view (zoom、fitRequest)
 ├── tool、shapeKind        ← 底部工具列目前的工具與圖形

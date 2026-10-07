@@ -15,6 +15,7 @@ import {
   resizePatch,
 } from "@/lib/editor/properties";
 import type { CanvasElement, ElementPatch, ShapeElement, ShapeLabel, TextElement, TextStyle } from "@/lib/editor/types";
+import { TEXT_VARIABLES } from "@/lib/editor/variables";
 import { ColorPicker } from "../color-picker";
 import { NumberField } from "../number-field";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
@@ -177,8 +178,41 @@ function TextStyleControls({
   );
 }
 
+/**
+ * Buttons that append a text variable (`{頁碼}` …) to the text; one click = one undo step.
+ * Typing the token by hand works too.
+ */
+function VariablesSection({ text, onChange }: { readonly text: string; readonly onChange: (text: string) => void }) {
+  return (
+    <Section title="插入變數">
+      <div className="flex flex-wrap gap-1">
+        {TEXT_VARIABLES.map((variable) => (
+          <Button
+            key={variable.token}
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            title={variable.description}
+            onClick={() => onChange(text + variable.token)}
+          >
+            {variable.label}
+          </Button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        加在文字最後，也可以直接輸入 <code>{"{頁碼}"}</code> 這類文字。放在主頁上時，每一頁會顯示自己的值。
+      </p>
+    </Section>
+  );
+}
+
 function TextTab({ text, update }: { readonly text: TextElement; readonly update: Update }) {
-  return <TextStyleControls id={text.id} style={text} onChange={update} />;
+  return (
+    <>
+      <TextStyleControls id={text.id} style={text} onChange={update} />
+      <VariablesSection text={text.text} onChange={(next) => update({ text: next })} />
+    </>
+  );
 }
 
 function ShapeTextTab({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
@@ -188,12 +222,15 @@ function ShapeTextTab({ shape, update }: { readonly shape: ShapeElement; readonl
   }
   const setLabel = (patch: Partial<ShapeLabel>) => update({ label: { ...label, ...patch } });
   return (
-    <TextStyleControls
-      id={shape.id}
-      style={label}
-      onChange={setLabel}
-      verticalAlign={{ value: label.verticalAlign, onChange: (verticalAlign) => setLabel({ verticalAlign }) }}
-    />
+    <>
+      <TextStyleControls
+        id={shape.id}
+        style={label}
+        onChange={setLabel}
+        verticalAlign={{ value: label.verticalAlign, onChange: (verticalAlign) => setLabel({ verticalAlign }) }}
+      />
+      <VariablesSection text={label.text} onChange={(text) => setLabel({ text })} />
+    </>
   );
 }
 

@@ -20,6 +20,7 @@ import { PAGE_NAME_MAX_LENGTH } from "@/lib/editor/validation";
 import { DragGhost } from "../drag-ghost";
 import { IconButton } from "./icon-button";
 import { InlineNameInput } from "./inline-name-input";
+import { usePageDialogs } from "./page-dialogs";
 import { PageMenu } from "./page-menu";
 import { usePageTabDrag } from "./use-page-tab-drag";
 
@@ -39,6 +40,7 @@ interface EditorPageBarProps {
 export function EditorPageBar({ className }: EditorPageBarProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
+  const { openAddPages } = usePageDialogs();
   const [renamingId, setRenamingId] = useState<PageId | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Page | null>(null);
   const tabListRef = useRef<HTMLDivElement>(null);
@@ -74,7 +76,7 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
   return (
     <footer className={cn("flex h-10 items-stretch border-t bg-background", className)}>
       <div className="flex items-center gap-0.5 border-r px-1.5">
-        <IconButton label="新增頁面" onClick={() => dispatch({ type: "page/add" })}>
+        <IconButton label="新增頁面" onClick={() => openAddPages("end")}>
           <Plus />
         </IconButton>
         <PageMenu>
@@ -228,7 +230,7 @@ export function EditorPageBar({ className }: EditorPageBarProps) {
 }
 
 interface PageNumberFieldProps {
-  /** Current 0-based page index. */
+  /** Current 0-based page index; -1 while a master page is edited. */
   readonly index: number;
   readonly pageCount: number;
   /** Called with the 0-based index of the page to go to. */
@@ -248,7 +250,8 @@ interface PageNumberFieldProps {
  */
 function PageNumberField({ index, pageCount, onCommit }: PageNumberFieldProps) {
   const id = useId();
-  const current = String(index + 1);
+  // 編輯主頁時沒有目前頁（index = -1）
+  const current = index < 0 ? "–" : String(index + 1);
   const [draft, setDraft] = useState(current);
   // Esc 之後的 blur 不跳頁：blur 執行時 state 還是舊的草稿
   const cancelledRef = useRef(false);

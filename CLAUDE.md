@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -88,11 +88,14 @@ src/
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
       editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
-      editor-page-bar.tsx         # draw.io 風格頁籤：新增 / 切換 / 雙擊改名 / 刪除（AlertDialog）/ 拖曳排序（插入線）、滾輪橫捲、`<` `>` 與頁碼輸入框
+      editor-page-bar.tsx         # draw.io 風格頁籤：新增（「+」開新增頁面對話框）/ 切換 / 雙擊改名 / 刪除（AlertDialog）/ 拖曳排序（插入線）、滾輪橫捲、`<` `>` 與頁碼輸入框（編輯主頁時顯示「–」）
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
-      page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
+      page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 9 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整）；draw 目前是佔位
+      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖）；draw 目前是佔位
+      sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
+      page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
+      master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
       page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）與邊界參考線（MarginGuide）
       color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
       style-controls.tsx          # 文字樣式（TextStyleFields：字體 / 字級 / 粗體・斜體・底線・刪除線 / 可選的對齊 / 顏色 / 陰影）與邊框（StrokeFields）控制項，屬性面板與頁碼管理共用
@@ -147,6 +150,9 @@ src/
       image.ts                    # loadImageSize()
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
       page-order.ts               # 頁面排序的純邏輯：isPageOrder、movePage、shiftPage / shiftedPageOrder（選單與快捷鍵）、slotToIndex（拖曳的空隙 → 新位置）
+      master-pages.ts             # 主頁：findSheet、masterChain / inheritedElements / masterContent（要畫哪些主頁內容）、canSetParent / isMasterGraphValid（循環與深度，和 Rust 同規則）、deleteMaster、pagesUsingMaster、nextMasterName
+      variables.ts                # 動態變數：TEXT_VARIABLES（{頁碼} {總頁數} {文件名稱} {頁面名稱}）、variableValues（主頁回傳 null）、resolveElementsVariables
+      add-pages.ts                # 新增頁面 / 主頁對話框的純邏輯：預設值、錯誤訊息、插入位置、建立新頁面
       fonts.ts                    # FONT_OPTIONS（可選的字型）、文件用到的字型、載入參數
       use-fonts-ready.ts          # 字型用到才載入：loadFontOption、useFontsReady（畫布等字型）
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
@@ -163,7 +169,7 @@ src-tauri/
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
-tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v3：文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字）
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v7：文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 ```
 
@@ -192,8 +198,9 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、拖曳不限制在頁面內（`dragBoundFunc` 只在開啟「吸附格線」時用來對齊格線，見「偏好設定」）；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
 - **邊界**：`EditorDocument.margins`（`Margins`，pt，所有頁面共用一組）只在畫布畫參考線，**匯出不讀它**。檔案驗證只檢查每一邊 0–2000 mm（`MARGIN_MAX_PT`），「左 + 右 < 頁寬」只在對話框檢查，縮小紙張不會讓檔案變成不合法。新文件預設四邊 15 mm（`DEFAULT_MARGINS`），v4 之前的檔案讀成全 0（不畫）。
 - **頁碼**：`EditorDocument.pageNumberRules`（依 `from` 排序、範圍不重疊）存的是**規則**，頁碼本身**不是物件**：不在 `Page.elements`、圖層面板與選取裡，畫布與匯出時才算出來（見「頁碼管理」）。v5 之前的檔案讀成空陣列。
+- **主頁**（v7 起）：`EditorDocument.masters: MasterPage[]` 和 `pages` 分開存；`Page` 與 `MasterPage` 都 extends `Sheet`（id / name / 尺寸 / 背景 / elements）。`Page.masterId` 指套用的主頁、`MasterPage.parentId` 指以哪個主頁為基礎（`null` = 沒有）；頁面與主頁的 id 在整份文件中不重複。見「主頁與動態變數」。v7 之前的檔案讀成沒有主頁。
 - 新增物件類型（不是框的東西，例如之後的自由繪圖 `path`）時要改的地方：
-  - 前端：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
+  - 前端：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `StaticElement` + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
   - 匯出端：`format.rs` 的 `Element`、`export/render.rs` 的 `build_render`（exhaustive match，漏改會編譯失敗），以及 `template.typ` 的 `draw` 與 EPUB `xhtml.rs` 的 `element_markup`。`template.typ` 是 Typst 腳本，漏改只會**靜默不畫**，要自己記得。
 - 新增 geometry 種類時要改的地方：`ShapeGeometry`，以及 `shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometrySection`、`validation.ts` 的 `isShapeGeometry`；Rust `format.rs` 的 `ShapeGeometry` / `validate_geometry`、`render.rs` 的 `shape_kind`（都有 exhaustive switch / match）。
 - **檔案格式升級**：`format.rs` 的 `upgrade_shapes_to_v3` 把 v1 / v2 的 rect / ellipse / polygon / star 改寫成 shape。`recovery::read` 也會呼叫它，因為備份檔沒有版本號，舊版 App 當機留下的備份可能還是舊格式。
@@ -203,9 +210,11 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
+- **不進歷史的 UI 狀態**：`activePageId`（也可以是主頁的 id：正在編輯主頁）、`lastPageId`（最後顯示的頁面，「回到頁面」用；`editorReducer` 每次切到頁面時記下）、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
+- `selectActivePage` 回傳 `Sheet`（頁面或主頁）：`element/*` 不分頁面或主頁，編輯主頁不需要另一套 action。`page/rename`、`page/setBackground` 也對兩者都有效。只需要頁面的地方（頁序、頁碼）自己查 `pages`。
+- 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
-- 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
+- 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面與主頁 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
 - undo/redo 後由 `reconcileSelection` 校正已經失效的頁面或選取 id。
 - 沒有變化時必須回傳**同一個 state 參考**（測試有檢查），避免多餘的 render 和空的歷史紀錄。
@@ -290,7 +299,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **模型**：`PageNumberRule` = 一段頁面（`from`–`to`，1 起算、含兩端，`to` 可以超過目前頁數）+ `start`（第 `from` 頁顯示的數字）+ `odd` / `even`（各自的 `position` 與 `prefix` / `suffix`）+ `style`（字型、字級、粗體、斜體 / 底線 / 刪除線 / 陰影、顏色、`stroke` 框線，整段共用）。第 1 頁是奇數頁；規則跟著**頁序**，不跟著某一頁。沒有規則涵蓋的頁面不顯示頁碼。
 - **頁碼 = 虛擬圖形**：`pageNumberShape()` 把規則算成一個 `ShapeElement`（透明矩形 + `stroke` + `label`，id `page-number:<pageId>`），畫布與匯出都沿用既有的圖形 / 圖形內文字路徑，**不新增物件類型、Rust 的 render 不用改**。
   - 畫布：`editor-canvas` 用 `StaticShape`（`listening={false}`）畫在物件之上、邊界參考線之下；不能選取、不在圖層面板、不算進捲動範圍。字型載入前不計算；`usedFontFamilies` 包含頁碼字型。
-  - 匯出：`buildExportRequest(document, measureTextLayout, measureLineWidth)` 先用 `withPageNumbers` 把頁碼加到每頁**最上層**（只在匯出的副本，不寫回文件），所以 PDF / EPUB 都有頁碼。匯出不讀 `showPageNumbers`。
+  - 匯出：`buildExportRequest(document, measureTextLayout, measureLineWidth)` 展開主頁內容之後，用 `withPageNumbers` 把頁碼加到每頁**最上層**（只在匯出的副本，不寫回文件），所以 PDF / EPUB 都有頁碼。匯出不讀 `showPageNumbers`。
 - **外框寬度由呼叫端量測**（`MeasureTextWidth`，App 用 `measureLineWidth`），不用估算：估得太窄 Konva 會把頁碼折成兩行。另加 1 pt（`WRAP_SLACK_PT`）防止捨入造成換行。
 - **位置**：上 / 下放在邊界區（頁緣到邊界線）正中；左 / 右欄靠左 / 靠右，**文字**（不是外框）對齊內容區的邊，中欄置中於頁面；左中 / 右中**直書**（字與字之間插入 `\n`，每字一行，外框寬一個字），置中於左 / 右邊界區與頁面中線。邊界為 0 或放不下時改用距頁緣 10 mm（`PAGE_NUMBER_FALLBACK_INSET_PT`）。加框線時，框線比文字多出 4 pt 內距（`LABEL_PADDING_PT`）。
 - **對話框**：「設定 → 文件 → 頁碼管理...」（`settings.pageNumbers`，`components/app/settings/page-numbers-dialog.tsx`，外框與頁尾用共用的 `SettingsDialog` / `SettingsDialogFooter`）。表單與列表都是草稿，「確定」一次 dispatch `document/setPageNumbering`（一筆復原），「取消」/ Esc 放棄。「加入設定」以表單新增一段、「修改設定」覆寫選中的那段（表單沒變時停用）、「刪除」、「新的一段」（範圍接在最後一段之後，`nextPageNumberRange`）。重疊等錯誤由 `pageNumberRuleError` 給中文訊息並停用按鈕。表單改了沒按「修改設定」就按「確定」不會套用（頁尾有提示）。
@@ -318,7 +327,30 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - **目前頁籤的 `˅` 選單**：向左 / 向右 / 移到最前 / 移到最後（`shiftedPageOrder` 回傳 `null` 時停用）；`≡` 選單沒有這些項目。
   - **Ctrl+Shift+PageUp / PageDown**：往前 / 往後一格（`use-editor-shortcuts.ts`，在換頁之前判斷）。
 - 頁碼規則跟著**頁序**：頁面換位置後頁碼依新位置重新計算。
-- 不做「頁面排序」對話框；**使用者不要「頁面」工具面板**（縮圖清單），不要主動提議。
+- 不做「頁面排序」對話框。2026-10-06 時使用者不要「頁面」工具面板；**2026-10-07 為了主頁改成要**（Affinity 式，見「主頁與動態變數」）。面板目前不能拖曳排序，排序仍用上面三種入口。
+
+### 主頁與動態變數（`master-pages.ts` / `variables.ts` / `add-pages.ts` + `pages-panel.tsx` / `page-dialogs.tsx`）
+
+計畫與決定：`docs/Plans/imp-master-pages.md`。參考 Affinity Publisher，**只做單頁**（沒有跨頁 / spread）。
+
+- **模型**：見「文件模型」的主頁。**繪製順序**（下 → 上）：頁面背景 → 最上層祖先主頁的物件 → … → `masterId` 指的主頁的物件 → 頁面自己的物件 → 頁碼。`masterChain` / `inheritedElements` 算出要畫哪些主頁內容。
+  - **背景不繼承**：頁面背景是頁面自己的；主頁背景只在編輯主頁時看到，以及新增頁面時當預設值。
+  - **主頁物件在頁面上不能選取**、不在圖層面板、不算進捲動範圍；要改就切去編輯主頁。Affinity 的 Detach / 在頁面上改主頁物件不做。
+  - 階層：`parentId` 不可循環，一條鏈最多 8 層（`MASTER_DEPTH_MAX`，TS `canSetParent` / `isMasterGraphValid` 與 Rust `validate_master_graph` 同規則）。
+  - 刪除主頁：直接套用它的頁面與以它為基礎的子主頁，改接到它的父主頁（沒有就變成「無」）。
+- **畫布**（`editor-canvas`）：主頁內容用 `StaticElement`（`canvas-elements.tsx`，`listening={false}`，文字屬性和 `ElementNode` 共用 `textAttrs`）畫在頁面物件之下；編輯子主頁時父主頁的內容也畫在底下。`usedFontFamilies` 包含主頁。
+- **編輯主頁模式**：`page/select` 主頁的 id。畫布上方 `MasterEditBanner`（主頁名稱、以誰為基礎、`pagesUsingMaster` 幾頁使用、「回到頁面」→ `selectReturnPageId`）；頁籤列沒有頁籤被選取、頁碼欄顯示「–」；不畫頁碼（`pageIndex` = -1）；變數照原文顯示。
+- **「頁面」面板**（`pages-panel.tsx`，預設左側範本下方）：上半主頁、下半頁面，各有新增 / 複製 / 刪除；點縮圖切換、雙擊名稱改名、`⋮` 或右鍵選單（頁面：套用主頁 ▸；主頁：以…為基礎 ▸，會循環或太深的選項停用）。刪除前 AlertDialog 說明後果。
+  - **縮圖**（`sheet-thumbnail.tsx`）：小 Konva Stage 畫 `StaticElement`，**捲進畫面才建立**（`IntersectionObserver`），`memo` 只在 sheet / 內容參考改變時重畫；主頁內容由 `masterContent` 依主頁快取、頁面的變數依文件快取，參考才穩定。縮圖不畫頁碼。
+- **對話框**（`page-dialogs.tsx`，`PageDialogsProvider` 包在 `home-page.tsx` 的 `EditorLayout` 外，`usePageDialogs()` 開啟；外框沿用 `SettingsDialog`）：
+  - 新增頁面（頁籤列「+」= 加在最後；「插入頁面...」與面板 = 目前頁之後）：主頁、頁數 1–100（`ADD_PAGES_MAX`）、之前 / 之後、第幾頁 → 一次 `page/addMany`（一筆復原）。預設主頁 = 正在編輯的主頁 → 目前頁的主頁 → 第一個主頁。新頁面背景用主頁的背景。名稱照 `nextPageNames`（建立順序編號，不跟位置）。
+  - 新增主頁：名稱（`nextMasterName`：Master A、B…）、以…為基礎（編輯某主頁時預設以它為基礎）→ `master/add`，切過去編輯。
+- **動態變數**（`variables.ts`）：`{頁碼}`（`displayedPageNumber`：有頁碼規則涵蓋就依規則與起始值，否則第幾頁）、`{總頁數}`、`{文件名稱}`、`{頁面名稱}`；`TEXT_VARIABLES` 是單一資料來源。文字物件與圖形內文字都可以用；**只取代完全相符的 token**，其他大括號原樣保留（不需要跳脫）。
+  - 文件只存原文。畫布與頁面縮圖顯示時才換（`resolveElementsVariables`，沒變時回傳同一個參考）；主頁上照原文；**文字編輯框編輯的是原文**（`page.elements`），畫布顯示的是換過的副本，`bakeTransform` 只回寫位置與尺寸所以不會把值寫回文字。
+  - 屬性面板「文字」分頁的「插入變數」按鈕把 token 加在文字最後（一筆復原）。
+  - 頁碼規則與 `{頁碼}` 並存：同一頁兩者都用會出現兩次，由使用者決定，程式不擋。
+- **匯出**：`buildExportRequest` 在副本上逐頁 `withMasterContent`（主頁內容放最下面並換變數、頁面物件換變數）再 `withPageNumbers`，**Rust render / PDF 模板 / EPUB 都不讀 `masters`**。展開後的主頁物件 id 是 `master:<頁序>:<第幾個>`（`masterCopyId`）：`textLayouts` 以 id 為 key、同一個主頁物件每頁文字不同，而 **Rust `require_id` 只接受 64 字以內**，`<UUID>/<UUID>` 會超過。
+- **檔案**：`referenced_assets`（開檔清理沒引用的圖片）包含主頁上的圖片，否則只用在主頁的圖片會被刪掉。
 
 ### 其他注意事項
 
@@ -348,7 +380,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
-- `設定 → 工具面板`：9 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
+- `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
 | 快捷鍵 | 指令 |
 |--------|------|
@@ -377,11 +409,11 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 6；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 7；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
-- 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的）。
+- 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的；頁面與主頁上的圖片都算引用）。
 - 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用），但**還有備份檔的暫存資料夾會保留**。
 - 另存對話框：使用者輸入的名稱（去掉 `.magproj`）就是新的專案資料夾名稱，檔案固定叫 `project.magproj`；目標資料夾已存在而且不是空的會拒絕。對話框預設位置是「文件\雜誌編輯軟體」。
 - asset protocol 的 scope 在 `tauri.conf.json` 是空的，開啟專案時由 Rust `asset_protocol_scope().allow_directory()` 動態開放。
@@ -407,6 +439,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
     - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`。虛線 3w + 3w；點線 0 + 2w，圓頭。
     - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
     - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`、陰影偏移上限 `TEXT_SHADOW_OFFSET_MAX`：`validation.ts` / `format.rs`。
+    - 主頁鏈的深度上限 `MASTER_DEPTH_MAX`（8）與主頁引用的規則：`master-pages.ts` / `format.rs`。
     - 底線 / 刪除線的公式與模擬斜體的斜率只在 Rust（`render.rs`），對應的是 **Konva 與瀏覽器本身的行為**，不是前端常數：升級 Konva 時重查（見「文字裝飾」）。
     - 字級範圍 `FONT_SIZE_MIN` / `FONT_SIZE_MAX`（`validation.ts`）、`PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）：`format.rs` 的頁碼驗證（`validate_page_number_rules`）。
   - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。

@@ -45,9 +45,12 @@ export const DOCK_WIDTH_STEP = 16;
  */
 export const CANVAS_MIN_WIDTH = 480;
 
-// 左側開範本；屬性與圖層常用，預設放右側（屬性在上）
+// 左側開範本與頁面（同 Affinity 的 Pages 面板位置）；屬性與圖層常用，預設放右側（屬性在上）
 export const DEFAULT_DOCK_LAYOUT: DockLayout = {
-  left: [{ id: "templates", collapsed: false }],
+  left: [
+    { id: "templates", collapsed: false },
+    { id: "pages", collapsed: false },
+  ],
   right: [
     { id: "properties", collapsed: false },
     { id: "layers", collapsed: false },
