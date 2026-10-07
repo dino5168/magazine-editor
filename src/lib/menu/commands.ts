@@ -67,6 +67,7 @@ export const COMMANDS = {
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
+  "view.rulers": { label: "尺規", title: "顯示尺規" },
   ...SETTINGS_COMMANDS,
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },
   "settings.themeDark": { label: "深色", title: "外觀：深色" },

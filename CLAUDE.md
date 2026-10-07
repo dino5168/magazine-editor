@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -56,7 +56,7 @@ src/
   App.tsx                         # TooltipProvider + Toaster + lazy 載入 HomePage（不再使用 app-sidebar）
   pages/home-page.tsx             # EditorProvider → ProjectProvider → 版面（選單列 / 左停靠區｜中欄｜右停靠區 / 頁籤列）；dockLayout、選單 handlers、關閉提示放在這裡
   components/
-    app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 設定(S)），依 MENUS 渲染
+    app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 視圖(V) / 設定(S)），依 MENUS 渲染
     app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（上面兩個對話框共用）
@@ -78,7 +78,8 @@ src/
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
-      editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）
+      editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）；外層 grid 放尺規
+      canvas-ruler.tsx            # 尺規：CanvasRuler（2D canvas 刻度 + 選取範圍色帶 + 滑鼠標示線）、RulerCorner（角落 mm）、moveRulerMarker（直接改 DOM）
       canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、對頁跨過書背的複本、物件、頁碼、參考線、頁緣）；雙頁時書背側裁切；對頁畫成靜態、按下切頁；SpreadSpine 書背線
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
@@ -150,6 +151,7 @@ src/
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       image.ts                    # loadImageSize()
+      ruler.ts                    # 尺規的純邏輯：rulerScale（依縮放選 1–2–5 主刻度與細分）、rulerTicks（可見刻度）、rulerOrigin（目前頁左上角的螢幕位置）、selectionSpans（選取範圍）
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
       page-order.ts               # 頁面排序的純邏輯：isPageOrder、movePage、shiftPage / shiftedPageOrder（選單與快捷鍵）、slotToIndex（拖曳的空隙 → 新位置）
       spreads.ts                  # 跨頁：pageSide（第 1 頁在右）、spreadIndexOf / spreadsOf / spreadOf（1 ／ 2–3 ／ 4–5…）、canvasSheets（畫布畫哪些頁、各自的位移）、canvasSlotAt（某一點落在哪一頁）、spilloverInto（對頁跨過書背的物件）、pageAcrossSpine（放下時中心過書背要搬去的頁）
@@ -283,7 +285,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 - **兩種資料分開存**：
   - 文件設定（紙張尺寸、邊界）：`history.present`，存進專案檔、可復原、會標記未存檔。
-  - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`、`showPageNumbers`（在「頁碼管理」對話框切換）、`pageView`（`"single"` / `"spread"`，在「頁面」面板切換））：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
+  - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`、`showPageNumbers`（在「頁碼管理」對話框切換）、`pageView`（`"single"` / `"spread"`，在「頁面」面板切換）、`showRulers`（「視圖 → 尺規」，預設開））：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
 - **頁面設定**（「設定 → 文件 → 頁面設定...」）：按「確定」才寫入，「取消」/ Esc 放棄。
   - **沒有改動時「確定」不 dispatch `document/setPageSetup`**：否則頁面尺寸不一致的文件會被統一成目前頁的尺寸，還多一筆復原。
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
@@ -342,6 +344,20 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - Transformer 只掛目前頁的節點，不會兩頁物件一起拖。
 - **「頁面」面板**：雙頁模式時縮圖固定兩欄、欄間不留空，最前面一個空格讓第 1 頁落在右欄，左頁靠右、右頁靠左，兩頁貼在一起。
 - **匯出**仍是一頁一頁；跨過書背的物件會出現在兩頁（見上面的跨頁物件）。頁碼、動態變數、主頁內容都以頁為單位，兩頁並排各自正確。
+
+### 尺規（`lib/editor/ruler.ts` + `canvas-ruler.tsx`）
+
+計畫與決定：`docs/Plans/imp-view-ruler.md`。參考 Affinity Publisher。
+
+- **開關**：選單「視圖(V) → 尺規」（`view.rulers` 勾選項目，沒有快捷鍵：Ctrl+R 是 WebView 的重新整理）。狀態是 App 偏好 `Preferences.showRulers`（預設開，舊紀錄缺欄位讀成開）。
+- **刻度**：單位固定 mm；**0 在目前頁的左上角**（和屬性面板 X / Y 同一套頁面座標；雙頁切到對頁時原點跟著跳；編輯主頁時是主頁的左上角）。主刻度從 1–2–5 級數（1 … 2000 mm）選，數字間距至少 50 px（`RULER_LABEL_MIN_GAP_PX`）、細刻度至少 4 px；100% 時每 20 mm 一個數字、2 mm 一格。數字畫在刻度之後，垂直尺規轉 90°；可見範圍前多算一個數字間距，捲出去一半的數字仍畫得出來。
+- **版面**：`EditorCanvas` 外層是 2×2 grid（角落｜上尺規 / 左尺規｜捲動容器），尺規 20 px（`RULER_SIZE_PX`）、在**捲動容器外**：容器變小由既有的 `ResizeObserver` 更新 viewport，縮放、捲動、座標換算都不用改。關掉的尺規是 `false` 佔位，捲動容器一直是同一個元素（`scrollRef` 與 ResizeObserver 不會失效）。編輯主頁的橫幅（`MasterEditBanner`）開尺規時改 `top-8`。
+- **畫法**：一般 HTML `<canvas>`（2D，不用 Konva），依 `devicePixelRatio` 設解析度；顏色與字型讀元素的 CSS（design tokens）。靠畫布那一邊的分隔線是 inset shadow（CSS border 會佔掉 1 px、蓋住刻度底端）。
+- **標示**：
+  - 滑鼠位置：捲動容器的 pointermove 直接改尺規上標示線的 `transform`（`moveRulerMarker`），**不 setState**（否則每次移動都重畫整個畫布）；pointerleave 隱藏。
+  - 選取範圍：`selectionSpans`（選取物件外框的聯集，含旋轉）畫成色帶，在 canvas 之下。來自文件模型，所以**拖曳 / 縮放中不動，放開後才更新**。
+  - 兩者都用選取框（Transformer）的靛藍色：主題的 `primary` 是近黑色，畫在尺規上像灰色。
+- 不做（之後另排）：從尺規拖出參考線、改原點、切換單位、深色主題的尺規配色（canvas 要在主題切換時重畫）。
 
 ### 頁面排序（`page-order.ts` + `editor-page-bar.tsx` + `page-menu.tsx`）
 
@@ -405,9 +421,10 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
   - 在輸入框與文字編輯中也生效，並呼叫 `preventDefault()`，避免 WebView2 預設的 Ctrl+S / Ctrl+O 行為。
   - 例外：輸入法選字中（`isComposing`）或焦點在 dialog / alertdialog 內時不觸發。
-- 助記鍵 Alt+F / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
+- 助記鍵 Alt+F / Alt+V / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
+- `視圖`：放畫面上的輔助顯示（目前只有「尺規」勾選項目，`view.rulers`；勾選狀態由 `home-page.tsx` 的 `isChecked` 讀偏好）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
@@ -416,7 +433,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 | Ctrl+N / Ctrl+O | 新增 / 開啟... |
 | Ctrl+S / Ctrl+Shift+S | 儲存 / 另存新檔... |
 | Ctrl+, | 格線與參考線...（設定 → 偏好設定 ▸） |
-| Alt+F / Alt+S | 開啟「檔案」/「設定」選單 |
+| Alt+F / Alt+V / Alt+S | 開啟「檔案」/「視圖」/「設定」選單 |
 
 ## 工具面板（`lib/dock` + `components/dock`）
 

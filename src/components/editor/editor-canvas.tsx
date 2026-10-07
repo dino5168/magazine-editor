@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Layer, Stage, Transformer } from "react-konva";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
-import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
+import { selectActivePage, selectSelectedElement, selectSelectedElements } from "@/lib/editor/editor-reducer";
 import {
   boundsCenter,
   boundsIntersect,
@@ -16,6 +16,7 @@ import {
   unionBounds,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
+import { rulerOrigin, selectionSpans } from "@/lib/editor/ruler";
 import { canvasSheets, canvasSlotAt, pageAcrossSpine } from "@/lib/editor/spreads";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, PageId, Point, Size, TextElement } from "@/lib/editor/types";
@@ -31,6 +32,7 @@ import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
 import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
+import { CanvasRuler, moveRulerMarker, RULER_SIZE_PX, RulerCorner } from "./canvas-ruler";
 import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
@@ -101,6 +103,8 @@ export function EditorCanvas() {
   const activeX = sheets.slots.find((slot) => slot.sheet.id === page.id)?.x ?? 0;
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hMarkerRef = useRef<HTMLDivElement>(null);
+  const vMarkerRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const [viewport, setViewport] = useState<Size>({ width: 0, height: 0 });
   const [scroll, setScroll] = useState<Point>({ x: 0, y: 0 });
@@ -417,160 +421,203 @@ export function EditorCanvas() {
     [handleSelect, handleChange, handleMoveEnd, handleEditText, dragBound],
   );
 
+  const rulers = preferences.showRulers;
+  // 尺規的 0 在目前頁左上角（和屬性面板的 X / Y 同一套頁面座標）
+  const rulerZero = rulerOrigin(layout, zoom, scroll, activeX);
+  const rulerTrack = `${RULER_SIZE_PX}px minmax(0, 1fr)`;
+  // 選取範圍來自文件：拖曳 / 縮放中不跟著動，放開（dragend / transformend 寫回文件）後才更新
+  const spans = rulers ? selectionSpans(selectSelectedElements(state), rulerZero, zoom) : null;
+  // 滑鼠位置直接改尺規上的標示線，不 setState（否則每次移動都重畫整個畫布）
+  const trackPointer = (event: ReactPointerEvent<HTMLDivElement> | null) => {
+    const rect = event?.currentTarget.getBoundingClientRect();
+    moveRulerMarker(hMarkerRef.current, "horizontal", rect && event ? event.clientX - rect.left : null);
+    moveRulerMarker(vMarkerRef.current, "vertical", rect && event ? event.clientY - rect.top : null);
+  };
+
   return (
+    // 尺規在捲動容器外：容器變小由 ResizeObserver 更新 viewport，捲動 / 縮放 / 座標換算都不用改。
+    // 開關尺規時捲動容器仍是最後一個子元素（關掉的尺規是 false 佔位），元素不會重建
     <div
-      ref={scrollRef}
-      className="relative min-h-0 flex-1 overflow-scroll bg-muted"
-      style={{ cursor: pan.cursor ?? create.cursor }}
-      onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
-      // 平移優先（手形 / 空白鍵 / 中鍵）；平移攔下的事件，建立工具不再處理
-      onPointerDownCapture={(event) => {
-        pan.handlers.onPointerDownCapture(event);
-        create.handlers.onPointerDownCapture(event);
-      }}
-      onPointerMove={(event) => {
-        pan.handlers.onPointerMove(event);
-        create.handlers.onPointerMove(event);
-      }}
-      onPointerUp={(event) => {
-        pan.handlers.onPointerUp();
-        create.handlers.onPointerUp(event);
-      }}
-      onLostPointerCapture={() => {
-        pan.handlers.onLostPointerCapture();
-        create.handlers.onLostPointerCapture();
-      }}
-      onMouseDownCapture={pan.handlers.onMouseDownCapture}
+      className="grid min-h-0 flex-1"
+      style={rulers ? { gridTemplateColumns: rulerTrack, gridTemplateRows: rulerTrack } : { gridTemplateColumns: "minmax(0, 1fr)", gridTemplateRows: "minmax(0, 1fr)" }}
     >
-      <div className="relative" style={{ width: layout.contentWidth, height: layout.contentHeight }}>
-        {/* Stage 只有視窗大小並黏在可視範圍，捲動時改變 Layer 位移，避免建立超大 canvas */}
-        <div className="sticky top-0 left-0 overflow-hidden" style={{ width: viewport.width, height: viewport.height }}>
-          {fontsReady && viewport.width > 0 && (
-            <Stage
-              width={viewport.width}
-              height={viewport.height}
-              onMouseDown={handleStageMouseDown}
-              onTouchStart={handleStageMouseDown}
-            >
-              <Layer
-                x={origin.x}
-                y={origin.y}
-                scaleX={zoom}
-                scaleY={zoom}
-                // 拖曳物件中：目前頁暫時不在書背處裁切，跨過書背時仍看得到整個物件
-                onDragStart={() => setInteracting(true)}
-                onDragEnd={() => setInteracting(false)}
+      {rulers && <RulerCorner />}
+      {rulers && (
+        <CanvasRuler
+          orientation="horizontal"
+          originPx={rulerZero.x}
+          lengthPx={viewport.width}
+          zoom={zoom}
+          span={spans?.x ?? null}
+          markerRef={hMarkerRef}
+        />
+      )}
+      {rulers && (
+        <CanvasRuler
+          orientation="vertical"
+          originPx={rulerZero.y}
+          lengthPx={viewport.height}
+          zoom={zoom}
+          span={spans?.y ?? null}
+          markerRef={vMarkerRef}
+        />
+      )}
+      <div
+        ref={scrollRef}
+        className="relative min-h-0 min-w-0 overflow-scroll bg-muted"
+        style={{ cursor: pan.cursor ?? create.cursor }}
+        onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
+        // 平移優先（手形 / 空白鍵 / 中鍵）；平移攔下的事件，建立工具不再處理
+        onPointerDownCapture={(event) => {
+          pan.handlers.onPointerDownCapture(event);
+          create.handlers.onPointerDownCapture(event);
+        }}
+        onPointerMove={(event) => {
+          trackPointer(event);
+          pan.handlers.onPointerMove(event);
+          create.handlers.onPointerMove(event);
+        }}
+        onPointerLeave={() => trackPointer(null)}
+        onPointerUp={(event) => {
+          pan.handlers.onPointerUp();
+          create.handlers.onPointerUp(event);
+        }}
+        onLostPointerCapture={() => {
+          pan.handlers.onLostPointerCapture();
+          create.handlers.onLostPointerCapture();
+        }}
+        onMouseDownCapture={pan.handlers.onMouseDownCapture}
+      >
+        <div className="relative" style={{ width: layout.contentWidth, height: layout.contentHeight }}>
+          {/* Stage 只有視窗大小並黏在可視範圍，捲動時改變 Layer 位移，避免建立超大 canvas */}
+          <div className="sticky top-0 left-0 overflow-hidden" style={{ width: viewport.width, height: viewport.height }}>
+            {fontsReady && viewport.width > 0 && (
+              <Stage
+                width={viewport.width}
+                height={viewport.height}
+                onMouseDown={handleStageMouseDown}
+                onTouchStart={handleStageMouseDown}
               >
-                {drawOrder.map((slot) => (
-                  <CanvasSheet
-                    key={slot.sheet.id}
-                    sheet={slot.sheet}
-                    x={slot.x}
-                    pageIndex={slot.pageIndex}
-                    zoom={zoom}
-                    editingId={editingId}
-                    handlers={elementHandlers}
-                    active={slot.sheet.id === page.id}
-                    onActivate={(elementId) => {
-                      // page/select 會清空選取，之後才選對頁上被按的物件（兩個 action 依序套用）
-                      dispatch({ type: "page/select", id: slot.sheet.id });
-                      if (elementId) dispatch({ type: "selection/set", id: elementId });
-                    }}
-                    highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
-                    clipAtSpine={sheets.slots.length > 1 && !(interacting && slot.sheet.id === page.id)}
-                    onPickElsewhere={pickElement}
+                <Layer
+                  x={origin.x}
+                  y={origin.y}
+                  scaleX={zoom}
+                  scaleY={zoom}
+                  // 拖曳物件中：目前頁暫時不在書背處裁切，跨過書背時仍看得到整個物件
+                  onDragStart={() => setInteracting(true)}
+                  onDragEnd={() => setInteracting(false)}
+                >
+                  {drawOrder.map((slot) => (
+                    <CanvasSheet
+                      key={slot.sheet.id}
+                      sheet={slot.sheet}
+                      x={slot.x}
+                      pageIndex={slot.pageIndex}
+                      zoom={zoom}
+                      editingId={editingId}
+                      handlers={elementHandlers}
+                      active={slot.sheet.id === page.id}
+                      onActivate={(elementId) => {
+                        // page/select 會清空選取，之後才選對頁上被按的物件（兩個 action 依序套用）
+                        dispatch({ type: "page/select", id: slot.sheet.id });
+                        if (elementId) dispatch({ type: "selection/set", id: elementId });
+                      }}
+                      highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
+                      clipAtSpine={sheets.slots.length > 1 && !(interacting && slot.sheet.id === page.id)}
+                      onPickElsewhere={pickElement}
+                    />
+                  ))}
+                  {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
+                  {/* Transformer 在所有頁面之上；它掛的節點在各頁的 Group 裡，Konva 會換算位移 */}
+                  <Transformer
+                    ref={transformerRef}
+                    enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
+                    rotateEnabled={!multiSelected}
+                    keepRatio={transformerOptions.keepRatio}
+                    flipEnabled={false}
+                    // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
+                    ignoreStroke
+                    rotateAnchorOffset={24}
+                    anchorSize={8}
+                    anchorCornerRadius={2}
+                    borderStroke="#6366f1"
+                    anchorStroke="#6366f1"
+                    boundBoxFunc={(oldBox, newBox) =>
+                      Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
+                    }
+                    anchorDragBoundFunc={snapAnchor}
+                    onTransformStart={() => setInteracting(true)}
+                    onTransformEnd={() => setInteracting(false)}
                   />
-                ))}
-                {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
-                {/* Transformer 在所有頁面之上；它掛的節點在各頁的 Group 裡，Konva 會換算位移 */}
-                <Transformer
-                  ref={transformerRef}
-                  enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
-                  rotateEnabled={!multiSelected}
-                  keepRatio={transformerOptions.keepRatio}
-                  flipEnabled={false}
-                  // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
-                  ignoreStroke
-                  rotateAnchorOffset={24}
-                  anchorSize={8}
-                  anchorCornerRadius={2}
-                  borderStroke="#6366f1"
-                  anchorStroke="#6366f1"
-                  boundBoxFunc={(oldBox, newBox) =>
-                    Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
+                </Layer>
+              </Stage>
+            )}
+            <div
+              ref={create.previewRef}
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute border border-dashed border-primary bg-primary/5",
+                state.tool === "shape" && state.shapeKind === "ellipse" && "rounded-[50%]",
+                !create.previewVisible && "hidden",
+              )}
+            />
+            <div
+              ref={marquee.previewRef}
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute border border-primary bg-primary/10",
+                !marquee.previewVisible && "hidden",
+              )}
+            />
+            {draftText && (
+              <TextEditorOverlay
+                key={draftText.id}
+                element={draftText}
+                zoom={zoom}
+                origin={sheetOrigin}
+                onCommit={(text) => {
+                  setDraftText(null);
+                  if (text.trim().length > 0) dispatch({ type: "element/add", element: { ...draftText, text } });
+                }}
+                onCancel={() => setDraftText(null)}
+              />
+            )}
+            {editingText && (
+              <TextEditorOverlay
+                key={editingText.id}
+                element={editingText}
+                zoom={zoom}
+                origin={sheetOrigin}
+                onCommit={(text) => {
+                  setEditingId(null);
+                  if (text.trim().length === 0) {
+                    dispatch({ type: "element/delete", ids: [editingText.id] });
+                  } else {
+                    dispatch({ type: "element/update", id: editingText.id, patch: { text } });
                   }
-                  anchorDragBoundFunc={snapAnchor}
-                  onTransformStart={() => setInteracting(true)}
-                  onTransformEnd={() => setInteracting(false)}
-                />
-              </Layer>
-            </Stage>
-          )}
-          <div
-            ref={create.previewRef}
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute border border-dashed border-primary bg-primary/5",
-              state.tool === "shape" && state.shapeKind === "ellipse" && "rounded-[50%]",
-              !create.previewVisible && "hidden",
+                }}
+                onCancel={() => setEditingId(null)}
+              />
             )}
-          />
-          <div
-            ref={marquee.previewRef}
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute border border-primary bg-primary/10",
-              !marquee.previewVisible && "hidden",
+            {editingShape && editingLabel && (
+              <TextEditorOverlay
+                key={editingShape.id}
+                element={labelAsText(editingShape, editingLabel, labelFrame(editingShape))}
+                frame={{ height: labelFrame(editingShape).height, verticalAlign: editingLabel.verticalAlign }}
+                zoom={zoom}
+                origin={sheetOrigin}
+                onCommit={(text) => {
+                  setEditingId(null);
+                  // 清空文字 = 移除圖形內文字；原本就沒有文字時不產生歷史
+                  const label = text.trim().length === 0 ? null : { ...editingLabel, text };
+                  if (label !== null || editingShape.label !== null) {
+                    dispatch({ type: "element/update", id: editingShape.id, patch: { label } });
+                  }
+                }}
+                onCancel={() => setEditingId(null)}
+              />
             )}
-          />
-          {draftText && (
-            <TextEditorOverlay
-              key={draftText.id}
-              element={draftText}
-              zoom={zoom}
-              origin={sheetOrigin}
-              onCommit={(text) => {
-                setDraftText(null);
-                if (text.trim().length > 0) dispatch({ type: "element/add", element: { ...draftText, text } });
-              }}
-              onCancel={() => setDraftText(null)}
-            />
-          )}
-          {editingText && (
-            <TextEditorOverlay
-              key={editingText.id}
-              element={editingText}
-              zoom={zoom}
-              origin={sheetOrigin}
-              onCommit={(text) => {
-                setEditingId(null);
-                if (text.trim().length === 0) {
-                  dispatch({ type: "element/delete", ids: [editingText.id] });
-                } else {
-                  dispatch({ type: "element/update", id: editingText.id, patch: { text } });
-                }
-              }}
-              onCancel={() => setEditingId(null)}
-            />
-          )}
-          {editingShape && editingLabel && (
-            <TextEditorOverlay
-              key={editingShape.id}
-              element={labelAsText(editingShape, editingLabel, labelFrame(editingShape))}
-              frame={{ height: labelFrame(editingShape).height, verticalAlign: editingLabel.verticalAlign }}
-              zoom={zoom}
-              origin={sheetOrigin}
-              onCommit={(text) => {
-                setEditingId(null);
-                // 清空文字 = 移除圖形內文字；原本就沒有文字時不產生歷史
-                const label = text.trim().length === 0 ? null : { ...editingLabel, text };
-                if (label !== null || editingShape.label !== null) {
-                  dispatch({ type: "element/update", id: editingShape.id, patch: { label } });
-                }
-              }}
-              onCancel={() => setEditingId(null)}
-            />
-          )}
+          </div>
         </div>
       </div>
     </div>

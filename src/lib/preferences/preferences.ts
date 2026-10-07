@@ -16,6 +16,8 @@ export interface Preferences {
   readonly showPageNumbers: boolean;
   /** Edit one page at a time, or two facing pages (spreads: page 1 alone on the right, then 2–3 …). */
   readonly pageView: PageView;
+  /** Show the mm rulers above and left of the canvas (視圖 → 尺規). */
+  readonly showRulers: boolean;
 }
 
 export type PageView = "single" | "spread";
@@ -28,6 +30,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showMargins: true,
   showPageNumbers: true,
   pageView: "single",
+  showRulers: true,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -65,5 +68,6 @@ export function parsePreferences(value: unknown): Preferences {
     showMargins: parseBoolean(value.showMargins, fallback.showMargins),
     showPageNumbers: parseBoolean(value.showPageNumbers, fallback.showPageNumbers),
     pageView: value.pageView === "spread" || value.pageView === "single" ? value.pageView : fallback.pageView,
+    showRulers: parseBoolean(value.showRulers, fallback.showRulers),
   };
 }

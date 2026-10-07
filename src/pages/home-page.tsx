@@ -42,13 +42,14 @@ import {
   type CommandHandlers,
   type CommandId,
 } from "@/lib/menu/commands";
-import { PreferencesProvider } from "@/lib/preferences/preferences-context";
+import { PreferencesProvider, usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
 import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
 import { useImageImport } from "@/lib/project/use-image-import";
 import { useProjectCommands } from "@/lib/project/use-project-commands";
+import { cn } from "@/lib/utils";
 
 
 function EditorLayout() {
@@ -78,9 +79,14 @@ function EditorLayout() {
       })(),
     [importFiles, addImage],
   );
+  const showRulers = usePreferences().showRulers;
+  const setPreferences = useSetPreferences();
   const isChecked = useCallback(
-    (command: CommandId) => PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
-    [dockLayout],
+    (command: CommandId) =>
+      command === "view.rulers"
+        ? showRulers
+        : PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
+    [dockLayout, showRulers],
   );
 
   // 設定 → 文件 / 偏好設定：同時最多開一個設定對話框
@@ -96,11 +102,12 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": importImage,
+      "view.rulers": () => setPreferences((current) => ({ ...current, showRulers: !current.showRulers })),
       ...Object.fromEntries(SETTINGS_PAGES.map(({ id }) => [settingsCommandId(id), () => setOpenSettings(id)])),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
-    [project, importImage, updateDock],
+    [project, importImage, updateDock, setPreferences],
   );
 
   const onDropPanel = useCallback(
@@ -146,7 +153,8 @@ function EditorLayout() {
           {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <EditorCanvas />
-            <MasterEditBanner className="absolute inset-x-0 top-3 z-10" />
+            {/* 開尺規時往下移，不蓋住上方尺規（top-8 = 尺規 20 px + 12 px） */}
+            <MasterEditBanner className={cn("absolute inset-x-0 z-10", showRulers ? "top-8" : "top-3")} />
             <BottomToolbar onImportImage={importImage} className="absolute inset-x-0 bottom-6 z-10" />
           </div>
         </div>

@@ -55,6 +55,13 @@ export const MENUS = [
     ],
   },
   {
+    id: "view",
+    label: "視圖",
+    mnemonic: { code: "KeyV", letter: "V" },
+    // 畫面上的輔助顯示（存在這台電腦的偏好，不進復原歷史）
+    items: [{ kind: "checkbox", command: "view.rulers" }],
+  },
+  {
     id: "settings",
     label: "設定",
     mnemonic: { code: "KeyS", letter: "S" },

@@ -75,6 +75,14 @@ describe("menu structure", () => {
     expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
   });
 
+  it("puts 視圖 between 檔案 and 設定, with 尺規 as a checkbox", () => {
+    expect(MENUS.map((menu) => menu.id)).toEqual(["file", "view", "settings"]);
+    const view = MENUS.find((menu) => menu.id === "view")!;
+
+    expect(view.items).toEqual([{ kind: "checkbox", command: "view.rulers" }]);
+    expect(getCommandTitle("view.rulers")).toBe("顯示尺規");
+  });
+
   it("uses unique mnemonics", () => {
     const codes = MENUS.map((menu) => menu.mnemonic.code);
     expect(new Set(codes).size).toBe(codes.length);
@@ -95,6 +103,7 @@ describe("findMenuByMnemonic", () => {
   it("opens menus with Alt+letter only", () => {
     expect(findMenuByMnemonic(key("KeyF", { altKey: true }))).toBe("file");
     expect(findMenuByMnemonic(key("KeyS", { altKey: true }))).toBe("settings");
+    expect(findMenuByMnemonic(key("KeyV", { altKey: true }))).toBe("view");
     expect(findMenuByMnemonic(key("KeyF", { altKey: true, ctrlKey: true }))).toBeNull();
     expect(findMenuByMnemonic(key("KeyF"))).toBeNull();
   });
