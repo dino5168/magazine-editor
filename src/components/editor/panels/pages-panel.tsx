@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Copy, EllipsisVertical, FilePlus, Trash } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronDown, Copy, EllipsisVertical, FilePlus, Trash } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DockScrollArea } from "@/components/dock/dock-panel";
+import { getBrowserStorage } from "@/lib/dock/dock-storage";
+import {
+  canResizeSections,
+  loadPagesPanelLayout,
+  savePagesPanelLayout,
+  setMastersRatio,
+  toggleSection,
+  type PagesPanelSection,
+} from "@/lib/dock/pages-panel-layout";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import type { EditorAction } from "@/lib/editor/editor-reducer";
 import { createId } from "@/lib/editor/element-factory";
@@ -36,6 +46,7 @@ import { IconButton } from "../icon-button";
 import { InlineNameInput } from "../inline-name-input";
 import { usePageDialogs } from "../page-dialogs";
 import { SheetThumbnail } from "../sheet-thumbnail";
+import { sectionFlex, useSectionResize } from "./use-section-resize";
 
 /** Thumbnail width in CSS px. */
 const THUMBNAIL_WIDTH = 96;
@@ -89,6 +100,9 @@ export function PagesPanel() {
     [document, contentOf],
   );
 
+  // 兩區的收合與高度是這台電腦的偏好（localStorage），不進復原歷史
+  const [layout, setLayout] = useState(() => loadPagesPanelLayout(getBrowserStorage()));
+  useEffect(() => savePagesPanelLayout(getBrowserStorage(), layout), [layout]);
   const [renamingId, setRenamingId] = useState<PageId | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const activePage = pages.find((page) => page.id === state.activePageId) ?? null;
@@ -102,10 +116,25 @@ export function PagesPanel() {
 
   const nameOf = (id: PageId | null) => masters.find((master) => master.id === id)?.name ?? null;
 
+  // 兩區都展開時依比例分高度；收起一區時另一區佔滿（收起的「頁面」標題列因此貼在底部）
+  const mastersGrow = layout.pagesCollapsed ? 1 : layout.mastersRatio;
+  const pagesGrow = layout.mastersCollapsed ? 1 : 1 - layout.mastersRatio;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const resizable = canResizeSections(layout);
+  const resize = useSectionResize(rootRef, layout.mastersRatio, resizable, (ratio) =>
+    setLayout((current) => setMastersRatio(current, ratio)),
+  );
+
   return (
-    <div className="flex flex-col gap-4 py-2">
+    // 這個面板自己處理捲動（scroll: "self"）：兩區的標題列與內容是同一層的 flex 子元素，
+    // 內容區以 flex-grow 分配標題列以外的高度，各自捲動
+    <div ref={rootRef} className="flex min-h-0 flex-1 flex-col">
       <Section
+        id="masters"
         title="主頁"
+        collapsed={layout.mastersCollapsed}
+        grow={mastersGrow}
+        onToggle={() => setLayout((current) => toggleSection(current, "masters"))}
         actions={
           <>
             <IconButton label="新增主頁" size="icon-xs" onClick={openAddMaster}>
@@ -167,7 +196,12 @@ export function PagesPanel() {
       </Section>
 
       <Section
+        id="pages"
         title="頁面"
+        collapsed={layout.pagesCollapsed}
+        grow={pagesGrow}
+        onToggle={() => setLayout((current) => toggleSection(current, "pages"))}
+        resize={resizable ? { ...resize, ratio: layout.mastersRatio } : undefined}
         actions={
           <>
             <IconButton label="新增頁面" size="icon-xs" onClick={() => openAddPages("current")}>
@@ -250,15 +284,76 @@ export function PagesPanel() {
   );
 }
 
-function Section({ title, actions, children }: { readonly title: string; readonly actions: ReactNode; readonly children: ReactNode }) {
+interface SectionProps {
+  readonly id: PagesPanelSection;
+  readonly title: string;
+  readonly collapsed: boolean;
+  /** Share of the free height for the body (flex-grow); ignored while collapsed. */
+  readonly grow: number;
+  readonly onToggle: () => void;
+  readonly actions: ReactNode;
+  readonly children: ReactNode;
+  /** Given on the 頁面 section while both are open: its title bar is the boundary to drag. */
+  readonly resize?: ReturnType<typeof useSectionResize> & { readonly ratio: number };
+}
+
+/**
+ * One section of the Pages panel: a title bar with its own collapse button and actions, and a body
+ * that scrolls on its own. Returns siblings (no wrapper) so the panel's flex column shares the
+ * height between the two bodies.
+ */
+function Section({ id, title, collapsed, grow, onToggle, actions, children, resize }: SectionProps) {
+  const bodyId = useId();
   return (
-    <section className="flex flex-col gap-2 px-2">
-      <header className="flex items-center justify-between border-b pb-1">
-        <h3 className="px-1 text-sm font-medium">{title}</h3>
+    <>
+      <header
+        data-pages-section={id}
+        title={resize ? "上下拖曳調整主頁與頁面的高度，雙擊還原" : undefined}
+        onPointerDown={resize?.onPointerDown}
+        onDoubleClick={resize?.onDoubleClick}
+        className={cn(
+          "group/resize relative flex h-9 shrink-0 touch-none items-center gap-1 border-b bg-muted/30 pr-1 first:border-t-0 [&:not(:first-child)]:border-t",
+          resize && "cursor-row-resize",
+        )}
+      >
+        {resize && (
+          // 鍵盤操作的分隔線（↑ / ↓），跨在兩區交界；滑鼠拖曳整個標題列都可以（事件冒泡到 header）
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="調整主頁與頁面的高度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(resize.ratio * 100)}
+            tabIndex={0}
+            onKeyDown={resize.onKeyDown}
+            className="group/sep absolute inset-x-0 -top-1 z-10 flex h-2 items-center outline-none"
+          >
+            <div className="h-0.5 w-full transition-colors group-hover/resize:bg-primary/40 group-focus-visible/sep:bg-primary group-active/resize:bg-primary" />
+          </div>
+        )}
+        {/* 只有箭頭是收合鈕：標題文字不是按鈕，按住「頁面」標題就能拖曳調整高度 */}
+        <button
+          type="button"
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          aria-label={collapsed ? `展開${title}` : `收合${title}`}
+          onClick={onToggle}
+          className="ml-1 flex size-6 shrink-0 cursor-default items-center justify-center rounded outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", collapsed && "-rotate-90")} />
+        </button>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium select-none">{title}</span>
         <div className="flex items-center gap-0.5">{actions}</div>
       </header>
-      {children}
-    </section>
+      {!collapsed && (
+        <div id={bodyId} role="region" aria-label={title} className="flex min-h-0 flex-col" style={{ flex: sectionFlex(grow) }}>
+          <DockScrollArea>
+            <div className="p-3">{children}</div>
+          </DockScrollArea>
+        </div>
+      )}
+    </>
   );
 }
 

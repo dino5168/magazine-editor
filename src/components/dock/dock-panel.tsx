@@ -2,7 +2,7 @@ import type { PointerEvent, ReactNode } from "react";
 import { ChevronDown, GripVertical, X } from "lucide-react";
 import { IconButton } from "@/components/editor/icon-button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getPanelLabel, type PanelId } from "@/lib/dock/panels";
+import { getPanelLabel, panelScrollsItself, type PanelId } from "@/lib/dock/panels";
 import { cn } from "@/lib/utils";
 import { PANEL_ICONS } from "./panel-icons";
 
@@ -16,6 +16,23 @@ interface DockPanelProps {
   /** Pointer-down on the title bar; a drag starts once the pointer moves past a small threshold. */
   readonly onDragStart: (event: PointerEvent) => void;
   readonly children: ReactNode;
+}
+
+/**
+ * Scroll area for panel content that follows the dock width.
+ *
+ * Args:
+ *   props.className: Extra classes (sizing inside the parent).
+ *   props.children: Content.
+ *
+ * Returns:
+ *   Scroll area filling the remaining height of a flex column.
+ */
+export function DockScrollArea({ className, children }: { readonly className?: string; readonly children: ReactNode }) {
+  return (
+    // Radix 把內容包在 display: table 的 div 裡，長文字會撐寬面板、truncate 失效；改成 block 讓內容跟著停靠區寬度
+    <ScrollArea className={cn("min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!", className)}>{children}</ScrollArea>
+  );
 }
 
 /**
@@ -78,12 +95,15 @@ export function DockPanel({ id, collapsed, dragging, onToggleCollapsed, onClose,
           <X />
         </IconButton>
       </header>
-      {!collapsed && (
-        // Radix 把內容包在 display: table 的 div 裡，長文字會撐寬面板、truncate 失效；改成 block 讓內容跟著停靠區寬度
-        <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
-          <div className="flex flex-col gap-3 p-4 pt-3">{children}</div>
-        </ScrollArea>
-      )}
+      {!collapsed &&
+        (panelScrollsItself(id) ? (
+          // 自己處理捲動的面板（頁面）：內容填滿面板，高度由面板自己分配
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        ) : (
+          <DockScrollArea>
+            <div className="flex flex-col gap-3 p-4 pt-3">{children}</div>
+          </DockScrollArea>
+        ))}
     </section>
   );
 }

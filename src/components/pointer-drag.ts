@@ -12,6 +12,8 @@ interface PointerDragHandlers {
   readonly onEnd: (commit: boolean) => void;
   /** Always called once when the press is over (dragged or not), after `onEnd`. */
   readonly onDone?: () => void;
+  /** Cursor shown on the whole page while dragging; defaults to "grabbing" (moving things). */
+  readonly cursor?: string;
 }
 
 // 拖曳結束時瀏覽器仍會對按下的元素送出 click，不能讓它變成一般的點擊
@@ -25,7 +27,8 @@ function swallowNextClick(): void {
 }
 
 /**
- * Follows one press of the primary button as a possible drag (tool panels, page tabs). Listeners go on
+ * Follows one press of the primary button as a possible drag (tool panels, page tabs, the Pages
+ * panel's section boundary). Listeners go on
  * `window` at the moment of the press, so a quick press-release is never missed. A drag starts after
  * DRAG_THRESHOLD_PX; Esc cancels it without reaching the editor's own Esc; the click that follows a
  * drag is swallowed.
@@ -67,7 +70,7 @@ export function startPointerDrag(event: ReactPointerEvent | PointerEvent, handle
     if (!active) {
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < DRAG_THRESHOLD_PX) return;
       active = true;
-      document.body.style.cursor = "grabbing";
+      document.body.style.cursor = handlers.cursor ?? "grabbing";
       document.body.style.userSelect = "none";
       handlers.onStart(e);
     }

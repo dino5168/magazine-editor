@@ -70,11 +70,11 @@ src/
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     dock/                         # 工具面板（Krita 式停靠）的 UI
       dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
-      dock-panel.tsx              # 面板外框：標題列（收合 / 拖曳 / 關閉）+ ScrollArea
+      dock-panel.tsx              # 面板外框：標題列（收合 / 拖曳 / 關閉）+ DockScrollArea（`scroll: "self"` 的面板不包，內容自己捲動）
       dock-splitter.tsx           # size control bar：拖曳 / 雙擊還原 / 鍵盤 ←→ 調整停靠區寬度
       use-dock-drag.ts            # 拖曳標題列移動面板（命中判斷；按下 / 門檻 / Esc 交給 pointer-drag.ts）
       dock-drag-ghost.tsx         # 拖曳時跟著游標的面板 icon + 名稱（DragGhost 的包裝）
-    pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、grabbing 游標、吞掉拖曳後的 click、Esc 取消、清除），工具面板與頁籤拖曳共用
+    pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、游標（預設 grabbing，可指定）、吞掉拖曳後的 click、Esc 取消、清除），工具面板、頁籤拖曳與「頁面」面板的分區高度共用
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
@@ -92,7 +92,7 @@ src/
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖）；draw 目前是佔位
+      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；draw 目前是佔位
       sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
@@ -121,7 +121,8 @@ src/
       __tests__/
     preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）、settings-pages.ts（設定頁清單 SETTINGS_PAGES / SETTINGS_GROUPS）
     dock/                         # 工具面板版面（不含 UI）
-      panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide）：面板的單一資料來源，PanelId 由它推導
+      panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導
+      pages-panel-layout.ts       # 「頁面」面板兩區的收合與高度比例（純函式、最小高度、parse、localStorage 讀寫）
       dock-layout.ts              # DockLayout 型別與純函式（開關 / 移動 / 拖放 / 收合 / 寬度）、parseDockLayout
       dock-storage.ts             # 版面存取 localStorage（損壞時回到預設）
       __tests__/
@@ -340,7 +341,11 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 刪除主頁：直接套用它的頁面與以它為基礎的子主頁，改接到它的父主頁（沒有就變成「無」）。
 - **畫布**（`editor-canvas`）：主頁內容用 `StaticElement`（`canvas-elements.tsx`，`listening={false}`，文字屬性和 `ElementNode` 共用 `textAttrs`）畫在頁面物件之下；編輯子主頁時父主頁的內容也畫在底下。`usedFontFamilies` 包含主頁。
 - **編輯主頁模式**：`page/select` 主頁的 id。畫布上方 `MasterEditBanner`（主頁名稱、以誰為基礎、`pagesUsingMaster` 幾頁使用、「回到頁面」→ `selectReturnPageId`）；頁籤列沒有頁籤被選取、頁碼欄顯示「–」；不畫頁碼（`pageIndex` = -1）；變數照原文顯示。
-- **「頁面」面板**（`pages-panel.tsx`，預設左側範本下方）：上半主頁、下半頁面，各有新增 / 複製 / 刪除；點縮圖切換、雙擊名稱改名、`⋮` 或右鍵選單（頁面：套用主頁 ▸；主頁：以…為基礎 ▸，會循環或太深的選項停用）。刪除前 AlertDialog 說明後果。
+- **「頁面」面板**（`pages-panel.tsx`，預設左側範本下方）：上半主頁、下半頁面，各有新增 / 複製 / 刪除；點縮圖切換、雙擊名稱改名、`⋮` 或右鍵選單（頁面：套用主頁 ▸；主頁：以…為基礎 ▸，會循環或太深的選項停用）。刪除前 AlertDialog 說明後果。計畫：`docs/Plans/imp-fix-master.md`。
+  - **兩區各自收合**：標題列最左邊的箭頭是收合鈕（**只有箭頭**是按鈕，標題是一般文字，才抓得到標題拖曳）。收起的區只剩標題列，另一區佔滿；收起的「頁面」標題列貼在面板底部；兩區都收起時標題列靠上。
+  - **高度分配**：兩區的標題列與內容區是**同一層的 flex 子元素**（`Section` 回傳 header + 內容，不包外層），內容區 `flex: <比例> 1 0px` 分配標題列以外的高度、各自用 `DockScrollArea` 捲動，**不量測高度**。這需要面板自己處理捲動：`PANEL_DEFINITIONS` 的 `scroll: "self"`，`DockPanel` 對它不包共用捲動區。
+  - **拖曳**（`use-section-resize.ts`）：只有兩區都展開時可拖「頁面」標題列（按在按鈕上不算）；走 `startPointerDrag`（`cursor: "row-resize"`）；拖曳中**直接改兩個內容區的 `style.flex`**（不 render、縮圖不重畫），放開才寫回、Esc 改回原值；雙擊還原 0.35（`MASTERS_RATIO_DEFAULT`）；標題列上緣的 `role="separator"` 可用 ↑ / ↓ 每次 16 px；兩區內容各至少 80 px（`PAGES_SECTION_MIN_PX`，`resizeMastersRatio`）。
+  - **記憶**：`PagesPanelLayout`（`mastersCollapsed` / `pagesCollapsed` / `mastersRatio`，存比例不存 px）是 App 偏好，localStorage `magazine-editor.pagesPanel.v1`，讀取過 `parsePagesPanelLayout`；不進復原歷史、不存進專案。
   - **縮圖**（`sheet-thumbnail.tsx`）：小 Konva Stage 畫 `StaticElement`，**捲進畫面才建立**（`IntersectionObserver`），`memo` 只在 sheet / 內容參考改變時重畫；主頁內容由 `masterContent` 依主頁快取、頁面的變數依文件快取，參考才穩定。縮圖不畫頁碼。
 - **對話框**（`page-dialogs.tsx`，`PageDialogsProvider` 包在 `home-page.tsx` 的 `EditorLayout` 外，`usePageDialogs()` 開啟；外框沿用 `SettingsDialog`）：
   - 新增頁面（頁籤列「+」= 加在最後；「插入頁面...」與面板 = 目前頁之後）：主頁、頁數 1–100（`ADD_PAGES_MAX`）、之前 / 之後、第幾頁 → 一次 `page/addMany`（一筆復原）。預設主頁 = 正在編輯的主頁 → 目前頁的主頁 → 第一個主頁。新頁面背景用主頁的背景。名稱照 `nextPageNames`（建立順序編號，不跟位置）。
@@ -404,7 +409,8 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
 - **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁籤拖曳也用它，改動時兩邊都要測）。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
 - **記憶**：`localStorage` key `magazine-editor.dockLayout.v2`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。只有 v1 時沿用它，並把屬性面板加到右側最上方一次（`loadDockLayout`）。`npm run dev` 與安裝版 origin 不同，各記一份。
-- Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockPanel` 用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正。
+- Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockScrollArea`（`dock-panel.tsx` 匯出）用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正，面板裡需要捲動區時用它。
+- 面板預設由 `DockPanel` 包一個捲動區；需要把高度分給好幾塊、各自捲動的面板，在 `PANEL_DEFINITIONS` 設 `scroll: "self"`（目前只有「頁面」），內容會放在 `flex-1 min-h-0` 的容器裡。
 - Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）

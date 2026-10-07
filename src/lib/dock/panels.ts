@@ -5,6 +5,11 @@ interface PanelDefinition {
   readonly label: string;
   /** Side the panel docks to when it is opened from the menu. */
   readonly defaultSide: DockSide;
+  /**
+   * "self": the panel fills the dock panel's body and scrolls its own parts (the Pages panel shares
+   * its height between two sections). Omitted: the dock panel wraps the content in one scroll area.
+   */
+  readonly scroll?: "self";
 }
 
 // 工具面板的單一資料來源；PanelId 由此推導，icon 與面板內容在 UI 端以 satisfies Record<PanelId, …> 檢查完整性
@@ -16,7 +21,7 @@ export const PANEL_DEFINITIONS = [
   { id: "draw", label: "繪圖", defaultSide: "left" },
   { id: "upload", label: "上傳", defaultSide: "left" },
   { id: "background", label: "背景", defaultSide: "left" },
-  { id: "pages", label: "頁面", defaultSide: "left" },
+  { id: "pages", label: "頁面", defaultSide: "left", scroll: "self" },
   { id: "properties", label: "屬性", defaultSide: "right" },
   { id: "layers", label: "圖層", defaultSide: "right" },
 ] as const satisfies readonly PanelDefinition[];
@@ -54,6 +59,19 @@ function getPanel(id: PanelId): PanelDefinition {
  */
 export function getPanelLabel(id: PanelId): string {
   return getPanel(id).label;
+}
+
+/**
+ * Whether a panel scrolls its own parts instead of being wrapped in one scroll area.
+ *
+ * Args:
+ *   id: Panel id.
+ *
+ * Returns:
+ *   True for panels declared with `scroll: "self"`.
+ */
+export function panelScrollsItself(id: PanelId): boolean {
+  return getPanel(id).scroll === "self";
 }
 
 /**
