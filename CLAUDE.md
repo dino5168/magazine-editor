@@ -79,7 +79,7 @@ src/
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）
-      canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、物件、頁碼、參考線、頁緣）；對頁畫成靜態、按下切頁；SpreadSpine 書背線
+      canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、對頁跨過書背的複本、物件、頁碼、參考線、頁緣）；雙頁時書背側裁切；對頁畫成靜態、按下切頁；SpreadSpine 書背線
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
@@ -152,7 +152,7 @@ src/
       image.ts                    # loadImageSize()
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
       page-order.ts               # 頁面排序的純邏輯：isPageOrder、movePage、shiftPage / shiftedPageOrder（選單與快捷鍵）、slotToIndex（拖曳的空隙 → 新位置）
-      spreads.ts                  # 跨頁：pageSide（第 1 頁在右）、spreadIndexOf / spreadsOf / spreadOf（1 ／ 2–3 ／ 4–5…）、canvasSheets（畫布畫哪些頁、各自的位移）、canvasSlotAt（某一點落在哪一頁）
+      spreads.ts                  # 跨頁：pageSide（第 1 頁在右）、spreadIndexOf / spreadsOf / spreadOf（1 ／ 2–3 ／ 4–5…）、canvasSheets（畫布畫哪些頁、各自的位移）、canvasSlotAt（某一點落在哪一頁）、spilloverInto（對頁跨過書背的物件）、pageAcrossSpine（放下時中心過書背要搬去的頁）
       master-pages.ts             # 主頁：findSheet、masterChain / inheritedElements / masterContent（要畫哪些主頁內容）、canSetParent / isMasterGraphValid（循環與深度，和 Rust 同規則）、deleteMaster、pagesUsingMaster、nextMasterName
       variables.ts                # 動態變數：TEXT_VARIABLES（{頁碼} {總頁數} {文件名稱} {頁面名稱}）、variableValues（主頁回傳 null）、resolveElementsVariables
       add-pages.ts                # 新增頁面 / 主頁對話框的純邏輯：預設值、錯誤訊息、插入位置、建立新頁面
@@ -215,7 +215,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
 - **不進歷史的 UI 狀態**：`activePageId`（也可以是主頁的 id：正在編輯主頁）、`lastPageId`（最後顯示的頁面，「回到頁面」用；`editorReducer` 每次切到頁面時記下）、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
 - `selectActivePage` 回傳 `Sheet`（頁面或主頁）：`element/*` 不分頁面或主頁，編輯主頁不需要另一套 action。`page/rename`、`page/setBackground` 也對兩者都有效。只需要頁面的地方（頁序、頁碼）自己查 `pages`。
-- 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。
+- 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。`element/moveToPage { moves, pageId, dx }`：拖過書背放下時，一筆復原裡改位置、換到對頁座標、搬到對頁最上層並切頁選取（見「單頁 / 雙頁」）。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
 - 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面與主頁 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
@@ -333,10 +333,15 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **編輯**：選取只屬於目前頁（規則不變）。
   - 對頁的物件畫成 `StaticElement listening`（不是 `ElementNode`）：按下物件 = `page/select` 再 `selection/set`（一次點選）；按下對頁背景 = 只切頁。事件 `cancelBubble`，不會清空選取或開始框選。**要拖曳對頁的物件得按第二次**（切頁後才重畫成可拖曳的節點）。
   - 建立工具建在**按下處的那一頁**：`use-canvas-create` 的 `pageAt(screen)` 回傳那一頁與換到它頁面座標的函式，放開時先 `page/select` 再建立（文字草稿也跟著到那一頁）。
-  - 物件拖過書背**仍屬原頁面**（超出照常顯示，匯出時被紙張裁掉），不自動換頁。
+  - **跨頁物件**（計畫：`docs/Plans/imp-edit-crose-page.md`）：物件仍只屬於一頁（模型不變），但**跨過書背的部分在對頁也畫、也匯出**，兩頁接得起來（Affinity 的做法）。`spilloverInto(pages, pageIndex)` 找出對頁跨過書背（含旋轉外框，只看書背那一側；單獨一頁沒有）的物件與位移（左頁 → 右頁 `−左頁寬`、右頁 → 左頁 `+左頁寬`）。
+    - 疊放順序（畫布與匯出相同）：主頁內容 → **對頁跨過來的複本** → 這一頁自己的物件 → 頁碼。複本的變數用**物件所屬頁**的值。
+    - 畫布：複本是 `StaticElement`，包在書背側裁切的 Group（`spineClip`：左頁裁右緣、右頁裁左緣，其他三邊用很大的範圍等於不裁）裡；**單頁模式也畫**（匯出一律套用）。雙頁時每頁自己的物件也在書背處裁切（`clipAtSpine`），跨過去的部分只由對頁的複本顯示；**拖曳 / 縮放中目前頁不裁切**（`interacting`，Layer 的 drag 事件與 Transformer 的 transform 事件），而且目前頁最後畫，拖的時候看得到整個物件。
+    - 按複本 = 到物件所屬頁並選取（`onPickElsewhere`）；那一段不能直接拖（從所屬頁那一側或控制點拖）。
+    - 匯出：`buildExportRequest` 的 `exportedPage` 加複本，id `spill:<頁序>:<第幾個>`（`spilloverCopyId`），**一律依雜誌配對套用**，和畫面用單頁或雙頁無關。
+  - **放下時中心過書背就換頁**（取代原本的「不換頁」）：`handleMoveEnd` 在兩頁都看得到時，用放下的整組外框中心問 `pageAcrossSpine`，過了就送 `element/moveToPage`（一筆復原；開吸附時以被拖的物件為準對齊新頁的格線，因為頁寬不一定是間距的倍數）。單頁模式拖出頁面不換頁；縮放不換頁。
   - Transformer 只掛目前頁的節點，不會兩頁物件一起拖。
 - **「頁面」面板**：雙頁模式時縮圖固定兩欄、欄間不留空，最前面一個空格讓第 1 頁落在右欄，左頁靠右、右頁靠左，兩頁貼在一起。
-- **匯出不受影響**（仍是一頁一頁）。頁碼、動態變數、主頁內容都以頁為單位，兩頁並排各自正確。
+- **匯出**仍是一頁一頁；跨過書背的物件會出現在兩頁（見上面的跨頁物件）。頁碼、動態變數、主頁內容都以頁為單位，兩頁並排各自正確。
 
 ### 頁面排序（`page-order.ts` + `editor-page-bar.tsx` + `page-menu.tsx`）
 
@@ -373,7 +378,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 文件只存原文。畫布與頁面縮圖顯示時才換（`resolveElementsVariables`，沒變時回傳同一個參考）；主頁上照原文；**文字編輯框編輯的是原文**（`page.elements`），畫布顯示的是換過的副本，`bakeTransform` 只回寫位置與尺寸所以不會把值寫回文字。
   - 屬性面板「文字」分頁的「插入變數」按鈕把 token 加在文字最後（一筆復原）。
   - 頁碼規則與 `{頁碼}` 並存：同一頁兩者都用會出現兩次，由使用者決定，程式不擋。
-- **匯出**：`buildExportRequest` 在副本上逐頁 `withMasterContent`（主頁內容放最下面並換變數、頁面物件換變數）再 `withPageNumbers`，**Rust render / PDF 模板 / EPUB 都不讀 `masters`**。展開後的主頁物件 id 是 `master:<頁序>:<第幾個>`（`masterCopyId`）：`textLayouts` 以 id 為 key、同一個主頁物件每頁文字不同，而 **Rust `require_id` 只接受 64 字以內**，`<UUID>/<UUID>` 會超過。
+- **匯出**：`buildExportRequest` 在副本上逐頁 `exportedPage`（主頁內容放最下面、接著對頁跨過書背的物件、再來頁面自己的物件，都換變數）再 `withPageNumbers`，**Rust render / PDF 模板 / EPUB 都不讀 `masters`**。展開後的主頁物件 id 是 `master:<頁序>:<第幾個>`（`masterCopyId`）：`textLayouts` 以 id 為 key、同一個主頁物件每頁文字不同，而 **Rust `require_id` 只接受 64 字以內**，`<UUID>/<UUID>` 會超過。
 - **檔案**：`referenced_assets`（開檔清理沒引用的圖片）包含主頁上的圖片，否則只用在主頁的圖片會被刪掉。
 
 ### 其他注意事項

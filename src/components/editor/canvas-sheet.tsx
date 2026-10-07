@@ -4,9 +4,9 @@ import { Group, Line, Rect } from "react-konva";
 import { useEditorState } from "@/lib/editor/editor-context";
 import { inheritedElements } from "@/lib/editor/master-pages";
 import { pageNumberShape } from "@/lib/editor/page-numbers";
-import { pageSide, type CanvasSheets } from "@/lib/editor/spreads";
-import type { ElementId, Sheet } from "@/lib/editor/types";
-import { resolveElementsVariables, variableValues } from "@/lib/editor/variables";
+import { pageSide, spilloverInto, type CanvasSheets } from "@/lib/editor/spreads";
+import type { ElementId, PageId, Sheet } from "@/lib/editor/types";
+import { resolveElementsVariables, resolveElementVariables, variableValues } from "@/lib/editor/variables";
 import { measureLineWidth } from "@/lib/export/text-layout";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { ElementNode, StaticElement, StaticShape, type ElementNodeProps } from "./canvas-elements";
@@ -53,8 +53,30 @@ interface CanvasSheetProps {
    */
   readonly active: boolean;
   readonly onActivate: (elementId: ElementId | null) => void;
+  /** A press on a copy of a facing-page element crossing the spine: edit that page and select it. */
+  readonly onPickElsewhere: (pageId: PageId, elementId: ElementId) => void;
   /** Outline the page as the one being edited (only meaningful when two pages are shown). */
   readonly highlighted: boolean;
+  /**
+   * Crop the sheet's own elements at the spine (spread view, both pages shown): what crosses it is
+   * drawn by the facing page's copy instead, in the same stacking order as the export. Off while an
+   * element of the page is being dragged or resized, so the whole object stays visible.
+   */
+  readonly clipAtSpine: boolean;
+}
+
+/** Far enough to leave the non-spine sides of a page unclipped (elements may stick out of the page). */
+const UNCLIPPED = 100_000;
+
+/** Konva clip of a page's spine side: a left page is cut at its right edge, a right page at its left edge. */
+function spineClip(sheet: Sheet, pageIndex: number) {
+  const left = pageSide(pageIndex) === "left";
+  return {
+    clipX: left ? -UNCLIPPED : 0,
+    clipY: -UNCLIPPED,
+    clipWidth: left ? UNCLIPPED + sheet.width : UNCLIPPED,
+    clipHeight: 2 * UNCLIPPED,
+  };
 }
 
 /**
@@ -62,8 +84,10 @@ interface CanvasSheetProps {
  * coordinates are the sheet's own (pt from its top-left corner), so elements, `bakeTransform` and
  * the grid work unchanged whichever side of a spread the sheet is on.
  *
- * Bottom to top: background, grid, master page content (static), the sheet's elements, page number,
- * margin guides, page edge. The content's text variables are resolved for this page.
+ * Bottom to top: background, grid, master page content (static), the facing page's elements crossing
+ * the spine (static copies, cropped to this page's side), the sheet's elements, page number, margin
+ * guides, page edge — the same stacking as the export. Text variables take the values of the page each
+ * element belongs to.
  *
  * Args:
  *   props: Sheet, its offset and index, zoom, the element being edited and the element callbacks.
@@ -71,7 +95,19 @@ interface CanvasSheetProps {
  * Returns:
  *   Konva group.
  */
-export function CanvasSheet({ sheet, x, pageIndex, zoom, editingId, handlers, active, onActivate, highlighted }: CanvasSheetProps) {
+export function CanvasSheet({
+  sheet,
+  x,
+  pageIndex,
+  zoom,
+  editingId,
+  handlers,
+  active,
+  onActivate,
+  highlighted,
+  clipAtSpine,
+  onPickElsewhere,
+}: CanvasSheetProps) {
   const document = useEditorState().history.present;
   const preferences = usePreferences();
   const { masters, pageNumberRules, margins } = document;
@@ -83,6 +119,18 @@ export function CanvasSheet({ sheet, x, pageIndex, zoom, editingId, handlers, ac
     [masters, sheet, variables],
   );
   const shownElements = useMemo(() => resolveElementsVariables(sheet.elements, variables), [sheet.elements, variables]);
+  // 對頁跨過書背的物件：和匯出一樣畫在主頁內容之上、這一頁的物件之下，變數用物件所屬頁的值；
+  // 只顯示落在這一頁書背側以內的部分（紙張會裁掉其餘部分）
+  const spillover = useMemo(
+    () =>
+      spilloverInto(document.pages, pageIndex).map(({ element, sourceIndex, dx }) => {
+        const pageId = document.pages[sourceIndex].id;
+        const values = variableValues(document, pageId);
+        return { pageId, element: { ...(values ? resolveElementVariables(element, values) : element), x: element.x + dx } };
+      }),
+    [document, pageIndex],
+  );
+  const clip = useMemo(() => spineClip(sheet, pageIndex), [sheet, pageIndex]);
   // 畫布只在字型載入後才建立 Stage，這裡量測頁碼寬度是安全的；主頁（-1）沒有頁碼
   const pageNumber = useMemo(
     () => pageNumberShape(sheet, pageIndex, pageNumberRules, margins, measureLineWidth),
@@ -113,16 +161,39 @@ export function CanvasSheet({ sheet, x, pageIndex, zoom, editingId, handlers, ac
       {inherited.map((element) => (
         <StaticElement key={`master:${element.id}`} element={element} />
       ))}
-      {shownElements.map((element) =>
-        active ? (
-          <ElementNode key={element.id} element={element} textHidden={element.id === editingId} {...handlers} />
-        ) : (
-          // 對頁的物件：選取只屬於目前頁，所以按下時先切頁再選取
-          <Group key={element.id} onMouseDown={(event) => activate(event, element.id)} onTouchStart={(event) => activate(event, element.id)}>
-            <StaticElement element={element} listening />
-          </Group>
-        ),
+      {spillover.length > 0 && (
+        <Group {...clip}>
+          {spillover.map(({ pageId, element }) => (
+            // 按複本 = 到物件所屬的頁並選取它（事件停在這裡，不會變成「切到這一頁」）
+            <Group
+              key={`spill:${element.id}`}
+              onMouseDown={(event) => {
+                event.cancelBubble = true;
+                onPickElsewhere(pageId, element.id);
+              }}
+              onTouchStart={(event) => {
+                event.cancelBubble = true;
+                onPickElsewhere(pageId, element.id);
+              }}
+            >
+              <StaticElement element={element} listening />
+            </Group>
+          ))}
+        </Group>
       )}
+      {/* 這一頁自己的物件；雙頁時在書背處裁切，跨過去的部分由對頁的複本畫（和匯出的疊放順序一樣） */}
+      <Group {...(clipAtSpine ? clip : {})}>
+        {shownElements.map((element) =>
+          active ? (
+            <ElementNode key={element.id} element={element} textHidden={element.id === editingId} {...handlers} />
+          ) : (
+            // 對頁的物件：選取只屬於目前頁，所以按下時先切頁再選取
+            <Group key={element.id} onMouseDown={(event) => activate(event, element.id)} onTouchStart={(event) => activate(event, element.id)}>
+              <StaticElement element={element} listening />
+            </Group>
+          ),
+        )}
+      </Group>
       {/* 頁碼由文件的頁碼設定算出，不是物件：不能選取、不在圖層面板；「顯示頁碼」關閉時只是不畫，匯出照常 */}
       {preferences.showPageNumbers && pageNumber && <StaticShape shape={pageNumber} />}
       {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}

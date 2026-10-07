@@ -16,9 +16,9 @@ import {
   unionBounds,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
-import { canvasSheets, canvasSlotAt } from "@/lib/editor/spreads";
+import { canvasSheets, canvasSlotAt, pageAcrossSpine } from "@/lib/editor/spreads";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
-import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
+import type { ElementId, ElementPatch, ElementType, PageId, Point, Size, TextElement } from "@/lib/editor/types";
 import {
   clampZoom,
   computeLayout,
@@ -82,6 +82,21 @@ export function EditorCanvas() {
   // Layer 座標＝「跨頁座標」；頁面自己的座標（物件、吸附）都在各頁的 Group 裡
   const document = state.history.present;
   const sheets = useMemo(() => canvasSheets(document, page.id, preferences.pageView), [document, page.id, preferences.pageView]);
+  // 按到跨過書背的複本：到物件所屬的頁並選取它（page/select 會清空選取，所以先切頁再選取；已是目前頁時切頁不改變任何東西）
+  const pickElement = useCallback(
+    (pageId: PageId, elementId: ElementId) => {
+      dispatch({ type: "page/select", id: pageId });
+      dispatch({ type: "selection/set", id: elementId });
+    },
+    [dispatch],
+  );
+  /** True while an element is dragged or resized: the active page then shows it uncropped, on top. */
+  const [interacting, setInteracting] = useState(false);
+  // 目前頁最後畫：拖曳中不裁切時，跨過書背的物件才會蓋在對頁之上（平常兩頁都在書背處裁切，順序不影響）
+  const drawOrder = useMemo(
+    () => [...sheets.slots].sort((a, b) => Number(a.sheet.id === page.id) - Number(b.sheet.id === page.id)),
+    [sheets, page.id],
+  );
   /** Offset of the page being edited: page coordinates = layer coordinates − (activeX, 0). */
   const activeX = sheets.slots.find((slot) => slot.sheet.id === page.id)?.x ?? 0;
 
@@ -108,8 +123,12 @@ export function EditorCanvas() {
   const scrollTarget = page.elements.find((element) => element.id === lastSelectedId) ?? null;
 
   // 原生事件 handler 與 layout effect 需要讀到最新值
-  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget, activeX, sheets });
-  latest.current = { layout, zoom, scroll, viewport, scrollTarget, activeX, sheets };
+  // 拖過書背的判斷（handleMoveEnd）：兩頁都看得到時才換頁
+  const spreadShown = sheets.slots.length > 1;
+  const pageIndex = sheets.slots.find((slot) => slot.sheet.id === page.id)?.pageIndex ?? -1;
+  const dragContext = { spreadShown, pages: document.pages, pageIndex, elements: page.elements, snapSpacing };
+  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, ...dragContext });
+  latest.current = { layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, ...dragContext };
   // 螢幕像素 → 目前頁的頁面座標（框選以目前頁為準：對頁的背景按下時是切頁，不會開始框選）
   const toPagePt = (screen: Point): Point => {
     const current = latest.current;
@@ -331,14 +350,32 @@ export function EditorCanvas() {
     (id: ElementId, node: Konva.Node) => {
       dragSessionRef.current = { lead: null, starts: new Map() };
       const group = transformerRef.current?.nodes() ?? [];
-      if (group.length > 1 && group.includes(node)) {
-        dispatch({
-          type: "element/updateMany",
-          patches: group.map((member) => ({ id: member.id(), patch: { x: member.x(), y: member.y() } })),
-        });
-      } else {
-        dispatch({ type: "element/update", id, patch: { x: node.x(), y: node.y() } });
+      const members = group.length > 1 && group.includes(node) ? group : [node];
+      const moves = members.map((member) => ({ id: member.id(), patch: { x: member.x(), y: member.y() } }));
+      // 雙頁時放下的整組中心過了書背：一筆復原裡搬到對頁（只在兩頁都看得到時，避免搬到畫面外的頁）
+      const { spreadShown, pages, pageIndex, elements, snapSpacing: spacing } = latest.current;
+      if (spreadShown) {
+        const dropped = moves
+          .map(({ id: movedId, patch }) => {
+            const element = elements.find((candidate) => candidate.id === movedId);
+            return element ? getElementBounds({ ...element, ...patch }) : null;
+          })
+          .filter((bounds): bounds is NonNullable<typeof bounds> => bounds !== null);
+        if (dropped.length === moves.length) {
+          const box = dropped.reduce((acc, next) => unionBounds(acc, next));
+          const across = pageAcrossSpine(pages, pageIndex, (box.minX + box.maxX) / 2);
+          if (across) {
+            // 吸附格線時：拖曳是對齊原本那一頁的格線，頁寬不一定是間距的倍數，換頁後把整組（相對位置不變）對齊到新頁的格線
+            // 參考被拖的那一個（拖曳時只有它對齊格線，其他成員保持相對位置）
+            const leadX = (moves.find((move) => move.id === id) ?? moves[0]).patch.x + across.dx;
+            const align = spacing === null ? 0 : Math.round(leadX / spacing) * spacing - leadX;
+            dispatch({ type: "element/moveToPage", moves, pageId: across.pageId, dx: across.dx + align });
+            return;
+          }
+        }
       }
+      if (moves.length > 1) dispatch({ type: "element/updateMany", patches: moves });
+      else dispatch({ type: "element/update", id, patch: moves[0].patch });
     },
     [dispatch],
   );
@@ -415,8 +452,16 @@ export function EditorCanvas() {
               onMouseDown={handleStageMouseDown}
               onTouchStart={handleStageMouseDown}
             >
-              <Layer x={origin.x} y={origin.y} scaleX={zoom} scaleY={zoom}>
-                {sheets.slots.map((slot) => (
+              <Layer
+                x={origin.x}
+                y={origin.y}
+                scaleX={zoom}
+                scaleY={zoom}
+                // 拖曳物件中：目前頁暫時不在書背處裁切，跨過書背時仍看得到整個物件
+                onDragStart={() => setInteracting(true)}
+                onDragEnd={() => setInteracting(false)}
+              >
+                {drawOrder.map((slot) => (
                   <CanvasSheet
                     key={slot.sheet.id}
                     sheet={slot.sheet}
@@ -432,6 +477,8 @@ export function EditorCanvas() {
                       if (elementId) dispatch({ type: "selection/set", id: elementId });
                     }}
                     highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
+                    clipAtSpine={sheets.slots.length > 1 && !(interacting && slot.sheet.id === page.id)}
+                    onPickElsewhere={pickElement}
                   />
                 ))}
                 {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
@@ -453,6 +500,8 @@ export function EditorCanvas() {
                     Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
                   }
                   anchorDragBoundFunc={snapAnchor}
+                  onTransformStart={() => setInteracting(true)}
+                  onTransformEnd={() => setInteracting(false)}
                 />
               </Layer>
             </Stage>

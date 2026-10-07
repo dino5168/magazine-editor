@@ -85,6 +85,17 @@ export type EditorAction =
   /** Several elements in one undo step (moving a multi-selection); any invalid patch rejects them all. */
   | { readonly type: "element/updateMany"; readonly patches: readonly ElementPatchEntry[] }
   | { readonly type: "element/delete"; readonly ids: readonly ElementId[] }
+  /**
+   * Drop across the spine: applies the moves (positions on the active page), shifts the elements by
+   * `dx` into the facing page's coordinates and moves them on top of that page, which becomes the
+   * active page with them selected. One undo step; anything invalid is a no-op.
+   */
+  | {
+      readonly type: "element/moveToPage";
+      readonly moves: readonly ElementPatchEntry[];
+      readonly pageId: PageId;
+      readonly dx: number;
+    }
   /** up / down: one layer; top / bottom: to the front / back of the page. */
   | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" | "top" | "bottom" }
   | { readonly type: "element/duplicate"; readonly copies: readonly ElementCopy[] }
@@ -377,6 +388,40 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       return elements.length === page.elements.length ? page : { ...page, elements };
     });
     return next === state ? state : reconcileSelection(next);
+  },
+
+  // 拖過書背放下：同一筆復原裡改位置、換到對頁的座標、搬到對頁的最上層，並切到對頁選取它們
+  "element/moveToPage": (state, action) => {
+    const document = state.history.present;
+    const source = selectActivePage(state);
+    const target = document.pages.find((page) => page.id === action.pageId);
+    const ids = new Set(action.moves.map((move) => move.id));
+    if (
+      !target ||
+      target.id === source.id ||
+      !document.pages.some((page) => page.id === source.id) ||
+      !Number.isFinite(action.dx) ||
+      ids.size === 0 ||
+      ids.size !== action.moves.length ||
+      ![...ids].every((id) => source.elements.some((element) => element.id === id)) ||
+      !action.moves.every((move) => isValidPatch(move.patch))
+    ) {
+      return state;
+    }
+    const patches = new Map(action.moves.map((move) => [move.id, move.patch]));
+    // 依原本的圖層順序搬過去，保持彼此的上下關係
+    const moved = source.elements
+      .filter((element) => ids.has(element.id))
+      .map((element) => {
+        const next = applyPatch(element, patches.get(element.id)!);
+        return { ...next, x: next.x + action.dx } as CanvasElement;
+      });
+    const pages = document.pages.map((page) => {
+      if (page.id === source.id) return { ...page, elements: page.elements.filter((element) => !ids.has(element.id)) };
+      if (page.id === target.id) return { ...page, elements: [...page.elements, ...moved] };
+      return page;
+    });
+    return { ...commit(state, { ...document, pages }), activePageId: target.id, selectedIds: moved.map((element) => element.id) };
   },
 
   "element/reorder": (state, action) =>

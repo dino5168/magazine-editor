@@ -3,7 +3,7 @@ import { DEFAULT_MARGINS, createPage, createShapeElement, createTextElement } fr
 import { createPageNumberRule, pageNumberShapeId } from "@/lib/editor/page-numbers";
 import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
 import type { EditorDocument } from "@/lib/editor/types";
-import { buildExportRequest, masterCopyId } from "../export-request";
+import { buildExportRequest, masterCopyId, spilloverCopyId } from "../export-request";
 
 // 假的量測：每個字寬 = 字級的一半
 const measureWidth = (text: string, style: { fontSize: number }) => Array.from(text).length * style.fontSize * 0.5;
@@ -119,6 +119,43 @@ describe("buildExportRequest", () => {
     expect(request.document.pages.flatMap((page) => page.elements).every((e) => e.id.length <= 64)).toBe(true);
     // 原本的文件不變
     expect(source.pages[1].elements).toHaveLength(1);
+  });
+
+  it("copies elements crossing the spine onto the facing page, between master content and the page's own elements", () => {
+    const size = { width: 500, height: 700 };
+    // 第 2 頁（左）的圖跨過右緣 100 pt；第 3 頁（右）的文字跨過左緣；頁尾含 {頁碼}
+    const wide = { ...createShapeElement("rect", { x: 0, y: 0 }), x: 300, y: 50, width: 300, height: 200 };
+    const reach = { ...createTextElement("body", { x: 0, y: 0 }), x: -80, y: 400, width: 200, text: "第 {頁碼} 頁" };
+    const own3 = createShapeElement("star", { x: 250, y: 250 });
+    const band = createShapeElement("ellipse", { x: 100, y: 100 });
+    const source: EditorDocument = {
+      name: "測試",
+      margins: DEFAULT_MARGINS,
+      pageNumberRules: [],
+      masters: [{ id: "M", name: "Master A", ...size, background: "#ffffff", parentId: null, elements: [band] }],
+      pages: [
+        createPage("封面", size, "#ffffff"),
+        { ...createPage("左", size, "#ffffff"), elements: [wide] },
+        { ...createPage("右", size, "#ffffff", "M"), elements: [reach, own3] },
+      ],
+    };
+
+    const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
+    const [cover, left, right] = request.document.pages;
+
+    expect(cover).toBe(source.pages[0]);
+    // 右頁：主頁內容 → 左頁跨過來的圖（x − 500）→ 自己的物件
+    expect(right.elements.map((e) => e.id)).toEqual([masterCopyId(2, 0), spilloverCopyId(2, 0), reach.id, own3.id]);
+    expect(right.elements[1]).toMatchObject({ type: "shape", x: 300 - 500, width: 300 });
+    // 左頁：右頁跨過來的文字（x + 500），{頁碼} 用它所屬頁（第 3 頁）的值；自己的圖在上面
+    expect(left.elements.map((e) => e.id)).toEqual([spilloverCopyId(1, 0), wide.id]);
+    expect(left.elements[0]).toMatchObject({ type: "text", x: -80 + 500, text: "第 3 頁" });
+    expect(request.textLayouts[spilloverCopyId(1, 0)].lines).toEqual(["第 3 頁"]);
+    // 右頁自己的文字也是第 3 頁
+    expect(request.textLayouts[reach.id].lines).toEqual(["第 3 頁"]);
+    expect(request.document.pages.flatMap((page) => page.elements).every((e) => e.id.length <= 64)).toBe(true);
+    // 原本的文件不變
+    expect(source.pages[2].elements).toHaveLength(2);
   });
 
   it("returns the same document when there are no masters, variables or page numbers", () => {

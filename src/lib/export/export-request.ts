@@ -1,4 +1,5 @@
 import { inheritedElements } from "@/lib/editor/master-pages";
+import { spilloverInto } from "@/lib/editor/spreads";
 import { withPageNumbers, type MeasureTextWidth } from "@/lib/editor/page-numbers";
 import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
 import type { EditorDocument, Page, TextElement } from "@/lib/editor/types";
@@ -31,10 +32,20 @@ export function masterCopyId(pageIndex: number, index: number): string {
 }
 
 /**
- * A page as exported: its master pages' elements (ancestor first) at the bottom, copied with
- * per-page ids, then its own elements; the text variables replaced with the page's values.
+ * Id of the copy, on the page at `pageIndex`, of a facing-page element crossing the spine (see
+ * `spilloverInto`). Short for the same reason as `masterCopyId`.
  */
-function withMasterContent(document: EditorDocument, page: Page, pageIndex: number): Page {
+export function spilloverCopyId(pageIndex: number, index: number): string {
+  return `spill:${pageIndex}:${index}`;
+}
+
+/**
+ * A page as exported, bottom to top: its master pages' elements (ancestor first), the facing page's
+ * elements crossing the spine (shifted into this page; the paper crops them, so the two pages join
+ * up), then its own elements. Copies get per-page ids; text variables take the values of the page
+ * each element belongs to (a running footer crossing the spine keeps its own page number).
+ */
+function exportedPage(document: EditorDocument, page: Page, pageIndex: number): Page {
   const values = variableValues(document, page.id);
   if (values === null) return page;
   // 同一個主頁物件會出現在很多頁，而且換完變數每頁的文字不同：textLayouts 以 id 為 key，所以每頁要有自己的 id
@@ -42,16 +53,22 @@ function withMasterContent(document: EditorDocument, page: Page, pageIndex: numb
     ...resolveElementVariables(element, values),
     id: masterCopyId(pageIndex, index),
   }));
+  const spillover = spilloverInto(document.pages, pageIndex).map(({ element, sourceIndex, dx }, index) => {
+    const sourceValues = variableValues(document, document.pages[sourceIndex].id);
+    const resolved = sourceValues ? resolveElementVariables(element, sourceValues) : element;
+    return { ...resolved, id: spilloverCopyId(pageIndex, index), x: element.x + dx };
+  });
   const own = resolveElementsVariables(page.elements, values);
-  if (inherited.length === 0 && own === page.elements) return page;
-  return { ...page, elements: [...inherited, ...own] };
+  if (inherited.length === 0 && spillover.length === 0 && own === page.elements) return page;
+  return { ...page, elements: [...inherited, ...spillover, ...own] };
 }
 
 /**
  * Builds the export payload: the document plus the canvas line breaks of every text element, so
  * the PDF wraps exactly like the editor.
  *
- * Each page gets its master pages' content and its text variables resolved (`withMasterContent`),
+ * Each page gets its master pages' content, the facing page's elements crossing the spine and its
+ * text variables resolved (`exportedPage`),
  * then its page number as an ordinary shape on top (`withPageNumbers`), so the Rust renderers draw
  * everything as plain elements and never read master pages. The exported copy is never stored.
  *
@@ -68,7 +85,7 @@ export function buildExportRequest(
   measure: (element: TextElement) => TextLayout,
   measureWidth: MeasureTextWidth,
 ): ExportRequest {
-  const expanded = source.pages.map((page, index) => withMasterContent(source, page, index));
+  const expanded = source.pages.map((page, index) => exportedPage(source, page, index));
   const changed = expanded.some((page, index) => page !== source.pages[index]);
   const pages = withPageNumbers(changed ? expanded : source.pages, source.pageNumberRules, source.margins, measureWidth);
   const document = pages === source.pages ? source : { ...source, pages };

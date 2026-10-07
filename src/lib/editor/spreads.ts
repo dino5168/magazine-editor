@@ -1,6 +1,7 @@
 import type { PageView } from "@/lib/preferences/preferences";
+import { getElementBounds } from "./geometry";
 import { findSheet } from "./master-pages";
-import type { Bounds, EditorDocument, Page, PageId, Sheet } from "./types";
+import type { Bounds, CanvasElement, EditorDocument, Page, PageId, Sheet } from "./types";
 
 /** Which side of the spine a page sits on. The first page (cover) is a right-hand page. */
 export type PageSide = "left" | "right";
@@ -94,6 +95,73 @@ export function spreadOf(pages: readonly Page[], pageId: PageId): Spread | null 
   const index = pages.findIndex((page) => page.id === pageId);
   if (index === -1) return null;
   return buildSpread(pages, indicesOfSpread(spreadIndexOf(index), pages.length));
+}
+
+/** An element of the facing page that crosses the spine into a page. */
+export interface SpilloverItem {
+  readonly element: CanvasElement;
+  /** 0-based index of the page the element belongs to (the facing page). */
+  readonly sourceIndex: number;
+  /** Add to the element's x to place it in the receiving page's coordinates. */
+  readonly dx: number;
+}
+
+/**
+ * The elements of a page's facing page that cross the spine into it: a left page's elements
+ * reaching past its right edge, or a right page's elements reaching past its left edge (rotation
+ * included). Only the spine side counts: what sticks out of a page's outer, top or bottom edges stays
+ * cut off by the paper. A page alone in its spread (the cover, an even last page) receives nothing.
+ *
+ * The receiving page draws (and exports) these at `x + dx`; its paper crops them, so the two pages
+ * join up across the spine.
+ *
+ * Args:
+ *   pages: Pages in document order (spreads follow magazine order: page 1 alone on the right).
+ *   pageIndex: The receiving page.
+ *
+ * Returns:
+ *   Crossing elements in their own page's layer order (bottom first).
+ */
+export function spilloverInto(pages: readonly Page[], pageIndex: number): SpilloverItem[] {
+  const page = pages[pageIndex];
+  const spread = page ? spreadOf(pages, page.id) : null;
+  if (!spread || spread.slots.length < 2) return [];
+  const [left, right] = spread.slots;
+  const receivingLeft = left.index === pageIndex;
+  const source = receivingLeft ? right : left;
+  // 右頁的座標原點在左頁寬度處：左頁 → 右頁 減掉左頁寬，右頁 → 左頁 加上左頁寬
+  const dx = receivingLeft ? left.page.width : -left.page.width;
+  const crosses = (element: CanvasElement): boolean => {
+    const bounds = getElementBounds(element);
+    return receivingLeft ? bounds.minX < 0 : bounds.maxX > left.page.width;
+  };
+  return source.page.elements.filter(crosses).map((element) => ({ element, sourceIndex: source.index, dx }));
+}
+
+/**
+ * The facing page an element should move to when dropped with its centre past the spine.
+ *
+ * Args:
+ *   pages: Pages in document order.
+ *   pageIndex: The page the element belongs to.
+ *   centerX: Horizontal centre of what was dropped, in that page's coordinates.
+ *
+ * Returns:
+ *   The facing page and the shift into its coordinates, or null when the centre is still on this
+ *   page's side of the spine (or the page has no facing page).
+ */
+export function pageAcrossSpine(
+  pages: readonly Page[],
+  pageIndex: number,
+  centerX: number,
+): { readonly pageId: PageId; readonly dx: number } | null {
+  const page = pages[pageIndex];
+  const spread = page ? spreadOf(pages, page.id) : null;
+  if (!spread || spread.slots.length < 2) return null;
+  const [left, right] = spread.slots;
+  const width = left.page.width;
+  if (left.index === pageIndex) return centerX > width ? { pageId: right.page.id, dx: -width } : null;
+  return centerX < 0 ? { pageId: left.page.id, dx: width } : null;
 }
 
 /** A page or master page the canvas draws, placed at `x` in the canvas layer's coordinates. */

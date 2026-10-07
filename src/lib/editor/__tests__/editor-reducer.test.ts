@@ -673,6 +673,65 @@ describe("editorReducer / master pages", () => {
   });
 });
 
+describe("editorReducer / moving across the spine", () => {
+  const size = { width: 500, height: 700 };
+  const page = (id: string): Page => ({ ...createPage(id, size, "#ffffff"), id });
+
+  function spreadState() {
+    const a = createShapeElement("rect", { x: 100, y: 100 });
+    const b = createShapeElement("star", { x: 200, y: 200 });
+    const c = createShapeElement("ellipse", { x: 300, y: 300 });
+    const target = { ...createShapeElement("rect", { x: 50, y: 50 }), id: "t" };
+    const document: EditorDocument = {
+      name: "測試",
+      margins: DEFAULT_MARGINS,
+      pageNumberRules: [],
+      masters: [],
+      pages: [page("p1"), { ...page("p2"), elements: [a, b, c] }, { ...page("p3"), elements: [target] }],
+    };
+    return { state: run(createInitialState(document), { type: "page/select", id: "p2" }), a, b, c };
+  }
+
+  it("moves the dropped elements to the facing page in one undo step, shifted and on top", () => {
+    const { state, a, c } = spreadState();
+    const past = state.history.past.length;
+    const next = run(state, {
+      type: "element/moveToPage",
+      moves: [
+        { id: c.id, patch: { x: 480, y: 310 } },
+        { id: a.id, patch: { x: 470, y: 120 } },
+      ],
+      pageId: "p3",
+      dx: -500,
+    });
+    const [, p2, p3] = next.history.present.pages;
+    expect(p2.elements.map((e) => e.id)).not.toContain(a.id);
+    expect(p2.elements).toHaveLength(1);
+    // 保持原本的上下順序（a 在 c 下面），放在對頁最上層
+    expect(p3.elements.map((e) => e.id)).toEqual(["t", a.id, c.id]);
+    expect(p3.elements[1]).toMatchObject({ x: -30, y: 120 });
+    expect(p3.elements[2]).toMatchObject({ x: -20, y: 310 });
+    expect(next.activePageId).toBe("p3");
+    expect(next.selectedIds).toEqual([a.id, c.id]);
+    expect(next.history.past.length).toBe(past + 1);
+    expect(run(next, { type: "history/undo" }).history.present).toBe(state.history.present);
+  });
+
+  it("ignores invalid requests", () => {
+    const { state, a } = spreadState();
+    for (const bad of [
+      { moves: [{ id: a.id, patch: { x: 1 } }], pageId: "p2", dx: -500 },
+      { moves: [{ id: a.id, patch: { x: 1 } }], pageId: "missing", dx: -500 },
+      { moves: [{ id: "t", patch: { x: 1 } }], pageId: "p3", dx: -500 },
+      { moves: [], pageId: "p3", dx: -500 },
+      { moves: [{ id: a.id, patch: { x: Number.NaN } }], pageId: "p3", dx: -500 },
+      { moves: [{ id: a.id, patch: { x: 1 } }], pageId: "p3", dx: Number.NaN },
+    ]) {
+      expect(editorReducer(state, { type: "element/moveToPage", ...bad })).toBe(state);
+    }
+  });
+});
+
 describe("editorReducer / history", () => {
   it("undoes and redoes document changes", () => {
     const element = createShapeElement("rect", { x: 0, y: 0 });
