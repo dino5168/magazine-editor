@@ -91,11 +91,26 @@ export function unionBounds(a: Bounds, b: Bounds): Bounds {
 }
 
 /**
- * Grows bounds by a margin on every side.
+ * Moves bounds (e.g. from page coordinates into spread coordinates).
  *
  * Args:
  *   bounds: Source bounds.
- *   margin: Margin to add on each side.
+ *   dx: Horizontal shift.
+ *   dy: Vertical shift.
+ *
+ * Returns:
+ *   Shifted bounds.
+ */
+export function offsetBounds(bounds: Bounds, dx: number, dy: number): Bounds {
+  return { minX: bounds.minX + dx, minY: bounds.minY + dy, maxX: bounds.maxX + dx, maxY: bounds.maxY + dy };
+}
+
+/**
+ * Grows bounds by the same margin on every side.
+ *
+ * Args:
+ *   bounds: Bounds to grow.
+ *   margin: Amount added on each side.
  *
  * Returns:
  *   Expanded bounds.

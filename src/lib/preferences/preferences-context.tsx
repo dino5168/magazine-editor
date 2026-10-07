@@ -18,7 +18,7 @@ const SetPreferencesContext = createContext<Dispatch<SetStateAction<Preferences>
  */
 export function PreferencesProvider({ children }: { readonly children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences(getBrowserStorage()));
-  // 偏好只在對話框按「確定」時改變，每次變化直接寫入即可
+  // 偏好只在對話框按「確定」或按下切換（例如單頁 / 雙頁）時改變，每次變化直接寫入即可
   useEffect(() => savePreferences(getBrowserStorage(), preferences), [preferences]);
   return (
     <SetPreferencesContext.Provider value={setPreferences}>

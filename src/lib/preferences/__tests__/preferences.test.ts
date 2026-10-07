@@ -15,6 +15,7 @@ const custom: Preferences = {
   grid: { visible: true, spacing: 20, snap: true },
   showMargins: false,
   showPageNumbers: false,
+  pageView: "spread",
 };
 
 describe("parsePreferences", () => {
@@ -35,10 +36,18 @@ describe("parsePreferences", () => {
       showMargins: false,
       // 舊的紀錄沒有這個欄位：回到預設（顯示）
       showPageNumbers: true,
+      pageView: "single",
     });
     expect(parsePreferences({ showPageNumbers: "no" }).showPageNumbers).toBe(true);
     expect(parsePreferences({ showPageNumbers: false }).showPageNumbers).toBe(false);
     expect(parsePreferences({ grid: 3 }).grid).toEqual(DEFAULT_PREFERENCES.grid);
+  });
+
+  it("reads the page view, falling back to single", () => {
+    expect(parsePreferences({ pageView: "spread" }).pageView).toBe("spread");
+    expect(parsePreferences({ pageView: "single" }).pageView).toBe("single");
+    expect(parsePreferences({ pageView: "double" }).pageView).toBe("single");
+    expect(parsePreferences({}).pageView).toBe("single");
   });
 
   it("clamps the grid spacing into range", () => {

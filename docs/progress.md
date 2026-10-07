@@ -10,14 +10,22 @@
 
 ## 目前階段
 
-- **「頁面」面板調整(2026-10-07,五個步驟全部完成,尚未 commit)**:任務檔 `docs/Plans/2026-10-07-Master頁面調整.md`(不 commit),計畫 `docs/Plans/imp-fix-master.md`(要 commit)。「主頁」「頁面」兩區各自收合、按住「頁面」標題列拖曳調整兩區高度。使用者確認:收合與高度記在這台電腦(localStorage);「頁面」收合時標題列貼在面板底部。共五個步驟,重用 `startPointerDrag`、`getBrowserStorage`、shadcn `ScrollArea`,不加 resizable 套件。
+- **單頁 / 雙頁模式(2026-10-07,六個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-07-雙頁編輯顯示.md`(不 commit),計畫 `docs/Plans/imp-page-switch.md`(要 commit)。「頁面」標題列中間加單頁 / 雙頁切換。使用者確認:畫布兩頁並排編輯、面板縮圖兩兩一列;第 1 頁單獨在右(2–3、4–5…);兩頁都能直接點選編輯、拖過書背不換頁;模式存這台電腦(`Preferences.pageView`)。共六個步驟,步驟 3 先重構畫布座標(行為不變)再加雙頁。
+  - 步驟 1(完成):`lib/editor/spreads.ts`(跨頁配對、位移、`slotAt`)、`Preferences.pageView`。vitest 341 個。畫面不變。
+  - 步驟 2(完成):「頁面」標題列中間的單頁 / 雙頁切換(`PageViewToggle`,寫入偏好);雙頁時縮圖兩兩一列(封面在右欄)。無頭 Edge 13 項。畫布還沒變。
+  - 步驟 3(完成,行為不變):`canvasSheets` + `canvas-sheet.tsx`(每頁一個位移的 Group);畫布 Layer 改成跨頁座標,建立 / 框選 / 文字編輯框 / 捲動範圍 / 符合畫面 / 捲到選取經過頁面位移,吸附改以物件所在頁的 Group 為準。vitest 344 個;單頁回歸 12 項 + 舊測試 27 項全過。
+  - 步驟 4(完成):雙頁模式畫整個跨頁(書背虛線、目前頁主色框、兩頁各自的主頁內容與頁碼);對頁畫成靜態,按下就切成目前頁。無頭 Edge 17 項 + 單頁回歸 12 項。
+  - 步驟 5(完成):對頁物件一次點選(切頁＋選取;要拖曳需再按一次);建立工具建在按下處的那一頁(`pageAt` / `canvasSlotAt`),文字草稿跟著到那一頁。無頭 Edge 11 項,步驟 4(17)與單頁回歸(12)重跑全過。
+  - 步驟 6(完成):`CLAUDE.md` 新增「單頁 / 雙頁」一節,同步「畫布捲動與縮放」(跨頁座標)、偏好設定(`pageView`)、吸附、目錄結構;`docs/01`/`02`。
+  - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/Plans/imp-page-switch.md`;任務檔 `docs/Plans/2026-10-07-雙頁編輯顯示.md` 與參考圖不 commit。
+- **「頁面」面板調整(2026-10-07,五個步驟全部完成,commit `6900765`,已推送)**:任務檔 `docs/Plans/2026-10-07-Master頁面調整.md`(不 commit),計畫 `docs/Plans/imp-fix-master.md`(要 commit)。「主頁」「頁面」兩區各自收合、按住「頁面」標題列拖曳調整兩區高度。使用者確認:收合與高度記在這台電腦(localStorage);「頁面」收合時標題列貼在面板底部。共五個步驟,重用 `startPointerDrag`、`getBrowserStorage`、shadcn `ScrollArea`,不加 resizable 套件。
   - 步驟 1(完成):`lib/dock/pages-panel-layout.ts`(收合、拖曳換算與最小高度、比例、parse、localStorage 讀寫)。vitest 334 個。畫面不變。
   - 步驟 2(完成):`PanelDefinition.scroll: "self"`(只有 `pages`)、`DockPanel` 對它不包捲動區;共用的捲動區抽成 `DockScrollArea`。無頭 Edge 9 項,畫面不變。
   - 步驟 3(完成):兩區標題列各有收合鈕、內容各自捲動,高度用 flex-grow 依比例分配(不量測);收起的「頁面」標題列貼底;狀態存 localStorage。刪掉用不到的 `sectionHeights`。vitest 333 個,無頭 Edge 12 項。
   - 步驟 4(完成):`use-section-resize.ts`(按住「頁面」標題列拖曳、拖曳中直接改 DOM、放開才存、Esc 取消、雙擊還原、↑ / ↓);`startPointerDrag` 加可選 `cursor`;收合鈕縮成只有箭頭,標題文字可以拖。無頭 Edge 16 項。
   - 步驟 5(完成):`CLAUDE.md`(「頁面」面板、工具面板的 `scroll: "self"`、目錄結構)、`docs/01`。
   - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`progress.md`、`docs/Plans/imp-fix-master.md`;任務檔 `docs/Plans/2026-10-07-Master頁面調整.md` 與參考圖不 commit。
-- **主頁與動態變數(2026-10-07,八個步驟全部完成,commit `b9ed0c3`(尚未推送);桌面版人工驗證待做)**:任務檔 `docs/07-階層式主頁.md`(不 commit),計畫 `docs/Plans/imp-master-pages.md`(要 commit)。仿 Affinity:主頁(可以主頁為基礎形成階層)、`{頁碼}` 等動態變數、新增頁面 / 新增主頁對話框;只做單頁。使用者確認:新增「頁面」工具面板(主頁 + 頁面,真縮圖,頁籤列保留,**取代 2026-10-06「不要頁面面板」的決定**);`{頁碼}` 跟頁碼規則;刪除主頁時接到父主頁;背景不繼承。共八個步驟,每步做完等使用者說「繼續」;步驟 2(檔案格式 v7)必須在任何 UI 能產生主頁之前完成。
+- **主頁與動態變數(2026-10-07,八個步驟全部完成,commit `b9ed0c3`,已推送;桌面版人工驗證待做)**:任務檔 `docs/07-階層式主頁.md`(不 commit),計畫 `docs/Plans/imp-master-pages.md`(要 commit)。仿 Affinity:主頁(可以主頁為基礎形成階層)、`{頁碼}` 等動態變數、新增頁面 / 新增主頁對話框;只做單頁。使用者確認:新增「頁面」工具面板(主頁 + 頁面,真縮圖,頁籤列保留,**取代 2026-10-06「不要頁面面板」的決定**);`{頁碼}` 跟頁碼規則;刪除主頁時接到父主頁;背景不繼承。共八個步驟,每步做完等使用者說「繼續」;步驟 2(檔案格式 v7)必須在任何 UI 能產生主頁之前完成。
   - 步驟 1(完成):模型(`Sheet` / `MasterPage` / `masterId` / `masters`)、`lib/editor/master-pages.ts`、reducer 七個新 action、`selectActivePage` 回傳 `Sheet`;Rust 只先加 serde 欄位(預設空),驗證與 v7 在步驟 2。vitest 303 個、Rust 97 個通過。畫面不變。
   - 步驟 2(完成):Rust `SCHEMA_VERSION` 7、主頁驗證(`validate_master_graph`)、`referenced_assets` 包含主頁圖片(否則開檔清理會刪掉)、fixture 兩層主頁、`types.html`。vitest 304 個、Rust 100 個通過。畫面不變。**v7 存檔後舊版 App 無法開啟。**
   - 步驟 3(完成):畫布畫出主頁內容(`StaticElement`,不能選取)、編輯主頁模式(`master-edit-banner.tsx`、`lastPageId` / 「回到頁面」、頁籤列與頁碼欄的狀態)、字型含主頁。vitest 306 個,無頭 Edge 15 項。還沒有 UI 能建立主頁(步驟 4)。
@@ -162,6 +170,7 @@
 | 2026-10-04 | **頁碼管理**(計畫 `docs/Plans/imp-page-settings.html`):「設定 → 頁碼管理...」取代「頁面設定...」;文件分段設定頁碼(範圍、起始值、奇偶頁位置與前後置文字、字型 / 顏色 / 框線),左中 / 右中直書;頁碼以虛擬圖形畫在畫布與匯出(PDF / EPUB),不是物件;「顯示頁碼」只影響畫布;`schemaVersion` 5。vitest 251 個、Rust 87 個通過,無頭 Edge 驗證 46 項 |
 | 2026-10-05 | **文字屬性調整**(計畫 `docs/Plans/imp-text-attribute.html`):文字樣式加斜體(模擬斜切 0.25)、底線、刪除線(照 Konva 10.5.0 的公式)、硬陰影(方向以頁面為準、無模糊);屬性面板與頁碼對話框共用控制項;畫布、PDF、EPUB 一致(墨跡相差 ≤ 0.5 pt);`schemaVersion` 6。vitest 261 個、Rust 97 個通過 |
 | 2026-10-06 | **頁面排序**(計畫 `docs/Plans/imp-頁面調整.html`):`page/reorder`;拖曳頁籤(插入線、邊緣自動捲動)、目前頁籤 `˅` 選單的移動項目、Ctrl+Shift+PageUp / PageDown;工具面板與頁籤拖曳共用 `pointer-drag.ts` / `drag-ghost.tsx`。vitest 276 個通過,無頭 Edge 驗證 31 項 |
+| 2026-10-07 | **單頁 / 雙頁(跨頁)**(計畫 `docs/Plans/imp-page-switch.md`):「頁面」標題列中間的切換(偏好 `pageView`);雙頁時畫布兩頁並排(第 1 頁單獨在右)、書背線、目前頁藍框,兩頁都能直接點選與建立物件,面板縮圖兩兩一列;畫布 Layer 改成跨頁座標、每頁一個位移的 Group(`canvas-sheet.tsx`)。vitest 344 個,無頭 Edge 共 51 項(含單頁回歸) |
 | 2026-10-07 | **「頁面」面板調整**(計畫 `docs/Plans/imp-fix-master.md`):「主頁」「頁面」兩區各自收合(箭頭)、內容各自捲動;按住「頁面」標題上下拖曳調整兩區高度(Esc 取消、雙擊還原、↑ / ↓),記在這台電腦。vitest 333 個,無頭 Edge 37 項 |
 | 2026-10-07 | **主頁與動態變數**(計畫 `docs/Plans/imp-master-pages.md`):主頁(`masters`,可以「以另一個主頁為基礎」形成階層,最多 8 層)、頁面以 `masterId` 套用;Affinity 式「頁面」面板(主頁 / 頁面縮圖、套用主頁、以…為基礎);「新增頁面」「新增主頁」對話框;動態變數 `{頁碼}` `{總頁數}` `{文件名稱}` `{頁面名稱}`;匯出時展開到每頁;`schemaVersion` 7。vitest 324 個、Rust 100 個通過,無頭 Edge 驗證 59 項,另以真實匯出內容比對 PDF / EPUB |
 | 2026-10-05 | **偏好設定調整**(計畫 `docs/Plans/imp-偏好設定調整.html`):「設定」選單拆成「文件 ▸ / 偏好設定 ▸」,頁面設定、頁碼管理、格線與參考線各自一個對話框(共用外框,由 `SETTINGS_PAGES` 產生);紙張增加到 14 種並分組。vitest 265 個通過,無頭 Edge 驗證 34 項 |
@@ -230,6 +239,7 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**單頁 / 雙頁**(Claude 只用瀏覽器模式驗證過):「頁面」標題列中間切到雙頁 → 第 1 頁單獨在右、之後兩頁並排;點另一頁的物件直接選到;在另一頁用圖形 / 文字工具建立;開吸附時在右頁拖曳仍落在格線上;切回單頁;重開 App 模式仍在
 - [ ] 在 `npm run tauri dev` 手動驗證**主頁與動態變數**(Claude 只用瀏覽器模式、`export_preview` / `epub_preview` 驗證過):
   - 已存過版面的 App 看不到「頁面」面板:從「設定 → 工具面板 → 頁面」打開(或「重設版面」)
   - 新增主頁、在主頁上放刊頭與 `{頁碼}` 頁尾 → 「+」新增 3 頁並選這個主頁 → 每頁頁尾數字正確;Ctrl+Z 一次撤銷 3 頁
@@ -324,7 +334,7 @@
 - **Hook 的「測試失敗」路徑沒有實際測過:** 現有測試都會通過;處理方式和型別檢查失敗相同。
 - **換行符號:** `.gitattributes` 設定 `text=auto`(repo 內一律 LF),Windows 工作目錄是 CRLF,所以 `git diff` 會出現 `LF will be replaced by CRLF` 的警告。這是正常的,不用處理。
 - **第二階段已用 Windows UI Automation 端對端驗證:** 啟動時出現復原提示 → 復原後標題為未存檔、內容正確 → 60 秒內覆寫備份 → 強制結束後備份與暫存資料夾保留 → 正常關閉並選「不儲存」後備份刪除 → 捨棄會刪除備份與暫存資料夾,並清除殘留的暫存資料夾。
-- **目前的自動化測試:** Rust 100 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 333 個(2026-10-07)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:118` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
+- **目前的自動化測試:** Rust 100 個(另有 2 個 `#[ignore]` 的 PDF / EPUB 預覽)、vitest 344 個(2026-10-07)全部通過。`cargo clippy --all-targets` 有 1 個警告:`project/recovery.rs:118` 建議 `sort_by` 改 `sort_by_key`,是新版 clippy 的規則,和既有邏輯無關,尚未處理。
 - **圖形內文字的已知限制(2026-10-01)**:
   - 文字框一律用外框矩形內縮 4 pt,橢圓 / 星形 / 三角形靠邊對齊的文字可能超出弧線或斜邊(draw.io 會依形狀多內縮)。
   - 超出圖形的文字不算進工作區的捲動範圍(`getContentBounds` 只看外框)。

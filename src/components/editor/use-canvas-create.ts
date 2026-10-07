@@ -9,7 +9,7 @@ import {
 } from "@/lib/editor/element-factory";
 import { snapPointToGrid } from "@/lib/editor/geometry";
 import type { ToolId } from "@/lib/editor/tools";
-import type { CanvasElement, Point, TextElement } from "@/lib/editor/types";
+import type { CanvasElement, PageId, Point, TextElement } from "@/lib/editor/types";
 
 /** Pointer movement below this (screen px, in either direction) is a click, not a drag. */
 const CLICK_TOLERANCE_PX = 4;
@@ -25,8 +25,11 @@ interface UseCanvasCreateOptions {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly tool: ToolId;
   readonly shapeKind: ShapeKind;
-  /** Converts a container-relative screen point to page pt with the current zoom and scroll. */
-  readonly toPt: (screen: Point) => Point;
+  /**
+   * The page under a container-relative screen point (in spread view, either page of the spread)
+   * and a converter from screen points to that page's pt.
+   */
+  readonly pageAt: (screen: Point) => { readonly pageId: PageId; readonly toPt: (screen: Point) => Point };
   /** Grid spacing (pt) new elements snap to, or null when snapping is off. */
   readonly snapSpacing: number | null;
   /** Receives the empty text the text tool creates; the canvas edits it before adding it. */
@@ -41,7 +44,9 @@ function relative(element: HTMLElement, event: { clientX: number; clientY: numbe
 /**
  * Creates shapes and text by clicking or dragging on the canvas with the shape / text tool.
  *
- * A click makes a default-sized shape centred on the point, or text starting there; a drag makes the
+ * The element goes to the page under the press (in spread view, possibly the facing page, which then
+ * becomes the page being edited). A click makes a default-sized shape centred on the point, or text
+ * starting there; a drag makes the
  * shape fill the box, or text wrapping at the box width. Only one `element/add` is dispatched, on
  * release (text: once the user has typed something), then the tool returns to select.
  *
@@ -54,7 +59,7 @@ function relative(element: HTMLElement, event: { clientX: number; clientY: numbe
  *   cursor: CSS cursor for the container, or undefined.
  *   handlers: Props to spread on the scroll container.
  */
-export function useCanvasCreate({ scrollRef, tool, shapeKind, toPt, snapSpacing, onTextDraft }: UseCanvasCreateOptions) {
+export function useCanvasCreate({ scrollRef, tool, shapeKind, pageAt, snapSpacing, onTextDraft }: UseCanvasCreateOptions) {
   const dispatch = useEditorDispatch();
   const dragRef = useRef<CreateDrag | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -95,6 +100,10 @@ export function useCanvasCreate({ scrollRef, tool, shapeKind, toPt, snapSpacing,
     const snap = (point: Point): Point => (snapSpacing === null ? point : snapPointToGrid(point, snapSpacing));
     // 吸附格線：拖曳框的兩個角對齊格線；點擊建立的物件把外框左上角對齊格線
     const snapTopLeft = <T extends CanvasElement>(element: T): T => ({ ...element, ...snap(element) });
+    // 建在按下處的那一頁（跨頁時可能是對頁）：先切成目前頁，element/add 與文字草稿才會落在那一頁；
+    // 已經是目前頁時 page/select 不會改變任何東西（也不清空選取）
+    const { pageId, toPt } = pageAt(drag.start);
+    dispatch({ type: "page/select", id: pageId });
     const startPt = toPt(drag.start);
     const box = boundsFromPoints(snap(startPt), snap(toPt(drag.current)));
     if (tool === "text") {

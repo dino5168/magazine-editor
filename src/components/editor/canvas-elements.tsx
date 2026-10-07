@@ -111,12 +111,12 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
   }
 }
 
-/** Position of a node drawn from an element that cannot be selected (master page content). */
+/** Position of a node drawn from an element that cannot be selected, dragged or edited. */
 interface StaticNodeProps {
   readonly x: number;
   readonly y: number;
   readonly rotation: number;
-  readonly listening: false;
+  readonly listening: boolean;
 }
 
 function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps | StaticNodeProps }) {
@@ -191,9 +191,9 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
  * Returns:
  *   Konva group that ignores pointer events.
  */
-export function StaticShape({ shape }: { readonly shape: ShapeElement }) {
+export function StaticShape({ shape, listening = false }: { readonly shape: ShapeElement; readonly listening?: boolean }) {
   return (
-    <Group x={shape.x} y={shape.y} rotation={shape.rotation} listening={false}>
+    <Group x={shape.x} y={shape.y} rotation={shape.rotation} listening={listening}>
       <ShapeBody shape={shape} />
       {shape.label && shape.label.text !== "" && <ShapeLabelText shape={shape} label={shape.label} hidden={false} />}
     </Group>
@@ -216,21 +216,24 @@ function textAttrs(element: TextElement) {
 
 /**
  * Draws an element that cannot be selected, dragged or edited: the content a page inherits from
- * its master pages. Looks exactly like the same element drawn by `ElementNode`.
+ * its master pages, or the elements of the facing page in spread view. Looks exactly like the same
+ * element drawn by `ElementNode`.
  *
  * Args:
  *   props.element: Element in page coordinates.
+ *   props.listening: True to receive presses (the facing page: a press switches to that page);
+ *     false (default) lets them through (master page content).
  *
  * Returns:
- *   Konva node that ignores pointer events.
+ *   Konva node.
  */
-export function StaticElement({ element }: { readonly element: CanvasElement }) {
-  const position: StaticNodeProps = { x: element.x, y: element.y, rotation: element.rotation, listening: false };
+export function StaticElement({ element, listening = false }: { readonly element: CanvasElement; readonly listening?: boolean }) {
+  const position: StaticNodeProps = { x: element.x, y: element.y, rotation: element.rotation, listening };
   switch (element.type) {
     case "text":
       return <Text {...position} {...textAttrs(element)} />;
     case "shape":
-      return <StaticShape shape={element} />;
+      return <StaticShape shape={element} listening={listening} />;
     case "image":
       return <ImageNode element={element} common={position} />;
     default: {

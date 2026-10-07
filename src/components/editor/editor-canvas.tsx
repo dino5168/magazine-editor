@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Layer, Rect, Stage, Transformer } from "react-konva";
+import { Layer, Stage, Transformer } from "react-konva";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import {
@@ -11,13 +11,12 @@ import {
   expandBounds,
   getContentBounds,
   getElementBounds,
+  offsetBounds,
   pageCenter,
+  unionBounds,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
-import { inheritedElements } from "@/lib/editor/master-pages";
-import { resolveElementsVariables, variableValues } from "@/lib/editor/variables";
-import { pageNumberShape } from "@/lib/editor/page-numbers";
-import { measureLineWidth } from "@/lib/export/text-layout";
+import { canvasSheets, canvasSlotAt } from "@/lib/editor/spreads";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, Point, Size, TextElement } from "@/lib/editor/types";
 import {
@@ -31,8 +30,8 @@ import {
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
-import { ElementNode, StaticElement, StaticShape, isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
-import { MarginGuide, PageGrid } from "./page-guides";
+import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
+import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
 import { useCanvasMarquee } from "./use-canvas-marquee";
@@ -42,7 +41,6 @@ import { useCanvasPan } from "./use-canvas-pan";
 const WORKSPACE_MARGIN_PX = 200;
 const FIT_PADDING_PX = 40;
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
-const PAGE_BACKGROUND_NAME = "page-background";
 
 type Anchor = { readonly pt: Point; readonly screen: Point };
 type AnchorName = NonNullable<Konva.TransformerConfig["enabledAnchors"]>[number];
@@ -80,22 +78,12 @@ export function EditorCanvas() {
   // 開啟用到其他字型的專案時，載入期間畫布會短暫消失
   const usedFamilies = useMemo(() => usedFontFamilies(state.history.present), [state.history.present]);
   const fontsReady = useFontsReady(usedFamilies);
-  const { pages, pageNumberRules, margins, masters } = state.history.present;
-  // 變數（{頁碼} 等）換成這一頁的值；編輯主頁時是 null，照原文顯示。文字編輯框仍編輯原文（page.elements）
-  const variables = useMemo(() => variableValues(state.history.present, page.id), [state.history.present, page.id]);
-  // 主頁（含父主頁）的物件畫在這一頁的物件底下；不能選取，要改就切去編輯主頁
-  const inherited = useMemo(
-    () => resolveElementsVariables(inheritedElements(masters, page), variables),
-    [masters, page, variables],
-  );
-  const shownElements = useMemo(() => resolveElementsVariables(page.elements, variables), [page.elements, variables]);
-  // 編輯主頁時是 -1：主頁不畫頁碼
-  const pageIndex = pages.findIndex((candidate) => candidate.id === page.id);
-  // 量測需要字型：字型載入前不算（畫布本來就還沒畫）
-  const pageNumber = useMemo(
-    () => (fontsReady ? pageNumberShape(page, pageIndex, pageNumberRules, margins, measureLineWidth) : null),
-    [fontsReady, page, pageIndex, pageNumberRules, margins],
-  );
+  // 畫布上要畫的頁面：每頁放在 Layer 座標的 x 位移處（單頁模式只有目前頁，位移 0）。
+  // Layer 座標＝「跨頁座標」；頁面自己的座標（物件、吸附）都在各頁的 Group 裡
+  const document = state.history.present;
+  const sheets = useMemo(() => canvasSheets(document, page.id, preferences.pageView), [document, page.id, preferences.pageView]);
+  /** Offset of the page being edited: page coordinates = layer coordinates − (activeX, 0). */
+  const activeX = sheets.slots.find((slot) => slot.sheet.id === page.id)?.x ?? 0;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -106,8 +94,13 @@ export function EditorCanvas() {
   const [draftText, setDraftText] = useState<TextElement | null>(null);
   const pan = useCanvasPan(scrollRef, state.tool === "hand");
 
-  // 物件可拖出頁面：捲動範圍涵蓋頁面與所有物件，確保拖到遠處的物件仍拿得回來
-  const bounds = useMemo(() => expandBounds(getContentBounds(page), WORKSPACE_MARGIN_PX / zoom), [page, zoom]);
+  // 物件可拖出頁面：捲動範圍涵蓋每一頁與所有物件，確保拖到遠處的物件仍拿得回來
+  const bounds = useMemo(() => {
+    const content = sheets.slots
+      .map((slot) => offsetBounds(getContentBounds(slot.sheet), slot.x, 0))
+      .reduce((acc, next) => unionBounds(acc, next));
+    return expandBounds(content, WORKSPACE_MARGIN_PX / zoom);
+  }, [sheets, zoom]);
   const layout = useMemo(() => computeLayout(bounds, zoom, viewport), [bounds, zoom, viewport]);
 
   // 選到畫面外的物件時捲過去：多選時看最後加入選取的那一個
@@ -115,19 +108,38 @@ export function EditorCanvas() {
   const scrollTarget = page.elements.find((element) => element.id === lastSelectedId) ?? null;
 
   // 原生事件 handler 與 layout effect 需要讀到最新值
-  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget });
-  latest.current = { layout, zoom, scroll, viewport, scrollTarget };
+  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget, activeX, sheets });
+  latest.current = { layout, zoom, scroll, viewport, scrollTarget, activeX, sheets };
+  // 螢幕像素 → 目前頁的頁面座標（框選以目前頁為準：對頁的背景按下時是切頁，不會開始框選）
+  const toPagePt = (screen: Point): Point => {
+    const current = latest.current;
+    const pt = screenToPt(current.layout, current.zoom, current.scroll, screen);
+    return { x: pt.x - current.activeX, y: pt.y };
+  };
+  // 建立工具：按下處的那一頁（跨頁時可能是對頁）與換到它的頁面座標
+  const pageAt = (screen: Point) => {
+    const current = latest.current;
+    const toLayer = (point: Point) => screenToPt(current.layout, current.zoom, current.scroll, point);
+    const slot = canvasSlotAt(current.sheets, toLayer(screen).x);
+    return {
+      pageId: slot.sheet.id,
+      toPt: (point: Point): Point => {
+        const pt = toLayer(point);
+        return { x: pt.x - slot.x, y: pt.y };
+      },
+    };
+  };
   const create = useCanvasCreate({
     scrollRef,
     tool: state.tool,
     shapeKind: state.shapeKind,
-    toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
+    pageAt,
     snapSpacing,
     onTextDraft: setDraftText,
   });
   const marquee = useCanvasMarquee({
     scrollRef,
-    toPt: (screen) => screenToPt(latest.current.layout, latest.current.zoom, latest.current.scroll, screen),
+    toPt: toPagePt,
     onSelectBox: (box, additive) =>
       dispatch({ type: "selection/setMany", ids: elementsInBox(page.elements, box), additive }),
   });
@@ -195,11 +207,12 @@ export function EditorCanvas() {
   useLayoutEffect(() => {
     if (viewport.width === 0 || handledFitRef.current === fitRequest) return;
     handledFitRef.current = fitRequest;
-    zoomAt(fitZoom(page, viewport, FIT_PADDING_PX), {
-      pt: pageCenter(page),
+    // 符合畫面：整個畫面上的頁面（單頁或跨頁）
+    zoomAt(fitZoom(sheets, viewport, FIT_PADDING_PX), {
+      pt: pageCenter(sheets),
       screen: { x: viewport.width / 2, y: viewport.height / 2 },
     });
-  }, [fitRequest, viewport, page, zoomAt]);
+  }, [fitRequest, viewport, sheets, zoomAt]);
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -220,13 +233,20 @@ export function EditorCanvas() {
 
   // 從圖層面板選到畫面外的物件時，捲動到該物件
   useEffect(() => {
-    const { scrollTarget: target, layout: currentLayout, zoom: currentZoom, scroll: currentScroll, viewport: size } =
-      latest.current;
+    const {
+      scrollTarget: target,
+      layout: currentLayout,
+      zoom: currentZoom,
+      scroll: currentScroll,
+      viewport: size,
+      activeX: offsetX,
+    } = latest.current;
     if (!target || size.width === 0) return;
     const topLeft = screenToPt(currentLayout, currentZoom, currentScroll, { x: 0, y: 0 });
     const bottomRight = screenToPt(currentLayout, currentZoom, currentScroll, { x: size.width, y: size.height });
     const visible = { minX: topLeft.x, minY: topLeft.y, maxX: bottomRight.x, maxY: bottomRight.y };
-    const elementBounds = getElementBounds(target);
+    // 物件的外框是頁面座標，換到 Layer 座標再比較
+    const elementBounds = offsetBounds(getElementBounds(target), offsetX, 0);
     if (boundsIntersect(elementBounds, visible)) return;
     applyScroll(
       scrollForAnchor(currentLayout, currentZoom, boundsCenter(elementBounds), { x: size.width / 2, y: size.height / 2 }),
@@ -260,8 +280,9 @@ export function EditorCanvas() {
   // 多選時 Konva Transformer 在 lead 第一次 dragmove 之後才讓其他節點開始拖曳，它們的「滑鼠偏移」
   // 已經含有 lead 第一次的吸附修正，不能用各自的位置推算；一律從滑鼠位置推回 lead 的原始位置。
   // 第一個呼叫的節點就是 lead（按下的那一個）；起點在第一次呼叫時記錄（節點還沒移動），dragend 時清空
+  // 吸附以 lead 所在頁面的 Group 為準（跨頁時右頁的 Group 有位移，不能用 Layer 的座標）
   const dragSessionRef = useRef<{
-    lead: { readonly start: Konva.Vector2d; readonly pointerOffset: Konva.Vector2d } | null;
+    lead: { readonly start: Konva.Vector2d; readonly pointerOffset: Konva.Vector2d; readonly page: Konva.Node } | null;
     starts: Map<ElementId, Konva.Vector2d>;
   }>({ lead: null, starts: new Map() });
   const dragBound = useMemo(() => {
@@ -278,13 +299,17 @@ export function EditorCanvas() {
         const start = node?.getAbsolutePosition() ?? pos;
         session.starts.set(id, start);
         // pos = 滑鼠位置 − Konva 的拖曳偏移，反推回偏移量
-        session.lead = { start, pointerOffset: { x: pointer.x - pos.x, y: pointer.y - pos.y } };
+        session.lead = {
+          start,
+          pointerOffset: { x: pointer.x - pos.x, y: pointer.y - pos.y },
+          page: node?.getParent() ?? layer,
+        };
       }
       const { lead, starts } = session;
       const self = starts.get(id);
       if (!self) return pos;
       const leadRaw = { x: pointer.x - lead.pointerOffset.x, y: pointer.y - lead.pointerOffset.y };
-      const leadSnapped = snapAbsoluteToGrid(layer, leadRaw, snapSpacing);
+      const leadSnapped = snapAbsoluteToGrid(lead.page, leadRaw, snapSpacing);
       return { x: self.x + leadSnapped.x - lead.start.x, y: self.y + leadSnapped.y - lead.start.y };
     };
   }, [snapSpacing]);
@@ -341,12 +366,19 @@ export function EditorCanvas() {
   const snapAnchor =
     snapSpacing !== null && selected && selected.rotation % 360 === 0
       ? (_oldPos: Konva.Vector2d, newPos: Konva.Vector2d): Konva.Vector2d => {
-          const layer = transformerRef.current?.getLayer();
-          return layer ? snapAbsoluteToGrid(layer, newPos, snapSpacing) : newPos;
+          // 以被縮放物件所在頁面的 Group 為準（跨頁時右頁有位移）
+          const page = transformerRef.current?.nodes()[0]?.getParent();
+          return page ? snapAbsoluteToGrid(page, newPos, snapSpacing) : newPos;
         }
       : undefined;
   const transformerOptions = selected ? TRANSFORMER_OPTIONS[selected.type] : TRANSFORMER_OPTIONS.shape;
   const origin = { x: layout.offsetX - scroll.x, y: layout.offsetY - scroll.y };
+  // 目前頁的左上角在螢幕上的位置：文字編輯框用頁面座標定位
+  const sheetOrigin = { x: origin.x + activeX * zoom, y: origin.y };
+  const elementHandlers = useMemo<ElementHandlers>(
+    () => ({ onSelect: handleSelect, onChange: handleChange, onMoveEnd: handleMoveEnd, onEditText: handleEditText, dragBound }),
+    [handleSelect, handleChange, handleMoveEnd, handleEditText, dragBound],
+  );
 
   return (
     <div
@@ -384,45 +416,26 @@ export function EditorCanvas() {
               onTouchStart={handleStageMouseDown}
             >
               <Layer x={origin.x} y={origin.y} scaleX={zoom} scaleY={zoom}>
-                <Rect
-                  name={PAGE_BACKGROUND_NAME}
-                  width={page.width}
-                  height={page.height}
-                  fill={page.background}
-                  shadowColor="#000000"
-                  shadowBlur={16}
-                  shadowOpacity={0.12}
-                  shadowOffsetY={2}
-                />
-                {preferences.grid.visible && (
-                  <PageGrid
-                    page={page}
-                    margins={state.history.present.margins}
-                    spacing={preferences.grid.spacing}
+                {sheets.slots.map((slot) => (
+                  <CanvasSheet
+                    key={slot.sheet.id}
+                    sheet={slot.sheet}
+                    x={slot.x}
+                    pageIndex={slot.pageIndex}
                     zoom={zoom}
-                  />
-                )}
-                {inherited.map((element) => (
-                  <StaticElement key={`master:${element.id}`} element={element} />
-                ))}
-                {shownElements.map((element) => (
-                  <ElementNode
-                    key={element.id}
-                    element={element}
-                    textHidden={element.id === editingId}
-                    onSelect={handleSelect}
-                    onChange={handleChange}
-                    onMoveEnd={handleMoveEnd}
-                    onEditText={handleEditText}
-                    dragBound={dragBound}
+                    editingId={editingId}
+                    handlers={elementHandlers}
+                    active={slot.sheet.id === page.id}
+                    onActivate={(elementId) => {
+                      // page/select 會清空選取，之後才選對頁上被按的物件（兩個 action 依序套用）
+                      dispatch({ type: "page/select", id: slot.sheet.id });
+                      if (elementId) dispatch({ type: "selection/set", id: elementId });
+                    }}
+                    highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
                   />
                 ))}
-                {/* 頁碼由文件的頁碼設定算出，不是物件：不能選取、不在圖層面板；「顯示頁碼」關閉時只是不畫，匯出照常 */}
-                {preferences.showPageNumbers && pageNumber && <StaticShape shape={pageNumber} />}
-                {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}
-                {/* 格線與邊界參考線都不攔事件、不算進內容範圍，也不會匯出 */}
-                {preferences.showMargins && <MarginGuide page={page} margins={state.history.present.margins} zoom={zoom} />}
-                <Rect width={page.width} height={page.height} stroke="#a3a3a3" strokeWidth={1 / zoom} listening={false} />
+                {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
+                {/* Transformer 在所有頁面之上；它掛的節點在各頁的 Group 裡，Konva 會換算位移 */}
                 <Transformer
                   ref={transformerRef}
                   enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
@@ -466,7 +479,7 @@ export function EditorCanvas() {
               key={draftText.id}
               element={draftText}
               zoom={zoom}
-              origin={origin}
+              origin={sheetOrigin}
               onCommit={(text) => {
                 setDraftText(null);
                 if (text.trim().length > 0) dispatch({ type: "element/add", element: { ...draftText, text } });
@@ -479,7 +492,7 @@ export function EditorCanvas() {
               key={editingText.id}
               element={editingText}
               zoom={zoom}
-              origin={origin}
+              origin={sheetOrigin}
               onCommit={(text) => {
                 setEditingId(null);
                 if (text.trim().length === 0) {
@@ -497,7 +510,7 @@ export function EditorCanvas() {
               element={labelAsText(editingShape, editingLabel, labelFrame(editingShape))}
               frame={{ height: labelFrame(editingShape).height, verticalAlign: editingLabel.verticalAlign }}
               zoom={zoom}
-              origin={origin}
+              origin={sheetOrigin}
               onCommit={(text) => {
                 setEditingId(null);
                 // 清空文字 = 移除圖形內文字；原本就沒有文字時不產生歷史

@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -78,8 +78,9 @@ src/
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
-      editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay
-      canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticShape（頁碼：不攔事件的圖形）
+      editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）
+      canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、物件、頁碼、參考線、頁緣）；對頁畫成靜態、按下切頁；SpreadSpine 書背線
+      canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
@@ -151,6 +152,7 @@ src/
       image.ts                    # loadImageSize()
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
       page-order.ts               # 頁面排序的純邏輯：isPageOrder、movePage、shiftPage / shiftedPageOrder（選單與快捷鍵）、slotToIndex（拖曳的空隙 → 新位置）
+      spreads.ts                  # 跨頁：pageSide（第 1 頁在右）、spreadIndexOf / spreadsOf / spreadOf（1 ／ 2–3 ／ 4–5…）、canvasSheets（畫布畫哪些頁、各自的位移）、canvasSlotAt（某一點落在哪一頁）
       master-pages.ts             # 主頁：findSheet、masterChain / inheritedElements / masterContent（要畫哪些主頁內容）、canSetParent / isMasterGraphValid（循環與深度，和 Rust 同規則）、deleteMaster、pagesUsingMaster、nextMasterName
       variables.ts                # 動態變數：TEXT_VARIABLES（{頁碼} {總頁數} {文件名稱} {頁面名稱}）、variableValues（主頁回傳 null）、resolveElementsVariables
       add-pages.ts                # 新增頁面 / 主頁對話框的純邏輯：預設值、錯誤訊息、插入位置、建立新頁面
@@ -225,9 +227,10 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 ### 畫布捲動與縮放（`editor-canvas.tsx` + `viewport.ts`）
 
 - Stage 只有視窗大小，放在 `sticky` 容器裡；外層 `overflow-scroll` 內放一個 `contentWidth × contentHeight` 的空 div 撐出捲軸。捲動時只改 Layer 位移，不建立超大 canvas。
-- 內容範圍 = 頁面 ∪ 所有物件外框，再加上 200px 邊距（`getContentBounds` + `WORKSPACE_MARGIN_PX`），確保拖到遠處的物件仍可以捲過去。
-- 換算公式：螢幕像素 = pt × zoom + `layout.offset` − scroll。縮放或內容範圍改變時，用錨點（Ctrl+滾輪時是游標，其他情況是畫面中心）重新計算 scroll，讓錨點下的內容保持不動。
-- 「符合畫面」以 `view/fit` 遞增 `fitRequest` 觸發，因為只有 canvas 知道 viewport 大小。
+- **Layer 座標是「跨頁座標」**：畫布畫 `canvasSheets()` 的每一頁（單頁模式只有目前頁、位移 0；雙頁模式是整個跨頁，見「單頁 / 雙頁」），每頁是 `CanvasSheet`（`canvas-sheet.tsx`）裡一個位移 `x` 的 Konva Group，**Group 裡才是頁面座標**。所以用到頁面座標的地方都要經過頁面位移：建立工具（`pageAt`，按下處的那一頁）、框選（`toPagePt`，目前頁）、文字編輯框（`sheetOrigin`）、捲到選取物件（`offsetBounds`）；格線吸附以物件所在頁的 Group（`node.getParent()`）為參考，不是 Layer。
+- 內容範圍 = 每一頁 ∪ 該頁所有物件外框（加上頁面位移後的聯集），再加上 200px 邊距（`getContentBounds` + `offsetBounds` + `WORKSPACE_MARGIN_PX`），確保拖到遠處的物件仍可以捲過去。
+- 換算公式：螢幕像素 = Layer 座標 × zoom + `layout.offset` − scroll（`screenToPt` 回傳 Layer 座標，再減掉頁面位移才是頁面座標）。縮放或內容範圍改變時，用錨點（Ctrl+滾輪時是游標，其他情況是畫面中心）重新計算 scroll，讓錨點下的內容保持不動。
+- 「符合畫面」以 `view/fit` 遞增 `fitRequest` 觸發，因為只有 canvas 知道 viewport 大小；範圍是整個 `canvasSheets`（雙頁時以跨頁置中）。
 - 兩個 `useLayoutEffect`（捲動校正 → fit）的**宣告順序不能對調**：fit 設定的錨點必須留到下一次 commit 才處理。
 - 從圖層面板選取完全不在畫面內的物件時，會自動捲動到該物件（多選時看最後加入選取的物件）。
 
@@ -280,7 +283,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 
 - **兩種資料分開存**：
   - 文件設定（紙張尺寸、邊界）：`history.present`，存進專案檔、可復原、會標記未存檔。
-  - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`、`showPageNumbers`（在「頁碼管理」對話框切換））：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
+  - App 偏好（`Preferences`：`grid.visible` / `grid.spacing`（pt）/ `grid.snap`、`showMargins`、`showPageNumbers`（在「頁碼管理」對話框切換）、`pageView`（`"single"` / `"spread"`，在「頁面」面板切換））：localStorage `magazine-editor.preferences.v1`，讀取一律過 `parsePreferences`（逐欄驗證，壞掉的欄位回預設，間距夾在 1–100 mm）。不進復原歷史、不存進專案。
 - **頁面設定**（「設定 → 文件 → 頁面設定...」）：按「確定」才寫入，「取消」/ Esc 放棄。
   - **沒有改動時「確定」不 dispatch `document/setPageSetup`**：否則頁面尺寸不一致的文件會被統一成目前頁的尺寸，還多一筆復原。
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
@@ -290,6 +293,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **吸附格線**（格線隱藏時也可以開）：
   - 拖曳：`ElementNode` 的 `dragBoundFunc` 交給 `editor-canvas` 的 `dragBound`。**多選時 Konva 會讓每個節點各自呼叫 `dragBoundFunc`，而且 Transformer 在主節點第一次 dragmove 後才讓其他節點開始拖曳**，所以不能各自吸附，也不能用各自的位置推算：第一個呼叫的節點是 lead，記下它的起點與滑鼠偏移，每次從**滑鼠位置**推回 lead 的原始位置再吸附，所有節點都用「自己的起點 + lead 的位移」（相對位置不變）。記錄在 `handleMoveEnd` 清空。
   - 縮放：Transformer 的 `anchorDragBoundFunc`，只在單選且旋轉 0° 時吸附控制點。
+  - 吸附的參考座標是**物件所在頁的 Group**（lead 節點的 `getParent()`），跨頁時右頁的 Group 有位移，用 Layer 會吸到錯的位置。
   - 建立：拖曳框的兩個角吸附（吸附後寬或高為 0 時當成點擊）；點擊建立的物件吸附外框左上角。預覽框不吸附。
   - 方向鍵與屬性面板輸入不吸附。
 
@@ -319,6 +323,21 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - **有線又有陰影時，Konva 改用 buffer canvas**：整段文字畫好再投一個陰影在最底下（`RenderShadow.whole_block`）；沒有線時每行各自投陰影。PDF 照兩種情況畫；EPUB 的文字陰影是 `text-shadow`（不複製文字），線的陰影是 `z-index: -1` 的 `span.d.s`（`.t` 有 `z-index: 0`）。
 - **已知限制**：半透明陰影在有線的文字上，重疊處 PDF / EPUB 比畫布深（Typst 沒有群組透明度）；EPUB 逐行畫文字陰影，行與行的陰影重疊時順序可能和畫布不同。
 
+### 單頁 / 雙頁（跨頁）（`spreads.ts` + `canvas-sheet.tsx` + `pages-panel.tsx`）
+
+計畫與決定：`docs/Plans/imp-page-switch.md`。
+
+- **切換**：「頁面」面板「頁面」標題列中間的 `PageViewToggle`（單頁 / 雙頁兩個 `IconButton`，`aria-pressed`）。模式是 App 偏好 `Preferences.pageView`（localStorage，不存進專案、不進復原歷史、不改檔案格式）。
+- **配對**：雜誌慣例，**第 1 頁（封面）單獨在右**，之後 2–3、4–5…；頁數是偶數時最後一頁單獨在左。奇數頁在右（`pageSide`），和頁碼的奇偶頁一致。頁面上緣對齊，左頁 x = 0、右頁 x = 左頁寬；單獨一頁位移 0。
+- **畫布**（雙頁模式）：畫目前頁所在的跨頁（`canvasSheets`），換頁時跟著換跨頁；同一跨頁內換頁時範圍不變、畫面不跳。書背虛線 `SpreadSpine`（兩頁之間；封面畫在左緣、最後一頁單獨時畫在右緣）；兩頁並排時用主色框出目前頁。**編輯主頁一律單頁**（主頁沒有左右頁）。
+- **編輯**：選取只屬於目前頁（規則不變）。
+  - 對頁的物件畫成 `StaticElement listening`（不是 `ElementNode`）：按下物件 = `page/select` 再 `selection/set`（一次點選）；按下對頁背景 = 只切頁。事件 `cancelBubble`，不會清空選取或開始框選。**要拖曳對頁的物件得按第二次**（切頁後才重畫成可拖曳的節點）。
+  - 建立工具建在**按下處的那一頁**：`use-canvas-create` 的 `pageAt(screen)` 回傳那一頁與換到它頁面座標的函式，放開時先 `page/select` 再建立（文字草稿也跟著到那一頁）。
+  - 物件拖過書背**仍屬原頁面**（超出照常顯示，匯出時被紙張裁掉），不自動換頁。
+  - Transformer 只掛目前頁的節點，不會兩頁物件一起拖。
+- **「頁面」面板**：雙頁模式時縮圖固定兩欄、欄間不留空，最前面一個空格讓第 1 頁落在右欄，左頁靠右、右頁靠左，兩頁貼在一起。
+- **匯出不受影響**（仍是一頁一頁）。頁碼、動態變數、主頁內容都以頁為單位，兩頁並排各自正確。
+
 ### 頁面排序（`page-order.ts` + `editor-page-bar.tsx` + `page-menu.tsx`）
 
 計畫與決定：`docs/Plans/imp-頁面調整.html`。
@@ -339,7 +358,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - **主頁物件在頁面上不能選取**、不在圖層面板、不算進捲動範圍；要改就切去編輯主頁。Affinity 的 Detach / 在頁面上改主頁物件不做。
   - 階層：`parentId` 不可循環，一條鏈最多 8 層（`MASTER_DEPTH_MAX`，TS `canSetParent` / `isMasterGraphValid` 與 Rust `validate_master_graph` 同規則）。
   - 刪除主頁：直接套用它的頁面與以它為基礎的子主頁，改接到它的父主頁（沒有就變成「無」）。
-- **畫布**（`editor-canvas`）：主頁內容用 `StaticElement`（`canvas-elements.tsx`，`listening={false}`，文字屬性和 `ElementNode` 共用 `textAttrs`）畫在頁面物件之下；編輯子主頁時父主頁的內容也畫在底下。`usedFontFamilies` 包含主頁。
+- **畫布**（`canvas-sheet.tsx` 的 `CanvasSheet`）：主頁內容用 `StaticElement`（`canvas-elements.tsx`，預設不攔事件，文字屬性和 `ElementNode` 共用 `textAttrs`）畫在頁面物件之下；編輯子主頁時父主頁的內容也畫在底下。`usedFontFamilies` 包含主頁。
 - **編輯主頁模式**：`page/select` 主頁的 id。畫布上方 `MasterEditBanner`（主頁名稱、以誰為基礎、`pagesUsingMaster` 幾頁使用、「回到頁面」→ `selectReturnPageId`）；頁籤列沒有頁籤被選取、頁碼欄顯示「–」；不畫頁碼（`pageIndex` = -1）；變數照原文顯示。
 - **「頁面」面板**（`pages-panel.tsx`，預設左側範本下方）：上半主頁、下半頁面，各有新增 / 複製 / 刪除；點縮圖切換、雙擊名稱改名、`⋮` 或右鍵選單（頁面：套用主頁 ▸；主頁：以…為基礎 ▸，會循環或太深的選項停用）。刪除前 AlertDialog 說明後果。計畫：`docs/Plans/imp-fix-master.md`。
   - **兩區各自收合**：標題列最左邊的箭頭是收合鈕（**只有箭頭**是按鈕，標題是一般文字，才抓得到標題拖曳）。收起的區只剩標題列，另一區佔滿；收起的「頁面」標題列貼在面板底部；兩區都收起時標題列靠上。

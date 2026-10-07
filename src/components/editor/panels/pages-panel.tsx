@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Copy, EllipsisVertical, FilePlus, Trash } from "lucide-react";
+import { BookOpen, ChevronDown, Copy, EllipsisVertical, File as FileIcon, FilePlus, Trash, type LucideIcon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +38,12 @@ import { createId } from "@/lib/editor/element-factory";
 import { usedFontFamilies } from "@/lib/editor/fonts";
 import { canSetParent, masterContent, pagesUsingMaster } from "@/lib/editor/master-pages";
 import type { CanvasElement, EditorDocument, MasterPage, PageId, Sheet } from "@/lib/editor/types";
+import { pageSide } from "@/lib/editor/spreads";
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { resolveElementsVariables, variableValues } from "@/lib/editor/variables";
 import { PAGE_NAME_MAX_LENGTH } from "@/lib/editor/validation";
+import type { PageView } from "@/lib/preferences/preferences";
+import { usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
 import { IconButton } from "../icon-button";
 import { InlineNameInput } from "../inline-name-input";
@@ -81,6 +84,7 @@ export function PagesPanel() {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const { openAddPages, openAddMaster } = usePageDialogs();
+  const spread = usePreferences().pageView === "spread";
   const document = state.history.present;
   const { masters, pages } = document;
   const fontsReady = useFontsReady(useMemo(() => usedFontFamilies(document), [document]));
@@ -202,6 +206,7 @@ export function PagesPanel() {
         grow={pagesGrow}
         onToggle={() => setLayout((current) => toggleSection(current, "pages"))}
         resize={resizable ? { ...resize, ratio: layout.mastersRatio } : undefined}
+        center={<PageViewToggle />}
         actions={
           <>
             <IconButton label="新增頁面" size="icon-xs" onClick={() => openAddPages("current")}>
@@ -226,10 +231,13 @@ export function PagesPanel() {
           </>
         }
       >
-        <TileGrid>
+        <TileGrid spread={spread}>
+          {/* 雙頁：第 1 頁（封面）在右欄，左欄留空，之後 2–3、4–5… 兩兩一列 */}
+          {spread && pages.length > 0 && <li aria-hidden />}
           {pages.map((page, index) => (
             <SheetTile
               key={page.id}
+              align={spread ? (pageSide(index) === "left" ? "end" : "start") : "center"}
               sheet={page}
               inherited={shownByPage.get(page.id)?.inherited ?? NO_ELEMENTS}
               elements={shownByPage.get(page.id)?.elements ?? page.elements}
@@ -293,6 +301,8 @@ interface SectionProps {
   readonly onToggle: () => void;
   readonly actions: ReactNode;
   readonly children: ReactNode;
+  /** Shown in the middle of the title bar (the 頁面 section's single / spread toggle). */
+  readonly center?: ReactNode;
   /** Given on the 頁面 section while both are open: its title bar is the boundary to drag. */
   readonly resize?: ReturnType<typeof useSectionResize> & { readonly ratio: number };
 }
@@ -302,7 +312,7 @@ interface SectionProps {
  * that scrolls on its own. Returns siblings (no wrapper) so the panel's flex column shares the
  * height between the two bodies.
  */
-function Section({ id, title, collapsed, grow, onToggle, actions, children, resize }: SectionProps) {
+function Section({ id, title, collapsed, grow, onToggle, actions, children, center, resize }: SectionProps) {
   const bodyId = useId();
   return (
     <>
@@ -343,7 +353,8 @@ function Section({ id, title, collapsed, grow, onToggle, actions, children, resi
         >
           <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", collapsed && "-rotate-90")} />
         </button>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium select-none">{title}</span>
+        <span className="min-w-0 shrink truncate text-sm font-medium select-none">{title}</span>
+        <div className="flex min-w-0 flex-1 justify-center">{center}</div>
         <div className="flex items-center gap-0.5">{actions}</div>
       </header>
       {!collapsed && (
@@ -357,8 +368,43 @@ function Section({ id, title, collapsed, grow, onToggle, actions, children, resi
   );
 }
 
-function TileGrid({ children }: { readonly children: ReactNode }) {
-  return <ul className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-x-2 gap-y-3">{children}</ul>;
+const PAGE_VIEWS: readonly { readonly value: PageView; readonly label: string; readonly icon: LucideIcon }[] = [
+  { value: "single", label: "單頁", icon: FileIcon },
+  { value: "spread", label: "雙頁（跨頁）", icon: BookOpen },
+];
+
+/**
+ * 單頁 / 雙頁 switch in the middle of the 頁面 title bar. The mode is an App preference
+ * (`Preferences.pageView`): kept on this computer, not in the project or undo history.
+ */
+function PageViewToggle() {
+  const pageView = usePreferences().pageView;
+  const setPreferences = useSetPreferences();
+  return (
+    <div role="group" aria-label="頁面顯示方式" className="flex items-center rounded-md border bg-background p-px">
+      {PAGE_VIEWS.map(({ value, label, icon: Icon }) => (
+        <IconButton
+          key={value}
+          label={label}
+          size="icon-xs"
+          aria-pressed={pageView === value}
+          onClick={() => setPreferences((current) => (current.pageView === value ? current : { ...current, pageView: value }))}
+          className={cn("cursor-default", pageView === value ? "bg-muted text-foreground" : "text-muted-foreground")}
+        >
+          <Icon />
+        </IconButton>
+      ))}
+    </div>
+  );
+}
+
+function TileGrid({ children, spread = false }: { readonly children: ReactNode; readonly spread?: boolean }) {
+  // 雙頁：固定兩欄、中間不留空，左頁靠右、右頁靠左，兩頁貼在一起像翻開的雜誌
+  return (
+    <ul className={cn("grid gap-y-3", spread ? "grid-cols-2" : "grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-x-2")}>
+      {children}
+    </ul>
+  );
 }
 
 interface SheetTileProps {
@@ -380,15 +426,17 @@ interface SheetTileProps {
   readonly onCancelRename: () => void;
   /** Items of the `⋮` / right-click menu. */
   readonly menu: ReactNode;
+  /** Horizontal placement in its grid cell: spreads put the left page at the end and the right page at the start. */
+  readonly align?: "start" | "center" | "end";
 }
 
 function SheetTile(props: SheetTileProps) {
-  const { sheet, active, number, badge, caption, renaming, menu } = props;
+  const { sheet, active, number, badge, caption, renaming, menu, align = "center" } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <li
       data-sheet-id={sheet.id}
-      className="group relative flex flex-col items-center gap-1"
+      className={cn("group relative flex flex-col gap-1", { start: "items-start", center: "items-center", end: "items-end" }[align])}
       onContextMenu={(event) => {
         event.preventDefault();
         setMenuOpen(true);

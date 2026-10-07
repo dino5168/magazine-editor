@@ -14,7 +14,11 @@ export interface Preferences {
   readonly showMargins: boolean;
   /** Draw page numbers on the canvas (export always includes them). */
   readonly showPageNumbers: boolean;
+  /** Edit one page at a time, or two facing pages (spreads: page 1 alone on the right, then 2–3 …). */
+  readonly pageView: PageView;
 }
+
+export type PageView = "single" | "spread";
 
 /** Grid spacing range offered by the preferences dialog (pt). */
 export const GRID_SPACING = { min: mmToPt(1), max: mmToPt(100), default: mmToPt(5) } as const;
@@ -23,6 +27,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   grid: { visible: false, spacing: GRID_SPACING.default, snap: false },
   showMargins: true,
   showPageNumbers: true,
+  pageView: "single",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -59,5 +64,6 @@ export function parsePreferences(value: unknown): Preferences {
     },
     showMargins: parseBoolean(value.showMargins, fallback.showMargins),
     showPageNumbers: parseBoolean(value.showPageNumbers, fallback.showPageNumbers),
+    pageView: value.pageView === "spread" || value.pageView === "single" ? value.pageView : fallback.pageView,
   };
 }
