@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ImagePlus } from "lucide-react";
 import { masonryLayout } from "@/lib/library/masonry";
 import type { LibraryItem } from "@/lib/library/types";
@@ -23,6 +23,10 @@ interface LibraryGridProps {
   readonly onDropFiles: ((files: File[]) => void) | null;
   /** Shown when there are no items. */
   readonly emptyMessage: string;
+  /** Pointer down on a card: may start dragging it (with the selection). */
+  readonly onItemPointerDown: (id: string, event: ReactPointerEvent) => void;
+  /** Items being dragged (drawn faded). */
+  readonly draggingIds: ReadonlySet<string>;
 }
 
 function modeOf(event: MouseEvent): SelectMode {
@@ -33,7 +37,8 @@ function modeOf(event: MouseEvent): SelectMode {
 
 /**
  * Center column of the asset manager: cards in a masonry layout (Eagle-style, left to right),
- * click / Ctrl / Shift selection, and dropping files from the file explorer to import them.
+ * click / Ctrl / Shift selection, dragging cards to folders, and dropping files from the file
+ * explorer to import them.
  *
  * Args:
  *   props: Items in display order, the selection, callbacks, URL resolver and the empty message.
@@ -41,7 +46,8 @@ function modeOf(event: MouseEvent): SelectMode {
  * Returns:
  *   Scrolling grid.
  */
-export function LibraryGrid({ items, selected, onSelect, onClearSelection, resolveSrc, onDropFiles, emptyMessage }: LibraryGridProps) {
+export function LibraryGrid(props: LibraryGridProps) {
+  const { items, selected, onSelect, onClearSelection, resolveSrc, onDropFiles, emptyMessage, onItemPointerDown, draggingIds } = props;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [fileOver, setFileOver] = useState(false);
@@ -115,7 +121,8 @@ export function LibraryGrid({ items, selected, onSelect, onClearSelection, resol
                   event.stopPropagation();
                   onSelect(item.id, modeOf(event));
                 }}
-                className="group absolute text-left outline-none"
+                onPointerDown={(event) => onItemPointerDown(item.id, event)}
+                className={cn("group absolute text-left outline-none", draggingIds.has(item.id) && "opacity-40")}
                 style={{ left: box.x, top: box.y, width: box.width }}
               >
                 {/* 縮圖的高度由瀑布流決定（依素材的長寬比，不量測） */}

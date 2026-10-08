@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Search, Upload } from "lucide-react";
+import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Folder, Images, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DragGhost } from "@/components/drag-ghost";
 import { useAddImage } from "@/components/editor/panels/use-add-image";
 import { createId } from "@/lib/editor/element-factory";
 import { pickFiles } from "@/lib/editor/image";
@@ -28,6 +30,7 @@ import { useProject } from "@/lib/project/project-context";
 import { LibraryGrid, type SelectMode } from "./library-grid";
 import { LibraryInfo } from "./library-info";
 import { LibraryTree } from "./library-tree";
+import { useLibraryDrag } from "./use-library-drag";
 
 interface LibraryDialogProps {
   readonly open: boolean;
@@ -115,6 +118,37 @@ function LibraryManager() {
     toast.success(`已移到垃圾桶：${ids.length} 個素材`);
   };
 
+  const onItemsTrashed = useCallback((count: number) => toast.success(`已移到垃圾桶：${count} 個素材`), []);
+  const { hint, dragging, startDrag, ghostRef } = useLibraryDrag(library, dispatch, onItemsTrashed);
+  // 拖已選取的卡片 = 拖整組；拖沒選取的卡片 = 只拖它（開始拖曳時才改選取，Ctrl+點選不受影響）
+  const startItemDrag = (id: string, event: ReactPointerEvent) => {
+    const ids = selectedSet.has(id) ? selectedItems.map((item) => item.id) : [id];
+    startDrag({ type: "items", ids }, event, () => {
+      if (selectedSet.has(id)) return;
+      setSelected([id]);
+      setAnchor(id);
+    });
+  };
+  const draggingIds = useMemo(() => new Set(dragging?.type === "items" ? dragging.ids : []), [dragging]);
+  const draggingFolder = dragging?.type === "folder" ? folders.find((folder) => folder.id === dragging.id) : undefined;
+  // DragGhost 只在 children 是 null 時隱藏
+  let ghostLabel: ReactNode = null;
+  if (dragging?.type === "items") {
+    ghostLabel = (
+      <>
+        <Images className="size-4" />
+        {dragging.ids.length} 個素材
+      </>
+    );
+  } else if (draggingFolder) {
+    ghostLabel = (
+      <>
+        <Folder className="size-4" />
+        {draggingFolder.name}
+      </>
+    );
+  }
+
   const importFolder = importFolderOf(shownView);
   const importHere = async (files: File[]) => {
     if (files.length === 0) return;
@@ -193,6 +227,8 @@ function LibraryManager() {
             onCancelRename={() => setRenamingId(null)}
             onAddFolder={addFolder}
             onDeleteFolder={setDeletingId}
+            dropHint={hint}
+            onFolderPointerDown={(id, event) => startDrag({ type: "folder", id }, event)}
           />
         </div>
 
@@ -234,6 +270,8 @@ function LibraryManager() {
             resolveSrc={resolveSrc}
             onDropFiles={shownView.type === "trash" ? null : (files) => void importHere(files)}
             emptyMessage={emptyMessage}
+            onItemPointerDown={startItemDrag}
+            draggingIds={draggingIds}
           />
           <div className="flex gap-3 border-t px-3 py-1.5 text-xs text-muted-foreground">
             <span>{items.length} 個素材</span>
@@ -253,6 +291,9 @@ function LibraryManager() {
           />
         </aside>
       </div>
+
+      {/* 視窗本身有 transform（置中），fixed 定位會以它為準；標籤放到 body 才會跟著游標 */}
+      {createPortal(<DragGhost ref={ghostRef}>{ghostLabel}</DragGhost>, document.body)}
 
       <AlertDialog open={deleting !== undefined} onOpenChange={(isOpen) => !isOpen && setDeletingId(null)}>
         <AlertDialogContent>
