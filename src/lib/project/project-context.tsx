@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectIsDirty } from "@/lib/editor/editor-reducer";
 import { createBlankDocument } from "@/lib/editor/element-factory";
+import type { PageSetup } from "@/lib/editor/page-setup";
 import type { EditorDocument } from "@/lib/editor/types";
 import { resolveAssetUrl } from "./asset-url";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
@@ -37,8 +38,11 @@ interface ProjectContextValue {
   readonly dirty: boolean;
   readonly resolveSrc: (src: string) => string;
   readonly getSnapshot: () => ProjectSnapshot;
-  /** Creates an untitled project with a blank A4 page. Resolves to false (after a toast) on failure. */
-  readonly createNew: () => Promise<boolean>;
+  /**
+   * Creates an untitled project with one blank page of the given paper and margins (default: A4
+   * portrait, 15 mm). Resolves to false (after a toast) on failure.
+   */
+  readonly createNew: (setup?: PageSetup) => Promise<boolean>;
   /** Replaces the editor content with an opened project (clears undo history). */
   readonly loadOpened: (opened: OpenedProject) => void;
   readonly markSaved: (info: ProjectInfo, document: EditorDocument) => void;
@@ -118,13 +122,13 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
     [load],
   );
 
-  const createNew = useCallback(async () => {
+  const createNew = useCallback(async (setup?: PageSetup) => {
     const created = await projectApi.create();
     if (created.error) {
       toast.error(`無法建立新專案：${describeCommandError(created.error)}`);
       return false;
     }
-    load(created.data, { document: createBlankDocument(), assets: [] }, true);
+    load(created.data, { document: createBlankDocument(setup), assets: [] }, true);
     return true;
   }, [load]);
 

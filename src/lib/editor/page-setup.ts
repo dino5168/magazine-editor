@@ -5,6 +5,12 @@ import { isMargins, isPageSize } from "./validation";
 export type PageSizePresetId = keyof typeof PAGE_SIZE_PRESETS;
 export type Orientation = "portrait" | "landscape";
 
+/** Paper size and margins of a document (the page setup and 新增文件 dialogs edit one). */
+export interface PageSetup {
+  readonly size: Size;
+  readonly margins: Margins;
+}
+
 export const PAGE_SIZE_PRESET_IDS = Object.keys(PAGE_SIZE_PRESETS) as readonly PageSizePresetId[];
 
 /**

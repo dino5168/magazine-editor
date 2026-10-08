@@ -6,6 +6,7 @@ import { DockDragGhost } from "@/components/dock/dock-drag-ghost";
 import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
 import { SETTINGS_DIALOGS } from "@/components/app/settings";
+import { useNewDocumentDialog } from "@/components/app/new-document-dialog";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
 import { BottomToolbar } from "@/components/editor/bottom-toolbar";
@@ -60,7 +61,8 @@ function EditorLayout() {
   useEditorShortcuts();
 
   const { dialog: unsavedDialog, confirm: confirmUnsaved } = useUnsavedChangesDialog();
-  const project = useProjectCommands(confirmUnsaved);
+  const { dialog: newDocumentDialog, choose: chooseNewSetup } = useNewDocumentDialog();
+  const project = useProjectCommands(confirmUnsaved, chooseNewSetup);
   useCloseGuard(project.confirmClose);
   const { importFiles } = useImageImport();
   const addImage = useAddImage();
@@ -170,6 +172,7 @@ function EditorLayout() {
       <EditorPageBar />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
+      {newDocumentDialog}
       {SETTINGS_PAGES.map(({ id }) => {
         const SettingsPageDialog = SETTINGS_DIALOGS[id];
         return (

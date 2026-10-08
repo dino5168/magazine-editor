@@ -1,4 +1,5 @@
 import { DEFAULT_FONT_OPTION } from "./fonts";
+import type { PageSetup } from "./page-setup";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
 import { PLAIN_TEXT_DECORATION } from "./text-style";
 import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
@@ -28,6 +29,8 @@ export const DEFAULT_MARGINS: Margins = (() => {
   const side = mmToPt(15);
   return { top: side, right: side, bottom: side, left: side };
 })();
+/** Paper and margins the 新增文件 dialog starts with, and of documents created without a choice. */
+export const DEFAULT_NEW_PAGE_SETUP: PageSetup = { size: presetToPt(PAGE_SIZE_PRESETS.a4), margins: DEFAULT_MARGINS };
 
 /** Newly added images never exceed this fraction of the page size. */
 const IMAGE_MAX_PAGE_RATIO = 0.5;
@@ -328,18 +331,21 @@ export function nextPageNames(pages: readonly Page[], count: number): string[] {
 }
 
 /**
- * Creates the document for a new project: one blank A4 portrait page.
+ * Creates the document for a new project: one blank page.
+ *
+ * Args:
+ *   setup: Paper size and margins; defaults to A4 portrait with 15 mm margins.
  *
  * Returns:
  *   Blank document.
  */
-export function createBlankDocument(): EditorDocument {
+export function createBlankDocument(setup: PageSetup = DEFAULT_NEW_PAGE_SETUP): EditorDocument {
   return {
     name: "未命名文件",
-    margins: DEFAULT_MARGINS,
+    margins: setup.margins,
     pageNumberRules: [],
     masters: [],
-    pages: [createPage("Page-1", presetToPt(PAGE_SIZE_PRESETS.a4), DEFAULT_PAGE_BACKGROUND)],
+    pages: [createPage("Page-1", setup.size, DEFAULT_PAGE_BACKGROUND)],
   };
 }
 

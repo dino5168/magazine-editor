@@ -4,12 +4,19 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-07(主頁與動態變數完成)
+最後更新:2026-10-08(修改新增專案流程完成)
 
 ---
 
 ## 目前階段
 
+- **修改新增專案流程(2026-10-08,五個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/01-修改新增專案流程.md`,計畫 `docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`。「檔案 → 新增」先開「新增文件」對話框(左:紙張卡片分組;右:直橫 / 寬高 / 邊界,和頁面設定共用欄位),按「建立」才進入編輯。使用者確認:啟動時沒有上次的專案仍直接建立 A4;保留寬高輸入;瀏覽器模式維持「僅在桌面版可用」;不記憶上次的紙張。共五個步驟,不改 Rust 與檔案格式。
+  - 步驟 1(完成):`createBlankDocument(setup = DEFAULT_NEW_PAGE_SETUP)`、`DEFAULT_NEW_PAGE_SETUP`(在 `element-factory.ts`,避免和 `page-setup.ts` 循環 import)、`page-setup.ts` 的 `PageSetup` 型別(頁面設定對話框改用它)。vitest 371 個。畫面不變。
+  - 步驟 2(完成,行為不變):頁面設定的直橫 / 寬高 / 邊界 / 錯誤訊息抽成 `components/app/settings/page-setup-fields.tsx` 的 `PageSetupFields`(受控;紙張下拉與尺寸不一致提示由呼叫端以 `paperPicker` / `sizeNote` 傳入)。無頭 Edge 12 項。
+  - 步驟 3(完成,還沒接到選單):`components/app/paper-preset-grid.tsx`(紙張卡片,分組、依比例的外框、跟著直橫轉、radio group 方向鍵)、`components/app/new-document-dialog.tsx`(`useNewDocumentDialog`,Promise 回傳 `PageSetup | null`)、`SettingsDialogFooter` 的 `applyLabel`、型別 `ChooseNewSetup`。用暫時的測試頁驗證(已刪),無頭 Edge 17 項。
+  - 步驟 4(完成):「檔案 → 新增」= 未存檔提示 → 新增文件對話框(取消就結束)→ `createNew(setup)`;`useProjectCommands(confirmUnsaved, chooseNewSetup)`。啟動時照舊 A4。build 通過、vitest 371 個;瀏覽器模式無頭 Edge 5 項(「新增」仍只顯示僅在桌面版可用)。**桌面版人工驗證待做**:Ctrl+N 選 B5 橫式、邊界 20 → 建立後頁面設定顯示相同值;取消時文件不變;有未存檔時先問儲存。
+  - 步驟 5(完成):`CLAUDE.md`(目前階段、目錄結構、「設定對話框」、「檔案系統」的新增專案)、`docs/01`。
+  - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`progress.md`、計畫檔 `docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`;任務檔與 `docs/01-Plans-2026-10/Images/` 是否 commit 待使用者決定。
 - **視圖 → 尺規(2026-10-07,五個步驟全部完成,已 commit 並推送;桌面版人工驗證待做)**:任務檔 `docs/Plans/2026-10-07-Ruler-尺規.md`(不 commit),計畫 `docs/Plans/imp-view-ruler.md`(要 commit)。選單列加「視圖(V) → 尺規」勾選項目,畫布上方 / 左方顯示 Affinity 式尺規。使用者確認:單位固定 mm;原點 = 目前頁左上角;一起做滑鼠位置與選取範圍標示;不加快捷鍵;預設顯示、淺色主題配色。共五個步驟(純邏輯 → 偏好與選單 → 畫尺規 → 標示 → 文件),不新增套件。
   - 步驟 1(完成):`lib/editor/ruler.ts`(`rulerScale` 依縮放選 1–2–5 級數的主刻度與細分、`rulerTicks` 產生可見刻度、`rulerOrigin` 目前頁左上角的螢幕位置)。vitest 364 個。畫面不變。
   - 步驟 2(完成):`Preferences.showRulers`(預設顯示,舊紀錄缺欄位讀成 true)、選單「視圖(V) → 尺規」(`view.rulers` 勾選項目,`home-page.tsx` 的 handler 切換偏好、`isChecked` 讀偏好)。vitest 366 個,無頭 Edge 7 項。畫布還沒有尺規。

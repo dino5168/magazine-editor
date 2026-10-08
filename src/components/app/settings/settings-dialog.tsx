@@ -38,6 +38,8 @@ interface SettingsDialogFooterProps {
   /** Writes the drafts and closes the dialog. */
   readonly onApply: () => void;
   readonly applyDisabled?: boolean;
+  /** Text of the apply button; defaults to「確定」. */
+  readonly applyLabel?: string;
   /** Short hint shown on the left (e.g. why「確定」is disabled). */
   readonly note?: ReactNode;
 }
@@ -46,12 +48,12 @@ interface SettingsDialogFooterProps {
  * 「取消」/「確定」row: cancel (and Esc) discards the drafts, nothing is written before「確定」.
  *
  * Args:
- *   props: Apply callback, whether it is disabled, and an optional note.
+ *   props: Apply callback, whether it is disabled, optional button text, and an optional note.
  *
  * Returns:
  *   Dialog footer.
  */
-export function SettingsDialogFooter({ onApply, applyDisabled = false, note }: SettingsDialogFooterProps) {
+export function SettingsDialogFooter({ onApply, applyDisabled = false, applyLabel = "確定", note }: SettingsDialogFooterProps) {
   return (
     <DialogFooter>
       {note && <p className="mr-auto self-center text-xs text-muted-foreground">{note}</p>}
@@ -59,7 +61,7 @@ export function SettingsDialogFooter({ onApply, applyDisabled = false, note }: S
         <Button variant="outline">取消</Button>
       </DialogClose>
       <Button onClick={onApply} disabled={applyDisabled}>
-        確定
+        {applyLabel}
       </Button>
     </DialogFooter>
   );

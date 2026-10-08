@@ -1,16 +1,44 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_MARGINS,
+  DEFAULT_NEW_PAGE_SETUP,
   MIN_TEXT_WIDTH,
   boundsFromPoints,
+  createBlankDocument,
   createShapeElement,
   createShapeInBox,
   createToolText,
   describeElement,
 } from "../element-factory";
+import { presetSize } from "../page-setup";
 import { createLabel } from "../shape-label";
 import type { Bounds } from "../types";
+import { mmToPt } from "../units";
 
 const box: Bounds = { minX: 100, minY: 200, maxX: 300, maxY: 300 };
+
+describe("createBlankDocument", () => {
+  it("defaults to one A4 portrait page with 15 mm margins", () => {
+    expect(DEFAULT_NEW_PAGE_SETUP).toEqual({ size: presetSize("a4", "portrait"), margins: DEFAULT_MARGINS });
+    const document = createBlankDocument();
+    expect(document.pages).toHaveLength(1);
+    expect(document.pages[0]).toMatchObject(presetSize("a4", "portrait"));
+    expect(document.margins).toBe(DEFAULT_MARGINS);
+    expect(document.masters).toEqual([]);
+    expect(document.pageNumberRules).toEqual([]);
+  });
+
+  it("uses the chosen paper size and margins", () => {
+    const size = presetSize("b5", "landscape");
+    const side = mmToPt(20);
+    const margins = { top: side, right: side, bottom: side, left: mmToPt(25) };
+    const document = createBlankDocument({ size, margins });
+    expect(document.pages).toHaveLength(1);
+    expect(document.pages[0]).toMatchObject({ width: size.width, height: size.height });
+    expect(document.pages[0].width).toBeGreaterThan(document.pages[0].height);
+    expect(document.margins).toEqual(margins);
+  });
+});
 
 describe("boundsFromPoints", () => {
   it("normalizes a drag in any direction", () => {

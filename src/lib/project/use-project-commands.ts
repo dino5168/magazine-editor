@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import type { PageSetup } from "@/lib/editor/page-setup";
 import { buildExportRequest } from "@/lib/export/export-request";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
@@ -9,6 +10,9 @@ export type UnsavedChoice = "save" | "discard" | "cancel";
 
 /** Asks the user what to do with unsaved changes. */
 export type ConfirmUnsaved = () => Promise<UnsavedChoice>;
+
+/** Asks for the paper and margins of a new document; null when the user cancels. */
+export type ChooseNewSetup = () => Promise<PageSetup | null>;
 
 export interface ProjectCommands {
   /** Each resolves to true when the operation completed (false: cancelled or failed). */
@@ -29,11 +33,12 @@ const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri 
  *
  * Args:
  *   confirmUnsaved: Shows the "save changes?" prompt; injected so this hook stays UI-free.
+ *   chooseNewSetup: Shows the 新增文件 dialog (paper and margins of a new project); injected too.
  *
  * Returns:
  *   Command functions; they read the latest state when invoked.
  */
-export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectCommands {
+export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetup: ChooseNewSetup): ProjectCommands {
   const { ready, getSnapshot, createNew, loadOpened, markSaved } = useProject();
   // 連按 Ctrl+S、或對話框開著時又觸發指令（包括關閉視窗），會造成兩個寫入同時進行
   const busyRef = useRef(false);
@@ -91,10 +96,12 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved): ProjectComma
     return true;
   }, [confirmUnsaved, getSnapshot, saveImpl]);
 
-  const newImpl = useCallback(
-    async (): Promise<boolean> => (await resolveUnsaved()) && createNew(),
-    [createNew, resolveUnsaved],
-  );
+  // 先處理未存檔再選紙張；在紙張對話框按取消時留在目前的文件（對話框開著時 busyRef 擋住其他檔案指令）
+  const newImpl = useCallback(async (): Promise<boolean> => {
+    if (!(await resolveUnsaved())) return false;
+    const setup = await chooseNewSetup();
+    return setup !== null && createNew(setup);
+  }, [chooseNewSetup, createNew, resolveUnsaved]);
 
   const openImpl = useCallback(async (): Promise<boolean> => {
     if (!(await resolveUnsaved())) return false;
