@@ -1,13 +1,17 @@
-import { useMemo, useState, type DragEvent } from "react";
-import { Maximize2, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
+import { Maximize2, MousePointerClick, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DragGhost, moveDragGhost } from "@/components/drag-ghost";
+import { startPointerDrag } from "@/components/pointer-drag";
 import { LibraryThumb } from "@/components/library/library-card";
 import { useLibraryDialog } from "@/components/library/library-dialog";
 import { usePlaceLibraryItem } from "@/components/library/use-place-library-item";
 import { pickFiles } from "@/lib/editor/image";
 import { useLibrary } from "@/lib/library/library-context";
+import type { LibraryItem } from "@/lib/library/types";
 import { LIBRARY_ACCEPT } from "@/lib/library/library-files";
 import { ALL_VIEW, importFolderOf, libraryCounts, visibleItems, type LibraryView } from "@/lib/library/library-selectors";
 import { treeRows } from "@/lib/library/library-tree";
@@ -15,6 +19,7 @@ import { useLibraryImport } from "@/lib/library/use-library-import";
 import { isDesktop } from "@/lib/project/project-api";
 import { useProject } from "@/lib/project/project-context";
 import { cn } from "@/lib/utils";
+import { useCanvasDrop } from "../canvas-drop";
 import { IconButton } from "../icon-button";
 
 /** Select value of a view; folder ids are UUIDs, so they never collide with the fixed values. */
@@ -29,8 +34,9 @@ function viewOf(value: string): LibraryView {
 
 /**
  * 素材 tool panel (replaces 上傳; the panel id stays `upload` so saved dock layouts keep it): pick a
- * folder, import into it, click a thumbnail to put it on the page. Organising happens in the
- * 素材管理 window (the button next to the folder list).
+ * folder, import into it, click a thumbnail to put it in the middle of the page or drag it onto
+ * the canvas to put it where it is dropped. Organising happens in the 素材管理 window (the button
+ * next to the folder list).
  *
  * Returns:
  *   Panel content.
@@ -43,6 +49,40 @@ export function LibraryPanel() {
   const placeItem = usePlaceLibraryItem();
   const [view, setView] = useState<LibraryView>(ALL_VIEW);
   const [fileOver, setFileOver] = useState(false);
+  const { locate } = useCanvasDrop();
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const cancelDragRef = useRef<(() => void) | null>(null);
+  // 拖曳中的素材，以及游標是否在畫布上（標籤的文字跟著變）
+  const [dragging, setDragging] = useState<{ readonly item: LibraryItem; readonly overCanvas: boolean } | null>(null);
+  useEffect(() => () => cancelDragRef.current?.(), []);
+
+  // 拖到畫布上放開 = 放在那一頁的那個位置（一筆復原）；放在畫布以外 = 取消。點一下照舊放到中央
+  const startDrag = (item: LibraryItem, event: ReactPointerEvent) => {
+    if (event.button !== 0 || item.kind === "audio" || cancelDragRef.current) return;
+    let last = { x: event.clientX, y: event.clientY };
+    let overCanvas = false;
+    cancelDragRef.current = startPointerDrag(event, {
+      cursor: "no-drop",
+      onStart: () => setDragging({ item, overCanvas }),
+      onMove: (e) => {
+        last = { x: e.clientX, y: e.clientY };
+        moveDragGhost(ghostRef.current, e.clientX, e.clientY);
+        const now = locate(e.clientX, e.clientY) !== null;
+        if (now === overCanvas) return;
+        overCanvas = now;
+        document.body.style.cursor = now ? "copy" : "no-drop";
+        setDragging({ item, overCanvas });
+      },
+      onEnd: (commit) => {
+        setDragging(null);
+        const target = commit ? locate(last.x, last.y) : null;
+        if (target) void placeItem(item, target.point, target.pageId);
+      },
+      onDone: () => {
+        cancelDragRef.current = null;
+      },
+    });
+  };
 
   // 選的資料夾被刪掉（在管理視窗裡）時回到全部
   const shownView = view.type === "folder" && !library.folders.some((folder) => folder.id === view.id) ? ALL_VIEW : view;
@@ -118,15 +158,17 @@ export function LibraryPanel() {
                 key={item.id}
                 type="button"
                 data-library-panel-item={item.id}
-                title={placeable ? `${item.name}（點一下放到頁面中央）` : `${item.name}（音訊不能放到頁面）`}
+                title={placeable ? `${item.name}（點一下放到頁面中央，或拖到頁面上）` : `${item.name}（音訊不能放到頁面）`}
                 aria-disabled={!placeable}
+                onPointerDown={(event) => startDrag(item, event)}
                 onClick={() => {
                   if (!placeable) return toast.info("音訊目前不能放到頁面");
                   void placeItem(item);
                 }}
                 className={cn(
                   "group relative rounded-lg text-left outline-offset-2",
-                  placeable ? "hover:outline-2 hover:outline-indigo-400/50" : "cursor-not-allowed",
+                  placeable ? "cursor-grab hover:outline-2 hover:outline-indigo-400/50" : "cursor-not-allowed",
+                  dragging?.item.id === item.id && "opacity-40",
                 )}
               >
                 <LibraryThumb item={item} resolveSrc={resolveSrc} className="aspect-4/3 w-full" />
@@ -140,6 +182,18 @@ export function LibraryPanel() {
             );
           })}
         </div>
+      )}
+      {createPortal(
+        <DragGhost ref={ghostRef}>
+          {dragging && (
+            <>
+              <MousePointerClick className="size-4" />
+              {dragging.item.name}
+              <span className="font-normal text-muted-foreground">{dragging.overCanvas ? "放開即放在這裡" : "拖到頁面上"}</span>
+            </>
+          )}
+        </DragGhost>,
+        document.body,
       )}
     </div>
   );

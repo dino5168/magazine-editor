@@ -12,6 +12,7 @@ import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog
 import { BottomToolbar } from "@/components/editor/bottom-toolbar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { MasterEditBanner } from "@/components/editor/master-edit-banner";
+import { CanvasDropProvider } from "@/components/editor/canvas-drop";
 import { PageDialogsProvider } from "@/components/editor/page-dialogs";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
@@ -211,7 +212,10 @@ export function HomePage() {
           <PreferencesProvider>
             <PageDialogsProvider>
               <LibraryDialogProvider>
-                <EditorLayout />
+                {/* 素材面板拖到畫布時用來找放下的頁面與位置 */}
+                <CanvasDropProvider>
+                  <EditorLayout />
+                </CanvasDropProvider>
               </LibraryDialogProvider>
             </PageDialogsProvider>
           </PreferencesProvider>

@@ -31,6 +31,7 @@ import {
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
+import { useCanvasDrop } from "./canvas-drop";
 import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { CanvasRuler, moveRulerMarker, RULER_SIZE_PX, RulerCorner } from "./canvas-ruler";
 import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
@@ -152,6 +153,23 @@ export function EditorCanvas() {
       },
     };
   };
+  // 素材面板拖過來放下時：視窗座標 → 那一頁與它的頁面座標（游標要在捲動區內，蓋在上面的工具列不算）
+  const { register: registerDrop } = useCanvasDrop();
+  const pageAtRef = useRef(pageAt);
+  pageAtRef.current = pageAt;
+  useEffect(() => {
+    registerDrop((clientX, clientY) => {
+      const element = scrollRef.current;
+      // 這個元件裡的 document 是編輯中的文件，DOM 要用 window.document
+      const hit = window.document.elementFromPoint(clientX, clientY);
+      if (!element || !hit || !element.contains(hit)) return null;
+      const rect = element.getBoundingClientRect();
+      const screen = { x: clientX - rect.left, y: clientY - rect.top };
+      const { pageId, toPt } = pageAtRef.current(screen);
+      return { pageId, point: toPt(screen) };
+    });
+    return () => registerDrop(null);
+  }, [registerDrop]);
   const create = useCanvasCreate({
     scrollRef,
     tool: state.tool,

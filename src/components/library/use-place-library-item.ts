@@ -1,9 +1,10 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { useActivePage, useEditorDispatch } from "@/lib/editor/editor-context";
+import { useActivePage, useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { createImageElement, createTextFromFile } from "@/lib/editor/element-factory";
 import { pageCenter } from "@/lib/editor/geometry";
-import type { Point } from "@/lib/editor/types";
+import { findSheet } from "@/lib/editor/master-pages";
+import type { PageId, Point } from "@/lib/editor/types";
 import { normalizeText } from "@/lib/library/library-files";
 import type { LibraryItem } from "@/lib/library/types";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
@@ -32,31 +33,34 @@ async function readItemText(src: string): Promise<string | null> {
  * be placed. One `element/add` = one undo step; the new element is selected.
  *
  * Returns:
- *   `place(item, center?)` resolving to true when something was added; `center` is in page
- *   coordinates (default: the page center).
+ *   `place(item, center?, pageId?)` resolving to true when something was added. `center` is in
+ *   page coordinates (default: the page center); `pageId` (default: the active page) is selected
+ *   first, like the creation tools do for the facing page of a spread.
  */
-export function usePlaceLibraryItem(): (item: LibraryItem, center?: Point) => Promise<boolean> {
-  const page = useActivePage();
+export function usePlaceLibraryItem(): (item: LibraryItem, center?: Point, pageId?: PageId) => Promise<boolean> {
+  const active = useActivePage();
+  const { history } = useEditorState();
+  const document = history.present;
   const dispatch = useEditorDispatch();
 
   return useCallback(
-    async (item: LibraryItem, center?: Point) => {
-      const at = center ?? pageCenter(page);
-      switch (item.kind) {
-        case "image":
-          dispatch({ type: "element/add", element: createImageElement(item.src, item, page, at) });
-          return true;
-        case "text": {
-          const text = await readItemText(item.src);
-          if (text === null) return false;
-          dispatch({ type: "element/add", element: createTextFromFile(normalizeText(text), page, at) });
-          return true;
-        }
-        case "audio":
-          toast.info("音訊目前不能放到頁面");
-          return false;
+    async (item: LibraryItem, center?: Point, pageId?: PageId) => {
+      if (item.kind === "audio") {
+        toast.info("音訊目前不能放到頁面");
+        return false;
       }
+      const page = (pageId && findSheet(document, pageId)) || active;
+      const at = center ?? pageCenter(page);
+      // 文字要先讀檔；讀完再切頁、建立，讀取失敗時不會只切了頁
+      const text = item.kind === "text" ? await readItemText(item.src) : null;
+      if (item.kind === "text" && text === null) return false;
+      // 已經是目前頁時 page/select 不會改變任何東西
+      dispatch({ type: "page/select", id: page.id });
+      const element =
+        item.kind === "image" ? createImageElement(item.src, item, page, at) : createTextFromFile(normalizeText(text ?? ""), page, at);
+      dispatch({ type: "element/add", element });
+      return true;
     },
-    [dispatch, page],
+    [active, dispatch, document],
   );
 }
