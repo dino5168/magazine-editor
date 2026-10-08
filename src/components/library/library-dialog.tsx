@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Folder, Images, Search, Upload } from "lucide-react";
+import { Folder, Images, Search, Trash, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -21,7 +21,7 @@ import { createId } from "@/lib/editor/element-factory";
 import { pickFiles } from "@/lib/editor/image";
 import { useLibrary, useLibraryDispatch } from "@/lib/library/library-context";
 import { LIBRARY_ACCEPT } from "@/lib/library/library-files";
-import { ALL_VIEW, importFolderOf, libraryCounts, visibleItems, type LibraryView } from "@/lib/library/library-selectors";
+import { ALL_VIEW, importFolderOf, libraryCounts, restoredToUnsorted, visibleItems, type LibraryView } from "@/lib/library/library-selectors";
 import { descendants, folderPath, nextFolderName } from "@/lib/library/library-tree";
 import { folderNameError } from "@/lib/library/library-validation";
 import type { LibraryItem } from "@/lib/library/types";
@@ -65,6 +65,16 @@ export function LibraryDialog({ open, onOpenChange }: LibraryDialogProps) {
   );
 }
 
+/**
+ * Puts focus back on the manager window when a confirmation closes. Radix would return it to the
+ * button that opened the confirmation, which may be gone (a deleted folder's row); focus would then
+ * land on `<body>`, where Delete reaches the editor's shortcuts.
+ */
+function refocusManager(event: Event): void {
+  event.preventDefault();
+  document.querySelector<HTMLElement>("[data-library-dialog]")?.focus();
+}
+
 function LibraryManager() {
   const library = useLibrary();
   const dispatch = useLibraryDispatch();
@@ -80,6 +90,8 @@ function LibraryManager() {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(library.folders.map((folder) => folder.id)));
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // 永久刪除的確認：選取的素材，或「清空垃圾桶」（all）
+  const [purging, setPurging] = useState<{ readonly ids: readonly string[]; readonly all: boolean } | null>(null);
 
   const { folders } = library;
   // 顯示中的資料夾被刪掉（例如另一個資料夾的刪除連帶刪除）時回到「全部」
@@ -116,6 +128,23 @@ function LibraryManager() {
   const trash = (ids: readonly string[]) => {
     dispatch({ type: "item/trash", ids, at: new Date().toISOString() });
     toast.success(`已移到垃圾桶：${ids.length} 個素材`);
+  };
+
+  const restore = (ids: readonly string[]) => {
+    const toUnsorted = restoredToUnsorted(library, ids);
+    dispatch({ type: "item/restore", ids });
+    toast.success(
+      toUnsorted > 0
+        ? `已還原 ${ids.length} 個素材；其中 ${toUnsorted} 個的原資料夾已刪除，放到「未分類」`
+        : `已還原 ${ids.length} 個素材`,
+    );
+  };
+
+  const confirmPurge = () => {
+    if (!purging) return;
+    dispatch(purging.all ? { type: "trash/empty" } : { type: "item/purge", ids: purging.ids });
+    toast.success(purging.all ? "已清空垃圾桶" : `已永久刪除 ${purging.ids.length} 個素材`);
+    setPurging(null);
   };
 
   const onItemsTrashed = useCallback((count: number) => toast.success(`已移到垃圾桶：${count} 個素材`), []);
@@ -201,9 +230,14 @@ function LibraryManager() {
         className="grid min-h-0 flex-1 grid-cols-[230px_minmax(0,1fr)_260px]"
         onKeyDown={(event) => {
           if (event.target instanceof HTMLInputElement) return;
-          if (event.key === "Delete" && selectedItems.length > 0 && shownView.type !== "trash") {
+          if (event.key === "Delete" && selectedItems.length > 0) {
             event.preventDefault();
-            trash(selectedItems.map((item) => item.id));
+            // 卡片在處理中就被移除（移到垃圾桶），編輯器的快捷鍵看不出它在視窗裡，會刪掉畫布上選取的物件
+            event.stopPropagation();
+            const ids = selectedItems.map((item) => item.id);
+            // 垃圾桶裡按 Delete = 永久刪除（先確認）
+            if (shownView.type === "trash") setPurging({ ids, all: false });
+            else trash(ids);
           }
         }}
       >
@@ -255,6 +289,18 @@ function LibraryManager() {
                 className="h-7 border-0 px-0 shadow-none focus-visible:ring-0"
               />
             </label>
+            {shownView.type === "trash" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive"
+                disabled={counts.trash === 0}
+                onClick={() => setPurging({ ids: [], all: true })}
+              >
+                <Trash />
+                清空垃圾桶
+              </Button>
+            )}
             {shownView.type !== "trash" && (
               <Button size="sm" onClick={() => void pickFiles(LIBRARY_ACCEPT).then(importHere)}>
                 <Upload />
@@ -288,6 +334,8 @@ function LibraryManager() {
             onRename={(id, name) => dispatch({ type: "item/rename", id, name })}
             onTrash={trash}
             onPlace={place}
+            onRestore={restore}
+            onPurge={(ids) => setPurging({ ids, all: false })}
           />
         </aside>
       </div>
@@ -295,8 +343,26 @@ function LibraryManager() {
       {/* 視窗本身有 transform（置中），fixed 定位會以它為準；標籤放到 body 才會跟著游標 */}
       {createPortal(<DragGhost ref={ghostRef}>{ghostLabel}</DragGhost>, document.body)}
 
+      <AlertDialog open={purging !== null} onOpenChange={(isOpen) => !isOpen && setPurging(null)}>
+        <AlertDialogContent onCloseAutoFocus={refocusManager}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{purging?.all ? "清空垃圾桶？" : `永久刪除 ${purging?.ids.length ?? 0} 個素材？`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {purging?.all ? `垃圾桶裡的 ${counts.trash} 個素材` : "這些素材"}
+              會從素材庫移除，無法還原。頁面上已經用到的圖片不受影響。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmPurge}>
+              {purging?.all ? "清空" : "永久刪除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={deleting !== undefined} onOpenChange={(isOpen) => !isOpen && setDeletingId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent onCloseAutoFocus={refocusManager}>
           <AlertDialogHeader>
             <AlertDialogTitle>刪除「{deleting?.name}」？</AlertDialogTitle>
             <AlertDialogDescription>

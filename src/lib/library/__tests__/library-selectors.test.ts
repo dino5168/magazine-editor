@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { importFolderOf, importOutcome, libraryCounts, projectAssets, visibleItems } from "../library-selectors";
+import {
+  importFolderOf,
+  importOutcome,
+  libraryCounts,
+  projectAssets,
+  restoredToUnsorted,
+  visibleItems,
+} from "../library-selectors";
 import type { Library } from "../types";
 import fixtureJson from "../../../../tests/fixtures/sample-library.json?raw";
 
@@ -45,6 +52,20 @@ describe("projectAssets", () => {
       { src: "assets/images/33333333333333333333333333333333.png", name: "貓咪插畫.png", width: 900, height: 1200 },
       { src: "assets/images/44444444444444444444444444444444.jpg", name: "舊封面試排.jpg", width: 1000, height: 1400 },
     ]);
+  });
+});
+
+describe("restoredToUnsorted", () => {
+  it("counts trashed items whose folder is gone", () => {
+    // i-old-cover 來自已刪除的 f-deleted；不在垃圾桶的不算
+    expect(restoredToUnsorted(library, ["i-old-cover", "i-unsorted"])).toBe(1);
+    const trashedFromExisting = {
+      ...library,
+      items: library.items.map((item) =>
+        item.id === "i-old-cover" ? { ...item, trashed: { at: "x", fromFolderId: "f-inner", fromName: "內頁插圖" } } : item,
+      ),
+    };
+    expect(restoredToUnsorted(trashedFromExisting, ["i-old-cover"])).toBe(0);
   });
 });
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Info, SquarePlus, Trash } from "lucide-react";
+import { ArchiveRestore, Info, SquarePlus, Trash } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,31 @@ interface LibraryInfoProps {
   readonly onTrash: (ids: readonly string[]) => void;
   /** Places an image on the current page (text follows in 素材管理 step 9). */
   readonly onPlace: (item: LibraryItem) => void;
+  /** Restores trashed items (to their folder, or 未分類 when it is gone). */
+  readonly onRestore: (ids: readonly string[]) => void;
+  /** Asks to remove trashed items for good. */
+  readonly onPurge: (ids: readonly string[]) => void;
+}
+
+interface TrashActionsProps {
+  readonly ids: readonly string[];
+  readonly onRestore: (ids: readonly string[]) => void;
+  readonly onPurge: (ids: readonly string[]) => void;
+}
+
+function TrashActions({ ids, onRestore, onPurge }: TrashActionsProps) {
+  return (
+    <div className="mt-auto flex flex-col gap-2">
+      <Button onClick={() => onRestore(ids)}>
+        <ArchiveRestore />
+        還原
+      </Button>
+      <Button variant="outline" className="text-destructive" onClick={() => onPurge(ids)}>
+        <Trash />
+        永久刪除
+      </Button>
+    </div>
+  );
 }
 
 /**
@@ -80,7 +105,7 @@ interface LibraryInfoProps {
  * Returns:
  *   Info column.
  */
-export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onPlace }: LibraryInfoProps) {
+export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onPlace, onRestore, onPurge }: LibraryInfoProps) {
   if (items.length === 0) {
     return (
       <div className="flex h-full flex-col gap-3 p-4">
@@ -96,6 +121,7 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
     return (
       <div className="flex h-full flex-col gap-3 p-4">
         <p className="text-sm font-medium">已選取 {items.length} 個素材</p>
+        {trashed && <TrashActions ids={items.map((item) => item.id)} onRestore={onRestore} onPurge={onPurge} />}
         {!trashed && (
           <Button variant="outline" className="mt-auto text-destructive" onClick={() => onTrash(items.map((item) => item.id))}>
             <Trash />
@@ -144,6 +170,7 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
       {item.kind === "audio" && !item.trashed && (
         <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">音訊目前只能匯入與分類，不能放到頁面。</p>
       )}
+      {item.trashed && <TrashActions ids={[item.id]} onRestore={onRestore} onPurge={onPurge} />}
       {!item.trashed && (
         <div className="mt-auto flex flex-col gap-2">
           {place && (

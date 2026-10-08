@@ -118,6 +118,24 @@ export function projectAssets(library: Library): AssetInfo[] {
     .map(({ src, name, width, height }) => ({ src, name, width, height }));
 }
 
+/**
+ * How many trashed items in `ids` cannot go back to their folder (it was deleted) and will be
+ * restored to 未分類 instead.
+ *
+ * Args:
+ *   library: The library.
+ *   ids: Items about to be restored.
+ *
+ * Returns:
+ *   Count of items whose original folder no longer exists.
+ */
+export function restoredToUnsorted(library: Library, ids: readonly string[]): number {
+  const folderIds = new Set(library.folders.map((folder) => folder.id));
+  return library.items.filter(
+    (item) => ids.includes(item.id) && item.trashed?.fromFolderId != null && !folderIds.has(item.trashed.fromFolderId),
+  ).length;
+}
+
 /** What importing a file whose content is already stored means for the library. */
 export type ImportOutcome = "new" | "duplicate" | "restore";
 
