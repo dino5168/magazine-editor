@@ -6,7 +6,7 @@ use crate::db::DbState;
 use crate::error::AppResult;
 use crate::project::format::ProjectContent;
 use crate::project::recovery::{self, RecoveryEntry, RECOVERY_DIR};
-use crate::project::{OpenedProject, ProjectState};
+use crate::project::{self, library, OpenedProject, ProjectState};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
@@ -40,8 +40,16 @@ pub async fn recovery_restore(
 ) -> AppResult<OpenedProject> {
     let file = recovery::read(&recovery_dir(&app)?, &id)?;
     let project = recovery::restore_project(&file)?;
+    // 素材庫是立即寫入的，不在備份檔裡；從專案資料夾讀（不清理沒引用的檔案，同備份的圖片）
+    let loaded = library::load_or_create(&project.root, &file.content.assets, &project::now())?;
     let info = activate(&app, &state, &db, project, &file.content.document.name)?;
-    Ok(OpenedProject { info, content: file.content, recovered_from_backup: false })
+    Ok(OpenedProject {
+        info,
+        content: file.content,
+        recovered_from_backup: false,
+        library: loaded.library,
+        library_rebuilt: loaded.rebuilt,
+    })
 }
 
 /// Deletes a recovery file the user chose not to restore, plus its untitled staging folder.

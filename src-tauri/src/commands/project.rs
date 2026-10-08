@@ -4,11 +4,10 @@
 use crate::db::{self, DbState};
 use crate::error::{AppError, AppResult};
 use crate::project::format::ProjectContent;
-use crate::project::{self, assets, io, recovery, OpenProject, OpenedProject, ProjectInfo, ProjectState};
+use crate::project::{self, io, recovery, OpenProject, OpenedProject, ProjectInfo, ProjectState};
 use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::{DialogExt, FileDialogBuilder, FilePath};
 
@@ -243,19 +242,6 @@ fn project_root_from_save_path(picked: &Path) -> AppResult<PathBuf> {
     };
     let name = stem.map(|s| s.to_string_lossy()).unwrap_or_default();
     Ok(parent.join(io::sanitize_folder_name(&name)?))
-}
-
-/// Stores an image (raw request body) in the current project.
-///
-/// # Returns
-/// The project-relative path to use as `ImageElement.src`.
-#[tauri::command]
-pub async fn asset_import(state: State<'_, ProjectState>, request: Request<'_>) -> AppResult<String> {
-    let InvokeBody::Raw(bytes) = request.body() else {
-        return Err(AppError::invalid_input("圖片資料格式不正確"));
-    };
-    let project = state.current()?;
-    assets::import_bytes(&project.root, bytes)
 }
 
 #[cfg(test)]

@@ -17,6 +17,9 @@ import { selectIsDirty } from "@/lib/editor/editor-reducer";
 import { createBlankDocument } from "@/lib/editor/element-factory";
 import type { PageSetup } from "@/lib/editor/page-setup";
 import type { EditorDocument } from "@/lib/editor/types";
+import { useLibrary, useLibraryControl } from "@/lib/library/library-context";
+import { projectAssets } from "@/lib/library/library-selectors";
+import { EMPTY_LIBRARY, type Library } from "@/lib/library/types";
 import { resolveAssetUrl } from "./asset-url";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
 import type { OpenedProject, ProjectContent, ProjectInfo, RecoveryEntry } from "./project-types";
@@ -76,10 +79,14 @@ export function formatWindowTitle(name: string, dirty: boolean): string {
   return `${dirty ? "● " : ""}${name} — ${APP_TITLE}`;
 }
 
+function warnLibraryRebuilt(): void {
+  toast.warning("素材庫檔案已損壞，已用專案圖片重新建立；原本的檔案保留為 library.json.damaged。");
+}
+
 /**
  * Owns the open project: offers crash recovery and otherwise loads the last project at startup,
  * writes automatic backups, reports unsaved changes and keeps the window title in sync.
- * Must be inside `EditorProvider`.
+ * Must be inside `EditorProvider` and `LibraryProvider` (it loads the library with the project).
  *
  * Args:
  *   props.children: Editor UI.
@@ -94,30 +101,37 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
   const [info, setInfo] = useState<ProjectInfo | null>(null);
   const [ready, setReady] = useState(!isDesktop);
 
+  const library = useLibrary();
+  const libraryControl = useLibraryControl();
+
   const present = state.history.present;
   // 瀏覽器模式沒有專案可存，不算未存檔
   const dirty = info !== null && selectIsDirty(state);
+  // project.magproj 的 assets 由素材庫算出（舊版 App 仍看得到專案圖片）；參考穩定，自動備份才判斷得出沒變
+  const assets = useMemo(() => projectAssets(library), [library]);
 
-  const snapshotRef = useRef<ProjectSnapshot>({ info, content: { document: present, assets: state.assets }, dirty });
+  const snapshotRef = useRef<ProjectSnapshot>({ info, content: { document: present, assets }, dirty });
   useLayoutEffect(() => {
-    snapshotRef.current = { info, content: { document: present, assets: state.assets }, dirty };
-  }, [info, present, state.assets, dirty]);
+    snapshotRef.current = { info, content: { document: present, assets }, dirty };
+  }, [info, present, assets, dirty]);
   const getSnapshot = useCallback(() => snapshotRef.current, []);
 
   const load = useCallback(
-    (nextInfo: ProjectInfo, content: ProjectContent, saved: boolean) => {
-      dispatch({ type: "document/load", document: content.document, assets: content.assets, saved });
+    (nextInfo: ProjectInfo, document: EditorDocument, nextLibrary: Library, saved: boolean) => {
+      dispatch({ type: "document/load", document, saved });
+      libraryControl.load(nextInfo.id, nextLibrary);
       setInfo(nextInfo);
     },
-    [dispatch],
+    [dispatch, libraryControl],
   );
 
   const loadOpened = useCallback(
     (opened: OpenedProject) => {
-      load(opened.info, opened.content, !opened.recoveredFromBackup);
+      load(opened.info, opened.content.document, opened.library, !opened.recoveredFromBackup);
       if (opened.recoveredFromBackup) {
         toast.warning("專案檔案已損壞，已改用上一次存檔的版本開啟。請檢查內容後重新儲存。");
       }
+      if (opened.libraryRebuilt) warnLibraryRebuilt();
     },
     [load],
   );
@@ -128,7 +142,7 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
       toast.error(`無法建立新專案：${describeCommandError(created.error)}`);
       return false;
     }
-    load(created.data, { document: createBlankDocument(setup), assets: [] }, true);
+    load(created.data, createBlankDocument(setup), EMPTY_LIBRARY, true);
     return true;
   }, [load]);
 
@@ -156,7 +170,8 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
       toast.error(`無法復原：${describeCommandError(restored.error)}`);
       return false;
     }
-    load(restored.data.info, restored.data.content, false);
+    load(restored.data.info, restored.data.content.document, restored.data.library, false);
+    if (restored.data.libraryRebuilt) warnLibraryRebuilt();
     toast.success("已復原上次未儲存的內容，請記得存檔。");
     return true;
   }, [confirmRecovery, load]);

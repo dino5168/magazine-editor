@@ -1,4 +1,5 @@
 import type { AssetInfo, EditorDocument } from "@/lib/editor/types";
+import type { Library } from "@/lib/library/types";
 
 /** Mirrors `ProjectInfo` in `src-tauri/src/project/mod.rs`. */
 export interface ProjectInfo {
@@ -20,6 +21,10 @@ export interface OpenedProject {
   readonly content: ProjectContent;
   /** The main file was damaged and `project.magproj.bak` was loaded instead. */
   readonly recoveredFromBackup: boolean;
+  /** The project's asset library (`library.json`); not used by the editor yet (素材管理 step 5). */
+  readonly library: Library;
+  /** `library.json` could not be read and was rebuilt from the project's images. */
+  readonly libraryRebuilt: boolean;
 }
 
 /** A crash-recovery file left by a previous session (`RecoveryEntry` in Rust). */

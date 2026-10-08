@@ -18,7 +18,6 @@ import {
 } from "./validation";
 import { clampZoom } from "./viewport";
 import type {
-  AssetInfo,
   CanvasElement,
   EditorDocument,
   ElementId,
@@ -62,8 +61,6 @@ export interface EditorState {
   readonly tool: ToolId;
   /** Shape the shape tool creates; also the last shape used, shown on the toolbar button. */
   readonly shapeKind: ShapeKind;
-  /** Images stored in the project; saved with it but not part of undo history. */
-  readonly assets: readonly AssetInfo[];
   /** Document as last saved / loaded; null when it must be saved (e.g. opened from a backup). */
   readonly savedDocument: EditorDocument | null;
 }
@@ -150,11 +147,9 @@ export type EditorAction =
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
   | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeKind }
-  | { readonly type: "asset/add"; readonly asset: AssetInfo }
   | {
       readonly type: "document/load";
       readonly document: EditorDocument;
-      readonly assets: readonly AssetInfo[];
       /** False when the loaded content differs from what is on disk and should be saved. */
       readonly saved: boolean;
     }
@@ -168,15 +163,11 @@ type ActionHandler<T extends EditorAction["type"]> = (state: EditorState, action
  *
  * Args:
  *   document: Initial document; defaults to the sample document.
- *   assets: Images stored with the document.
  *
  * Returns:
  *   Editor state with the first page active.
  */
-export function createInitialState(
-  document: EditorDocument = createSampleDocument(),
-  assets: readonly AssetInfo[] = [],
-): EditorState {
+export function createInitialState(document: EditorDocument = createSampleDocument()): EditorState {
   return {
     history: { past: [], present: document, future: [] },
     activePageId: document.pages[0].id,
@@ -185,7 +176,6 @@ export function createInitialState(
     view: { zoom: 1, fitRequest: 1 },
     tool: DEFAULT_TOOL,
     shapeKind: DEFAULT_SHAPE_KIND,
-    assets,
     savedDocument: document,
   };
 }
@@ -718,15 +708,9 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     return { ...state, tool: action.tool, shapeKind, selectedIds: creates ? NO_SELECTION : state.selectedIds };
   },
 
-  // 圖片以內容 hash 命名，同一張圖再次匯入會得到相同的 src，不重複列出
-  "asset/add": (state, action) =>
-    state.assets.some((asset) => asset.src === action.asset.src)
-      ? state
-      : { ...state, assets: [...state.assets, action.asset] },
-
   // 開啟 / 新增專案：換掉整份文件並清空復原歷史（不能復原到另一個專案的內容）
   "document/load": (state, action) => {
-    const initial = createInitialState(action.document, action.assets);
+    const initial = createInitialState(action.document);
     return {
       ...initial,
       view: { zoom: state.view.zoom, fitRequest: state.view.fitRequest + 1 },

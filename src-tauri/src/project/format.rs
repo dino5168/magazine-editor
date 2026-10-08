@@ -37,6 +37,10 @@ pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
 /// Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in `src/lib/editor/validation.ts`.
 pub const TEXT_SHADOW_OFFSET_MAX: f64 = 50.0;
 pub const ASSET_DIR: &str = "assets/images";
+/// Text assets (`.txt` / `.md`) of the asset library.
+pub const TEXT_ASSET_DIR: &str = "assets/texts";
+/// Audio assets of the asset library (not placeable on pages).
+pub const AUDIO_ASSET_DIR: &str = "assets/audio";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -617,7 +621,7 @@ fn validate_geometry(geometry: &ShapeGeometry) -> AppResult<()> {
     Ok(())
 }
 
-fn require_id(id: &str) -> AppResult<()> {
+pub(crate) fn require_id(id: &str) -> AppResult<()> {
     if id.is_empty() || id.len() > 64 {
         return Err(AppError::invalid_project("element or page id is empty or too long"));
     }
@@ -652,17 +656,40 @@ fn require_element_color(color: &str) -> AppResult<()> {
 /// # Errors
 /// Returns `AppError::InvalidProject` for any other path.
 pub fn validate_asset_path(src: &str) -> AppResult<()> {
+    validate_asset_path_in(src, ASSET_DIR)
+}
+
+/// Every asset directory: page images and the asset library's text and audio files.
+pub const ASSET_DIRS: [&str; 3] = [ASSET_DIR, TEXT_ASSET_DIR, AUDIO_ASSET_DIR];
+
+/// Accepts a plain file in any of `ASSET_DIRS`.
+///
+/// # Errors
+/// Returns `AppError::InvalidProject` for any other path.
+pub fn validate_any_asset_path(src: &str) -> AppResult<()> {
+    if ASSET_DIRS.iter().any(|dir| validate_asset_path_in(src, dir).is_ok()) {
+        Ok(())
+    } else {
+        Err(AppError::invalid_project(format!("invalid asset path {src:?}")))
+    }
+}
+
+/// Accepts only `<dir>/<file>` with a plain file name (`dir` is one of the asset directories).
+///
+/// # Errors
+/// Returns `AppError::InvalidProject` for any other path.
+pub fn validate_asset_path_in(src: &str, dir: &str) -> AppResult<()> {
     let file = src
-        .strip_prefix(ASSET_DIR)
+        .strip_prefix(dir)
         .and_then(|rest| rest.strip_prefix('/'))
-        .ok_or_else(|| AppError::invalid_project(format!("image path {src:?} is outside {ASSET_DIR}")))?;
+        .ok_or_else(|| AppError::invalid_project(format!("asset path {src:?} is outside {dir}")))?;
     let plain = !file.is_empty()
         && file != "."
         && file != ".."
         && !file.contains(['/', '\\', ':', '\0'])
         && !file.starts_with('.');
     if !plain {
-        return Err(AppError::invalid_project(format!("invalid image path {src:?}")));
+        return Err(AppError::invalid_project(format!("invalid asset path {src:?}")));
     }
     Ok(())
 }
@@ -1025,6 +1052,19 @@ mod tests {
             "assets/imagesX/abc.png",
         ] {
             assert!(validate_asset_path(bad).is_err(), "{bad} should be rejected");
+        }
+    }
+
+    #[test]
+    fn asset_paths_per_directory() {
+        assert!(validate_asset_path_in("assets/texts/abc.md", TEXT_ASSET_DIR).is_ok());
+        assert!(validate_asset_path_in("assets/audio/abc.mp3", AUDIO_ASSET_DIR).is_ok());
+        // 頁面圖片只能在 assets/images
+        assert!(validate_asset_path("assets/texts/abc.md").is_err());
+        assert!(validate_asset_path_in("assets/images/abc.png", TEXT_ASSET_DIR).is_err());
+        for bad in ["assets/texts/../x.md", "assets/texts/.x", "assets/audio/a/b.mp3", "assets/audioX/a.mp3"] {
+            let dir = if bad.starts_with("assets/texts") { TEXT_ASSET_DIR } else { AUDIO_ASSET_DIR };
+            assert!(validate_asset_path_in(bad, dir).is_err(), "{bad} should be rejected");
         }
     }
 

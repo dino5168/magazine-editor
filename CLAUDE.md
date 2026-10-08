@@ -10,7 +10,7 @@
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
-  - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。細節已全部確認；實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步，還沒開始，下一步是步驟 1：Rust 的 `library.json` 格式）；操作畫面草圖 `00-需求分析/Html/material.html`。
+  - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。細節已全部確認；實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步；步驟 1–5 完成：Rust `project/library.rs`、開檔 / 另存 / 清理 / 復原接上素材庫、`library_write` / `library_import` / `library_read_text`；前端 `src/lib/library/` 純邏輯與 `LibraryProvider`，`EditorState.assets` 與 `asset_import` 已移除；下一步是步驟 6：管理視窗骨架）；操作畫面草圖 `00-需求分析/Html/material.html`。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
   - `types.html` 對應 `src/lib/editor/types.ts`：**修改 `types.ts` 時要同步更新**圖、說明卡，以及頁首的對應 commit。
@@ -118,10 +118,10 @@ src/
       asset-url.ts                # resolveAssetUrl：專案相對路徑 → asset protocol URL
       project-context.tsx         # ProjectProvider：啟動載入、createNew / loadOpened / markSaved、視窗標題、resolveSrc
       use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存 / 匯出 PDF（未存檔提示與新增文件對話框由 UI 注入）
-      use-image-import.ts         # 圖片複製進專案 assets/（上傳檔案與內建相片）
       use-close-guard.ts          # 關閉視窗前提示未存檔
       use-autosave.ts             # 每 60 秒把未存檔內容寫入備份（decideAutosave 是純函式）
       __tests__/
+    library/                      # 專案素材庫（library.json）：types、reducer / selectors / tree / validation（純邏輯）、LibraryProvider（立即寫入、換專案前 flush）、use-library-import；說明見素材管理實作計畫（步驟 13 補完整一節）
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
       menu-structure.ts           # MENUS 結構（item / checkbox / separator / submenu / radio）、助記鍵
@@ -545,7 +545,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`、`asset_import`（raw binary body）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 

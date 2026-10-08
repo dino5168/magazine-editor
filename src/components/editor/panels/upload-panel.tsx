@@ -1,32 +1,41 @@
-import { useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { CloudUpload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useEditorState } from "@/lib/editor/editor-context";
 import { pickImageFiles } from "@/lib/editor/image";
 import { isDesktop } from "@/lib/project/project-api";
 import { useProject } from "@/lib/project/project-context";
-import { useImageImport } from "@/lib/project/use-image-import";
+import { useLibrary } from "@/lib/library/library-context";
+import { ALL_VIEW, visibleItems } from "@/lib/library/library-selectors";
+import type { ImageItem } from "@/lib/library/types";
+import { useLibraryImport } from "@/lib/library/use-library-import";
 import { useAddImage } from "./use-add-image";
 
 /**
  * Panel for uploading local images and adding them to the page.
  *
  * Returns:
- *   Drop zone, file picker and the list of images stored in the project.
+ *   Drop zone, file picker and the images of the project's asset library (素材管理 step 10 turns
+ *   this into the 素材 panel with folders).
  */
 export function UploadPanel() {
-  const { assets } = useEditorState();
+  const library = useLibrary();
+  const assets = useMemo(
+    () => visibleItems(library, ALL_VIEW).filter((item): item is ImageItem => item.kind === "image"),
+    [library],
+  );
   const { resolveSrc } = useProject();
-  const { importFiles } = useImageImport();
+  const { importFiles } = useLibraryImport();
+  // 這個面板目前只處理圖片（文字與音訊在素材管理步驟 9、10 加入）
+  const importImages = (files: readonly File[]) => void importFiles(files, null, ["image"]);
   const addImage = useAddImage();
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = (event: DragEvent<HTMLDivElement>): void => {
     event.preventDefault();
     setDragOver(false);
-    void importFiles(Array.from(event.dataTransfer.files));
+    importImages(Array.from(event.dataTransfer.files));
   };
 
   return (
@@ -51,7 +60,7 @@ export function UploadPanel() {
           >
             <CloudUpload className="size-8" strokeWidth={1.5} />
             將圖片拖放到這裡
-            <Button size="sm" variant="outline" onClick={() => void pickImageFiles().then(importFiles)}>
+            <Button size="sm" variant="outline" onClick={() => void pickImageFiles().then(importImages)}>
               選擇檔案
             </Button>
           </div>

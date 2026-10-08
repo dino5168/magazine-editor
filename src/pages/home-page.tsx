@@ -50,7 +50,8 @@ import { VIEW_TOGGLES } from "@/lib/preferences/view-toggles";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
-import { useImageImport } from "@/lib/project/use-image-import";
+import { LibraryProvider } from "@/lib/library/library-context";
+import { useLibraryImport } from "@/lib/library/use-library-import";
 import { useProjectCommands } from "@/lib/project/use-project-commands";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +67,7 @@ function EditorLayout() {
   const { dialog: newDocumentDialog, choose: chooseNewSetup } = useNewDocumentDialog();
   const project = useProjectCommands(confirmUnsaved, chooseNewSetup);
   useCloseGuard(project.confirmClose);
-  const { importFiles } = useImageImport();
+  const { importFiles } = useLibraryImport();
   const addImage = useAddImage();
 
   const updateDock = useCallback(
@@ -78,8 +79,9 @@ function EditorLayout() {
   const importImage = useCallback(
     () =>
       void (async () => {
-        const assets = await importFiles(await pickImageFiles());
-        for (const asset of assets) addImage(asset.src, asset);
+        // 匯入素材庫的未分類，再放到頁面上
+        const items = await importFiles(await pickImageFiles(), null, ["image"]);
+        for (const item of items) if (item.kind === "image") addImage(item.src, item);
       })(),
     [importFiles, addImage],
   );
@@ -200,14 +202,17 @@ export function HomePage() {
   const { dialog: recoveryDialog, confirm: confirmRecovery } = useRecoveryDialog();
   return (
     <EditorProvider initialState={initialState}>
-      <ProjectProvider confirmRecovery={confirmRecovery}>
-        <PreferencesProvider>
-          <PageDialogsProvider>
-            <EditorLayout />
-          </PageDialogsProvider>
-        </PreferencesProvider>
-        {recoveryDialog}
-      </ProjectProvider>
+      {/* 素材庫在 ProjectProvider 外：開啟專案時要一起載入 */}
+      <LibraryProvider>
+        <ProjectProvider confirmRecovery={confirmRecovery}>
+          <PreferencesProvider>
+            <PageDialogsProvider>
+              <EditorLayout />
+            </PageDialogsProvider>
+          </PreferencesProvider>
+          {recoveryDialog}
+        </ProjectProvider>
+      </LibraryProvider>
     </EditorProvider>
   );
 }

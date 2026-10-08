@@ -1,0 +1,80 @@
+{
+  "libraryVersion": 1,
+  "folders": [
+    { "id": "f-cover", "name": "封面", "parentId": null },
+    { "id": "f-people", "name": "人物", "parentId": "f-cover" },
+    { "id": "f-inner", "name": "內頁插圖", "parentId": null },
+    { "id": "f-text", "name": "文字稿", "parentId": null }
+  ],
+  "items": [
+    {
+      "kind": "image",
+      "id": "i-cover-photo",
+      "name": "封面照片.png",
+      "src": "assets/images/0123456789abcdef0123456789abcdef.png",
+      "bytes": 345678,
+      "folderId": "f-people",
+      "importedAt": "2026-10-08T09:00:00Z",
+      "trashed": null,
+      "width": 1600,
+      "height": 900
+    },
+    {
+      "kind": "image",
+      "id": "i-unsorted",
+      "name": "未命名-01.png",
+      "src": "assets/images/fedcba9876543210fedcba9876543210.png",
+      "bytes": 12000,
+      "folderId": null,
+      "importedAt": "2026-10-08T09:05:00Z",
+      "trashed": null,
+      "width": 800,
+      "height": 1200
+    },
+    {
+      "kind": "text",
+      "id": "i-editorial",
+      "name": "創刊詞.md",
+      "src": "assets/texts/11111111111111111111111111111111.md",
+      "bytes": 210,
+      "folderId": "f-text",
+      "importedAt": "2026-10-08T09:10:00Z",
+      "trashed": null,
+      "excerpt": "# 創刊詞\n\n這是一本關於城市與生活的雜誌。"
+    },
+    {
+      "kind": "audio",
+      "id": "i-interview",
+      "name": "訪談錄音.mp3",
+      "src": "assets/audio/22222222222222222222222222222222.mp3",
+      "bytes": 1480000,
+      "folderId": null,
+      "importedAt": "2026-10-08T09:15:00Z",
+      "trashed": null
+    },
+    {
+      "kind": "image",
+      "id": "i-illustration",
+      "name": "貓咪插畫.png",
+      "src": "assets/images/33333333333333333333333333333333.png",
+      "bytes": 54000,
+      "folderId": "f-inner",
+      "importedAt": "2026-10-08T09:20:00Z",
+      "trashed": null,
+      "width": 900,
+      "height": 1200
+    },
+    {
+      "kind": "image",
+      "id": "i-old-cover",
+      "name": "舊封面試排.jpg",
+      "src": "assets/images/44444444444444444444444444444444.jpg",
+      "bytes": 98000,
+      "folderId": null,
+      "importedAt": "2026-10-07T15:00:00Z",
+      "trashed": { "at": "2026-10-08T10:00:00Z", "fromFolderId": "f-deleted", "fromName": "舊稿" },
+      "width": 1000,
+      "height": 1400
+    }
+  ]
+}

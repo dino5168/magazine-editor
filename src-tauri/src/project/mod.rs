@@ -6,11 +6,13 @@
 pub mod assets;
 pub mod format;
 pub mod io;
+pub mod library;
 pub mod recovery;
 pub mod shape;
 
 use crate::error::{AppError, AppResult};
 use format::{ProjectContent, ProjectFile, FORMAT_ID, SCHEMA_VERSION};
+use library::Library;
 use serde::Serialize;
 use serde_json::Map;
 use std::path::{Path, PathBuf};
@@ -73,6 +75,10 @@ pub struct OpenedProject {
     pub content: ProjectContent,
     /// The main file was damaged and the `.bak` copy was loaded instead.
     pub recovered_from_backup: bool,
+    /// The project's asset library (`library.json`).
+    pub library: Library,
+    /// `library.json` could not be read and was rebuilt from the project's images.
+    pub library_rebuilt: bool,
 }
 
 pub(crate) fn now() -> String {
@@ -95,17 +101,22 @@ pub fn create_untitled(untitled_base: &Path) -> AppResult<OpenProject> {
     Ok(OpenProject { root, id, created_at: now(), untitled: true, extra: Map::new() })
 }
 
-/// Opens the project folder at `root` and removes unreferenced images.
+/// Opens the project folder at `root`, loads (or creates) its asset library and removes asset
+/// files that nothing references.
 ///
 /// # Returns
 /// The data for the frontend and the project to keep in `ProjectState`.
 ///
 /// # Errors
-/// See `io::read_project`.
+/// See `io::read_project`; also `AppError::UnsupportedVersion` for a library from a newer app.
 pub fn open(root: &Path) -> AppResult<(OpenedProject, OpenProject)> {
     let (file, recovered_from_backup) = io::read_project(root)?;
-    // 清理失敗不影響開啟，只是多留幾個沒用到的檔案
-    let _ = io::remove_orphan_assets(root, &file);
+    let loaded = library::load_or_create(root, &file.assets, &now())?;
+    // 素材庫是重建的時候不清理：損壞的檔案裡可能有還沒放到頁面上的素材
+    if !loaded.rebuilt {
+        // 清理失敗不影響開啟，只是多留幾個沒用到的檔案
+        let _ = io::remove_orphan_assets(root, &file, &loaded.library);
+    }
     let project = OpenProject {
         root: root.to_path_buf(),
         id: file.id,
@@ -117,6 +128,8 @@ pub fn open(root: &Path) -> AppResult<(OpenedProject, OpenProject)> {
         info: project.info(),
         content: ProjectContent { document: file.document, assets: file.assets },
         recovered_from_backup,
+        library: loaded.library,
+        library_rebuilt: loaded.rebuilt,
     };
     Ok((opened, project))
 }
@@ -146,7 +159,8 @@ pub fn save(project: &OpenProject, content: ProjectContent) -> AppResult<()> {
 }
 
 /// Saves content as a new project in `target` (which must not exist or be empty), copying the
-/// images it references. The copy gets a new id, so it is independent of the original.
+/// images it references and the whole asset library (`library.json` and every file it lists).
+/// The copy gets a new id, so it is independent of the original.
 ///
 /// # Returns
 /// The new project, which becomes the one being edited.
@@ -162,6 +176,11 @@ pub fn save_as(current: &OpenProject, target: &Path, content: ProjectContent) ->
             target,
             format::referenced_assets(&content.document, &content.assets),
         )?;
+        // 素材庫是立即寫入的，磁碟上的就是最新的；讀不到（沒有或損壞）就不複製
+        if let Ok(Some(library)) = library::read(&current.root) {
+            io::copy_assets(&current.root, target, library::referenced(&library))?;
+            library::write(target, &library)?;
+        }
         let project = OpenProject {
             root: target.to_path_buf(),
             id: new_id(),
@@ -208,6 +227,73 @@ mod tests {
         assert_eq!(reopened.id, saved.id);
         assert_eq!(opened.content, content);
         assert!(!opened.recovered_from_backup);
+    }
+
+    const LIBRARY_FIXTURE: &str = include_str!("../../../tests/fixtures/sample-library.json");
+
+    fn write_files<'a>(root: &Path, sources: impl Iterator<Item = &'a str>) {
+        for src in sources {
+            let path = root.join(src);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, src).unwrap();
+        }
+    }
+
+    #[test]
+    fn opening_an_old_project_creates_its_library() {
+        let base = tempfile::tempdir().unwrap();
+        let project = create_untitled(base.path()).unwrap();
+        let content = fixture_content();
+        save(&project, content.clone()).unwrap();
+        assert!(!project.root.join(library::LIBRARY_FILE_NAME).exists());
+
+        let (opened, _) = open(&project.root).unwrap();
+        assert!(!opened.library_rebuilt);
+        let sources: Vec<_> = library::referenced(&opened.library).collect();
+        assert_eq!(sources, [content.assets[0].src.as_str()]);
+        assert_eq!(library::read(&project.root).unwrap(), Some(opened.library.clone()));
+        // 再開一次讀回同一份（id 不會每次重新產生）
+        let (again, _) = open(&project.root).unwrap();
+        assert_eq!(again.library, opened.library);
+    }
+
+    #[test]
+    fn library_files_survive_open_and_follow_save_as() {
+        let base = tempfile::tempdir().unwrap();
+        let project = create_untitled(&base.path().join("untitled")).unwrap();
+        let content = fixture_content();
+        let library = library::parse_library(LIBRARY_FIXTURE).unwrap();
+        save(&project, content.clone()).unwrap();
+        library::write(&project.root, &library).unwrap();
+        write_files(&project.root, library::referenced(&library));
+
+        // 只在素材庫裡的檔案（含垃圾桶），開檔清理後還在
+        let (opened, current) = open(&project.root).unwrap();
+        assert_eq!(opened.library, library);
+        assert!(library::referenced(&library).all(|src| project.root.join(src).exists()));
+
+        let target = base.path().join("另存");
+        save_as(&current, &target, content).unwrap();
+        assert_eq!(library::read(&target).unwrap(), Some(library.clone()));
+        for src in library::referenced(&library) {
+            assert_eq!(std::fs::read_to_string(target.join(src)).unwrap(), src);
+        }
+    }
+
+    #[test]
+    fn damaged_library_is_rebuilt_without_cleaning() {
+        let base = tempfile::tempdir().unwrap();
+        let project = create_untitled(base.path()).unwrap();
+        save(&project, fixture_content()).unwrap();
+        let library = library::parse_library(LIBRARY_FIXTURE).unwrap();
+        write_files(&project.root, library::referenced(&library));
+        std::fs::write(project.root.join(library::LIBRARY_FILE_NAME), "{ broken").unwrap();
+
+        let (opened, _) = open(&project.root).unwrap();
+        assert!(opened.library_rebuilt);
+        assert_eq!(opened.library.items.len(), 1);
+        // 損壞的素材庫可能還引用這些檔案，這次不清理
+        assert!(library::referenced(&library).all(|src| project.root.join(src).exists()));
     }
 
     #[test]

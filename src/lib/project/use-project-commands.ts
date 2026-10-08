@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import type { PageSetup } from "@/lib/editor/page-setup";
+import { useLibraryControl } from "@/lib/library/library-context";
 import { buildExportRequest } from "@/lib/export/export-request";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
@@ -40,6 +41,8 @@ const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri 
  */
 export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetup: ChooseNewSetup): ProjectCommands {
   const { ready, getSnapshot, createNew, loadOpened, markSaved } = useProject();
+  // 素材庫是立即寫入的：換專案（Rust 端拒絕寫到別的專案）與另存（Rust 從磁碟複製素材庫）之前先寫完
+  const { flush: flushLibrary } = useLibraryControl();
   // 連按 Ctrl+S、或對話框開著時又觸發指令（包括關閉視窗），會造成兩個寫入同時進行
   const busyRef = useRef(false);
 
@@ -61,6 +64,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
   );
 
   const saveAsImpl = useCallback(async (): Promise<boolean> => {
+    await flushLibrary();
     const { content } = getSnapshot();
     const result = await projectApi.saveAsDialog(content, content.document.name);
     if (result.error) {
@@ -71,7 +75,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
     markSaved(result.data, content.document);
     toast.success("已另存專案");
     return true;
-  }, [getSnapshot, markSaved]);
+  }, [flushLibrary, getSnapshot, markSaved]);
 
   const saveImpl = useCallback(async (): Promise<boolean> => {
     const { info, content } = getSnapshot();
@@ -100,11 +104,14 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
   const newImpl = useCallback(async (): Promise<boolean> => {
     if (!(await resolveUnsaved())) return false;
     const setup = await chooseNewSetup();
-    return setup !== null && createNew(setup);
-  }, [chooseNewSetup, createNew, resolveUnsaved]);
+    if (setup === null) return false;
+    await flushLibrary();
+    return createNew(setup);
+  }, [chooseNewSetup, createNew, flushLibrary, resolveUnsaved]);
 
   const openImpl = useCallback(async (): Promise<boolean> => {
     if (!(await resolveUnsaved())) return false;
+    await flushLibrary();
     const opened = await projectApi.openDialog();
     if (opened.error) {
       toast.error(`無法開啟專案：${describeCommandError(opened.error)}`);
@@ -113,7 +120,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
     if (opened.data === null) return false;
     loadOpened(opened.data);
     return true;
-  }, [loadOpened, resolveUnsaved]);
+  }, [flushLibrary, loadOpened, resolveUnsaved]);
 
   const exportImpl = useCallback(async (): Promise<boolean> => {
     // 匯出的是目前畫面上的內容（包含未存檔的修改）；對話框開著時使用者無法編輯，先取快照即可

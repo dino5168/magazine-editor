@@ -1,6 +1,7 @@
 //! Disk operations on a project folder.
 
 use super::format::{self, ProjectFile, ASSET_DIR, PROJECT_FILE_NAME};
+use super::library::{self, Library};
 use crate::error::{AppError, AppResult};
 use std::collections::HashSet;
 use std::fs;
@@ -14,7 +15,7 @@ const WINDOWS_RESERVED_NAMES: &[&str] = &[
 ];
 
 fn sibling(root: &Path, suffix: &str) -> PathBuf {
-    root.join(format!("{PROJECT_FILE_NAME}{suffix}"))
+    with_suffix(root, PROJECT_FILE_NAME, suffix)
 }
 
 /// Returns `<root>/assets/images`.
@@ -30,16 +31,30 @@ pub fn asset_dir(root: &Path) -> PathBuf {
 /// # Errors
 /// Returns `AppError::Io` on any file-system failure.
 pub fn write_project_atomic(root: &Path, json: &str) -> AppResult<()> {
-    let target = root.join(PROJECT_FILE_NAME);
-    let tmp = sibling(root, ".tmp");
+    write_atomic(root, PROJECT_FILE_NAME, json)
+}
+
+/// Returns `<root>/<file_name><suffix>`, e.g. `library.json.bak`.
+pub(crate) fn with_suffix(root: &Path, file_name: &str, suffix: &str) -> PathBuf {
+    root.join(format!("{file_name}{suffix}"))
+}
+
+/// Writes `<root>/<file_name>` atomically, keeping the previous version as `<file_name>.bak`
+/// (see `write_project_atomic`).
+///
+/// # Errors
+/// Returns `AppError::Io` on any file-system failure.
+pub(crate) fn write_atomic(root: &Path, file_name: &str, json: &str) -> AppResult<()> {
+    let target = root.join(file_name);
+    let tmp = with_suffix(root, file_name, ".tmp");
     {
         let mut file = fs::File::create(&tmp)?;
         file.write_all(json.as_bytes())?;
         file.sync_all()?;
     }
-    // 用 copy 而非 rename 保留舊版：任何時間點 project.magproj 都存在
+    // 用 copy 而非 rename 保留舊版：任何時間點目標檔都存在
     if target.exists() {
-        fs::copy(&target, sibling(root, ".bak"))?;
+        fs::copy(&target, with_suffix(root, file_name, ".bak"))?;
     }
     fs::rename(&tmp, &target)?;
     Ok(())
@@ -100,8 +115,13 @@ pub fn copy_assets<'a>(from: &Path, to: &Path, sources: impl Iterator<Item = &'a
     fs::create_dir_all(asset_dir(to))?;
     let unique: HashSet<&str> = sources.collect();
     for src in unique {
-        format::validate_asset_path(src)?;
-        match fs::copy(from.join(src), to.join(src)) {
+        // 素材庫的文字與音訊在 assets/texts、assets/audio
+        format::validate_any_asset_path(src)?;
+        let target = to.join(src);
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        match fs::copy(from.join(src), target) {
             Ok(_) => {}
             Err(error) if error.kind() == ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
@@ -110,35 +130,35 @@ pub fn copy_assets<'a>(from: &Path, to: &Path, sources: impl Iterator<Item = &'a
     Ok(())
 }
 
-/// Deletes images in `assets/images` that the project no longer references, plus leftover temp
-/// files. Only called right after opening, when the undo history is empty and nothing else can
-/// bring a deleted image back.
+/// Deletes files in the asset directories (`format::ASSET_DIRS`) that neither the document nor the
+/// asset library references, plus leftover temp files. Only called right after opening, when the
+/// undo history is empty and nothing else can bring a deleted file back.
 ///
 /// # Returns
 /// Number of files removed.
 ///
 /// # Errors
-/// Returns `AppError::Io` when the directory cannot be listed.
-pub fn remove_orphan_assets(root: &Path, project: &ProjectFile) -> AppResult<usize> {
-    let dir = asset_dir(root);
-    let entries = match fs::read_dir(&dir) {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(0),
-        Err(error) => return Err(error.into()),
-    };
-    let keep: HashSet<String> = format::referenced_assets(&project.document, &project.assets)
-        .filter_map(|src| src.rsplit('/').next())
-        .map(str::to_owned)
-        .collect();
+/// Returns `AppError::Io` when a directory cannot be listed.
+pub fn remove_orphan_assets(root: &Path, project: &ProjectFile, library: &Library) -> AppResult<usize> {
+    // 素材庫的素材（含垃圾桶）還沒放到頁面上也要保留
+    let keep: HashSet<&str> =
+        format::referenced_assets(&project.document, &project.assets).chain(library::referenced(library)).collect();
     let mut removed = 0;
-    for entry in entries {
-        let entry = entry?;
-        if !entry.file_type()?.is_file() {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if !keep.contains(&name) && fs::remove_file(entry.path()).is_ok() {
-            removed += 1;
+    for dir in format::ASSET_DIRS {
+        let entries = match fs::read_dir(root.join(dir)) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        };
+        for entry in entries {
+            let entry = entry?;
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
+            let src = format!("{dir}/{}", entry.file_name().to_string_lossy());
+            if !keep.contains(src.as_str()) && fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
         }
     }
     Ok(removed)
@@ -221,8 +241,36 @@ mod tests {
         fs::write(&used, b"x").unwrap();
         fs::write(asset_dir(dir.path()).join("orphan.png"), b"x").unwrap();
         fs::write(asset_dir(dir.path()).join("half.png.tmp"), b"x").unwrap();
-        assert_eq!(remove_orphan_assets(dir.path(), &project).unwrap(), 2);
+        assert_eq!(remove_orphan_assets(dir.path(), &project, &Library::default()).unwrap(), 2);
         assert!(used.exists());
+    }
+
+    #[test]
+    fn remove_orphan_assets_keeps_library_files_in_every_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut project = parse_project(FIXTURE).unwrap();
+        // 頁面與專案圖片都不引用素材庫的檔案，只有素材庫在用
+        project.assets.clear();
+        for page in &mut project.document.pages {
+            page.elements.clear();
+        }
+        for master in &mut project.document.masters {
+            master.elements.clear();
+        }
+        let library = library::parse_library(include_str!("../../../tests/fixtures/sample-library.json")).unwrap();
+        let mut kept = Vec::new();
+        for src in library::referenced(&library) {
+            let path = dir.path().join(src);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, b"x").unwrap();
+            kept.push(path);
+        }
+        for orphan in ["assets/texts/orphan.md", "assets/audio/orphan.mp3", "assets/images/orphan.png"] {
+            fs::write(dir.path().join(orphan), b"x").unwrap();
+        }
+        assert_eq!(remove_orphan_assets(dir.path(), &project, &library).unwrap(), 3);
+        // 垃圾桶裡的也留著
+        assert!(kept.iter().all(|path| path.exists()));
     }
 
     #[test]
@@ -235,6 +283,22 @@ mod tests {
         copy_assets(from.path(), to.path(), sources.into_iter()).unwrap();
         assert_eq!(fs::read(asset_dir(to.path()).join("a.png")).unwrap(), b"a");
         assert!(copy_assets(from.path(), to.path(), ["../x.png"].into_iter()).is_err());
+    }
+
+    #[test]
+    fn copy_assets_creates_text_and_audio_dirs() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        let sources = ["assets/texts/a.md", "assets/audio/b.mp3"];
+        for src in sources {
+            let path = from.path().join(src);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, src).unwrap();
+        }
+        copy_assets(from.path(), to.path(), sources.into_iter()).unwrap();
+        for src in sources {
+            assert_eq!(fs::read_to_string(to.path().join(src)).unwrap(), src);
+        }
     }
 
     #[test]

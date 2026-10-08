@@ -1,6 +1,7 @@
-import { invoke, isTauri, type InvokeArgs } from "@tauri-apps/api/core";
+import { invoke, isTauri, type InvokeArgs, type InvokeOptions } from "@tauri-apps/api/core";
 import type { Result } from "@/lib/editor/validation";
 import type { ExportRequest } from "@/lib/export/export-request";
+import type { Library, LibraryItemKind } from "@/lib/library/types";
 import {
   CommandError,
   ERROR_KINDS,
@@ -35,9 +36,9 @@ export function toCommandError(error: unknown): CommandError {
   return new CommandError("tauri", error instanceof Error ? error.message : String(error));
 }
 
-async function call<T>(command: string, args?: InvokeArgs): Promise<Result<T>> {
+async function call<T>(command: string, args?: InvokeArgs, options?: InvokeOptions): Promise<Result<T>> {
   try {
-    return { data: await invoke<T>(command, args), error: null };
+    return { data: await invoke<T>(command, args, options), error: null };
   } catch (error) {
     return { data: null, error: toCommandError(error) };
   }
@@ -54,8 +55,15 @@ export const projectApi = {
   save: (content: ProjectContent) => call<null>("project_save", { content }),
   saveAsDialog: (content: ProjectContent, suggestedName: string) =>
     call<ProjectInfo | null>("project_save_as_dialog", { content, suggestedName }),
-  // 以 raw body 傳送位元組，避免 JSON 陣列編碼讓 20 MB 的圖片膨脹數倍
-  importAsset: (bytes: Uint8Array) => call<string>("asset_import", bytes),
+  writeLibrary: (projectId: string, library: Library) => call<null>("library_write", { projectId, library }),
+  /**
+   * Stores a file in the project's asset directories; resolves to its project-relative `src`.
+   * Bytes go as a raw body (a JSON array would make a 20 MB image several times larger); the kind
+   * and a text file's extension go in headers.
+   */
+  importLibraryAsset: (bytes: Uint8Array, kind: LibraryItemKind, extension: string) =>
+    call<string>("library_import", bytes, { headers: { "x-asset-kind": kind, "x-asset-extension": extension } }),
+  readLibraryText: (src: string) => call<string>("library_read_text", { src }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),
   restoreRecovery: (id: string) => call<OpenedProject>("recovery_restore", { id }),
   discardRecovery: (id: string) => call<null>("recovery_discard", { id }),
