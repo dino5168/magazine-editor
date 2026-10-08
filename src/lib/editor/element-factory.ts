@@ -1,4 +1,5 @@
 import { DEFAULT_FONT_OPTION } from "./fonts";
+import { estimateTextHeight } from "./geometry";
 import type { PageSetup } from "./page-setup";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
 import { PLAIN_TEXT_DECORATION } from "./text-style";
@@ -89,6 +90,28 @@ export function createTextElement(preset: TextPreset, center: Point): TextElemen
     align: "center",
     fill: DEFAULT_TEXT_FILL,
   };
+}
+
+/** Widest text box made from a text file (pt); narrower on small pages. */
+const TEXT_FILE_MAX_WIDTH = 360;
+const TEXT_FILE_PAGE_RATIO = 0.8;
+
+/**
+ * Creates a text element from the content of a text file (asset library): body text style, left
+ * aligned, the text exactly as given (Markdown marks stay), centered on a point.
+ *
+ * Args:
+ *   text: Content (already normalized: `\n` line breaks, no BOM).
+ *   page: Page size, to keep the box narrower than the page.
+ *   center: Center position in pt (page coordinates).
+ *
+ * Returns:
+ *   New text element.
+ */
+export function createTextFromFile(text: string, page: Size, center: Point): TextElement {
+  const width = Math.min(TEXT_FILE_MAX_WIDTH, page.width * TEXT_FILE_PAGE_RATIO);
+  const element: TextElement = { ...createTextElement("body", center), text, width, x: center.x - width / 2, align: "left" };
+  return { ...element, y: center.y - estimateTextHeight(element) / 2 };
 }
 
 /** Star inner / outer radius ratio of new stars. */

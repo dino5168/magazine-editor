@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DragGhost } from "@/components/drag-ghost";
-import { useAddImage } from "@/components/editor/panels/use-add-image";
 import { createId } from "@/lib/editor/element-factory";
 import { pickFiles } from "@/lib/editor/image";
 import { useLibrary, useLibraryDispatch } from "@/lib/library/library-context";
@@ -31,6 +30,7 @@ import { LibraryGrid, type SelectMode } from "./library-grid";
 import { LibraryInfo } from "./library-info";
 import { LibraryTree } from "./library-tree";
 import { useLibraryDrag } from "./use-library-drag";
+import { usePlaceLibraryItem } from "./use-place-library-item";
 
 interface LibraryDialogProps {
   readonly open: boolean;
@@ -80,7 +80,7 @@ function LibraryManager() {
   const dispatch = useLibraryDispatch();
   const { resolveSrc } = useProject();
   const { importFiles } = useLibraryImport();
-  const addImage = useAddImage();
+  const placeItem = usePlaceLibraryItem();
 
   const [view, setView] = useState<LibraryView>(ALL_VIEW);
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -202,10 +202,8 @@ function LibraryManager() {
     else dispatch({ type: "folder/rename", id, name });
   };
 
-  const place = (item: LibraryItem) => {
-    if (item.kind !== "image") return;
-    addImage(item.src, item);
-    toast.success(`已把「${item.name}」放到目前頁面`);
+  const place = async (item: LibraryItem) => {
+    if (await placeItem(item)) toast.success(`已把「${item.name}」放到目前頁面`);
   };
 
   const deleting = deletingId ? folders.find((folder) => folder.id === deletingId) : undefined;
@@ -333,7 +331,7 @@ function LibraryManager() {
             resolveSrc={resolveSrc}
             onRename={(id, name) => dispatch({ type: "item/rename", id, name })}
             onTrash={trash}
-            onPlace={place}
+            onPlace={(item) => void place(item)}
             onRestore={restore}
             onPurge={(ids) => setPurging({ ids, all: false })}
           />

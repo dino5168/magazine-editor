@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { folderPath } from "@/lib/library/library-tree";
 import { itemNameError } from "@/lib/library/library-validation";
 import type { LibraryFolder, LibraryItem } from "@/lib/library/types";
-import { LibraryThumb } from "./library-card";
+import { kindBadge, LibraryThumb } from "./library-card";
 
 const KIND_LABELS: { readonly [K in LibraryItem["kind"]]: string } = { image: "圖片", text: "文字檔", audio: "音訊" };
 
@@ -66,7 +66,7 @@ interface LibraryInfoProps {
   readonly resolveSrc: (src: string) => string;
   readonly onRename: (id: string, name: string) => void;
   readonly onTrash: (ids: readonly string[]) => void;
-  /** Places an image on the current page (text follows in 素材管理 step 9). */
+  /** Places an image or a text file on the current page. */
   readonly onPlace: (item: LibraryItem) => void;
   /** Restores trashed items (to their folder, or 未分類 when it is gone). */
   readonly onRestore: (ids: readonly string[]) => void;
@@ -133,7 +133,8 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
   }
 
   const [item] = items;
-  const place = item.trashed ? null : item.kind === "image" ? "放到目前頁面" : null;
+  const canPlace = !item.trashed && item.kind !== "audio";
+  const isMarkdown = kindBadge(item) === "MD";
   const folderName =
     item.trashed !== null ? (item.trashed.fromName ?? "未分類") : item.folderId === null ? "未分類" : folderPath(folders, item.folderId).join(" / ");
 
@@ -167,16 +168,21 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
           </>
         )}
       </dl>
+      {item.kind === "text" && !item.trashed && (
+        <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">
+          放到頁面時是一個文字物件（純文字）{isMarkdown && "，Markdown 符號原樣保留"}。
+        </p>
+      )}
       {item.kind === "audio" && !item.trashed && (
         <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">音訊目前只能匯入與分類，不能放到頁面。</p>
       )}
       {item.trashed && <TrashActions ids={[item.id]} onRestore={onRestore} onPurge={onPurge} />}
       {!item.trashed && (
         <div className="mt-auto flex flex-col gap-2">
-          {place && (
+          {canPlace && (
             <Button onClick={() => onPlace(item)}>
               <SquarePlus />
-              {place}
+              放到目前頁面
             </Button>
           )}
           <Button variant="outline" className="text-destructive" onClick={() => onTrash([item.id])}>

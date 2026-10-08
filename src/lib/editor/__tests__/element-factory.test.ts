@@ -7,9 +7,11 @@ import {
   createBlankDocument,
   createShapeElement,
   createShapeInBox,
+  createTextFromFile,
   createToolText,
   describeElement,
 } from "../element-factory";
+import { estimateTextHeight } from "../geometry";
 import { presetSize } from "../page-setup";
 import { createLabel } from "../shape-label";
 import type { Bounds } from "../types";
@@ -121,5 +123,21 @@ describe("createToolText", () => {
   it("uses the dragged box for position and wrapping width, with a minimum width", () => {
     expect(createToolText({ x: 0, y: 0 }, box)).toMatchObject({ x: 100, y: 200, width: 200 });
     expect(createToolText({ x: 0, y: 0 }, { minX: 10, minY: 10, maxX: 15, maxY: 12 }).width).toBe(MIN_TEXT_WIDTH);
+  });
+});
+
+describe("createTextFromFile", () => {
+  it("keeps the text as is, left aligned, centered on the point", () => {
+    const text = "# 創刊詞\n\n**我們相信**，每一條街道都有故事。";
+    const element = createTextFromFile(text, { width: 595, height: 842 }, { x: 300, y: 400 });
+    expect(element.text).toBe(text);
+    expect(element.align).toBe("left");
+    expect(element.width).toBe(360);
+    expect(element.x).toBe(300 - 360 / 2);
+    expect(element.y + estimateTextHeight(element) / 2).toBeCloseTo(400);
+  });
+
+  it("stays narrower than a small page", () => {
+    expect(createTextFromFile("短", { width: 200, height: 300 }, { x: 100, y: 150 }).width).toBe(160);
   });
 });
