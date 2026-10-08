@@ -1,7 +1,7 @@
 import {
-  CloudUpload,
   Files,
   Image,
+  Images,
   LayoutTemplate,
   Layers,
   PaintBucket,
@@ -20,7 +20,7 @@ export const PANEL_ICONS = {
   photos: Image,
   elements: Shapes,
   draw: Pencil,
-  upload: CloudUpload,
+  upload: Images,
   background: PaintBucket,
   pages: Files,
   properties: SlidersHorizontal,

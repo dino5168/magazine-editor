@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Folder, Images, Search, Trash, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -32,25 +32,65 @@ import { LibraryTree } from "./library-tree";
 import { useLibraryDrag } from "./use-library-drag";
 import { usePlaceLibraryItem } from "./use-place-library-item";
 
-interface LibraryDialogProps {
-  readonly open: boolean;
-  readonly onOpenChange: (open: boolean) => void;
+interface LibraryDialogControl {
+  /** Opens the 素材管理 window, showing `view` (default 全部). */
+  readonly openLibrary: (view?: LibraryView) => void;
+}
+
+const LibraryDialogContext = createContext<LibraryDialogControl | null>(null);
+
+/**
+ * Owns the 素材管理 window so the menu (檔案 → 素材管理...) and the 素材 panel can open it.
+ * Must be inside `LibraryProvider`, `EditorProvider` and `ProjectProvider`.
+ *
+ * Args:
+ *   props.children: Content.
+ *
+ * Returns:
+ *   Context provider plus the dialog.
+ */
+export function LibraryDialogProvider({ children }: { readonly children: ReactNode }) {
+  // null = 關閉；開啟時記住要顯示的檢視
+  const [openView, setOpenView] = useState<LibraryView | null>(null);
+  const value = useMemo<LibraryDialogControl>(() => ({ openLibrary: (view = ALL_VIEW) => setOpenView(view) }), []);
+  return (
+    <LibraryDialogContext.Provider value={value}>
+      {children}
+      <LibraryDialog view={openView} onClose={() => setOpenView(null)} />
+    </LibraryDialogContext.Provider>
+  );
 }
 
 /**
- * 素材管理 window (檔案 → 素材管理...): Eagle-style three columns — folder tree, masonry grid,
- * item info. Every change is written to `library.json` right away. Radix unmounts the content
- * when closed, so the view and selection start fresh each time.
+ * Opens the 素材管理 window.
+ *
+ * Returns:
+ *   Control with `openLibrary(view?)`.
+ *
+ * Raises:
+ *   Error: When used outside `LibraryDialogProvider`.
+ */
+export function useLibraryDialog(): LibraryDialogControl {
+  const value = useContext(LibraryDialogContext);
+  if (value === null) throw new Error("useLibraryDialog must be used within LibraryDialogProvider");
+  return value;
+}
+
+/**
+ * 素材管理 window: Eagle-style three columns — folder tree, masonry grid, item info. Every change is
+ * written to `library.json` right away. Radix unmounts the content when closed, so the view and
+ * selection start fresh each time.
  *
  * Args:
- *   props: Open state and close callback.
+ *   props.view: View to show when it opens; null = closed.
+ *   props.onClose: Closes the window.
  *
  * Returns:
  *   Dialog element.
  */
-export function LibraryDialog({ open, onOpenChange }: LibraryDialogProps) {
+function LibraryDialog({ view, onClose }: { readonly view: LibraryView | null; readonly onClose: () => void }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={view !== null} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent
         data-library-dialog
         className="flex h-[min(90vh,900px)] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1400px)]"
@@ -59,7 +99,7 @@ export function LibraryDialog({ open, onOpenChange }: LibraryDialogProps) {
           if (event.target instanceof HTMLInputElement) event.preventDefault();
         }}
       >
-        <LibraryManager />
+        <LibraryManager initialView={view ?? ALL_VIEW} />
       </DialogContent>
     </Dialog>
   );
@@ -75,14 +115,14 @@ function refocusManager(event: Event): void {
   document.querySelector<HTMLElement>("[data-library-dialog]")?.focus();
 }
 
-function LibraryManager() {
+function LibraryManager({ initialView }: { readonly initialView: LibraryView }) {
   const library = useLibrary();
   const dispatch = useLibraryDispatch();
   const { resolveSrc } = useProject();
   const { importFiles } = useLibraryImport();
   const placeItem = usePlaceLibraryItem();
 
-  const [view, setView] = useState<LibraryView>(ALL_VIEW);
+  const [view, setView] = useState<LibraryView>(initialView);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [query, setQuery] = useState("");

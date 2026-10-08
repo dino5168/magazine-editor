@@ -19,7 +19,8 @@ export const PANEL_DEFINITIONS = [
   { id: "photos", label: "相片", defaultSide: "left" },
   { id: "elements", label: "元素", defaultSide: "left" },
   { id: "draw", label: "繪圖", defaultSide: "left" },
-  { id: "upload", label: "上傳", defaultSide: "left" },
+  // 「素材」面板（原本的「上傳」）；id 不改，使用者記住的停靠版面才不會失效
+  { id: "upload", label: "素材", defaultSide: "left" },
   { id: "background", label: "背景", defaultSide: "left" },
   { id: "pages", label: "頁面", defaultSide: "left", scroll: "self" },
   { id: "properties", label: "屬性", defaultSide: "right" },
