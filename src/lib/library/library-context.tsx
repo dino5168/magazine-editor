@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
 import { libraryReducer, type LibraryAction } from "./library-reducer";
+import { resetThumbnailCache } from "./thumbnails";
 import { EMPTY_LIBRARY, type Library } from "./types";
 
 /** Loading and persisting the library; used by `ProjectProvider` and the file commands. */
@@ -95,6 +96,8 @@ export function LibraryProvider({ children }: { readonly children: ReactNode }) 
   const control = useMemo<LibraryControl>(
     () => ({
       load: (projectId, next) => {
+        // 縮圖路徑屬於專案資料夾；換專案時重新要
+        if (projectId !== projectIdRef.current) resetThumbnailCache();
         projectIdRef.current = projectId;
         // 先記成已存，effect 才不會把剛讀進來的內容寫回去
         persistedRef.current = next;

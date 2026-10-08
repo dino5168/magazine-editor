@@ -64,6 +64,8 @@ export const projectApi = {
   importLibraryAsset: (bytes: Uint8Array, kind: LibraryItemKind, extension: string) =>
     call<string>("library_import", bytes, { headers: { "x-asset-kind": kind, "x-asset-extension": extension } }),
   readLibraryText: (src: string) => call<string>("library_read_text", { src }),
+  /** Path of an image's thumbnail (made on demand), or null to show the original. */
+  libraryThumbnail: (src: string) => call<string | null>("library_thumbnail", { src }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),
   restoreRecovery: (id: string) => call<OpenedProject>("recovery_restore", { id }),
   discardRecovery: (id: string) => call<null>("recovery_discard", { id }),

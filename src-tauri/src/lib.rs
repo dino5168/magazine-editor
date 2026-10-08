@@ -42,6 +42,7 @@ pub fn run() {
             commands::library::library_write,
             commands::library::library_import,
             commands::library::library_read_text,
+            commands::library::library_thumbnail,
             commands::recovery::recovery_list,
             commands::recovery::recovery_restore,
             commands::recovery::recovery_discard,

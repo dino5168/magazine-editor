@@ -3,6 +3,7 @@
 
 use crate::error::{AppError, AppResult};
 use crate::project::assets::{self, AssetKind};
+use crate::project::thumbnails;
 use crate::project::library::{self, Library};
 use crate::project::ProjectState;
 use tauri::http::HeaderMap;
@@ -67,6 +68,22 @@ pub async fn library_import(state: State<'_, ProjectState>, request: Request<'_>
     let kind = asset_kind(request.headers())?;
     let project = state.current()?;
     assets::import_asset(&project.root, bytes, kind)
+}
+
+/// Returns the thumbnail of a library image, making it first when needed (decoding a large photo
+/// takes a while, so this runs on a blocking thread).
+///
+/// # Returns
+/// The thumbnail's project-relative path, or `None` when the original should be shown as is.
+///
+/// # Errors
+/// See `thumbnails::ensure`; the frontend then shows the original.
+#[tauri::command]
+pub async fn library_thumbnail(state: State<'_, ProjectState>, src: String) -> AppResult<Option<String>> {
+    let root = state.current()?.root;
+    tauri::async_runtime::spawn_blocking(move || thumbnails::ensure(&root, &src))
+        .await
+        .map_err(|error| AppError::invalid_input(format!("縮圖中斷：{error}")))?
 }
 
 /// Reads a text asset of the current project in full, for placing it on a page.

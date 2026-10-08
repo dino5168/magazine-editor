@@ -2,6 +2,7 @@
 
 use super::format::{self, ProjectFile, ASSET_DIR, PROJECT_FILE_NAME};
 use super::library::{self, Library};
+use super::thumbnails;
 use crate::error::{AppError, AppResult};
 use std::collections::HashSet;
 use std::fs;
@@ -161,6 +162,9 @@ pub fn remove_orphan_assets(root: &Path, project: &ProjectFile, library: &Librar
             }
         }
     }
+    // 縮圖跟著原圖：原圖保留的縮圖才保留
+    let images = keep.iter().copied().filter(|src| format::validate_asset_path(src).is_ok());
+    removed += thumbnails::remove_orphans(root, images)?;
     Ok(removed)
 }
 

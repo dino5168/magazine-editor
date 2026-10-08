@@ -9,6 +9,7 @@ pub mod io;
 pub mod library;
 pub mod recovery;
 pub mod shape;
+pub mod thumbnails;
 
 use crate::error::{AppError, AppResult};
 use format::{ProjectContent, ProjectFile, FORMAT_ID, SCHEMA_VERSION};
@@ -177,10 +178,16 @@ pub fn save_as(current: &OpenProject, target: &Path, content: ProjectContent) ->
             format::referenced_assets(&content.document, &content.assets),
         )?;
         // 素材庫是立即寫入的，磁碟上的就是最新的；讀不到（沒有或損壞）就不複製
-        if let Ok(Some(library)) = library::read(&current.root) {
-            io::copy_assets(&current.root, target, library::referenced(&library))?;
-            library::write(target, &library)?;
+        let library = library::read(&current.root).ok().flatten();
+        if let Some(library) = &library {
+            io::copy_assets(&current.root, target, library::referenced(library))?;
+            library::write(target, library)?;
         }
+        // 縮圖可以重做，但複製過去比較快；沒有的就跳過
+        let images = format::referenced_assets(&content.document, &content.assets)
+            .chain(library.iter().flat_map(library::referenced))
+            .filter(|src| format::validate_asset_path(src).is_ok());
+        thumbnails::copy_existing(&current.root, target, images)?;
         let project = OpenProject {
             root: target.to_path_buf(),
             id: new_id(),

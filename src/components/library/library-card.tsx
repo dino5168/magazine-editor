@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImageOff, Music } from "lucide-react";
 import { fileExtension } from "@/lib/library/library-files";
+import { requestThumbnail, usesThumbnail } from "@/lib/library/thumbnails";
 import type { LibraryItem } from "@/lib/library/types";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +33,43 @@ interface LibraryThumbProps {
   readonly fit?: "cover" | "contain";
 }
 
+/** Starts loading this far before a card scrolls into view (px). */
+const THUMB_PRELOAD_MARGIN = "300px";
+
 /**
- * The picture part of a library card: the image, the start of a text file, or an audio tile.
- * A missing image file shows 「檔案遺失」 instead of a broken image.
+ * Which file a card shows: the thumbnail once it is known (null = the original), or undefined
+ * while waiting. Asks only when the card is near the screen, so a large library does not make
+ * every thumbnail at once.
+ */
+function useCardImage(item: LibraryItem, element: HTMLElement | null): string | null | undefined {
+  const wanted = usesThumbnail(item);
+  const [resolved, setResolved] = useState<{ readonly src: string; readonly thumb: string | null } | null>(null);
+  useEffect(() => {
+    if (!wanted || !element) return;
+    let cancelled = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void requestThumbnail(item.src).then((thumb) => {
+          if (!cancelled) setResolved({ src: item.src, thumb });
+        });
+      },
+      { rootMargin: THUMB_PRELOAD_MARGIN },
+    );
+    observer.observe(element);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [wanted, element, item.src]);
+  if (!wanted) return null;
+  return resolved?.src === item.src ? resolved.thumb : undefined;
+}
+
+/**
+ * The picture part of a library card: the image (its thumbnail in the desktop app), the start of
+ * a text file, or an audio tile. A missing image file shows 「檔案遺失」 instead of a broken image.
  *
  * Args:
  *   props: Item, the asset URL resolver and extra classes (the size comes from the parent).
@@ -44,10 +79,16 @@ interface LibraryThumbProps {
  */
 export function LibraryThumb({ item, resolveSrc, className, fit = "cover" }: LibraryThumbProps) {
   const [missing, setMissing] = useState(false);
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const shown = useCardImage(item, element);
+  // 縮圖讀不到（例如被刪掉）先退回原圖，原圖也讀不到才是「檔案遺失」
+  const [thumbFailed, setThumbFailed] = useState(false);
   const badge = kindBadge(item);
   return (
-    <div className={cn("relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/5 ring-inset", className)}>
+    <div ref={setElement} className={cn("relative overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/5 ring-inset", className)}>
       {item.kind === "image" &&
+        // 等縮圖時只顯示底色，不先載入原圖（就是要避免解碼整張照片）
+        shown !== undefined &&
         (missing ? (
           <div className="flex size-full flex-col items-center justify-center gap-1 text-xs text-muted-foreground">
             <ImageOff className="size-5" />
@@ -55,12 +96,12 @@ export function LibraryThumb({ item, resolveSrc, className, fit = "cover" }: Lib
           </div>
         ) : (
           <img
-            src={resolveSrc(item.src)}
+            src={resolveSrc(shown && !thumbFailed ? shown : item.src)}
             alt={item.name}
             loading="lazy"
             decoding="async"
             draggable={false}
-            onError={() => setMissing(true)}
+            onError={() => (shown && !thumbFailed ? setThumbFailed(true) : setMissing(true))}
             className={cn("size-full", fit === "cover" ? "object-cover" : "object-contain")}
           />
         ))}

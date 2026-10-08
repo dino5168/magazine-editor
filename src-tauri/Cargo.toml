@@ -33,6 +33,8 @@ typst = "=0.15.1"
 typst-pdf = "=0.15.1"
 typst-layout = "=0.15.1"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
+# 素材縮圖。typst 已經依賴同一版（同樣的 jpeg / png / gif / webp），不會多編一份
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 
 [dev-dependencies]
 roxmltree = "0.21"
@@ -40,6 +42,27 @@ tempfile = "3"
 ttf-parser = "0.25"
 typst-render = "=0.15.1"
 
+
+# 開發版（tauri dev / cargo test）也最佳化解碼圖片的套件：沒有最佳化時一張 24 MP 照片的縮圖要約 8 秒
+# 只列這幾個，不用 "*"（全部最佳化會讓開發版第一次編譯很久、也更吃記憶體）
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-core]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.gif]
+opt-level = 3
+[profile.dev.package.weezl]
+opt-level = 3
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
