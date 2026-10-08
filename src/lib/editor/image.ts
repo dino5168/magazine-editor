@@ -8,11 +8,24 @@ import type { Size } from "./types";
  *   Selected files; empty when the user cancels.
  */
 export function pickImageFiles(): Promise<File[]> {
+  return pickFiles(ALLOWED_IMAGE_TYPES.join(","));
+}
+
+/**
+ * Opens the system file picker (several files).
+ *
+ * Args:
+ *   accept: The input's `accept` attribute, e.g. `.png,.md`.
+ *
+ * Returns:
+ *   Selected files; empty when the user cancels.
+ */
+export function pickFiles(accept: string): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
-    input.accept = ALLOWED_IMAGE_TYPES.join(",");
+    input.accept = accept;
     input.addEventListener("change", () => resolve(Array.from(input.files ?? [])));
     input.addEventListener("cancel", () => resolve([]));
     input.click();

@@ -33,6 +33,7 @@ export const MENUS = [
       { kind: "item", command: "file.save" },
       { kind: "item", command: "file.saveAs" },
       separator,
+      { kind: "item", command: "file.library" },
       {
         kind: "submenu",
         label: "匯入",

@@ -142,6 +142,40 @@ export function treeDropZone(top: number, height: number, y: number): Exclude<Fo
   return "into";
 }
 
+/** Name a new folder gets before the user renames it. */
+export const NEW_FOLDER_NAME = "新資料夾";
+
+/**
+ * An unused name for a new folder in `parentId`: 「新資料夾」, then 「新資料夾 2」, 「新資料夾 3」….
+ *
+ * Args:
+ *   folders: All folders.
+ *   parentId: Where the folder is created (`null` = top level).
+ *
+ * Returns:
+ *   Name not used by any sibling.
+ */
+export function nextFolderName(folders: readonly LibraryFolder[], parentId: string | null): string {
+  const used = new Set(folders.filter((folder) => folder.parentId === parentId).map((folder) => folder.name));
+  if (!used.has(NEW_FOLDER_NAME)) return NEW_FOLDER_NAME;
+  for (let n = 2; ; n++) if (!used.has(`${NEW_FOLDER_NAME} ${n}`)) return `${NEW_FOLDER_NAME} ${n}`;
+}
+
+/**
+ * Whether a subfolder can still be created inside `id` (depth limit).
+ *
+ * Args:
+ *   folders: All folders.
+ *   id: Parent folder.
+ *
+ * Returns:
+ *   True when a child would be within `LIBRARY_DEPTH_MAX`.
+ */
+export function canAddSubfolder(folders: readonly LibraryFolder[], id: string): boolean {
+  const length = folderChainLength(folders, id);
+  return length !== null && length < LIBRARY_DEPTH_MAX;
+}
+
 /** One visible row of the folder tree. */
 export interface TreeRow {
   readonly folder: LibraryFolder;

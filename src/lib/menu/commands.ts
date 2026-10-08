@@ -89,6 +89,7 @@ export const COMMANDS = {
   "file.open": { label: "開啟...", shortcut: { ctrl: true, code: "KeyO", keyLabel: "O" } },
   "file.save": { label: "儲存", shortcut: { ctrl: true, code: "KeyS", keyLabel: "S" } },
   "file.saveAs": { label: "另存新檔...", shortcut: { ctrl: true, shift: true, code: "KeyS", keyLabel: "S" } },
+  "file.library": { label: "素材管理..." },
   "file.importImage": { label: "圖片...", title: "匯入圖片" },
   "file.importPages": { label: "其他專案的頁面...", title: "匯入其他專案的頁面" },
   "file.exportPng": { label: "PNG...", title: "匯出為 PNG" },

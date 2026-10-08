@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAddSubfolder,
   descendants,
+  nextFolderName,
   folderChainLength,
   folderMoveError,
   folderPath,
@@ -41,6 +43,16 @@ describe("tree queries", () => {
     expect(rows(["cover", "people"])).toEqual(["封面+", "-人物+", "--近照", "-風景", "內頁"]);
     // 父資料夾收起時，子資料夾展開也看不到
     expect(rows(["people"])).toEqual(["封面+", "內頁"]);
+  });
+
+  it("names new folders and limits their depth", () => {
+    expect(nextFolderName(folders, null)).toBe("新資料夾");
+    const taken = [...folders, { id: "n1", name: "新資料夾", parentId: null }, { id: "n2", name: "新資料夾 2", parentId: null }];
+    expect(nextFolderName(taken, null)).toBe("新資料夾 3");
+    expect(nextFolderName(taken, "cover")).toBe("新資料夾");
+    const deep = chain(LIBRARY_DEPTH_MAX);
+    expect(canAddSubfolder(deep, `d${LIBRARY_DEPTH_MAX - 2}`)).toBe(true);
+    expect(canAddSubfolder(deep, `d${LIBRARY_DEPTH_MAX - 1}`)).toBe(false);
   });
 
   it("splits a row into before / into / after", () => {
