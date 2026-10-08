@@ -113,9 +113,10 @@ EditorState
 ├── selectedIds            ← 選取的物件(可以多選;空陣列 = 沒有選取)
 ├── view (zoom、fitRequest)
 ├── tool、shapeKind        ← 底部工具列目前的工具與圖形
-├── assets                 ← 專案裡的圖片清單(會存檔,但不進復原歷史)
 └── savedDocument          ← 上次存檔時的文件,用來判斷「有沒有未存檔的修改」
 ```
+
+**素材庫** (專案裡的圖片、文字檔、音訊與它們的資料夾) 也不在 `EditorState` 裡,而是另一個 `LibraryProvider`:整理素材 (分類、改名、移到垃圾桶) 馬上寫進專案資料夾的 `library.json`,不進復原歷史,也不算「未存檔的修改」。存檔時 `project.magproj` 裡的圖片清單由素材庫算出來,讓舊版 App 打開時還看得到專案圖片。為什麼這樣設計,見 `docs/00-需求分析/01-素材管理可行性分析.md`。
 
 `savedDocument` 的用法很簡單:`present` 和 `savedDocument` 是**同一個物件**就代表沒有修改。修改後再復原回存檔時的樣子,兩者又變回同一個物件,視窗標題的 `●` 就自動消失。
 

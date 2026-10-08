@@ -3,14 +3,14 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
-  - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。細節已全部確認；實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步；步驟 1–5 完成：Rust `project/library.rs`、開檔 / 另存 / 清理 / 復原接上素材庫、`library_write` / `library_import` / `library_read_text`；前端 `src/lib/library/` 純邏輯與 `LibraryProvider`，`EditorState.assets` 與 `asset_import` 已移除；步驟 6「檔案 → 素材管理...」管理視窗 `components/library/`；步驟 7 拖曳分類（`library-drop.ts`、`use-library-drag.ts`）；步驟 8 垃圾桶（還原、永久刪除、清空）；步驟 9 文字檔放到頁面（`createTextFromFile`、`use-place-library-item.ts`）；步驟 10「素材」面板（`panels/library-panel.tsx`，id 仍是 `upload`）與 `LibraryDialogProvider`；步驟 11 從面板拖到畫布（`canvas-drop.tsx`）；步驟 12 效能實測與 Rust 縮圖（`project/thumbnails.rs`、`assets/thumbs/`、`library_thumbnail`）；下一步是步驟 13：文件）；操作畫面草圖 `00-需求分析/Html/material.html`。
+  - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步，2026-10-08 全部完成；桌面版人工驗證待做，見計畫各步驟）；操作畫面草圖 `00-需求分析/Html/material.html`。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
   - `types.html` 對應 `src/lib/editor/types.ts`：**修改 `types.ts` 時要同步更新**圖、說明卡，以及頁首的對應 commit。
@@ -25,8 +25,8 @@
 | 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
-| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj` |
-| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` |
+| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
+| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版） |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
@@ -82,9 +82,18 @@ src/
       dock-drag-ghost.tsx         # 拖曳時跟著游標的面板 icon + 名稱（DragGhost 的包裝）
     pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、游標（預設 grabbing，可指定）、吞掉拖曳後的 click、Esc 取消、清除），工具面板、頁籤拖曳與「頁面」面板的分區高度共用
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
+    library/                      # 素材管理的 UI（見「素材管理」）
+      library-dialog.tsx          # LibraryDialogProvider / useLibraryDialog().openLibrary(view?)；三欄管理視窗（樹｜瀑布流｜資訊）、刪除資料夾 / 永久刪除的確認
+      library-tree.tsx            # 左欄：全部 / 未分類 / 垃圾桶＋資料夾樹（展開、改名、新增、刪除、data-drop 拖曳提示）
+      library-grid.tsx            # 中欄：masonryLayout 排的卡片、點選 / Ctrl / Shift、從檔案總管拖檔案匯入
+      library-info.tsx            # 右欄：預覽、名稱、資訊、放到目前頁面 / 移到垃圾桶 / 還原 / 永久刪除
+      library-card.tsx            # LibraryThumb（圖片走縮圖、文字摘錄、音訊卡、格式標籤、檔案遺失）、cardAspect、kindBadge；面板也用
+      use-library-drag.ts         # 管理視窗的拖曳（素材 → 資料夾 / 未分類 / 垃圾桶，資料夾前 / 中 / 後 / 最上層）
+      use-place-library-item.ts   # place(item, center?, pageId?)：圖片 / 文字檔放到頁面（文字經 library_read_text）
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）；外層 grid 放尺規
+      canvas-drop.tsx             # CanvasDropProvider / useCanvasDrop：畫布登記「視窗座標 → 那一頁與頁面座標」（沿用 pageAt），素材面板拖到畫布時用
       canvas-ruler.tsx            # 尺規：CanvasRuler（2D canvas 刻度 + 選取範圍色帶 + 滑鼠標示線）、RulerCorner（角落 mm）、moveRulerMarker（直接改 DOM）
       canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、對頁跨過書背的複本、物件、頁碼、參考線、頁緣）；雙頁時書背側裁切；對頁畫成靜態、按下切頁；SpreadSpine 書背線
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
@@ -101,7 +110,7 @@ src/
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 10 個面板；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；draw 目前是佔位
+      panels/*.tsx                # 10 個面板；library-panel 是「素材」面板（id 仍是 upload：資料夾選單、匯入、點一下放到中央、拖到畫布）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；draw 目前是佔位
       sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
@@ -121,7 +130,19 @@ src/
       use-close-guard.ts          # 關閉視窗前提示未存檔
       use-autosave.ts             # 每 60 秒把未存檔內容寫入備份（decideAutosave 是純函式）
       __tests__/
-    library/                      # 專案素材庫（library.json）：types、reducer / selectors / tree / validation（純邏輯）、LibraryProvider（立即寫入、換專案前 flush）、use-library-import；說明見素材管理實作計畫（步驟 13 補完整一節）
+    library/                      # 專案素材庫（library.json，見「素材管理」；不含 UI 的部分）
+      types.ts                    # Library / LibraryFolder / LibraryItem（image / text / audio）/ Trashed、上限常數（對應 Rust library.rs、assets.rs）
+      library-reducer.ts          # 純 reducer（item/* / folder/* / trash/empty / library/load；不合法回傳同一個參考）
+      library-selectors.ts        # LibraryView、libraryCounts、visibleItems、importFolderOf、importOutcome、projectAssets、restoredToUnsorted
+      library-tree.ts             # 資料夾樹：descendants / folderPath / folderMoveError / treeDropZone / treeRows / nextFolderName / canAddSubfolder
+      library-validation.ts       # folderNameError / itemNameError（中文）、libraryProblem（整份檢查，同 Rust 規則）
+      library-drop.ts             # libraryDropResult：放下的結果（action / 拒絕原因 / 沒有動作）
+      library-files.ts            # kindOfFile、LIBRARY_ACCEPT、normalizeText、textExcerpt、libraryItemName
+      masonry.ts                  # masonryLayout：放進最矮的欄（已知長寬比，不量測）
+      thumbnails.ts               # requestThumbnail（最多同時 2 個、同一張一次）、resetThumbnailCache、usesThumbnail
+      library-context.tsx         # LibraryProvider：狀態、立即寫入佇列、load / flush / getLibrary / hasPendingWrites
+      use-library-import.ts       # importFiles(files, folderId, accept?)、importBundled（內建相片也進未分類）
+      __tests__/
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
       menu-structure.ts           # MENUS 結構（item / checkbox / separator / submenu / radio）、助記鍵
@@ -175,14 +196,15 @@ src-tauri/
   src/lib.rs                      # Builder：single-instance（最先註冊）、setup DB / ProjectState、清除上次的未命名專案、註冊 commands、視窗 Destroyed 時刪除目前專案的備份
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
-  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片匯入）、recovery.rs（自動備份檔）
+  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）
   src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）
-  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、recovery.rs、export.rs）
+  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、export.rs）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v7：文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
+tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture（兩層資料夾、未分類、文字、音訊、來自已刪除資料夾的垃圾桶素材）
 ```
 
 `@/*` alias 指向 `src/*`，`tsconfig.json` 的 paths 和 `vite.config.ts` 的 resolve.alias 兩處必須一致。
@@ -222,7 +244,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 用 `useReducer` + 兩個 Context（state / dispatch 分開），不使用 zustand 或 redux。
 - `HANDLERS` 是 `{ [T in EditorAction["type"]]: handler }` 的 dispatch map，新增 action 時必須同時加 handler。
 - **會進入 undo 歷史的**：`history.present`（EditorDocument）的變更，上限 100 筆（`HISTORY_LIMIT`）。
-- **不進歷史的 UI 狀態**：`activePageId`（也可以是主頁的 id：正在編輯主頁）、`lastPageId`（最後顯示的頁面，「回到頁面」用；`editorReducer` 每次切到頁面時記下）、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`assets`（專案圖片清單，會存檔）、`savedDocument`（上次存檔的文件）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
+- **不進歷史的 UI 狀態**：`activePageId`（也可以是主頁的 id：正在編輯主頁）、`lastPageId`（最後顯示的頁面，「回到頁面」用；`editorReducer` 每次切到頁面時記下）、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`savedDocument`（上次存檔的文件）。專案的素材（圖片、文字、音訊）不在這裡，在 `LibraryProvider`（見「素材管理」）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
 - `selectActivePage` 回傳 `Sheet`（頁面或主頁）：`element/*` 不分頁面或主頁，編輯主頁不需要另一套 action。`page/rename`、`page/setBackground` 也對兩者都有效。只需要頁面的地方（頁序、頁碼）自己查 `pages`。
 - 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。`element/moveToPage { moves, pageId, dx }`：拖過書背放下時，一筆復原裡改位置、換到對頁座標、搬到對頁最上層並切頁選取（見「單頁 / 雙頁」）。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
@@ -425,8 +447,8 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 一般瀏覽器分頁（`npm run dev`）會自己攔下 Ctrl+Shift+PageUp / PageDown（移動瀏覽器分頁），網頁收不到；桌面版沒有這個問題。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
   - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
-- 上傳圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
-- `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，上傳面板的拖放區需要這個設定。**不可移除**。
+- 匯入的圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」與「素材管理」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
+- `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，「素材」面板與素材管理視窗從檔案總管拖檔案進來需要這個設定。**不可移除**。
 - 桌面版啟動時開啟上次的專案，沒有就建立空白 A4 的未命名專案；瀏覽器模式（`npm run dev`）沒有檔案存取，只載入 `createSampleDocument()` 的示範內容，檔案指令會提示「僅在桌面版可用」。
 
 ## 選單列與指令（`lib/menu`）
@@ -442,6 +464,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 助記鍵 Alt+F / Alt+V / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
+- `檔案 → 素材管理...`（`file.library`，沒有快捷鍵）：開啟素材管理視窗，和「素材」面板的按鈕共用 `useLibraryDialog`。
 - `視圖`：放畫面上的輔助顯示（存這台電腦、不影響輸出）：尺規、分隔線、格線、內容區對齊線、邊界參考線、吸附格線，都是 `view.<id>` 勾選項目，由 `VIEW_TOGGLES` 產生（見「偏好設定與頁面設定」的快速切換）。勾選項目也會顯示快捷鍵（`MenubarShortcut`，勾選記號在左側不重疊）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
@@ -467,19 +490,38 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - `DockLayout`（左右各一個由上到下的面板清單 + 兩側寬度）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。
 - 同一側多個面板上下堆疊，展開的平分高度，收合只剩標題列。一個面板最多出現一次。
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
-- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（上傳面板的檔案拖放用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁籤拖曳也用它，改動時兩邊都要測）。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
+- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（只有從檔案總管拖檔案進素材庫用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁籤拖曳也用它，改動時兩邊都要測）。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
 - **記憶**：`localStorage` key `magazine-editor.dockLayout.v2`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。只有 v1 時沿用它，並把屬性面板加到右側最上方一次（`loadDockLayout`）。`npm run dev` 與安裝版 origin 不同，各記一份。
 - Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockScrollArea`（`dock-panel.tsx` 匯出）用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正，面板裡需要捲動區時用它。
 - 面板預設由 `DockPanel` 包一個捲動區；需要把高度分給好幾塊、各自捲動的面板，在 `PANEL_DEFINITIONS` 設 `scroll: "self"`（目前只有「頁面」），內容會放在 `flex-1 min-h-0` 的容器裡。
 - Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。
 
+## 素材管理（`lib/library` + `components/library` + `src-tauri/src/project/library.rs`）
+
+需求與可行性：`docs/00-需求分析/01-素材管理*.md`（操作畫面草圖 `Html/material.html`）；實作計畫與每一步的決定：`docs/01-Plans-2026-10/04-素材管理-實作.md`。參考 Eagle。
+
+- **範圍**：每個專案各自一個素材庫，跟著專案資料夾走（不是跨專案的系統素材庫）。素材：圖片、文字檔（`.txt` / `.md`）、音訊（MP3 / WAV / M4A / OGG，**只能匯入與分類，不能放到頁面**、不顯示長度）。
+- **`library.json`**（Rust `project/library.rs` 是權威定義，TS `lib/library/types.ts` 手寫對應，共用 fixture `tests/fixtures/sample-library.json`）：`libraryVersion` 1、`folders`（陣列順序 = 同層順序）、`items`（`kind` tag；`folderId: null` = 未分類；`trashed` 記住刪除時間與原資料夾，可指向已刪除的資料夾）。規則：id 不重複、名稱存去頭尾空白、同層不同名、不循環、最多 8 層、`src` 在對應種類的資料夾（`assets/images` / `texts` / `audio`）、**同一個 `src` 只能一筆**（同檔只留一筆）。比 App 新的 `libraryVersion` 拒絕開啟專案（重建會丟資料）；主檔與 `.bak` 都壞時改名 `library.json.damaged`、由專案圖片重建並提示。
+- **立即寫入、不進復原、不算未存檔**：`LibraryProvider`（`home-page.tsx`：`EditorProvider` → `LibraryProvider` → `ProjectProvider`）每次變更就 `library_write`；一次一個寫入，寫入中的變更合併成下一次。`library_write` 帶 `projectId`，不是目前專案就拒絕；**換專案（開啟 / 新增）、另存（Rust 從磁碟複製素材庫）、關閉視窗前都要 `flush()`**（`use-project-commands.ts`、`use-close-guard.ts`）。代價：選「不儲存」關閉時頁面回到上次存檔，素材庫的整理保留。瀏覽器模式（`npm run dev`）只存在記憶體，src 是 blob URL（同檔不去重）。
+- **和專案檔的關係**：`EditorState.assets` 已移除；`project.magproj` 的 `assets` 在存檔 / 備份時由素材庫算出（`projectAssets`：**所有圖片，含垃圾桶**——舊版 App 的開檔清理只看這份清單）。舊專案第一次開啟時由 `assets` 建立素材庫（全部未分類）。
+- **匯入**（`use-library-import.ts` → `library_import`，raw body，種類放在 header `x-asset-kind` / `x-asset-extension`）：依副檔名分流，前端先擋明顯不合格的檔案，內容由 Rust 檢查（圖片與音訊看檔頭；文字必須 UTF-8、去 BOM、不含 NUL、≤ 200 KB；音訊 ≤ 50 MB）。在某個資料夾裡匯入就放進該資料夾，其他情況進未分類；同檔已在素材庫 → 不新增（在垃圾桶就還原到這次的資料夾）並提示。「相片」面板的內建相片放到頁面時也加入未分類。
+- **管理視窗**（「檔案 → 素材管理...」或面板的按鈕，`LibraryDialogProvider` / `useLibraryDialog().openLibrary(view?)`）：左欄全部 / 未分類 / 垃圾桶＋資料夾樹（數量含子資料夾），中欄 `masonryLayout` 瀑布流（左到右、新的在前、名稱搜尋），右欄資訊。Delete = 移到垃圾桶（垃圾桶裡 = 永久刪除，先確認）；在輸入框按 Esc 不關閉視窗。
+  - **視窗處理的按鍵要 `stopPropagation`**：卡片在處理中就被移除時，編輯器快捷鍵的 `closest('[role="dialog"]')` 判斷不出它在視窗裡，會刪掉畫布上選取的物件。確認框關閉時焦點放回視窗（`onCloseAutoFocus`），否則焦點落在 `<body>`。
+- **拖曳**（`use-library-drag.ts`，`startPointerDrag` + `DragGhost`，規則在純函式 `libraryDropResult`）：素材 → 資料夾（列的哪一段都算放進去）/ 未分類 / 垃圾桶；從垃圾桶拖出來 = 還原到那裡；資料夾 → 前 / 中 / 後 / 「資料夾」標題（最上層最後），不能進自己的子孫。拖已選取的卡片 = 整組，**開始拖曳時才改選取**（Ctrl+點選不受影響）。視窗有 `transform`（置中），拖曳標籤要 portal 到 `document.body`。
+- **垃圾桶**：還原回原資料夾（不在了 → 未分類並提示）、永久刪除、清空。**永久刪除只移除清單**，檔案在下次開檔清理時才刪（頁面還在用就保留）。刪除資料夾 = 含子資料夾，素材進垃圾桶。
+- **放到頁面**（`usePlaceLibraryItem`）：圖片 → 圖片物件；文字檔 → 一個靠左的內文文字物件（`createTextFromFile`，內容原樣、`.md` 符號保留、`\r\n` → `\n`；全文由 `library_read_text` 讀，因為 CSP 不讓前端 fetch asset URL）。一次 = 一筆復原。
+- **「素材」面板**（`panels/library-panel.tsx`，**面板 id 仍是 `upload`**，舊的停靠版面紀錄不失效）：資料夾選單、匯入、點一下放到頁面中央、**拖到畫布放在放下的位置**（`CanvasDropProvider`：畫布登記「視窗座標 → 那一頁與頁面座標」，沿用建立工具的 `pageAt`，雙頁時放在哪頁建在哪頁；放在畫布外或工具列上 = 取消）。放下的位置不吸附格線。
+- **縮圖**（`project/thumbnails.rs` + `lib/library/thumbnails.ts`）：卡片用原圖時，24 MP 照片捲動會卡（量測見計畫步驟 12）。`assets/thumbs/<原圖 hash>.jpg`（有透明像素時 `.png`），長邊 480 px、套用 EXIF 方向；路徑由原圖推導，**不寫進 `library.json`**。卡片接近畫面才 `library_thumbnail`（`spawn_blocking`），前端最多同時 2 個、同一張只要一次，換專案清快取；等待時只顯示底色、不先載原圖；做不出來或讀不到就用原圖。原圖 ≤ 480 px 與 SVG 直接用原圖；瀏覽器模式不用縮圖。畫布上的物件仍用原圖。開發版有最佳化圖片解碼套件（`Cargo.toml` 的 `[profile.dev.package.*]`），否則一張 24 MP 要約 8 秒。
+- `editor-canvas.tsx` 裡的 `document` 是編輯中的文件；在那裡用 DOM API 要寫 `window.document`。
+- 不做（之後另排）：跨專案的系統素材庫、標籤 / 智慧型資料夾 / 依顏色搜尋、一個素材在多個資料夾、音訊試聽與放到頁面、Markdown 格式保留。
+
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 7；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 7；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
-- 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/` 裡沒被引用的檔案（此時復原歷史是空的；頁面與主頁上的圖片都算引用）。
+- 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename 取代。開啟時主檔損壞會自動改用 `.bak`，並標記為未存檔。開啟時會刪除 `assets/images/`、`assets/texts/`、`assets/audio/` 裡沒被引用的檔案（此時復原歷史是空的；頁面、主頁上的圖片與素材庫（含垃圾桶）都算引用），以及原圖不在了的縮圖；素材庫是損壞後重建的那一次不清理。
 - 未命名專案放在 `%LOCALAPPDATA%\com.mycompany.magazineeditor\untitled\<id>\`，「儲存」會改走「另存新檔」，另存成功後刪除暫存資料夾；下次啟動時清除殘留的暫存資料夾（single-instance 保證沒有其他實例在用），但**還有備份檔的暫存資料夾會保留**。
 - 另存對話框：使用者輸入的名稱（去掉 `.magproj`）就是新的專案資料夾名稱，檔案固定叫 `project.magproj`；目標資料夾已存在而且不是空的會拒絕。對話框預設位置是「文件\雜誌編輯軟體」。
 - asset protocol 的 scope 在 `tauri.conf.json` 是空的，開啟專案時由 Rust `asset_protocol_scope().allow_directory()` 動態開放。
@@ -491,7 +533,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 取消、Esc、點外面一律 resolve `null`（不能讓 Promise 懸著，否則 `busyRef` 一直是 busy）→ 留在目前的文件。先問未存檔再選紙張，所以選了「儲存」再取消也只是存了檔。
   - **啟動時沒有上次的專案仍直接建立 A4**（`createNew()` 不帶參數），不顯示對話框。瀏覽器模式的「新增」照舊只顯示「僅在桌面版可用」。
   - 只改前端，Rust `project_new` 只建立資料夾、檔案格式不變。
-- 圖片的選檔對話框統一用 `lib/editor/image.ts` 的 `pickImageFiles()`（上傳面板與「匯入圖片」共用）。
+- 選檔對話框統一用 `lib/editor/image.ts` 的 `pickFiles(accept)`：「匯入圖片」與底部工具列用 `pickImageFiles()`，素材面板與管理視窗用 `LIBRARY_ACCEPT`（圖片、文字、音訊）。
 - **自動備份**（`%LOCALAPPDATA%\com.mycompany.magazineeditor\recovery\<專案 id>.json`）：
   - 有未存檔變更時每 60 秒寫入一次（`useAutosave`，內容沒變就不寫）；變更被存檔或復原掉之後，下一次 tick 會刪除備份。
   - Rust 端在這些時候刪除備份：`project_save` 成功、`activate()` 換成另一個專案（使用者已處理過未存檔提示）、視窗 `WindowEvent::Destroyed`（只有正常關閉才會觸發，當機不會）。
@@ -511,6 +553,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
     - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
     - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`、陰影偏移上限 `TEXT_SHADOW_OFFSET_MAX`：`validation.ts` / `format.rs`。
     - 主頁鏈的深度上限 `MASTER_DEPTH_MAX`（8）與主頁引用的規則：`master-pages.ts` / `format.rs`。
+    - 素材庫：`LIBRARY_DEPTH_MAX`（8）、資料夾 / 素材名稱上限、`TEXT_EXCERPT_MAX_CHARS` 與驗證規則（`lib/library/types.ts`、`library-validation.ts` / `project/library.rs`，共用 `sample-library.json`）；`TEXT_ASSET_MAX_BYTES`（200 KB）、`AUDIO_ASSET_MAX_BYTES`（50 MB）（`types.ts` / `assets.rs`）。
     - 底線 / 刪除線的公式與模擬斜體的斜率只在 Rust（`render.rs`），對應的是 **Konva 與瀏覽器本身的行為**，不是前端常數：升級 Konva 時重查（見「文字裝飾」）。
     - 字級範圍 `FONT_SIZE_MIN` / `FONT_SIZE_MAX`（`validation.ts`）、`PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）：`format.rs` 的頁碼驗證（`validate_page_number_rules`）。
   - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。
@@ -545,7 +588,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 
