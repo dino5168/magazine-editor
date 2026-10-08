@@ -284,6 +284,81 @@ function DashPreview({ dash }: { readonly dash: Stroke["dash"] }) {
   );
 }
 
+/** How the width field of `LineStyleFields` reads and limits its value. */
+export interface LineWidthField {
+  readonly label: string;
+  readonly unit: string;
+  /** Turns a typed or stepped value into a valid width (clamp, round). */
+  readonly normalize: (width: number) => number;
+  /** − / ＋ buttons; omitted = plain input. */
+  readonly step?: { readonly size: number; readonly min: number; readonly max: number };
+}
+
+interface LineStyleFieldsProps {
+  /** Part of the width field's key. */
+  readonly id: string;
+  /** Color, width and dash of the line (an element border or a canvas guide line). */
+  readonly value: Stroke;
+  readonly onChange: (next: Stroke) => void;
+  /** Accessible name of the color button, e.g. "邊框顏色". */
+  readonly colorLabel: string;
+  /** Accessible name of the dash menu; give each one its own when a form has several. */
+  readonly dashLabel?: string;
+  readonly width: LineWidthField;
+}
+
+/**
+ * Color, width and dash style of a line: element borders (property panel, page numbers) and the
+ * canvas guide lines (格線與參考線 dialog) use the same controls.
+ *
+ * Args:
+ *   props: Current style, change callback, control names and the width field settings.
+ *
+ * Returns:
+ *   The controls, without a surrounding section.
+ */
+export function LineStyleFields({ id, value, onChange, colorLabel, dashLabel = "線條樣式", width }: LineStyleFieldsProps) {
+  const set = (patch: Partial<Stroke>) => onChange({ ...value, ...patch });
+  return (
+    <>
+      <Row label="顏色">
+        <ColorPicker value={value.color} label={colorLabel} onCommit={(color) => set({ color })} />
+      </Row>
+      <NumberField
+        key={`${id}-width-${value.width}`}
+        label={width.label}
+        unit={width.unit}
+        value={value.width}
+        step={width.step}
+        onCommit={(next) => set({ width: width.normalize(next) })}
+      />
+      <div className="flex items-center gap-1.5">
+        <span className="w-8 shrink-0 text-xs text-muted-foreground">樣式</span>
+        <Select value={value.dash} onValueChange={(dash) => set({ dash: dash as Stroke["dash"] })}>
+          <SelectTrigger size="sm" className="h-7 flex-1" aria-label={dashLabel}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DASH_OPTIONS.map(({ value: dash, label }) => (
+              <SelectItem key={dash} value={dash}>
+                <DashPreview dash={dash} />
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+}
+
+// 物件邊框的線寬：pt，不跟著縮放
+const STROKE_WIDTH_FIELD: LineWidthField = {
+  label: "線寬",
+  unit: "pt",
+  normalize: (width) => clamp(width, STROKE_WIDTH_MIN, STROKE_WIDTH_MAX),
+};
+
 interface StrokeFieldsProps {
   /** Part of the width field's key. */
   readonly id: string;
@@ -303,7 +378,6 @@ interface StrokeFieldsProps {
  *   The controls, without a surrounding section.
  */
 export function StrokeFields({ id, stroke, onChange, switchLabel }: StrokeFieldsProps) {
-  const setStroke = (patch: Partial<Stroke>) => stroke && onChange({ ...stroke, ...patch });
   return (
     <>
       <label className="flex items-center gap-2 text-sm">
@@ -311,34 +385,7 @@ export function StrokeFields({ id, stroke, onChange, switchLabel }: StrokeFields
         {switchLabel}
       </label>
       {stroke && (
-        <>
-          <Row label="顏色">
-            <ColorPicker value={stroke.color} label="邊框顏色" onCommit={(color) => setStroke({ color })} />
-          </Row>
-          <NumberField
-            key={`${id}-stroke-${stroke.width}`}
-            label="線寬"
-            unit="pt"
-            value={stroke.width}
-            onCommit={(width) => setStroke({ width: clamp(width, STROKE_WIDTH_MIN, STROKE_WIDTH_MAX) })}
-          />
-          <div className="flex items-center gap-1.5">
-            <span className="w-8 shrink-0 text-xs text-muted-foreground">樣式</span>
-            <Select value={stroke.dash} onValueChange={(dash) => setStroke({ dash: dash as Stroke["dash"] })}>
-              <SelectTrigger size="sm" className="h-7 flex-1" aria-label="線條樣式">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DASH_OPTIONS.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
-                    <DashPreview dash={value} />
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </>
+        <LineStyleFields id={`${id}-stroke`} value={stroke} onChange={onChange} colorLabel="邊框顏色" width={STROKE_WIDTH_FIELD} />
       )}
     </>
   );

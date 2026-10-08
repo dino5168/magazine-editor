@@ -38,6 +38,14 @@ export const VIEW_TOGGLES = [
     toggle: (p) => setGrid(p, { visible: !p.grid.visible }),
   },
   {
+    // 內容區（邊界以內）1/4、1/2、3/4 的線；原本跟著格線，現在獨立
+    id: "contentGuides",
+    label: "內容區對齊線",
+    title: "顯示內容區對齊線",
+    read: (p) => p.showContentGuides,
+    toggle: (p) => ({ ...p, showContentGuides: !p.showContentGuides }),
+  },
+  {
     id: "margins",
     label: "邊界參考線",
     title: "顯示邊界參考線",

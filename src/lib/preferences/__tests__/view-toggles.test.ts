@@ -6,14 +6,21 @@ import { VIEW_TOGGLES, getViewToggle } from "../view-toggles";
 const FIELD_OF = {
   rulers: (p: Preferences) => p.showRulers,
   grid: (p: Preferences) => p.grid.visible,
+  contentGuides: (p: Preferences) => p.showContentGuides,
   margins: (p: Preferences) => p.showMargins,
   snap: (p: Preferences) => p.grid.snap,
 } as const;
 
 describe("VIEW_TOGGLES", () => {
-  it("lists 尺規, 格線, 邊界參考線, 吸附格線 in menu order with unique ids", () => {
-    expect(VIEW_TOGGLES.map((toggle) => toggle.id)).toEqual(["rulers", "grid", "margins", "snap"]);
-    expect(VIEW_TOGGLES.map((toggle) => toggle.label)).toEqual(["尺規", "格線", "邊界參考線", "吸附格線"]);
+  it("lists 尺規, 格線, 內容區對齊線, 邊界參考線, 吸附格線 in menu order with unique ids", () => {
+    expect(VIEW_TOGGLES.map((toggle) => toggle.id)).toEqual(["rulers", "grid", "contentGuides", "margins", "snap"]);
+    expect(VIEW_TOGGLES.map((toggle) => toggle.label)).toEqual(["尺規", "格線", "內容區對齊線", "邊界參考線", "吸附格線"]);
+  });
+
+  it("toggles the content guides apart from the grid", () => {
+    const shown = getViewToggle("contentGuides").toggle(DEFAULT_PREFERENCES);
+    expect(shown.showContentGuides).toBe(true);
+    expect(shown.grid.visible).toBe(false);
   });
 
   it("reads the matching preference", () => {

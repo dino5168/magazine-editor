@@ -210,3 +210,14 @@
     @apply font-sans;
   }
 }
+
+/*
+ * 要在對話框開著時看畫布（例如格線與參考線的即時預覽）：遮罩透明、不模糊。
+ * shadcn 的 DialogContent 自己畫遮罩、不收它的 className（components/ui 不改），所以從內容的 data 屬性反選前一個兄弟。
+ * 不放在 @layer 裡：沒有 layer 的規則一定蓋過 Tailwind utilities。
+ */
+[data-slot="dialog-overlay"]:has(+ [data-see-through]) {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}

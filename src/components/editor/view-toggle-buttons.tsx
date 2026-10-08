@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Grid3x3, Magnet, SquareDashed, type LucideIcon } from "lucide-react";
+import { ChevronDown, Crosshair, Grid3x3, Magnet, SquareDashed, type LucideIcon } from "lucide-react";
 import { MmField } from "@/components/app/settings/settings-fields";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,6 +15,7 @@ import { IconButton } from "./icon-button";
 // TopBar 上的開關（尺規只在「視圖」選單）
 const BUTTONS = [
   { id: "grid", icon: Grid3x3 },
+  { id: "contentGuides", icon: Crosshair },
   { id: "margins", icon: SquareDashed },
   { id: "snap", icon: Magnet },
 ] as const satisfies readonly { id: ViewToggleId; icon: LucideIcon }[];
@@ -25,7 +26,7 @@ interface ViewToggleButtonsProps {
 }
 
 /**
- * Top bar group for the canvas guides: 格線 / 邊界參考線 / 吸附格線 toggles and the grid spacing.
+ * Top bar group for the canvas guides: 格線 / 內容區對齊線 / 邊界參考線 / 吸附格線 toggles and the grid spacing.
  * Reads and writes the same preferences as the 視圖 menu and the 格線與參考線 dialog, immediately
  * (no confirm, no undo).
  *

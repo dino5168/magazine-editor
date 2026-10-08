@@ -10,12 +10,22 @@
 
 ## 目前階段
 
-- **視圖:格線與參考線的開關(2026-10-08,四個步驟全部完成,尚未 commit;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/02-視圖.md`(不 commit),計畫 `docs/01-Plans-2026-10/02-視圖-實作.md`(要 commit)。使用者確認:「視圖」選單加格線(Ctrl+')、邊界參考線(Ctrl+;)、吸附格線(Ctrl+Shift+');TopBar 縮放左邊直接放三個切換鈕與間距下拉(間距 + 更多設定...),不另加 ToolBar。共四個步驟,開關的讀寫集中在 `VIEW_TOGGLES` 一張表,選單與 TopBar 共用。
+- **格線、邊界參考線與對齊線的樣式設定(2026-10-08,八個步驟全部完成,尚未 commit)**:任務檔 `docs/01-Plans-2026-10/03-增加格線邊界線的設定.md`(不 commit),計畫 `docs/01-Plans-2026-10/03-增加格線邊界線的設定-實作.md`(要 commit)。使用者確認:格線 / 內容區對齊線 / 邊界參考線各自的顏色(含不透明度)、線型、粗細(螢幕 px);對齊線一組樣式(1/2 自動較明顯)且有自己的開關(對話框、視圖選單、TopBar);對話框即時預覽(不存檔的預覽值,取消還原);「設為預設」存我的預設、「恢復預設」回到我的預設、「原廠設定」回到原廠。共八個步驟,不改檔案格式。
+  - 步驟 1(完成,畫面不變):`Preferences` 加 `showContentGuides`(舊紀錄 = `grid.visible`)、`lineStyles`、`lineStyleDefaults`,`FACTORY_LINE_STYLES`(原本的外觀,顏色取色票);`stroke.ts` 的 `guideLineAttrs` / `CONTENT_GUIDE_EMPHASIS`。vitest 384 個。
+  - 步驟 2(完成):`page-guides.tsx` 三種線照偏好的樣式畫(新的 `ContentGuides`),`canvas-sheet.tsx` 對齊線改看 `showContentGuides`。無頭 Edge 12 項,原廠外觀與之前一致。過渡期:對齊線的開關要到步驟 3 / 5 才有 UI。
+  - 步驟 3(完成):`VIEW_TOGGLES` 加 `contentGuides`(視圖選單「內容區對齊線」、TopBar `Crosshair` 按鈕,沒有快捷鍵)。vitest 385 個,無頭 Edge 9 項。
+  - 步驟 4(完成,行為不變):`style-controls.tsx` 抽出 `LineStyleFields`(顏色 / 粗細 / 樣式,粗細欄位由 `LineWidthField` 設定),`StrokeFields` 改用它。無頭 Edge 11 項(屬性面板邊框、頁碼框線)。
+  - 步驟 5(完成):「格線與參考線」對話框分格線 / 內容區對齊線 / 邊界參考線三區,各有顯示開關與顏色 / 粗細(px)/ 線型;內容區可捲動。無頭 Edge 12 項(含 640 px 高的視窗、Esc 先關選色器)。
+  - 步驟 6(完成):即時預覽。`PreferencesProvider` 的不存檔預覽值(`useSetPreviewPreferences`);對話框靠右、遮罩透明不模糊(`SettingsDialog` 的 `seeThrough` + `index.css` 規則)。build 通過,無頭 Edge 12 項。
+  - 步驟 7(完成):對話框頁尾左側「恢復預設」「設為預設」(立即存)「原廠設定」(`defaultLineStyles` / `sameLineStyles`、`SettingsDialogFooter` 的 `start`)。vitest 387 個,無頭 Edge 13 項。
+  - 步驟 8(完成):`CLAUDE.md`(目錄結構、「偏好設定與頁面設定」的對話框 / 即時預覽 / 預設值 / 新的「線條樣式」、視圖選單)、`docs/01`。
+  - 之後要 commit 的範圍:程式碼(含 `index.css` 與測試)、`CLAUDE.md`、`docs/01`/`progress.md`、計畫檔 `docs/01-Plans-2026-10/03-增加格線邊界線的設定-實作.md`;任務檔 `03-增加格線邊界線的設定.md` 與 `Images/` 不 commit。
+- **視圖:格線與參考線的開關(2026-10-08,四個步驟全部完成,commit `bf2b202`,已推送;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/02-視圖.md`(不 commit),計畫 `docs/01-Plans-2026-10/02-視圖-實作.md`(要 commit)。使用者確認:「視圖」選單加格線(Ctrl+')、邊界參考線(Ctrl+;)、吸附格線(Ctrl+Shift+');TopBar 縮放左邊直接放三個切換鈕與間距下拉(間距 + 更多設定...),不另加 ToolBar。共四個步驟,開關的讀寫集中在 `VIEW_TOGGLES` 一張表,選單與 TopBar 共用。
   - 步驟 1(完成,畫面不變):`lib/preferences/view-toggles.ts`(`VIEW_TOGGLES`、`getViewToggle`),「尺規」改用它。vitest 376 個;尺規選單腳本 7 項重跑全過。
   - 步驟 2(完成):「視圖」選單加格線(Ctrl+')、邊界參考線(Ctrl+;)、吸附格線(Ctrl+Shift+'),指令由 `VIEW_TOGGLES` 產生(`viewCommandId`);勾選項目原本不畫快捷鍵,`app-menubar.tsx` 補上。vitest 376 個,無頭 Edge 16 項。
   - 步驟 3(完成):`components/editor/view-toggle-buttons.tsx`(TopBar 縮放左邊:格線 / 邊界參考線 / 吸附格線切換鈕 + 間距 Popover 與「更多設定...」);TopBar 用 container query,中欄窄時「匯出 PDF」只剩 icon,名稱才放得下。build 通過,無頭 Edge 16 項(含 1024 px 視窗)。
   - 步驟 4(完成):`CLAUDE.md`(目前階段、目錄結構、「偏好設定與頁面設定」的快速切換、選單列「視圖」、快捷鍵表)、`docs/01`。
-  - 之後要 commit 的範圍:程式碼、`CLAUDE.md`、`docs/01`/`progress.md`、計畫檔 `docs/01-Plans-2026-10/02-視圖-實作.md`;任務檔 `02-視圖.md` 與 `Images/` 不 commit。桌面版人工驗證待做:Ctrl+' / Ctrl+; / Ctrl+Shift+' 在桌面版(含注音輸入法啟用時)是否正常。
+  - 已 commit:程式碼、`CLAUDE.md`、`docs/01`/`progress.md`、計畫檔 `docs/01-Plans-2026-10/02-視圖-實作.md`;任務檔 `02-視圖.md` 與 `Images/` 不 commit(使用者決定)。桌面版人工驗證待做:Ctrl+' / Ctrl+; / Ctrl+Shift+' 在桌面版(含注音輸入法啟用時)是否正常。
 - **修改新增專案流程(2026-10-08,五個步驟全部完成,commit `3213673`,已推送;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/01-修改新增專案流程.md`,計畫 `docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`。「檔案 → 新增」先開「新增文件」對話框(左:紙張卡片分組;右:直橫 / 寬高 / 邊界,和頁面設定共用欄位),按「建立」才進入編輯。使用者確認:啟動時沒有上次的專案仍直接建立 A4;保留寬高輸入;瀏覽器模式維持「僅在桌面版可用」;不記憶上次的紙張。共五個步驟,不改 Rust 與檔案格式。
   - 步驟 1(完成):`createBlankDocument(setup = DEFAULT_NEW_PAGE_SETUP)`、`DEFAULT_NEW_PAGE_SETUP`(在 `element-factory.ts`,避免和 `page-setup.ts` 循環 import)、`page-setup.ts` 的 `PageSetup` 型別(頁面設定對話框改用它)。vitest 371 個。畫面不變。
   - 步驟 2(完成,行為不變):頁面設定的直橫 / 寬高 / 邊界 / 錯誤訊息抽成 `components/app/settings/page-setup-fields.tsx` 的 `PageSetupFields`(受控;紙張下拉與尺寸不一致提示由呼叫端以 `paperPicker` / `sizeNote` 傳入)。無頭 Edge 12 項。

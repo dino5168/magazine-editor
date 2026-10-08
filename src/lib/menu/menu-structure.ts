@@ -63,6 +63,7 @@ export const MENUS = [
       { kind: "checkbox", command: viewCommandId("rulers") },
       separator,
       { kind: "checkbox", command: viewCommandId("grid") },
+      { kind: "checkbox", command: viewCommandId("contentGuides") },
       { kind: "checkbox", command: viewCommandId("margins") },
       { kind: "checkbox", command: viewCommandId("snap") },
     ],

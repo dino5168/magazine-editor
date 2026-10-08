@@ -10,7 +10,7 @@ import { resolveElementsVariables, resolveElementVariables, variableValues } fro
 import { measureLineWidth } from "@/lib/export/text-layout";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { ElementNode, StaticElement, StaticShape, type ElementNodeProps } from "./canvas-elements";
-import { MarginGuide, PageGrid } from "./page-guides";
+import { ContentGuides, MarginGuide, PageGrid } from "./page-guides";
 
 /** Konva name of a sheet's background rect: a press on it counts as a press on empty space. */
 export const PAGE_BACKGROUND_NAME = "page-background";
@@ -157,7 +157,13 @@ export function CanvasSheet({
         shadowOpacity={0.12}
         shadowOffsetY={2}
       />
-      {preferences.grid.visible && <PageGrid page={sheet} margins={margins} spacing={preferences.grid.spacing} zoom={zoom} />}
+      {/* 格線與內容區對齊線在頁面背景之上、物件之下，各自有開關 */}
+      {preferences.grid.visible && (
+        <PageGrid page={sheet} spacing={preferences.grid.spacing} style={preferences.lineStyles.grid} zoom={zoom} />
+      )}
+      {preferences.showContentGuides && (
+        <ContentGuides page={sheet} margins={margins} style={preferences.lineStyles.contentGuides} zoom={zoom} />
+      )}
       {inherited.map((element) => (
         <StaticElement key={`master:${element.id}`} element={element} />
       ))}
@@ -198,7 +204,7 @@ export function CanvasSheet({
       {preferences.showPageNumbers && pageNumber && <StaticShape shape={pageNumber} />}
       {/* 不裁切超出頁面的物件；頁緣線畫在物件之上，讓頁面範圍始終可見 */}
       {/* 格線與邊界參考線都不攔事件、不算進內容範圍，也不會匯出 */}
-      {preferences.showMargins && <MarginGuide page={sheet} margins={margins} zoom={zoom} />}
+      {preferences.showMargins && <MarginGuide page={sheet} margins={margins} style={preferences.lineStyles.margins} zoom={zoom} />}
       <Rect
         width={sheet.width}
         height={sheet.height}

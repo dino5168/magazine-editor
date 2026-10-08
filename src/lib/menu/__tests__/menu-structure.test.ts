@@ -78,7 +78,7 @@ describe("menu structure", () => {
     expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
   });
 
-  it("puts 視圖 between 檔案 and 設定: 尺規, then 格線 / 邊界參考線 / 吸附格線 as checkboxes", () => {
+  it("puts 視圖 between 檔案 and 設定: 尺規, then 格線 / 內容區對齊線 / 邊界參考線 / 吸附格線 as checkboxes", () => {
     expect(MENUS.map((menu) => menu.id)).toEqual(["file", "view", "settings"]);
     const view = MENUS.find((menu) => menu.id === "view")!;
 
@@ -86,6 +86,7 @@ describe("menu structure", () => {
       { kind: "checkbox", command: "view.rulers" },
       { kind: "separator" },
       { kind: "checkbox", command: "view.grid" },
+      { kind: "checkbox", command: "view.contentGuides" },
       { kind: "checkbox", command: "view.margins" },
       { kind: "checkbox", command: "view.snap" },
     ]);
@@ -94,6 +95,7 @@ describe("menu structure", () => {
     expect(getCommandTitle("view.rulers")).toBe("顯示尺規");
     expect(getCommandTitle("view.grid")).toBe("顯示格線");
     expect(getCommand("view.rulers").shortcut).toBeUndefined();
+    expect(getCommand("view.contentGuides").shortcut).toBeUndefined();
     expect(["view.grid", "view.margins", "view.snap"].map((id) => formatShortcut(getCommand(id as CommandId).shortcut!))).toEqual([
       "Ctrl+'",
       "Ctrl+;",
