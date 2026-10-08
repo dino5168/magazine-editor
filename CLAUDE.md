@@ -9,6 +9,8 @@
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
+- `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
+  - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。細節已全部確認，還沒開始實作；下一步是報告第 6 節的步驟 1。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
   - `types.html` 對應 `src/lib/editor/types.ts`：**修改 `types.ts` 時要同步更新**圖、說明卡，以及頁首的對應 commit。
