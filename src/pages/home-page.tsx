@@ -40,11 +40,13 @@ import {
   createPlaceholderHandlers,
   panelCommandId,
   settingsCommandId,
+  viewCommandId,
   type CommandHandlers,
   type CommandId,
 } from "@/lib/menu/commands";
 import { PreferencesProvider, usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
 import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
+import { VIEW_TOGGLES } from "@/lib/preferences/view-toggles";
 import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
@@ -81,14 +83,14 @@ function EditorLayout() {
       })(),
     [importFiles, addImage],
   );
-  const showRulers = usePreferences().showRulers;
+  const preferences = usePreferences();
+  const { showRulers } = preferences;
   const setPreferences = useSetPreferences();
   const isChecked = useCallback(
     (command: CommandId) =>
-      command === "view.rulers"
-        ? showRulers
-        : PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
-    [dockLayout, showRulers],
+      VIEW_TOGGLES.some((toggle) => viewCommandId(toggle.id) === command && toggle.read(preferences)) ||
+      PANEL_IDS.some((id) => panelCommandId(id) === command && isPanelVisible(dockLayout, id)),
+    [dockLayout, preferences],
   );
 
   // 設定 → 文件 / 偏好設定：同時最多開一個設定對話框
@@ -104,7 +106,7 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.importImage": importImage,
-      "view.rulers": () => setPreferences((current) => ({ ...current, showRulers: !current.showRulers })),
+      ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),
       ...Object.fromEntries(SETTINGS_PAGES.map(({ id }) => [settingsCommandId(id), () => setOpenSettings(id)])),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
@@ -151,7 +153,7 @@ function EditorLayout() {
           {...dockProps}
         />
         <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
-          <EditorTopBar onExportPdf={() => void project.exportPdf()} />
+          <EditorTopBar onExportPdf={() => void project.exportPdf()} onOpenGridSettings={() => setOpenSettings("grid")} />
           {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <EditorCanvas />

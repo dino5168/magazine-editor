@@ -1,5 +1,6 @@
 import { PANEL_DEFINITIONS, type PanelId } from "@/lib/dock/panels";
 import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
+import { VIEW_TOGGLES, type ViewToggleId } from "@/lib/preferences/view-toggles";
 import { matchesShortcut, type KeyboardEventLike, type Shortcut } from "./shortcut";
 
 export interface CommandDefinition {
@@ -55,6 +56,33 @@ const SETTINGS_COMMANDS = Object.fromEntries(
   }),
 ) as Record<SettingsCommandId, CommandDefinition>;
 
+export type ViewCommandId = `view.${ViewToggleId}`;
+
+/**
+ * Returns the 視圖 menu command that flips a view toggle.
+ *
+ * Args:
+ *   id: View toggle id.
+ *
+ * Returns:
+ *   Command id.
+ */
+export function viewCommandId(id: ViewToggleId): ViewCommandId {
+  return `view.${id}`;
+}
+
+// 視圖的開關指令由 VIEW_TOGGLES 產生
+const VIEW_COMMANDS = Object.fromEntries(
+  VIEW_TOGGLES.map((toggle) => {
+    const command: CommandDefinition = {
+      label: toggle.label,
+      title: toggle.title,
+      ...("shortcut" in toggle && { shortcut: toggle.shortcut }),
+    };
+    return [viewCommandId(toggle.id), command];
+  }),
+) as Record<ViewCommandId, CommandDefinition>;
+
 // 選單項目與快捷鍵的單一資料來源；新增指令時必須同時在 CommandHandlers 提供實作（mapped type 會檢查）
 export const COMMANDS = {
   "file.new": { label: "新增", shortcut: { ctrl: true, code: "KeyN", keyLabel: "N" } },
@@ -67,7 +95,7 @@ export const COMMANDS = {
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
-  "view.rulers": { label: "尺規", title: "顯示尺規" },
+  ...VIEW_COMMANDS,
   ...SETTINGS_COMMANDS,
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },
   "settings.themeDark": { label: "深色", title: "外觀：深色" },

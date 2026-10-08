@@ -1,6 +1,6 @@
 import { PANEL_IDS } from "@/lib/dock/panels";
 import { SETTINGS_GROUPS, settingsPagesIn } from "@/lib/preferences/settings-pages";
-import { panelCommandId, settingsCommandId, type CommandId } from "./commands";
+import { panelCommandId, settingsCommandId, viewCommandId, type CommandId } from "./commands";
 import type { KeyboardEventLike } from "./shortcut";
 
 export type MenuNode =
@@ -58,8 +58,14 @@ export const MENUS = [
     id: "view",
     label: "視圖",
     mnemonic: { code: "KeyV", letter: "V" },
-    // 畫面上的輔助顯示（存在這台電腦的偏好，不進復原歷史）
-    items: [{ kind: "checkbox", command: "view.rulers" }],
+    // 畫面上的輔助顯示（存在這台電腦的偏好，不進復原歷史）；開關的讀寫在 VIEW_TOGGLES
+    items: [
+      { kind: "checkbox", command: viewCommandId("rulers") },
+      separator,
+      { kind: "checkbox", command: viewCommandId("grid") },
+      { kind: "checkbox", command: viewCommandId("margins") },
+      { kind: "checkbox", command: viewCommandId("snap") },
+    ],
   },
   {
     id: "settings",

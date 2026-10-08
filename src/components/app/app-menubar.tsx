@@ -49,18 +49,23 @@ function MenuNodes({ nodes, handlers, isChecked }: MenuNodesProps) {
               </MenubarItem>
             );
           }
-          case "checkbox":
+          case "checkbox": {
+            const command = getCommand(node.command);
             return (
               // checked 由外部狀態決定，不接 onCheckedChange：handler 負責切換，選單只反映結果
               <MenubarCheckboxItem
                 key={node.command}
                 checked={isChecked(node.command)}
-                disabled={getCommand(node.command).disabledReason !== undefined}
+                disabled={command.disabledReason !== undefined}
                 onSelect={() => handlers[node.command]()}
               >
-                {getCommand(node.command).label}
+                {command.label}
+                {command.shortcut && (
+                  <MenubarShortcut className="pl-6 tracking-normal">{formatShortcut(command.shortcut)}</MenubarShortcut>
+                )}
               </MenubarCheckboxItem>
             );
+          }
           case "separator":
             return <MenubarSeparator key={`separator-${index}`} />;
           case "submenu":

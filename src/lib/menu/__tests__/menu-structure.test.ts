@@ -7,9 +7,12 @@ import {
   getCommandTitle,
   panelCommandId,
   settingsCommandId,
+  viewCommandId,
+  type CommandId,
 } from "../commands";
 import { PANEL_IDS } from "@/lib/dock/panels";
 import { SETTINGS_PAGES } from "@/lib/preferences/settings-pages";
+import { VIEW_TOGGLES } from "@/lib/preferences/view-toggles";
 import { MENUS, collectCommands, findMenuByMnemonic } from "../menu-structure";
 import { formatShortcut, type KeyboardEventLike } from "../shortcut";
 
@@ -75,12 +78,27 @@ describe("menu structure", () => {
     expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
   });
 
-  it("puts 視圖 between 檔案 and 設定, with 尺規 as a checkbox", () => {
+  it("puts 視圖 between 檔案 and 設定: 尺規, then 格線 / 邊界參考線 / 吸附格線 as checkboxes", () => {
     expect(MENUS.map((menu) => menu.id)).toEqual(["file", "view", "settings"]);
     const view = MENUS.find((menu) => menu.id === "view")!;
 
-    expect(view.items).toEqual([{ kind: "checkbox", command: "view.rulers" }]);
+    expect(view.items).toEqual([
+      { kind: "checkbox", command: "view.rulers" },
+      { kind: "separator" },
+      { kind: "checkbox", command: "view.grid" },
+      { kind: "checkbox", command: "view.margins" },
+      { kind: "checkbox", command: "view.snap" },
+    ]);
+    // 每個視圖開關都有指令，名稱來自 VIEW_TOGGLES
+    for (const toggle of VIEW_TOGGLES) expect(getCommand(viewCommandId(toggle.id)).label).toBe(toggle.label);
     expect(getCommandTitle("view.rulers")).toBe("顯示尺規");
+    expect(getCommandTitle("view.grid")).toBe("顯示格線");
+    expect(getCommand("view.rulers").shortcut).toBeUndefined();
+    expect(["view.grid", "view.margins", "view.snap"].map((id) => formatShortcut(getCommand(id as CommandId).shortcut!))).toEqual([
+      "Ctrl+'",
+      "Ctrl+;",
+      "Ctrl+Shift+'",
+    ]);
   });
 
   it("uses unique mnemonics", () => {
@@ -94,6 +112,10 @@ describe("findCommandByEvent", () => {
     expect(findCommandByEvent(key("KeyS", { ctrlKey: true }))).toBe("file.save");
     expect(findCommandByEvent(key("KeyS", { ctrlKey: true, shiftKey: true }))).toBe("file.saveAs");
     expect(findCommandByEvent(key("Comma", { ctrlKey: true }))).toBe("settings.grid");
+    expect(findCommandByEvent(key("Quote", { ctrlKey: true }))).toBe("view.grid");
+    expect(findCommandByEvent(key("Quote", { ctrlKey: true, shiftKey: true }))).toBe("view.snap");
+    expect(findCommandByEvent(key("Semicolon", { ctrlKey: true }))).toBe("view.margins");
+    expect(findCommandByEvent(key("Quote"))).toBeNull();
     expect(findCommandByEvent(key("KeyZ", { ctrlKey: true }))).toBeNull();
     expect(findCommandByEvent(key("KeyS"))).toBeNull();
   });

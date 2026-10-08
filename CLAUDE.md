@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -93,7 +93,8 @@ src/
       bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
-      editor-top-bar.tsx          # 系統控制項：文件名稱、縮放、匯出 PDF（復原 / 重做在底部動作列）
+      editor-top-bar.tsx          # 系統控制項：文件名稱、格線開關（ViewToggleButtons）、縮放、匯出 PDF（復原 / 重做在底部動作列）；`@container`，窄時「匯出 PDF」只剩 icon
+      view-toggle-buttons.tsx     # TopBar 的格線 / 邊界參考線 / 吸附格線切換鈕（VIEW_TOGGLES）+ 間距 Popover（MmField、「更多設定...」）
       editor-page-bar.tsx         # draw.io 風格頁籤：新增（「+」開新增頁面對話框）/ 切換 / 雙擊改名 / 刪除（AlertDialog）/ 拖曳排序（插入線）、滾輪橫捲、`<` `>` 與頁碼輸入框（編輯主頁時顯示「–」）
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
@@ -125,7 +126,7 @@ src/
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
       __tests__/
-    preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）、settings-pages.ts（設定頁清單 SETTINGS_PAGES / SETTINGS_GROUPS）
+    preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider）、settings-pages.ts（設定頁清單 SETTINGS_PAGES / SETTINGS_GROUPS）、view-toggles.ts（視圖開關 VIEW_TOGGLES：尺規 / 格線 / 邊界參考線 / 吸附格線的讀寫與快捷鍵，選單與 TopBar 共用）
     dock/                         # 工具面板版面（不含 UI）
       panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導
       pages-panel-layout.ts       # 「頁面」面板兩區的收合與高度比例（純函式、最小高度、parse、localStorage 讀寫）
@@ -296,6 +297,9 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
   - **紙張**：`units.ts` 的 `PAGE_SIZE_PRESETS`（一律直式存，直 / 橫由按鈕切換，比對時不分直橫）依 `PAGE_SIZE_GROUPS` 分組：ISO A（A3–A6）、JIS B（B4–B6，標示「（JIS）」）、台灣書刊開本（16 開、32 開；25 開和 A5 同尺寸不另列）、美規（Letter、Legal、Tabloid）、電子書（3:4、9:16）。下拉選單分組並附尺寸，觸發鈕只顯示名稱（選項的尺寸是直式）。**兩個 preset 不可同尺寸**（`presetIdOf` 會認錯，測試守著）；id 不要改名（「範本」面板以 id 引用）。紙張清單只在前端，不改檔案格式。
 - **格線與參考線**（「設定 → 偏好設定 → 格線與參考線...」或 Ctrl+,）：按「確定」才寫入 localStorage，不進復原歷史。
+- **快速切換**（計畫：`docs/01-Plans-2026-10/02-視圖-實作.md`）：「視圖」選單的格線（Ctrl+'）/ 邊界參考線（Ctrl+;）/ 吸附格線（Ctrl+Shift+'）勾選項目，與 TopBar 縮放左邊的同名按鈕（`view-toggle-buttons.tsx`），**按下立即寫入偏好**（不用確定）；間距在按鈕旁的 Popover 改（Enter / 失焦寫入），「更多設定...」開上面的對話框。三處改的是同一份 `Preferences`，所以永遠一致；對話框的草稿只在開啟當下取值（對話框開著時選單快捷鍵不觸發）。
+  - 開關的讀寫與快捷鍵只寫在 `lib/preferences/view-toggles.ts` 的 `VIEW_TOGGLES`：`commands.ts` 由它產生 `view.<id>` 指令（`viewCommandId`），`home-page.tsx` 的 `isChecked` / handlers 與 TopBar 按鈕都讀它。**新增視圖開關** = 加一筆 + 放進 `MENUS` 的「視圖」（`menu-structure.test.ts` 會檢查每個指令恰好出現一次）+ 需要的話加到 TopBar 的 `BUTTONS`。
+  - 吸附格線是獨立開關：格線隱藏時吸附照樣有效，按鈕也不跟著格線停用。
 - **畫布**：格線（灰色虛線）畫在頁面背景之上、物件之下，同一層還有**內容區對齊線**：內容區（邊界以內，邊界全 0 時是整頁）寬、高的 1/4、1/2、3/4 處的靛藍虛線，1/2 比 1/4 粗而明顯，只畫在內容區內，跟著「顯示格線」開關（`geometry.ts` 的 `contentGuides`）；對齊線只是視覺參考，吸附仍只對齊格線。邊界參考線（粉紅虛線）畫在物件之上、頁緣線旁。兩者都 `listening={false}`、不算進內容範圍，也不會匯出。線距小於 6 px（`MIN_GRID_GAP_PX`）時只畫每 N 條（`drawnGridSpacing`），畫出來的線仍落在吸附格線上。
 - **吸附格線**（格線隱藏時也可以開）：
   - 拖曳：`ElementNode` 的 `dragBoundFunc` 交給 `editor-canvas` 的 `dragBound`。**多選時 Konva 會讓每個節點各自呼叫 `dragBoundFunc`，而且 Transformer 在主節點第一次 dragmove 後才讓其他節點開始拖曳**，所以不能各自吸附，也不能用各自的位置推算：第一個呼叫的節點是 lead，記下它的起點與滑鼠偏移，每次從**滑鼠位置**推回 lead 的原始位置再吸附，所有節點都用「自己的起點 + lead 的位移」（相對位置不變）。記錄在 `handleMoveEnd` 清空。
@@ -429,7 +433,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 - 助記鍵 Alt+F / Alt+V / Alt+S：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
-- `視圖`：放畫面上的輔助顯示（目前只有「尺規」勾選項目，`view.rulers`；勾選狀態由 `home-page.tsx` 的 `isChecked` 讀偏好）。
+- `視圖`：放畫面上的輔助顯示（存這台電腦、不影響輸出）：尺規、分隔線、格線、邊界參考線、吸附格線，都是 `view.<id>` 勾選項目，由 `VIEW_TOGGLES` 產生（見「偏好設定與頁面設定」的快速切換）。勾選項目也會顯示快捷鍵（`MenubarShortcut`，勾選記號在左側不重疊）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定 → 工具面板`：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
 
@@ -438,6 +442,7 @@ tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔�
 | Ctrl+N / Ctrl+O | 新增 / 開啟... |
 | Ctrl+S / Ctrl+Shift+S | 儲存 / 另存新檔... |
 | Ctrl+, | 格線與參考線...（設定 → 偏好設定 ▸） |
+| Ctrl+' / Ctrl+; / Ctrl+Shift+' | 視圖 → 格線 / 邊界參考線 / 吸附格線（`event.code` 是 `Quote` / `Semicolon`） |
 | Alt+F / Alt+V / Alt+S | 開啟「檔案」/「視圖」/「設定」選單 |
 
 ## 工具面板（`lib/dock` + `components/dock`）
