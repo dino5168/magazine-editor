@@ -229,6 +229,50 @@ describe("pages, document and history", () => {
     expect(pagesAfter[pagesAfter.length - 1].masterId).toBeNull();
   });
 
+  it("add_master follows the Add Master Page dialog defaults and rules", () => {
+    const { session, first } = twoPages();
+    const added = session.ok("add_master");
+    expect(added).toMatchObject({ name: "Master A", parentId: null, activePageId: added.id });
+    const master = session.state.history.present.masters[0];
+    expect(master).toMatchObject({ id: added.id, background: "#ffffff", width: first.width, height: first.height });
+    expect(session.state.activePageId).toBe(added.id);
+    expect(session.state.history.past).toHaveLength(1);
+
+    // 正在編輯主頁時，預設以它為基礎
+    const child = session.ok("add_master", { name: "  內頁  ", background: "#fef3c7" });
+    expect(child).toMatchObject({ name: "內頁", parentId: added.id });
+    expect(session.state.history.present.masters[1].background).toBe("#fef3c7");
+    expect(session.ok("add_master", { parentId: null }).name).toBe("Master B");
+
+    expect(session.error("add_master", { parentId: "nope" })).toContain("list_pages");
+    expect(session.error("add_master", { name: "   " })).toContain("空白");
+    expect(session.error("add_master", { background: "#fef3c780" })).toContain("#rrggbb");
+    expect(session.state.history.present.masters).toHaveLength(3);
+  });
+
+  it("set_page_master applies or clears a master page without switching pages", () => {
+    const { session, first, second } = twoPages();
+    const { id: masterId } = session.ok("add_master");
+    const undoSteps = session.state.history.past.length;
+    const active = session.state.activePageId;
+
+    expect(session.ok("set_page_master", { pageIds: [first.id, second.id, first.id], masterId })).toEqual({
+      pageIds: [first.id, second.id],
+      masterId,
+      changed: true,
+    });
+    expect(session.state.history.present.pages.slice(0, 2).map((page) => page.masterId)).toEqual([masterId, masterId]);
+    expect(session.state.activePageId).toBe(active);
+    expect(session.state.history.past).toHaveLength(undoSteps + 1);
+    expect(session.ok("set_page_master", { pageIds: [first.id], masterId }).changed).toBe(false);
+    expect(session.ok("set_page_master", { pageIds: [second.id], masterId: null }).changed).toBe(true);
+
+    expect(session.error("set_page_master", { pageIds: [masterId], masterId: null })).toContain("主頁不能套用主頁");
+    expect(session.error("set_page_master", { pageIds: ["nope"], masterId })).toContain("list_pages");
+    expect(session.error("set_page_master", { pageIds: [first.id], masterId: first.id })).toContain("找不到主頁");
+    expect(session.error("set_page_master", { pageIds: [], masterId })).toContain("pageIds");
+  });
+
   it("renames pages and the document, sets backgrounds", () => {
     const session = toolSession(createInitialState(fixture));
     expect(session.ok("rename_page", { pageId: "page-1", name: "  目錄  " })).toEqual({

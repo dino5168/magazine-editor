@@ -718,6 +718,83 @@
     }
   },
   {
+    "name": "add_master",
+    "title": "新增主頁",
+    "description": "新增一個空白主頁，回傳新主頁的 id 與名稱，並切到編輯這個主頁（和使用者在 App 裡新增主頁相同）。主頁放每一頁都要有的內容：之後用 add_text / add_shape 指定 pageId = 主頁 id 加內容，用 add_page 的 masterId 讓新頁面套用它。省略的欄位用 App 的預設：名稱 Master A、B…（第一個沒用過的）；正在編輯某個主頁時以它為基礎，否則不以任何主頁為基礎；背景 #ffffff。尺寸和使用者正在看的頁面相同。名稱最多 50 字；以主頁為基礎時，一條鏈最多 8 層、不能循環。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "主頁名稱",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "parentId": {
+          "description": "以哪個主頁為基礎（先畫那個主頁的內容）；null = 不以任何主頁為基礎",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "background": {
+          "description": "主頁背景，#rrggbb；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景",
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "set_page_master",
+    "title": "頁面套用主頁",
+    "description": "讓一個或多個頁面套用某個主頁（主頁的內容畫在頁面物件之下），或取消套用（masterId = null）。只能指定頁面，不能指定主頁（主頁以誰為基礎是另一回事）。頁面的背景不變。不會切換使用者的畫面。已經套用該主頁的頁面不變；回傳 changed 表示有沒有任何頁面改變。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageIds": {
+          "minItems": 1,
+          "maxItems": 500,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "頁面 id（由 list_pages 的 pages 取得）"
+        },
+        "masterId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "主頁 id（由 list_pages 的 masters 取得）；null = 取消套用"
+        }
+      },
+      "required": [
+        "pageIds",
+        "masterId"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
     "name": "rename_page",
     "title": "頁面改名",
     "description": "修改頁面或主頁的名稱（最多 50 字，前後空白會去掉）。一次呼叫 = 一筆復原紀錄。",

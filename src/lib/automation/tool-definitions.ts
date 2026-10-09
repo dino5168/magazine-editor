@@ -9,6 +9,7 @@ import { ADD_PAGES_MAX } from "@/lib/editor/add-pages";
 import type { ShapeKind } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
+import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
   FONT_SIZE_MAX,
@@ -202,6 +203,31 @@ export const TOOL_DEFINITIONS = {
       pageNumber: z.int().min(1).optional().describe("插在第幾頁的前面或後面（1 起算），預設最後一頁"),
       side: z.enum(["before", "after"]).optional().describe("插在 pageNumber 那一頁之前或之後，預設 after"),
       masterId: z.string().min(1).nullable().optional().describe("套用的主頁 id；null = 不套用"),
+    }),
+    readOnly: false,
+  },
+  add_master: {
+    title: "新增主頁",
+    description: `新增一個空白主頁，回傳新主頁的 id 與名稱，並切到編輯這個主頁（和使用者在 App 裡新增主頁相同）。主頁放每一頁都要有的內容：之後用 add_text / add_shape 指定 pageId = 主頁 id 加內容，用 add_page 的 masterId 讓新頁面套用它。省略的欄位用 App 的預設：名稱 Master A、B…（第一個沒用過的）；正在編輯某個主頁時以它為基礎，否則不以任何主頁為基礎；背景 #ffffff。尺寸和使用者正在看的頁面相同。名稱最多 ${PAGE_NAME_MAX_LENGTH} 字；以主頁為基礎時，一條鏈最多 ${MASTER_DEPTH_MAX} 層、不能循環。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      name: z.string().min(1).max(PAGE_NAME_MAX_LENGTH * 2).optional().describe("主頁名稱"),
+      parentId: z
+        .string()
+        .min(1)
+        .nullable()
+        .optional()
+        .describe("以哪個主頁為基礎（先畫那個主頁的內容）；null = 不以任何主頁為基礎"),
+      background: pageColor.optional().describe("主頁背景，#rrggbb；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景"),
+    }),
+    readOnly: false,
+  },
+  set_page_master: {
+    title: "頁面套用主頁",
+    description:
+      "讓一個或多個頁面套用某個主頁（主頁的內容畫在頁面物件之下），或取消套用（masterId = null）。只能指定頁面，不能指定主頁（主頁以誰為基礎是另一回事）。頁面的背景不變。不會切換使用者的畫面。已經套用該主頁的頁面不變；回傳 changed 表示有沒有任何頁面改變。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({
+      pageIds: z.array(z.string().min(1)).min(1).max(500).describe("頁面 id（由 list_pages 的 pages 取得）"),
+      masterId: z.string().min(1).nullable().describe("主頁 id（由 list_pages 的 masters 取得）；null = 取消套用"),
     }),
     readOnly: false,
   },

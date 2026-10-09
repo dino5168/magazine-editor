@@ -6,6 +6,7 @@ import type { EditorState } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
+  addMaster,
   addPage,
   addShape,
   addText,
@@ -13,6 +14,7 @@ import {
   renameDocument,
   renamePage,
   setPageBackground,
+  setPageMaster,
   stepHistory,
   updateElement,
   type ApplyAction,
@@ -46,6 +48,8 @@ const HANDLERS: ToolHandlers = {
   update_element: (args, { state, apply }) => updateElement(state, apply, args),
   delete_elements: (args, { state, apply }) => deleteElements(state, apply, args),
   add_page: (args, { state, apply }) => addPage(state, apply, args),
+  add_master: (args, { state, apply }) => addMaster(state, apply, args),
+  set_page_master: (args, { state, apply }) => setPageMaster(state, apply, args),
   rename_page: (args, { state, apply }) => renamePage(state, apply, args),
   set_page_background: (args, { state, apply }) => setPageBackground(state, apply, args),
   rename_document: (args, { apply }) => renameDocument(apply, args),

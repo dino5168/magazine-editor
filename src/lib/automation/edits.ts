@@ -4,10 +4,17 @@
  * 參數的型別與範圍已由 zod 檢查（`tool-definitions.ts`）；這裡檢查「這個物件能不能這樣改」，
  * 建立物件沿用 `element-factory`，名稱沿用 `validateName`。每個工具只送一個 action = 一筆復原。
  */
-import { addPagesDefaults, addPagesError, addPagesIndex, buildAddedPages } from "@/lib/editor/add-pages";
+import {
+  addMasterError,
+  addPagesDefaults,
+  addPagesError,
+  addPagesIndex,
+  buildAddedPages,
+} from "@/lib/editor/add-pages";
 import type { EditorAction, EditorState } from "@/lib/editor/editor-reducer";
-import { createShapeInBox, createTextElement } from "@/lib/editor/element-factory";
+import { createMasterPage, createShapeInBox, createTextElement } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
+import { nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadius } from "@/lib/editor/properties";
 import { createLabel } from "@/lib/editor/shape-label";
 import type { CanvasElement, ElementPatch, PageId, ShapeElement, TextElement, TextStyle } from "@/lib/editor/types";
@@ -243,6 +250,41 @@ export function addPage(state: EditorState, apply: ApplyAction, args: ToolArgs<"
   const pages = buildAddedPages(document, form);
   if (!apply({ type: "page/addMany", pages, index: addPagesIndex(form) })) return fail("App 沒有新增頁面");
   return ok({ pages: pages.map((page) => ({ id: page.id, name: page.name })), activePageId: pages[0].id });
+}
+
+/** Tool `add_master`: the Add Master Page dialog's defaults and rules (`page-dialogs.tsx`, `add-pages.ts`). */
+export function addMaster(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_master">) {
+  const { masters, pages } = state.history.present;
+  const editing = masters.find((master) => master.id === state.activePageId);
+  const parentId = args.parentId === undefined ? (editing?.id ?? null) : args.parentId;
+  if (parentId !== null && !masters.some((master) => master.id === parentId)) {
+    return fail(`找不到主頁「${parentId}」，請先用 list_pages 取得主頁 id`);
+  }
+  const name = args.name ?? nextMasterName(masters);
+  const error = addMasterError(name, parentId, masters);
+  if (error) return fail(error);
+  // 尺寸和目前的頁面一樣（頁面設定一次改所有頁面與主頁）
+  const size = pages.find((page) => page.id === state.activePageId) ?? editing ?? pages[0];
+  const master = createMasterPage(name.trim(), size, args.background ?? "#ffffff", parentId);
+  if (!apply({ type: "master/add", master })) return fail("App 沒有新增主頁");
+  return ok({ id: master.id, name: master.name, parentId, activePageId: master.id });
+}
+
+/** Tool `set_page_master`. */
+export function setPageMaster(state: EditorState, apply: ApplyAction, args: ToolArgs<"set_page_master">) {
+  const { masters, pages } = state.history.present;
+  const pageIds = [...new Set(args.pageIds)];
+  const unknown = pageIds.filter((id) => !pages.some((page) => page.id === id));
+  if (unknown.length > 0) {
+    const isMaster = unknown.some((id) => masters.some((master) => master.id === id));
+    const hint = isMaster ? "主頁不能套用主頁（要讓主頁以另一個主頁為基礎，請在 App 的「頁面」面板設定）" : "請先用 list_pages 取得頁面 id";
+    return fail(`找不到頁面「${unknown.join("、")}」：${hint}`);
+  }
+  if (args.masterId !== null && !masters.some((master) => master.id === args.masterId)) {
+    return fail(`找不到主頁「${args.masterId}」，請先用 list_pages 取得主頁 id`);
+  }
+  const next = apply({ type: "page/setMaster", ids: pageIds, masterId: args.masterId });
+  return ok({ pageIds, masterId: args.masterId, changed: next !== null });
 }
 
 /** Tool `rename_page`. */
