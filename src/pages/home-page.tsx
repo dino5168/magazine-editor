@@ -54,6 +54,7 @@ import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
 import { LibraryDialogProvider, useLibraryDialog } from "@/components/library/library-dialog";
+import { McpBridge } from "@/components/app/mcp-bridge";
 import { LibraryProvider } from "@/lib/library/library-context";
 import { useLibraryImport } from "@/lib/library/use-library-import";
 import { useProjectCommands } from "@/lib/project/use-project-commands";
@@ -180,6 +181,7 @@ function EditorLayout() {
         />
       </div>
       <EditorPageBar />
+      <McpBridge />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
       {newDocumentDialog}

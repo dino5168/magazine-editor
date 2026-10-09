@@ -10,6 +10,8 @@
 
 ## 目前階段
 
+- **軟體增加 MCP Server(2026-10-09,步驟 3/6 完成:自動化指令層的工具定義與四個查詢、App 端 named pipe ↔ 前端通道、橋接程式 `magazine-mcp.exe`(rmcp =3.5.1)與 `.mcp.json`;已用 PowerShell 以 stdio 跑通整條鏈路,Claude Code 本身的實測待使用者做;未 commit)**:任務檔 `docs/01-Plans-2026-10/07-軟體增加McpServer.md`(不 commit),計畫 `docs/01-Plans-2026-10/07-軟體增加McpServer-實作.md` 與流程圖 `Claude-McpServer-System.html`(要 commit)。Claude Code 以 stdio 啟動橋接程式 `magazine-mcp.exe`(Rust + `rmcp`),經 named pipe 轉給開著的 App,由前端的自動化指令層(zod 驗證)執行。使用者確認:「系統命令」= App 選單指令 + 編輯;MCP 預設關、偏好設定開;AI 修改直接套用、一次呼叫一筆復原;加入 zod 4。第一階段六個步驟。取代 `docs/01-Plans/eval-mcp-server.md` 的「HTTP 內嵌」建議。
+
 - **工具面板停靠區改成 Tabs(2026-10-09,五個步驟全部完成,commit `b79ede6`,已推送;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區.md`(不 commit),計畫 `docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區-實作.md`(要 commit)。參考 Affinity:一側由上到下好幾個群組,每組一排頁籤。使用者確認:多組堆疊;舊版面(v2)改用新預設、只留寬度;背景頁籤卸載;頁籤放不下時水平捲動;新預設 = 左 [範本 文字 相片 元素 素材 背景] / [頁面]、右 [屬性] / [圖層]。
   - 步驟 1(完成):`lib/dock` 的群組模型、純函式與測試、storage v3;UI 暫時每組只畫目前頁籤(還沒有頁籤列)。vitest 467 個。
   - 步驟 2(完成):頁籤列(`DockPanelGroup`:收合、切換、關閉、只掛目前頁籤),選單打開 / 關閉 / 重設照常。無頭 Edge 19 項。拖曳頁籤目前只能另成一組(併入別組在步驟 3)。

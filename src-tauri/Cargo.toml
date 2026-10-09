@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# 另有 src/bin/magazine-mcp.rs（MCP 橋接程式）；沒有這行 `tauri dev` / `cargo run` 不知道要跑哪一個
+default-run = "magazine-editor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -35,6 +37,10 @@ typst-layout = "=0.15.1"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
 # 素材縮圖。typst 已經依賴同一版（同樣的 jpeg / png / gif / webp），不會多編一份
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+# MCP 的 named pipe 與逾時。tauri 本來就用 tokio 當 async runtime，這裡只是直接引用、打開需要的 feature
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "macros", "rt"] }
+# 官方 MCP Rust SDK，只有橋接程式 magazine-mcp.exe 用。API 每個大版本都變，鎖定 `=`（比照 typst）
+rmcp = { version = "=3.5.1", default-features = false, features = ["server", "transport-io"] }
 
 [dev-dependencies]
 roxmltree = "0.21"

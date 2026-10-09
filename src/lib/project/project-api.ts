@@ -75,7 +75,16 @@ export const projectApi = {
   chooseExportPath: (suggestedName: string) => call<string | null>("export_pdf_choose_path", { suggestedName }),
   exportPdf: (request: ExportRequest) => call<ExportResult>("export_pdf", { request }),
   openLastExport: () => call<null>("export_open_last"),
+  /** Starts / stops listening for the MCP bridge (`magazine-mcp.exe`). */
+  mcpSetEnabled: (enabled: boolean) => call<null>("mcp_set_enabled", { enabled }),
+  /** Answers the MCP tool call `id` from the `mcp://request` event. */
+  mcpRespond: (id: number, response: McpToolResponse) => call<null>("mcp_respond", { id, response }),
 };
+
+/** `ToolResponse` in Rust `mcp/protocol.rs`; `error` is Chinese and meant for the model. */
+export type McpToolResponse =
+  | { readonly status: "ok"; readonly data: unknown }
+  | { readonly status: "error"; readonly error: string };
 
 /**
  * Returns a user-facing message for a failed project command.

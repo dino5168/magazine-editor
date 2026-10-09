@@ -2,6 +2,8 @@ mod commands;
 mod db;
 mod error;
 mod export;
+// 橋接程式 magazine-mcp.exe 用到其中的 pipe 用戶端
+pub mod mcp;
 mod project;
 
 use std::sync::Mutex;
@@ -27,6 +29,7 @@ pub fn run() {
             app.manage(db::DbState(Mutex::new(conn)));
             app.manage(project::ProjectState::default());
             app.manage(commands::export::ExportState::default());
+            app.manage(mcp::McpState::default());
             commands::project::clear_untitled(app.handle());
             Ok(())
         })
@@ -51,6 +54,8 @@ pub fn run() {
             commands::export::export_pdf_choose_path,
             commands::export::export_pdf,
             commands::export::export_open_last,
+            commands::mcp::mcp_set_enabled,
+            commands::mcp::mcp_respond,
         ])
         // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
         .on_window_event(|window, event| {

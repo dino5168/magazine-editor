@@ -2,3 +2,5 @@
 *.png binary
 *.ico binary
 *.icns binary
+# vitest 的 toMatchFileSnapshot 逐字比對，checkout 成 CRLF 會失敗
+src-tauri/mcp-tools.json text eol=lf

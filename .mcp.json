@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "magazine-editor": {
+      "type": "stdio",
+      "command": "src-tauri/target/debug/magazine-mcp.exe",
+      "args": []
+    }
+  }
+}
