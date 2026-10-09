@@ -29,6 +29,7 @@ export const SETTINGS_PAGES = [
   { id: "pageSetup", label: "頁面設定...", group: "document" },
   { id: "pageNumbers", label: "頁碼管理...", group: "document" },
   { id: "grid", label: "格線與參考線...", group: "app", shortcut: { ctrl: true, code: "Comma", keyLabel: "," } },
+  { id: "mcp", label: "Claude Code 連線（MCP）...", group: "app" },
 ] as const satisfies readonly SettingsPageDefinition[];
 
 export type SettingsPage = (typeof SETTINGS_PAGES)[number];

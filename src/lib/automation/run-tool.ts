@@ -4,12 +4,28 @@
 import { z } from "zod";
 import type { EditorState } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
+import { listCommands, runCommand, type CommandAccess } from "./commands";
+import {
+  addPage,
+  addShape,
+  addText,
+  deleteElements,
+  renameDocument,
+  renamePage,
+  setPageBackground,
+  stepHistory,
+  updateElement,
+  type ApplyAction,
+} from "./edits";
 import { getDocumentSummary, getElement, listElements, listPages } from "./queries";
 import { TOOL_DEFINITIONS, isToolName, type ToolArgs, type ToolName } from "./tool-definitions";
 
-/** What a tool can see; grows with the editing / command tools (later steps). */
+/** What a tool can see and do. */
 export interface ToolContext {
   readonly state: EditorState;
+  readonly commands: CommandAccess;
+  /** Dispatches one action (= one undo step) and reports the resulting state. */
+  readonly apply: ApplyAction;
 }
 
 type ToolHandlers = { readonly [Name in ToolName]: (args: ToolArgs<Name>, context: ToolContext) => Result<unknown> };
@@ -23,6 +39,18 @@ const HANDLERS: ToolHandlers = {
   list_pages: (_args, { state }) => ok(listPages(state)),
   list_elements: ({ pageId }, { state }) => listElements(state, pageId),
   get_element: ({ id }, { state }) => getElement(state, id),
+  list_commands: (_args, { commands }) => ok(listCommands(commands)),
+  run_command: ({ id }, { commands }) => runCommand(commands, id),
+  add_text: (args, { state, apply }) => addText(state, apply, args),
+  add_shape: (args, { state, apply }) => addShape(state, apply, args),
+  update_element: (args, { state, apply }) => updateElement(state, apply, args),
+  delete_elements: (args, { state, apply }) => deleteElements(state, apply, args),
+  add_page: (args, { state, apply }) => addPage(state, apply, args),
+  rename_page: (args, { state, apply }) => renamePage(state, apply, args),
+  set_page_background: (args, { state, apply }) => setPageBackground(state, apply, args),
+  rename_document: (args, { apply }) => renameDocument(apply, args),
+  undo: (_args, { apply }) => stepHistory(apply, "undo"),
+  redo: (_args, { apply }) => stepHistory(apply, "redo"),
 };
 
 const localeError = z.locales.zhTW().localeError;

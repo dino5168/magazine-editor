@@ -162,7 +162,11 @@ function EditorLayout() {
           {...dockProps}
         />
         <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
-          <EditorTopBar onExportPdf={() => void project.exportPdf()} onOpenGridSettings={() => setOpenSettings("grid")} />
+          <EditorTopBar
+            onExportPdf={() => void project.exportPdf()}
+            onOpenGridSettings={() => setOpenSettings("grid")}
+            onOpenMcpSettings={() => setOpenSettings("mcp")}
+          />
           {/* 底部工具列疊在畫布上，不佔版面（畫布尺寸不受影響）；bottom 留出水平捲軸的高度 */}
           <div className="relative flex min-h-0 flex-1 flex-col">
             <EditorCanvas />
@@ -181,7 +185,7 @@ function EditorLayout() {
         />
       </div>
       <EditorPageBar />
-      <McpBridge />
+      <McpBridge handlers={menuHandlers} isChecked={isChecked} />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
       {newDocumentDialog}

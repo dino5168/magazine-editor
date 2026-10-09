@@ -5,6 +5,20 @@
  * 橋接程式內嵌）與執行時驗證（`run-tool.ts`）。說明是寫給 AI 看的，要講清楚單位與限制。
  */
 import { z } from "zod";
+import { ADD_PAGES_MAX } from "@/lib/editor/add-pages";
+import type { ShapeKind } from "@/lib/editor/element-factory";
+import { FONT_OPTIONS } from "@/lib/editor/fonts";
+import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
+import {
+  DOCUMENT_NAME_MAX_LENGTH,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  PAGE_NAME_MAX_LENGTH,
+  STROKE_WIDTH_MAX,
+  STROKE_WIDTH_MIN,
+  TEXT_SHADOW_OFFSET_MAX,
+} from "@/lib/editor/validation";
+import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
 
 export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
   /** Short Chinese name shown by MCP clients. */
@@ -19,6 +33,63 @@ export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
 
 const pageId = z.string().min(1).describe("頁面或主頁的 id（由 list_pages 取得）");
 const elementId = z.string().min(1).describe("物件 id（由 list_elements 取得）");
+
+/** Furthest an element may be placed or sized by a tool (pt, about 3.5 m); keeps typos out. */
+export const COORDINATE_LIMIT_PT = 10000;
+/** Longest text a tool may write into one element (characters). */
+export const TEXT_MAX_LENGTH = 10000;
+
+// 和 validation.ts 的 isElementColor / isHexColor 同規則；寫成 regex 才會出現在 JSON Schema 的 pattern
+const elementColor = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/, "顏色必須是 #rrggbb 或 #rrggbbaa（aa 是不透明度）")
+  .describe("#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）");
+const pageColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "頁面背景必須是 #rrggbb（不能透明）").describe("#rrggbb");
+const coordinate = z.number().min(-COORDINATE_LIMIT_PT).max(COORDINATE_LIMIT_PT);
+const length = z.number().min(MIN_ELEMENT_SIZE_PT).max(COORDINATE_LIMIT_PT);
+const rotation = z.number().min(-360).max(360).describe("旋轉角度（度，順時針，繞外框左上角）");
+
+/** Font names a tool accepts (the property panel's 字體 menu); mapped to CSS families in `edits.ts`. */
+export const FONT_NAMES = FONT_OPTIONS.map((option) => option.label) as [string, ...string[]];
+
+export const SHAPE_KINDS = ["rect", "roundedRect", "ellipse", "triangle", "star"] as const satisfies readonly ShapeKind[];
+
+const textStyleShape = {
+  fontSize: z.number().min(FONT_SIZE_MIN).max(FONT_SIZE_MAX).describe("字級（pt）"),
+  font: z.enum(FONT_NAMES).describe("字體"),
+  bold: z.boolean(),
+  italic: z.boolean(),
+  underline: z.boolean(),
+  strikethrough: z.boolean(),
+  align: z.enum(["left", "center", "right"]),
+  textColor: elementColor.describe("文字顏色，#rrggbb 或 #rrggbbaa"),
+  shadow: z
+    .strictObject({
+      color: elementColor,
+      offsetX: z.number().min(-TEXT_SHADOW_OFFSET_MAX).max(TEXT_SHADOW_OFFSET_MAX),
+      offsetY: z.number().min(-TEXT_SHADOW_OFFSET_MAX).max(TEXT_SHADOW_OFFSET_MAX),
+    })
+    .nullable()
+    .describe("文字硬陰影（不模糊，偏移以頁面方向為準，pt）；null = 沒有陰影"),
+};
+
+/** Optional text style arguments (text elements, the text inside shapes). */
+export const textStyleInput = z.strictObject(textStyleShape).partial();
+export type TextStyleInput = z.output<typeof textStyleInput>;
+
+const stroke = z
+  .strictObject({
+    color: elementColor,
+    width: z.number().min(STROKE_WIDTH_MIN).max(STROKE_WIDTH_MAX).describe("線寬（pt），畫在外框線中心"),
+    dash: z.enum(["solid", "dashed", "dotted"]),
+  })
+  .nullable()
+  .describe("邊框；null = 沒有邊框");
+
+const verticalAlign = z.enum(["top", "middle", "bottom"]).describe("圖形內文字的垂直對齊");
+
+const STYLE_HELP =
+  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。";
 
 /** Every tool, keyed by its MCP name; `satisfies` keeps the literal schema types. */
 export const TOOL_DEFINITIONS = {
@@ -48,6 +119,121 @@ export const TOOL_DEFINITIONS = {
     description: "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。",
     input: z.strictObject({ id: elementId }),
     readOnly: true,
+  },
+  list_commands: {
+    title: "選單指令清單",
+    description:
+      "列出 App 選單列上的所有指令：id、名稱、在選單中的位置、快捷鍵、勾選項目（視圖、工具面板）目前是否勾選、能不能執行（不能時附原因，例如尚未實作）。",
+    input: z.strictObject({}),
+    readOnly: true,
+  },
+  run_command: {
+    title: "執行選單指令",
+    description:
+      "執行一個選單指令，效果和使用者點選單相同（例如 file.save 儲存、view.grid 切換格線、panel.layers 開關圖層面板）。勾選項目會切換並回傳切換後的狀態。會開對話框的指令（開啟、另存、匯出、設定…）只負責打開對話框，由使用者在 App 裡完成，工具不等待結果。不能執行的指令（尚未實作）回傳錯誤、不做任何事。先用 list_commands 查看。",
+    input: z.strictObject({
+      id: z.enum(COMMAND_IDS as [CommandId, ...CommandId[]]).describe("指令 id（由 list_commands 取得）"),
+    }),
+    readOnly: false,
+  },
+  add_text: {
+    title: "新增文字",
+    description: `在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。預設樣式：黑體 11 pt、靠左、#171717。${STYLE_HELP} 一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      pageId: pageId.optional(),
+      text: z.string().min(1).max(TEXT_MAX_LENGTH).describe("文字內容，\\n 換行"),
+      x: coordinate,
+      y: coordinate,
+      width: length.optional().describe("換行寬度（pt），預設 280"),
+      rotation: rotation.optional(),
+      ...textStyleInput.shape,
+    }),
+    readOnly: false,
+  },
+  add_shape: {
+    title: "新增圖形",
+    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} 省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      pageId: pageId.optional(),
+      shape: z.enum(SHAPE_KINDS),
+      x: coordinate,
+      y: coordinate,
+      width: length,
+      height: length,
+      rotation: rotation.optional(),
+      fill: elementColor.optional().describe("填色，#rrggbb 或 #rrggbbaa（#00000000 = 透明）"),
+      stroke: stroke.optional(),
+      text: z.string().min(1).max(TEXT_MAX_LENGTH).optional().describe("圖形內的文字，\\n 換行"),
+      verticalAlign: verticalAlign.optional(),
+      ...textStyleInput.shape,
+    }),
+    readOnly: false,
+  },
+  update_element: {
+    title: "修改物件",
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      id: elementId,
+      x: coordinate.optional(),
+      y: coordinate.optional(),
+      width: length.optional(),
+      height: length.optional(),
+      rotation: rotation.optional(),
+      text: z.string().max(TEXT_MAX_LENGTH).optional().describe("文字內容；圖形的空字串 = 移除圖形內文字"),
+      fill: elementColor.optional().describe("圖形填色"),
+      stroke: stroke.optional(),
+      cornerRadius: z.number().min(0).max(COORDINATE_LIMIT_PT).optional().describe("矩形圓角（pt），超過短邊一半時取一半"),
+      verticalAlign: verticalAlign.optional(),
+      ...textStyleInput.shape,
+    }),
+    readOnly: false,
+  },
+  delete_elements: {
+    title: "刪除物件",
+    description: "刪除同一頁（或同一主頁）上的一個或多個物件，回傳刪除的數量。一次呼叫 = 一筆復原紀錄，使用者可以 Ctrl+Z 或呼叫 undo 復原。",
+    input: z.strictObject({ ids: z.array(elementId).min(1).max(500) }),
+    readOnly: false,
+  },
+  add_page: {
+    title: "新增頁面",
+    description: `新增空白頁面，回傳新頁面的 id，並切到第一個新頁面（和使用者在 App 裡新增頁面相同）。省略的欄位用 App 的預設：加在最後一頁之後、1 頁、套用最後一頁的主頁（沒有就不套用）。新頁面的尺寸和插入處旁邊的頁面相同，背景用主頁的背景。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      count: z.int().min(1).max(ADD_PAGES_MAX).optional().describe(`頁數，1–${ADD_PAGES_MAX}`),
+      pageNumber: z.int().min(1).optional().describe("插在第幾頁的前面或後面（1 起算），預設最後一頁"),
+      side: z.enum(["before", "after"]).optional().describe("插在 pageNumber 那一頁之前或之後，預設 after"),
+      masterId: z.string().min(1).nullable().optional().describe("套用的主頁 id；null = 不套用"),
+    }),
+    readOnly: false,
+  },
+  rename_page: {
+    title: "頁面改名",
+    description: `修改頁面或主頁的名稱（最多 ${PAGE_NAME_MAX_LENGTH} 字，前後空白會去掉）。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({ pageId, name: z.string().min(1).max(PAGE_NAME_MAX_LENGTH * 2) }),
+    readOnly: false,
+  },
+  set_page_background: {
+    title: "頁面背景色",
+    description: "設定頁面或主頁的背景色（#rrggbb，不能透明）。主頁的背景不會套到使用它的頁面上（每頁有自己的背景）。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({ pageId, color: pageColor }),
+    readOnly: false,
+  },
+  rename_document: {
+    title: "文件改名",
+    description: `修改文件名稱（最多 ${DOCUMENT_NAME_MAX_LENGTH} 字）。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({ name: z.string().min(1).max(DOCUMENT_NAME_MAX_LENGTH * 2) }),
+    readOnly: false,
+  },
+  undo: {
+    title: "復原",
+    description: "復原上一步，和使用者按 Ctrl+Z 相同：復原的是文件最近的一個變更，不論是 AI 還是使用者做的。沒有可以復原的步驟時回錯誤。",
+    input: z.strictObject({}),
+    readOnly: false,
+  },
+  redo: {
+    title: "重做",
+    description: "重做上一個被復原的步驟，和使用者按 Ctrl+Y 相同。沒有可以重做的步驟時回錯誤。",
+    input: z.strictObject({}),
+    readOnly: false,
   },
 } satisfies Record<string, ToolDefinition>;
 

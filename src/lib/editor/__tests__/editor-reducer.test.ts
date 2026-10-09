@@ -200,6 +200,62 @@ describe("editorReducer / elements", () => {
   });
 });
 
+describe("editorReducer / elements on another page (pageId)", () => {
+  function twoPages(): { state: EditorState; other: Page } {
+    const state = run(blankState(), { type: "page/add" });
+    const [first, other] = state.history.present.pages;
+    // page/add 會切到新頁；回到第 1 頁，第 2 頁是「別頁」
+    return { state: run(state, { type: "page/select", id: first.id }), other };
+  }
+
+  it("adds to another page without switching pages or selecting", () => {
+    const { state, other } = twoPages();
+    const selected = createShapeElement("rect", { x: 10, y: 10 });
+    const before = run(state, { type: "element/add", element: selected });
+    const element = createTextElement("body", { x: 100, y: 100 });
+    const next = run(before, { type: "element/add", element, pageId: other.id });
+
+    expect(next.activePageId).toBe(before.activePageId);
+    expect(next.selectedIds).toEqual([selected.id]);
+    expect(next.history.present.pages[1].elements).toEqual([element]);
+    expect(next.history.past).toHaveLength(before.history.past.length + 1);
+  });
+
+  it("selects the element when pageId is the active page", () => {
+    const { state } = twoPages();
+    const element = createTextElement("body", { x: 100, y: 100 });
+    const next = run(state, { type: "element/add", element, pageId: state.activePageId });
+    expect(next.selectedIds).toEqual([element.id]);
+  });
+
+  it("updates and deletes on another page, one undo step each", () => {
+    const { state, other } = twoPages();
+    const element = createShapeElement("ellipse", { x: 100, y: 100 });
+    const added = run(state, { type: "element/add", element, pageId: other.id });
+    const moved = run(added, { type: "element/update", id: element.id, patch: { x: 5 }, pageId: other.id });
+    expect(moved.history.present.pages[1].elements[0].x).toBe(5);
+    // 沒指定 pageId 時只找目前頁：別頁的物件不受影響
+    expect(run(moved, { type: "element/update", id: element.id, patch: { x: 9 } })).toBe(moved);
+
+    const deleted = run(moved, { type: "element/delete", ids: [element.id], pageId: other.id });
+    expect(deleted.history.present.pages[1].elements).toEqual([]);
+    expect(deleted.history.past).toHaveLength(added.history.past.length + 2);
+    expect(deleted.activePageId).toBe(state.activePageId);
+  });
+
+  it("works on master pages and ignores unknown pages", () => {
+    const master = createMasterPage("Master A", { width: 595, height: 842 }, "#ffffff", null);
+    const state = run(blankState(), { type: "master/add", master });
+    const back = run(state, { type: "page/select", id: state.history.present.pages[0].id });
+    const element = createTextElement("body", { x: 100, y: 100 });
+
+    const next = run(back, { type: "element/add", element, pageId: master.id });
+    expect(next.history.present.masters[0].elements).toEqual([element]);
+    expect(run(back, { type: "element/add", element, pageId: "nope" })).toBe(back);
+    expect(run(next, { type: "element/delete", ids: [element.id], pageId: "nope" })).toBe(next);
+  });
+});
+
 describe("editorReducer / duplicate", () => {
   it("inserts an offset copy right above the original, selects it and records history", () => {
     const below = createShapeElement("rect", { x: 100, y: 100 });

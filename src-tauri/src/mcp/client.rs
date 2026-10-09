@@ -15,7 +15,7 @@ const CALL_TIMEOUT: Duration = Duration::from_secs(40);
 const ERROR_PIPE_BUSY: i32 = 231;
 
 /// Message when the app is not listening (not running, or MCP not allowed in its preferences).
-pub const APP_NOT_RUNNING: &str = "連不到雜誌編輯軟體：請先開啟 App（並在偏好設定允許 Claude Code 連線），再試一次。";
+pub const APP_NOT_RUNNING: &str = "連不到雜誌編輯軟體：請先開啟 App，並在「設定 → 偏好設定 → Claude Code 連線（MCP）」允許連線，再試一次。";
 
 async fn connect(pipe: &str) -> io::Result<NamedPipeClient> {
     let mut attempts = 0;

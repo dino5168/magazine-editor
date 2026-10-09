@@ -2,24 +2,15 @@ import { describe, expect, it } from "vitest";
 import { createInitialState, editorReducer } from "@/lib/editor/editor-reducer";
 import type { EditorDocument } from "@/lib/editor/types";
 import { excerpt, TEXT_EXCERPT_LENGTH } from "../queries";
-import { runTool } from "../run-tool";
-import { TOOL_NAMES } from "../tool-definitions";
+import { TOOL_DEFINITIONS, TOOL_NAMES } from "../tool-definitions";
+import { toolSession } from "./tool-session";
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
 
 const document = (JSON.parse(fixtureJson) as { document: EditorDocument }).document;
 const state = createInitialState(document);
-
-function data(name: string, args?: unknown): any {
-  const result = runTool(name, args, { state });
-  expect(result.error).toBeNull();
-  return result.data;
-}
-
-function error(name: string, args?: unknown): string {
-  const result = runTool(name, args, { state });
-  expect(result.data).toBeNull();
-  return result.error!.message;
-}
+const session = toolSession(state);
+const data = session.ok;
+const error = session.error;
 
 describe("runTool: arguments", () => {
   it("rejects an unknown tool", () => {
@@ -62,8 +53,7 @@ describe("runTool: queries", () => {
       editorReducer(state, { type: "document/rename", name: "新名稱" }),
       { type: "page/select", id: "master-b" },
     );
-    const result = runTool("get_document", {}, { state: edited });
-    expect(result.data).toMatchObject({
+    expect(toolSession(edited).ok("get_document")).toMatchObject({
       name: "新名稱",
       unsavedChanges: true,
       activeSheet: { id: "master-b", kind: "master", index: null },
@@ -105,9 +95,12 @@ describe("runTool: queries", () => {
     expect(error("get_element", { id: "nope" })).toContain("list_elements");
   });
 
-  it("every tool is read-only so far and leaves the state untouched", () => {
-    for (const name of TOOL_NAMES) runTool(name, {}, { state });
-    expect(state.history.past).toHaveLength(0);
+  it("read-only tools leave the state untouched", () => {
+    const readOnly = TOOL_NAMES.filter((name) => TOOL_DEFINITIONS[name].readOnly);
+    expect(readOnly).toContain("get_document");
+    const readOnlySession = toolSession(state);
+    for (const name of readOnly) readOnlySession.call(name, {});
+    expect(readOnlySession.state).toBe(state);
   });
 });
 

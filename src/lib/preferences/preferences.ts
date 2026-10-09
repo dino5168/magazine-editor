@@ -42,6 +42,8 @@ export interface Preferences {
   readonly lineStyles: GuideLineStyles;
   /** Styles saved with「設為預設」; null = never saved, so「恢復預設」uses the factory styles. */
   readonly lineStyleDefaults: GuideLineStyles | null;
+  /** Let Claude Code read and edit the open document through MCP (`magazine-mcp.exe`); off by default. */
+  readonly mcpEnabled: boolean;
 }
 
 export type PageView = "single" | "spread";
@@ -69,6 +71,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showRulers: true,
   lineStyles: FACTORY_LINE_STYLES,
   lineStyleDefaults: null,
+  mcpEnabled: false,
 };
 
 const DASHES: readonly Stroke["dash"][] = ["solid", "dashed", "dotted"];
@@ -173,5 +176,7 @@ export function parsePreferences(value: unknown): Preferences {
     showRulers: parseBoolean(value.showRulers, fallback.showRulers),
     lineStyles: parseLineStyles(value.lineStyles, fallback.lineStyles),
     lineStyleDefaults: isRecord(value.lineStyleDefaults) ? parseLineStyles(value.lineStyleDefaults, FACTORY_LINE_STYLES) : null,
+    // 只有明確存成 true 才開：壞掉或缺少都當成關（外部程式能改文件，預設關）
+    mcpEnabled: value.mcpEnabled === true,
   };
 }

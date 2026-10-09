@@ -15,6 +15,7 @@ import { DOCUMENT_NAME_MAX_LENGTH } from "@/lib/editor/validation";
 import { ZOOM_STEP } from "@/lib/editor/viewport";
 import { IconButton } from "./icon-button";
 import { InlineNameInput } from "./inline-name-input";
+import { McpStatusButton } from "./mcp-status-button";
 import { ViewToggleButtons } from "./view-toggle-buttons";
 
 const ZOOM_PRESETS = [0.5, 1, 1.5, 2] as const;
@@ -23,6 +24,7 @@ interface EditorTopBarProps {
   readonly className?: string;
   readonly onExportPdf: () => void;
   readonly onOpenGridSettings: () => void;
+  readonly onOpenMcpSettings: () => void;
 }
 
 /**
@@ -33,11 +35,12 @@ interface EditorTopBarProps {
  *   props.className: Extra classes for grid placement.
  *   props.onExportPdf: Runs the "export PDF" command (same as the File menu).
  *   props.onOpenGridSettings: Opens the 格線與參考線 dialog.
+ *   props.onOpenMcpSettings: Opens the Claude Code 連線 dialog (from the MCP status icon).
  *
  * Returns:
  *   Header bar.
  */
-export function EditorTopBar({ className, onExportPdf, onOpenGridSettings }: EditorTopBarProps) {
+export function EditorTopBar({ className, onExportPdf, onOpenGridSettings, onOpenMcpSettings }: EditorTopBarProps) {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   const [renaming, setRenaming] = useState(false);
@@ -73,6 +76,7 @@ export function EditorTopBar({ className, onExportPdf, onOpenGridSettings }: Edi
       )}
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        <McpStatusButton onOpenSettings={onOpenMcpSettings} />
         <ViewToggleButtons onOpenGridSettings={onOpenGridSettings} />
         <Separator orientation="vertical" className="mx-2 h-6 @max-2xl:mx-0.5" />
         <IconButton label="縮小" onClick={() => dispatch({ type: "view/setZoom", zoom: zoom / ZOOM_STEP })}>

@@ -76,12 +76,18 @@ export interface ElementCopy {
   readonly newId: ElementId;
 }
 
+/**
+ * The `element/*` actions below work on the active page; `pageId` targets another page or master
+ * page instead (automation, MCP) without switching what the user is looking at. An unknown
+ * `pageId` is a no-op.
+ */
 export type EditorAction =
-  | { readonly type: "element/add"; readonly element: CanvasElement }
-  | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch }
+  /** Adds on top and selects it (only selects when it lands on the active page). */
+  | { readonly type: "element/add"; readonly element: CanvasElement; readonly pageId?: PageId }
+  | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch; readonly pageId?: PageId }
   /** Several elements in one undo step (moving a multi-selection); any invalid patch rejects them all. */
-  | { readonly type: "element/updateMany"; readonly patches: readonly ElementPatchEntry[] }
-  | { readonly type: "element/delete"; readonly ids: readonly ElementId[] }
+  | { readonly type: "element/updateMany"; readonly patches: readonly ElementPatchEntry[]; readonly pageId?: PageId }
+  | { readonly type: "element/delete"; readonly ids: readonly ElementId[]; readonly pageId?: PageId }
   /**
    * Drop across the spine: applies the moves (positions on the active page), shifts the elements by
    * `dx` into the facing page's coordinates and moves them on top of that page, which becomes the
@@ -282,6 +288,11 @@ function updateActivePage(state: EditorState, update: (sheet: Sheet) => Sheet): 
   return updateSheet(state, selectActivePage(state).id, update);
 }
 
+/** `pageId` when given (see `EditorAction`), else the active page. */
+function targetSheetId(state: EditorState, pageId: PageId | undefined): PageId {
+  return pageId ?? selectActivePage(state).id;
+}
+
 // 複本的名稱：原名加「複本」，超過長度上限時截斷原名
 function copyName(name: string): string {
   const suffix = " 複本";
@@ -341,11 +352,11 @@ function applyPatch(current: CanvasElement, patch: ElementPatch): CanvasElement 
   return changed ? ({ ...current, ...patch } as CanvasElement) : current;
 }
 
-function updateElements(state: EditorState, entries: readonly ElementPatchEntry[]): EditorState {
+function updateElements(state: EditorState, entries: readonly ElementPatchEntry[], pageId?: PageId): EditorState {
   if (!entries.every((entry) => isValidPatch(entry.patch))) return state;
   const patches = new Map(entries.map((entry) => [entry.id, entry.patch]));
   // 全部的變更放在同一次 commit：多選移動 = 一筆復原
-  return updateActivePage(state, (page) => {
+  return updateSheet(state, targetSheetId(state, pageId), (page) => {
     let changed = false;
     const elements = page.elements.map((element) => {
       const patch = patches.get(element.id);
@@ -363,17 +374,20 @@ function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
 
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/add": (state, action) => {
-    const next = updateActivePage(state, (page) => ({ ...page, elements: [...page.elements, action.element] }));
-    return { ...next, selectedIds: [action.element.id] };
+    const sheetId = targetSheetId(state, action.pageId);
+    const next = updateSheet(state, sheetId, (page) => ({ ...page, elements: [...page.elements, action.element] }));
+    if (next === state) return state;
+    // 選取只屬於目前頁：加到別頁時不動目前的選取
+    return sheetId === selectActivePage(state).id ? { ...next, selectedIds: [action.element.id] } : next;
   },
 
-  "element/update": (state, action) => updateElements(state, [{ id: action.id, patch: action.patch }]),
+  "element/update": (state, action) => updateElements(state, [{ id: action.id, patch: action.patch }], action.pageId),
 
-  "element/updateMany": (state, action) => updateElements(state, action.patches),
+  "element/updateMany": (state, action) => updateElements(state, action.patches, action.pageId),
 
   "element/delete": (state, action) => {
     const ids = new Set(action.ids);
-    const next = updateActivePage(state, (page) => {
+    const next = updateSheet(state, targetSheetId(state, action.pageId), (page) => {
       const elements = page.elements.filter((element) => !ids.has(element.id));
       return elements.length === page.elements.length ? page : { ...page, elements };
     });

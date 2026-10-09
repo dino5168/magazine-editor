@@ -166,7 +166,27 @@ export function findCommandByEvent(event: KeyboardEventLike): CommandId | null {
  *   A handler for every command.
  */
 export function createPlaceholderHandlers(notify: (title: string) => void): CommandHandlers {
-  const entries = COMMAND_IDS.map((id) => [id, () => notify(getCommandTitle(id))] as const);
+  const entries = COMMAND_IDS.map((id) => {
+    const handler = () => notify(getCommandTitle(id));
+    PLACEHOLDER_HANDLERS.add(handler);
+    return [id, handler] as const;
+  });
   // Object.fromEntries 無法保留 key 型別；entries 由 COMMAND_IDS 產生，涵蓋所有 CommandId
   return Object.fromEntries(entries) as CommandHandlers;
+}
+
+// 佔位 handler 本身做記號：覆寫成真正的實作後自然不在這裡（MCP 用來回報「尚未實作」）
+const PLACEHOLDER_HANDLERS = new WeakSet<() => void>();
+
+/**
+ * Whether a handler is still the placeholder from `createPlaceholderHandlers`.
+ *
+ * Args:
+ *   handler: A command handler.
+ *
+ * Returns:
+ *   True when running it would only report "not implemented".
+ */
+export function isPlaceholderHandler(handler: () => void): boolean {
+  return PLACEHOLDER_HANDLERS.has(handler);
 }

@@ -216,11 +216,25 @@ sequenceDiagram
 | `project/` | 專案檔 `project.magproj` 的格式定義與驗證、安全寫入(先寫暫存檔再取代)、圖片複製、備份檔 |
 | `export/` | 把文件轉成匯出用的資料,再產生 PDF(內嵌 Typst)或 EPUB(EPUB 還沒有按鈕) |
 | `db/` | SQLite 資料庫 `app.db`,目前記錄最近開啟的專案 |
+| `mcp/` + `bin/magazine-mcp.rs` | 讓 Claude Code 操作文件(MCP):橋接程式經 named pipe 把工具呼叫交給 App,見下一節 |
 
 兩個設計原則(06 詳細說明):
 
 - **前端不傳檔案路徑給 Rust。** 開啟 / 另存 / 匯出的對話框由 Rust 開,前端只說「存檔」,不說「存到哪裡」。
 - **檔案格式以 Rust 為準。** 讀檔和存檔時 Rust 都會檢查內容,外部檔案不可信任。
+
+### 外部操作:Claude Code(MCP)
+
+文件狀態在前端的 reducer,所以「外部程式改文件」最後也是 dispatch 一個 action,和按按鈕走同一條路:
+
+```
+Claude Code ─stdio─▶ magazine-mcp.exe ─named pipe─▶ Rust(src/mcp)─event─▶ 前端 lib/automation ─dispatch─▶ reducer
+```
+
+- 橋接程式是另一個 exe:主程式只能開一個(single-instance),而且要改的是使用者**眼前**這份文件。
+- `lib/automation/` 和 `lib/editor/` 一樣不含畫面:工具定義、參數驗證(zod)、把工具呼叫換成 action,都有測試。
+- 一次工具呼叫 = 一筆復原;預設關閉,在「設定 → 偏好設定 → Claude Code 連線」開啟。
+- 圖解:`docs/01-Plans-2026-10/Claude-McpServer-System.html`;規則:`CLAUDE.md` 的「MCP」一節。
 
 ---
 

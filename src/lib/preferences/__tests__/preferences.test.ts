@@ -39,6 +39,7 @@ const custom: Preferences = {
   showRulers: false,
   lineStyles: customStyles,
   lineStyleDefaults: { ...customStyles, margins: { color: "#000000", dash: "solid", width: 1 } },
+  mcpEnabled: true,
 };
 
 describe("parsePreferences", () => {
@@ -64,10 +65,19 @@ describe("parsePreferences", () => {
       showRulers: true,
       lineStyles: FACTORY_LINE_STYLES,
       lineStyleDefaults: null,
+      mcpEnabled: false,
     });
     expect(parsePreferences({ showPageNumbers: "no" }).showPageNumbers).toBe(true);
     expect(parsePreferences({ showPageNumbers: false }).showPageNumbers).toBe(false);
     expect(parsePreferences({ grid: 3 }).grid).toEqual(DEFAULT_PREFERENCES.grid);
+  });
+
+  it("keeps MCP off unless it was explicitly turned on", () => {
+    expect(DEFAULT_PREFERENCES.mcpEnabled).toBe(false);
+    expect(parsePreferences({}).mcpEnabled).toBe(false);
+    expect(parsePreferences({ mcpEnabled: "true" }).mcpEnabled).toBe(false);
+    expect(parsePreferences({ mcpEnabled: 1 }).mcpEnabled).toBe(false);
+    expect(parsePreferences({ mcpEnabled: true }).mcpEnabled).toBe(true);
   });
 
   it("reads the page view, falling back to single", () => {

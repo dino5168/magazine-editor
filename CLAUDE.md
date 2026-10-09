@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -25,6 +25,7 @@
 | 編輯畫布 | `konva` 10 · `react-konva` 19 · `use-image` |
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
+| 自動化 / MCP | `zod` 4（MCP 工具參數的 schema 與驗證，只用在 `src/lib/automation`）· Rust `rmcp` **`=3.5.1`**（官方 MCP SDK，只用在橋接程式 `magazine-mcp.exe`）· `tokio`（named pipe） |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版） |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
@@ -44,6 +45,10 @@ npm run tauri build    # 打包 Windows installer / .exe
 cargo check --manifest-path src-tauri/Cargo.toml    # Rust 型別檢查
 cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試
 npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（鎖定和 scaffold 相同的版本）
+
+# MCP：橋接程式（`tauri dev` 只編主程式，改了 Rust 或工具清單後要自己編）與工具清單
+cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp
+npx vitest run mcp-tools -u      # 改了 src/lib/automation/tool-definitions.ts 後更新 src-tauri/mcp-tools.json
 
 # 匯出 PDF 的疊圖比對：把每頁算成 PNG（2 px/pt）放到 <dir>，用來對照畫布
 $env:EXPORT_PREVIEW_DIR = "<dir>"
@@ -65,6 +70,7 @@ src/
     app/new-document-dialog.tsx   # 「檔案 → 新增」的「新增文件」對話框（useNewDocumentDialog：左紙張卡片、右 PageSetupFields，回傳 PageSetup | null）
     app/paper-preset-grid.tsx     # 紙張卡片（依 PAGE_SIZE_GROUPS 分組、依比例的外框、跟著直橫轉、radio group 方向鍵）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（未存檔、復原、新增文件三個對話框共用）
+    app/mcp-bridge.tsx            # McpBridge：不 render 的元件，依偏好開關執行 Claude Code 的 MCP 工具呼叫（見「MCP」）
     app/settings/                 # 設定對話框（設定 → 文件 ▸ / 偏好設定 ▸，每項一個對話框，見「設定對話框」）
       index.ts                    # SETTINGS_DIALOGS：SettingsPageId → 對話框元件（satisfies Record，缺項會編譯失敗）
       settings-dialog.tsx         # 共用外框 SettingsDialog（seeThrough：靠右、遮罩透明不模糊，即時預覽用）、頁尾 SettingsDialogFooter（取消 / 確定，左側可放 start）、SettingsDialogProps
@@ -73,6 +79,7 @@ src/
       page-setup-fields.tsx       # PageSetupFields：直橫 / 寬高 / 邊界 / 錯誤訊息（受控），頁面設定與新增文件共用
       grid-dialog.tsx             # 「格線與參考線」：格線（間距、吸附）/ 內容區對齊線 / 邊界參考線三區，各自的顯示開關與顏色・粗細・線型；即時預覽；恢復預設 / 設為預設 / 原廠設定（App 偏好）
       page-numbers-dialog.tsx     # 「頁碼管理」：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
+      mcp-dialog.tsx              # 「Claude Code 連線（MCP）」：允許連線開關（App 偏好，預設關）、目前狀態、Claude Code 端的設定說明
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     dock/                         # 工具面板（Affinity 式頁籤群組停靠）的 UI
       dock-area.tsx               # 一側的停靠區：群組上下堆疊、只掛每組目前頁籤的面板、群組之間的插入線、空白側的放置區
@@ -105,6 +112,7 @@ src/
       shape-options.ts            # 圖形清單（種類 / 名稱 / icon），元素面板與底部工具列共用
       number-field.tsx            # 屬性面板的數字欄位（Enter / 失焦才寫入、Esc 取消；可選的 − / ＋ 按鈕，每按一下寫入一次）
       editor-top-bar.tsx          # 系統控制項：文件名稱、格線開關（ViewToggleButtons）、縮放、匯出 PDF（復原 / 重做在底部動作列）；`@container`，窄時「匯出 PDF」只剩 icon
+      mcp-status-button.tsx       # TopBar 的 MCP 狀態圖示（開啟時才顯示；綠 / 黃 / 紅點，tooltip 是最近一次呼叫；按下開設定對話框）
       view-toggle-buttons.tsx     # TopBar 的格線 / 內容區對齊線 / 邊界參考線 / 吸附格線切換鈕（VIEW_TOGGLES）+ 間距 Popover（MmField、「更多設定...」）
       editor-page-bar.tsx         # draw.io 風格頁籤：新增（「+」開新增頁面對話框）/ 切換 / 雙擊改名 / 刪除（AlertDialog）/ 拖曳排序（插入線）、滾輪橫捲、`<` `>` 與頁碼輸入框（編輯主頁時顯示「–」）
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
@@ -156,6 +164,7 @@ src/
       dock-layout.ts              # DockLayout / DockGroup 型別與純函式（開關 / 切換頁籤 / 拖放（併入、另成一組）/ 收合 / 寬度）、parseDockLayout / parseDockWidths
       dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
       __tests__/
+    automation/                   # MCP 工具（見「MCP」）：tool-definitions.ts（工具名稱、說明、zod schema 的單一資料來源）、queries.ts（查詢）、commands.ts（選單指令）、edits.ts（編輯 → reducer action）、run-tool.ts（找工具 → 驗證 → 執行）、mcp-tools.ts（產生 MCP 工具清單）、mcp-status.ts（連線狀態 store）、use-mcp-bridge.ts（event ↔ runTool、開關 pipe）
     export/                       # 匯出 PDF 的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
       text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行、基線與每行寬度；measureLineWidth：單行寬度（頁碼外框）
@@ -198,10 +207,14 @@ src-tauri/
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）
   src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）
-  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、export.rs）
+  src/mcp/                        # MCP 的 App 端：protocol.rs（pipe 上的 ToolRequest / ToolResponse）、pipe.rs（named pipe server）、bridge.rs（McpState：開關 pipe、event 交給前端、等 mcp_respond）、client.rs（橋接程式用的 pipe 用戶端）
+  src/bin/magazine-mcp.rs         # MCP 橋接程式（Claude Code 以 stdio 啟動；rmcp；工具清單內嵌 mcp-tools.json）
+  mcp-tools.json                  # MCP 工具清單，由 vitest 從 tool-definitions.ts 產生，不要手改（.gitattributes 固定 LF）
+  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、export.rs、mcp.rs）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
+.mcp.json                         # Claude Code 的專案 MCP 設定：server「magazine-editor」→ src-tauri/target/debug/magazine-mcp.exe
 tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v7：文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture（兩層資料夾、未分類、文字、音訊、來自已刪除資料夾的垃圾桶素材）
@@ -247,6 +260,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **不進歷史的 UI 狀態**：`activePageId`（也可以是主頁的 id：正在編輯主頁）、`lastPageId`（最後顯示的頁面，「回到頁面」用；`editorReducer` 每次切到頁面時記下）、`selectedIds`（可多選，見「多選與框選」）、`view`（zoom / fitRequest）、`tool` / `shapeKind`（底部工具列的目前工具與圖形，定義在 `lib/editor/tools.ts`）、`savedDocument`（上次存檔的文件）。專案的素材（圖片、文字、音訊）不在這裡，在 `LibraryProvider`（見「素材管理」）。工具面板版面（`dockLayout`）放在 `home-page.tsx` 的 local state，並存進 `localStorage`（見「工具面板」）；格線等 App 偏好放在 `PreferencesProvider`（見「偏好設定」）。
 - `selectActivePage` 回傳 `Sheet`（頁面或主頁）：`element/*` 不分頁面或主頁，編輯主頁不需要另一套 action。`page/rename`、`page/setBackground` 也對兩者都有效。只需要頁面的地方（頁序、頁碼）自己查 `pages`。
 - 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。`element/moveToPage { moves, pageId, dx }`：拖過書背放下時，一筆復原裡改位置、換到對頁座標、搬到對頁最上層並切頁選取（見「單頁 / 雙頁」）。
+- `element/add` / `update` / `updateMany` / `delete` 可帶 `pageId`：改那一頁（或主頁）而不切換使用者正在看的頁面（MCP 用）；加到別頁時不改選取；未知的 `pageId` 是 no-op。不帶時照舊作用在目前頁。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
 - 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面與主頁 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
@@ -302,7 +316,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 計畫與決定：`docs/Plans/imp-偏好設定調整.html`。
 
-- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
+- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,；Claude Code 連線（MCP）...）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
 - **單一資料來源**是 `SETTINGS_PAGES`（id / label / group / 可選的 shortcut）與 `SETTINGS_GROUPS`（子選單順序與名稱）：指令 `settings.<id>`（`settingsCommandId`，同 `panelCommandId` 的做法）、子選單、`home-page.tsx` 的 handler 與對話框都由它推導；`SETTINGS_DIALOGS`（`components/app/settings/index.ts`）以 `satisfies Record<SettingsPageId, …>` 檢查完整性。
 - 頁面設定的直橫 / 寬高 / 邊界欄位是 `page-setup-fields.tsx` 的 `PageSetupFields`（受控，紙張下拉與「尺寸不一致」提示由呼叫端以 `paperPicker` / `sizeNote` 傳入），「新增文件」對話框也用它。`SettingsDialogFooter` 的 `applyLabel` 可以把「確定」換成別的字（新增文件是「建立」）。
 - **新增設定頁**：在 `SETTINGS_PAGES` 加一筆 → 寫一個 `({ open, onOpenChange }: SettingsDialogProps)` 對話框（外框用 `SettingsDialog`、頁尾用 `SettingsDialogFooter`）→ 登記到 `SETTINGS_DIALOGS`（漏了會編譯失敗）。要放到新的子選單就加一個 group。
@@ -593,6 +607,26 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；內嵌字型沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
 - **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
 
+## MCP（Claude Code 連線）（`lib/automation` + `src-tauri/src/mcp` + `src/bin/magazine-mcp.rs`）
+
+計畫與每一步的決定：`docs/01-Plans-2026-10/07-軟體增加McpServer-實作.md`；流程圖 `docs/01-Plans-2026-10/Claude-McpServer-System.html`。（取代 `docs/01-Plans/eval-mcp-server.md` 的「App 內嵌 HTTP」建議。）
+
+- **流程**：Claude Code 以 **stdio** 啟動橋接程式 `magazine-mcp.exe` → 每次工具呼叫連一次 named pipe `\\.\pipe\magazine-editor-mcp-<USERNAME>`（一行一個 JSON）→ App 的 Rust 端以 event `mcp://request` 交給前端 → `runTool` 執行 → `mcp_respond` 送回。
+  - **為什麼要橋接程式**：single-instance 讓 Claude Code 不能啟動第二個主程式；文件狀態在前端 reducer；主程式 release 是 GUI subsystem。橋接程式只處理 MCP 協定（`rmcp`），不碰文件。
+  - 橋接程式每次呼叫才連 pipe：App 重開不必重新連 Claude Code；App 沒開 / 沒開放時回 `isError` 的中文說明（`client.rs` 的 `APP_NOT_RUNNING`），不是協定錯誤。
+  - stdout 是 MCP 通道，橋接程式**不可 `println!`**。
+- **開關**：App 偏好 `Preferences.mcpEnabled`（**預設關**，只有存成 `true` 才開），「設定 → 偏好設定 → Claude Code 連線（MCP）...」（`settings.mcp`）切換、「確定」才生效。關閉時 Rust 不開 pipe（`McpState::set_enabled` abort server task）；已連上的呼叫由前端回「已關閉」。開啟時 TopBar 顯示狀態圖示（`mcp-status-button.tsx`）。瀏覽器模式（`npm run dev`）沒有 MCP。
+  - pipe 只在前端 listener 註冊好之後才開（`use-mcp-bridge.ts`），不會有沒人接的請求；Rust 端等前端 30 秒、橋接程式等 40 秒。
+- **工具是單一資料來源**：`lib/automation/tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、寫給 AI 看的中文說明、zod strict schema、`readOnly`）。`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作會編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 的 `toMatchFileSnapshot` 產生並比對，橋接程式 `include_str!` 內嵌（App 沒開時 Claude Code 仍看得到工具）。
+  - **新增工具**：在 `TOOL_DEFINITIONS` 加一筆 → 在 `HANDLERS` 實作（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，寫測試，用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp`。
+  - 參數驗證失敗回中文訊息（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex（和 `isElementColor` / `isHexColor` 同規則）才會出現在 JSON Schema；不用 ajv（`new Function` 會被 CSP 擋）。
+- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`。
+  - `run_command` 和點選單呼叫**同一個 handler**（`home-page.tsx` 的 `menuHandlers` 傳給 `McpBridge`）；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」且不執行（不會跳 toast）。會開對話框的指令只觸發，不等結果。
+  - 編輯：**一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外：和 UI 一樣切到新頁）。`update_element` 依物件類型檢查欄位（文字沒有 height、文字顏色是 `textColor`、圖片只能改位置尺寸）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。
+  - `ToolContext.apply`：先用純 reducer 算出結果（回報有沒有變更），再 dispatch 同一個 action，**並先把結果記在 ref**：「新增後立刻修改」的第二個呼叫可能比 React 重畫早到。
+- **安全**：只接受本機（`reject_remote_clients`）、目前 Windows 帳號（pipe 名稱）、第一個 instance（`first_pipe_instance`，不會兩個 App 搶同一條）；沒有工具接受檔案路徑（沿用「外部不傳路徑」）；存檔、匯出、開啟都要使用者在 App 的對話框確認。token、權限分級、操作日誌留到第三階段。
+- **開發**：`tauri dev` 只編主程式，改了 Rust 或工具清單要 `cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp`；`.mcp.json` 第一次要在 Claude Code `/mcp` 核准。橋接程式還沒打包進安裝檔（第三階段：`bundle.externalBin`）。
+
 ## Rust ↔ Frontend IPC
 
 - 資料庫路徑：`%APPDATA%\com.mycompany.magazineeditor\app.db`（`app_data_dir()`；安裝在 Program Files 時 exe 目錄不可寫）。
@@ -602,7 +636,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 

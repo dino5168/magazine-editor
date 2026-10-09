@@ -87,7 +87,14 @@ describe("menu structure", () => {
         { kind: "item", command: "settings.pageNumbers" },
       ],
     });
-    expect(preferences).toEqual({ kind: "submenu", label: "偏好設定", children: [{ kind: "item", command: "settings.grid" }] });
+    expect(preferences).toEqual({
+      kind: "submenu",
+      label: "偏好設定",
+      children: [
+        { kind: "item", command: "settings.grid" },
+        { kind: "item", command: "settings.mcp" },
+      ],
+    });
     // 每個設定頁都有指令，指令名稱就是選單文字
     for (const page of SETTINGS_PAGES) expect(getCommand(settingsCommandId(page.id)).label).toBe(page.label);
     expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
