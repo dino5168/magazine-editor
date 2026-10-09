@@ -106,7 +106,7 @@ interface AppMenubarProps {
 }
 
 /**
- * Application menu bar (File / Settings) rendered below the native title bar.
+ * Application menu bar (File / Settings / View / Tool panels) rendered below the native title bar.
  *
  * Args:
  *   props.handlers: Command handlers invoked by menu items and shortcuts.
@@ -117,7 +117,7 @@ interface AppMenubarProps {
  *   Menubar with Alt+letter mnemonics and global shortcuts.
  */
 export function AppMenubar({ handlers, isChecked, className }: AppMenubarProps) {
-  // 受控 value 讓 Alt+F / Alt+S 能以程式開啟選單（Radix Menubar 不支援助記鍵）。
+  // 受控 value 讓 Alt+F / Alt+S / Alt+V / Alt+P 能以程式開啟選單（Radix Menubar 不支援助記鍵）。
   // 焦點不需自行處理：Alt+F 是真實 keydown，Radix Menu 會標記為鍵盤操作，開啟時自動聚焦第一個項目
   const [openMenu, setOpenMenu] = useState("");
   useMenuShortcuts({ handlers, onOpenMenu: setOpenMenu });

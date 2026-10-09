@@ -48,16 +48,31 @@ describe("menu structure", () => {
     expect(shortcuts.filter((s) => EDITOR_SHORTCUTS.includes(s))).toEqual([]);
   });
 
-  it("lists every tool panel as a checkbox under 設定 → 工具面板, then 重設版面", () => {
-    const settings = MENUS.find((menu) => menu.id === "settings")!;
-    const submenu = settings.items.find((node) => node.kind === "submenu" && node.label === "工具面板");
+  it("orders the menus 檔案、設定、視圖、工具面板", () => {
+    expect(MENUS.map((menu) => menu.id)).toEqual(["file", "settings", "view", "panels"]);
+    expect(MENUS.map((menu) => menu.label)).toEqual(["檔案", "設定", "視圖", "工具面板"]);
+  });
 
-    expect(submenu?.kind === "submenu" && submenu.children).toEqual([
+  it("lists every tool panel as a checkbox in the 工具面板 menu, then 重設版面", () => {
+    const panels = MENUS.find((menu) => menu.id === "panels")!;
+
+    expect(panels.items).toEqual([
       ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) })),
       { kind: "separator" },
       { kind: "item", command: "panel.resetLayout" },
     ]);
     expect(getCommandTitle(panelCommandId("layers"))).toBe("工具面板：圖層");
+  });
+
+  it("keeps 設定 to 文件 ▸, 偏好設定 ▸ and 外觀 ▸ (工具面板 moved to the menu bar)", () => {
+    const settings = MENUS.find((menu) => menu.id === "settings")!;
+
+    expect(settings.items.map((node) => (node.kind === "submenu" ? node.label : node.kind))).toEqual([
+      "文件",
+      "偏好設定",
+      "separator",
+      "外觀",
+    ]);
   });
 
   it("opens with 設定 → 文件 ▸ and 偏好設定 ▸, built from the settings page list", () => {
@@ -78,8 +93,7 @@ describe("menu structure", () => {
     expect(getCommandTitle("settings.grid")).toBe("格線與參考線");
   });
 
-  it("puts 視圖 between 檔案 and 設定: 尺規, then 格線 / 內容區對齊線 / 邊界參考線 / 吸附格線 as checkboxes", () => {
-    expect(MENUS.map((menu) => menu.id)).toEqual(["file", "view", "settings"]);
+  it("lists 尺規, then 格線 / 內容區對齊線 / 邊界參考線 / 吸附格線 as checkboxes under 視圖", () => {
     const view = MENUS.find((menu) => menu.id === "view")!;
 
     expect(view.items).toEqual([
@@ -128,6 +142,7 @@ describe("findMenuByMnemonic", () => {
     expect(findMenuByMnemonic(key("KeyF", { altKey: true }))).toBe("file");
     expect(findMenuByMnemonic(key("KeyS", { altKey: true }))).toBe("settings");
     expect(findMenuByMnemonic(key("KeyV", { altKey: true }))).toBe("view");
+    expect(findMenuByMnemonic(key("KeyP", { altKey: true }))).toBe("panels");
     expect(findMenuByMnemonic(key("KeyF", { altKey: true, ctrlKey: true }))).toBeNull();
     expect(findMenuByMnemonic(key("KeyF"))).toBeNull();
   });

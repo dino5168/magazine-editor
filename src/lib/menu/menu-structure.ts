@@ -56,20 +56,6 @@ export const MENUS = [
     ],
   },
   {
-    id: "view",
-    label: "視圖",
-    mnemonic: { code: "KeyV", letter: "V" },
-    // 畫面上的輔助顯示（存在這台電腦的偏好，不進復原歷史）；開關的讀寫在 VIEW_TOGGLES
-    items: [
-      { kind: "checkbox", command: viewCommandId("rulers") },
-      separator,
-      { kind: "checkbox", command: viewCommandId("grid") },
-      { kind: "checkbox", command: viewCommandId("contentGuides") },
-      { kind: "checkbox", command: viewCommandId("margins") },
-      { kind: "checkbox", command: viewCommandId("snap") },
-    ],
-  },
-  {
     id: "settings",
     label: "設定",
     mnemonic: { code: "KeyS", letter: "S" },
@@ -86,15 +72,6 @@ export const MENUS = [
       separator,
       {
         kind: "submenu",
-        label: "工具面板",
-        children: [
-          ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) }) as const),
-          separator,
-          { kind: "item", command: "panel.resetLayout" },
-        ],
-      },
-      {
-        kind: "submenu",
         label: "外觀",
         children: [
           {
@@ -105,6 +82,31 @@ export const MENUS = [
           },
         ],
       },
+    ],
+  },
+  {
+    id: "view",
+    label: "視圖",
+    mnemonic: { code: "KeyV", letter: "V" },
+    // 畫面上的輔助顯示（存在這台電腦的偏好，不進復原歷史）；開關的讀寫在 VIEW_TOGGLES
+    items: [
+      { kind: "checkbox", command: viewCommandId("rulers") },
+      separator,
+      { kind: "checkbox", command: viewCommandId("grid") },
+      { kind: "checkbox", command: viewCommandId("contentGuides") },
+      { kind: "checkbox", command: viewCommandId("margins") },
+      { kind: "checkbox", command: viewCommandId("snap") },
+    ],
+  },
+  {
+    id: "panels",
+    label: "工具面板",
+    mnemonic: { code: "KeyP", letter: "P" },
+    // 每個面板一個勾選項目（由面板定義產生），版面存在這台電腦的偏好
+    items: [
+      ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) }) as const),
+      separator,
+      { kind: "item", command: "panel.resetLayout" },
     ],
   },
 ] as const satisfies readonly MenuDefinition[];
