@@ -2,33 +2,41 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_DOCK_LAYOUT,
   DOCK_WIDTH,
+  activatePanel,
   closePanel,
+  dropMovesPanel,
   dropPanel,
   findPanel,
   insertionSlot,
   isPanelVisible,
-  movePanel,
   parseDockLayout,
+  parseDockWidths,
   resizeDockWidth,
   setDockWidth,
   toggleCollapsed,
   togglePanel,
   type DockLayout,
+  type DockSide,
 } from "../dock-layout";
 import { PANEL_IDS, getPanelLabel, isPanelId } from "../panels";
 
+// 左：[templates* text photos] / [pages]；右：[layers]（* = 目前頁籤）
 const layout: DockLayout = {
   left: [
-    { id: "templates", collapsed: false },
-    { id: "text", collapsed: true },
-    { id: "photos", collapsed: false },
+    { panels: ["templates", "text", "photos"], active: "templates", collapsed: false },
+    { panels: ["pages"], active: "pages", collapsed: true },
   ],
-  right: [{ id: "layers", collapsed: false }],
+  right: [{ panels: ["layers"], active: "layers", collapsed: false }],
   width: { left: 300, right: 280 },
 };
 
-function ids(dock: DockLayout, side: "left" | "right") {
-  return dock[side].map((panel) => panel.id);
+/** Groups of one side as tab lists. */
+function tabs(dock: DockLayout, side: DockSide) {
+  return dock[side].map((group) => group.panels);
+}
+
+function actives(dock: DockLayout, side: DockSide) {
+  return dock[side].map((group) => group.active);
 }
 
 describe("panels", () => {
@@ -44,105 +52,226 @@ describe("panels", () => {
   });
 });
 
+describe("DEFAULT_DOCK_LAYOUT", () => {
+  it("shows content panels as tabs on the left, then 頁面; 屬性 and 圖層 as two groups on the right", () => {
+    expect(tabs(DEFAULT_DOCK_LAYOUT, "left")).toEqual([
+      ["templates", "text", "photos", "elements", "upload", "background"],
+      ["pages"],
+    ]);
+    expect(tabs(DEFAULT_DOCK_LAYOUT, "right")).toEqual([["properties"], ["layers"]]);
+    expect(actives(DEFAULT_DOCK_LAYOUT, "left")).toEqual(["templates", "pages"]);
+    expect(isPanelVisible(DEFAULT_DOCK_LAYOUT, "draw")).toBe(false);
+    // 預設版面本身就是合法的版面
+    expect(parseDockLayout(JSON.parse(JSON.stringify(DEFAULT_DOCK_LAYOUT)))).toEqual(DEFAULT_DOCK_LAYOUT);
+  });
+});
+
 describe("findPanel / isPanelVisible", () => {
-  it("locates docked panels", () => {
-    expect(findPanel(layout, "text")).toEqual({ side: "left", index: 1 });
-    expect(findPanel(layout, "layers")).toEqual({ side: "right", index: 0 });
+  it("locates docked panels, including background tabs", () => {
+    expect(findPanel(layout, "photos")).toEqual({ side: "left", group: 0, tab: 2 });
+    expect(findPanel(layout, "pages")).toEqual({ side: "left", group: 1, tab: 0 });
+    expect(findPanel(layout, "layers")).toEqual({ side: "right", group: 0, tab: 0 });
     expect(findPanel(layout, "draw")).toBeNull();
+    expect(isPanelVisible(layout, "text")).toBe(true);
     expect(isPanelVisible(layout, "draw")).toBe(false);
   });
 });
 
-describe("togglePanel / closePanel", () => {
-  it("opens a closed panel at the bottom of its default side", () => {
-    expect(ids(togglePanel(layout, "draw"), "left")).toEqual(["templates", "text", "photos", "draw"]);
-    expect(ids(togglePanel(layout, "properties"), "right")).toEqual(["layers", "properties"]);
+describe("closePanel", () => {
+  it("removes a background tab and keeps the shown tab", () => {
+    const next = closePanel(layout, "text");
+    expect(tabs(next, "left")[0]).toEqual(["templates", "photos"]);
+    expect(next.left[0].active).toBe("templates");
+    expect(next.left[1]).toBe(layout.left[1]);
+    expect(next.right).toBe(layout.right);
   });
 
-  it("closes an open panel wherever it is docked", () => {
-    const moved = movePanel(layout, "layers", "left", 0);
-    expect(isPanelVisible(togglePanel(moved, "layers"), "layers")).toBe(false);
+  it("shows the next tab when the shown tab closes, or the previous one at the end", () => {
+    expect(closePanel(layout, "templates").left[0].active).toBe("text");
+    const lastShown = activatePanel(layout, "photos");
+    expect(closePanel(lastShown, "photos").left[0].active).toBe("text");
   });
 
-  it("returns the same reference when closing a closed panel", () => {
+  it("removes a group when its last tab closes", () => {
+    expect(tabs(closePanel(layout, "pages"), "left")).toEqual([["templates", "text", "photos"]]);
+    expect(closePanel(layout, "layers").right).toEqual([]);
+  });
+
+  it("returns the same reference when the panel is already closed", () => {
     expect(closePanel(layout, "draw")).toBe(layout);
   });
 });
 
-describe("movePanel", () => {
-  it("reorders within a side", () => {
-    expect(ids(movePanel(layout, "photos", "left", 0), "left")).toEqual(["photos", "templates", "text"]);
-    expect(ids(movePanel(layout, "templates", "left", 2), "left")).toEqual(["text", "photos", "templates"]);
+describe("togglePanel", () => {
+  it("opens a closed panel as the shown tab at the end of the first group on its default side", () => {
+    const next = togglePanel(layout, "draw");
+    expect(tabs(next, "left")).toEqual([["templates", "text", "photos", "draw"], ["pages"]]);
+    expect(next.left[0].active).toBe("draw");
+    expect(tabs(togglePanel(layout, "properties"), "right")).toEqual([["layers", "properties"]]);
   });
 
-  it("moves across sides and keeps the collapsed state", () => {
-    const moved = movePanel(layout, "text", "right", 1);
-    expect(ids(moved, "left")).toEqual(["templates", "photos"]);
-    expect(moved.right).toEqual([
-      { id: "layers", collapsed: false },
-      { id: "text", collapsed: true },
+  it("creates a group when the default side is empty", () => {
+    const empty: DockLayout = { ...layout, right: [] };
+    expect(togglePanel(empty, "properties").right).toEqual([
+      { panels: ["properties"], active: "properties", collapsed: false },
     ]);
   });
 
-  it("clamps the target index", () => {
-    expect(ids(movePanel(layout, "layers", "left", 99), "left")).toEqual(["templates", "text", "photos", "layers"]);
-    expect(ids(movePanel(layout, "layers", "left", -5), "left")).toEqual(["layers", "templates", "text", "photos"]);
-  });
-
-  it("opens a closed panel at the target position", () => {
-    expect(ids(movePanel(layout, "draw", "right", 0), "right")).toEqual(["draw", "layers"]);
-  });
-
-  it("returns the same reference when the position does not change", () => {
-    expect(movePanel(layout, "text", "left", 1)).toBe(layout);
-    expect(movePanel(layout, "photos", "left", 99)).toBe(layout);
+  it("closes an open panel wherever it is docked", () => {
+    expect(isPanelVisible(togglePanel(layout, "text"), "text")).toBe(false);
+    expect(isPanelVisible(togglePanel(layout, "layers"), "layers")).toBe(false);
   });
 });
 
-describe("dropPanel", () => {
-  it("counts the dragged panel when dropping on its own side", () => {
-    // 左側 [templates, text, photos]：把 templates 拖到 text 與 photos 之間（slot 2）
-    expect(ids(dropPanel(layout, "templates", { side: "left", slot: 2 }), "left")).toEqual([
-      "text",
-      "templates",
-      "photos",
-    ]);
-    expect(ids(dropPanel(layout, "photos", { side: "left", slot: 0 }), "left")).toEqual([
-      "photos",
-      "templates",
-      "text",
-    ]);
+describe("activatePanel", () => {
+  it("shows a background tab", () => {
+    const next = activatePanel(layout, "photos");
+    expect(next.left[0]).toEqual({ ...layout.left[0], active: "photos" });
+    expect(next.left[1]).toBe(layout.left[1]);
   });
 
-  it("returns the same reference when dropped right above or below itself", () => {
-    expect(dropPanel(layout, "text", { side: "left", slot: 1 })).toBe(layout);
-    expect(dropPanel(layout, "text", { side: "left", slot: 2 })).toBe(layout);
-  });
-
-  it("inserts at the slot on the other side", () => {
-    expect(ids(dropPanel(layout, "text", { side: "right", slot: 0 }), "right")).toEqual(["text", "layers"]);
-    expect(ids(dropPanel(layout, "text", { side: "right", slot: 1 }), "right")).toEqual(["layers", "text"]);
-  });
-});
-
-describe("insertionSlot", () => {
-  it("counts the panel centers above the pointer", () => {
-    expect(insertionSlot([100, 300, 500], 50)).toBe(0);
-    expect(insertionSlot([100, 300, 500], 301)).toBe(2);
-    expect(insertionSlot([100, 300, 500], 900)).toBe(3);
-    expect(insertionSlot([], 10)).toBe(0);
+  it("returns the same reference when already shown or closed", () => {
+    expect(activatePanel(layout, "templates")).toBe(layout);
+    expect(activatePanel(layout, "draw")).toBe(layout);
   });
 });
 
 describe("toggleCollapsed", () => {
-  it("flips only the target panel", () => {
+  it("flips the group that contains the panel", () => {
     const next = toggleCollapsed(layout, "text");
-    expect(next.left.map((panel) => panel.collapsed)).toEqual([false, false, false]);
+    expect(next.left.map((group) => group.collapsed)).toEqual([true, true]);
+    expect(toggleCollapsed(layout, "pages").left[1].collapsed).toBe(false);
     expect(next.right).toBe(layout.right);
   });
 
   it("returns the same reference for a closed panel", () => {
     expect(toggleCollapsed(layout, "draw")).toBe(layout);
+  });
+});
+
+describe("dropPanel into a tab bar", () => {
+  it("reorders tabs within a group (slots count the dragged tab) and shows it", () => {
+    // [templates text photos]：把 templates 拖到 text 與 photos 之間（slot 2）
+    const next = dropPanel(layout, "templates", { side: "left", kind: "tab", group: 0, slot: 2 });
+    expect(tabs(next, "left")[0]).toEqual(["text", "templates", "photos"]);
+    expect(next.left[0].active).toBe("templates");
+    expect(tabs(dropPanel(layout, "photos", { side: "left", kind: "tab", group: 0, slot: 0 }), "left")[0]).toEqual([
+      "photos",
+      "templates",
+      "text",
+    ]);
+  });
+
+  it("only shows the tab when dropped right before or after itself", () => {
+    expect(dropPanel(layout, "templates", { side: "left", kind: "tab", group: 0, slot: 1 })).toBe(layout);
+    const next = dropPanel(layout, "text", { side: "left", kind: "tab", group: 0, slot: 2 });
+    expect(tabs(next, "left")).toEqual(tabs(layout, "left"));
+    expect(next.left[0].active).toBe("text");
+  });
+
+  it("merges into another group at the slot and shows it there", () => {
+    const next = dropPanel(layout, "text", { side: "right", kind: "tab", group: 0, slot: 0 });
+    expect(tabs(next, "right")).toEqual([["text", "layers"]]);
+    expect(next.right[0].active).toBe("text");
+    expect(tabs(next, "left")[0]).toEqual(["templates", "photos"]);
+  });
+
+  it("adjusts the target group index when the source group disappears before it", () => {
+    // 左側 [pages] 只有一個頁籤：拖進右側不影響 index；改成拖進同側後面的組
+    const base: DockLayout = {
+      ...layout,
+      left: [
+        { panels: ["pages"], active: "pages", collapsed: false },
+        { panels: ["templates", "text"], active: "templates", collapsed: false },
+      ],
+    };
+    const next = dropPanel(base, "pages", { side: "left", kind: "tab", group: 1, slot: 2 });
+    expect(tabs(next, "left")).toEqual([["templates", "text", "pages"]]);
+    expect(next.left[0].active).toBe("pages");
+  });
+
+  it("keeps the target group's collapsed state", () => {
+    const next = dropPanel(layout, "text", { side: "left", kind: "tab", group: 1, slot: 1 });
+    expect(next.left[1]).toEqual({ panels: ["pages", "text"], active: "text", collapsed: true });
+  });
+
+  it("opens a closed panel in the tab bar", () => {
+    const next = dropPanel(layout, "draw", { side: "right", kind: "tab", group: 0, slot: 1 });
+    expect(tabs(next, "right")).toEqual([["layers", "draw"]]);
+  });
+
+  it("returns the same reference for a group that does not exist", () => {
+    expect(dropPanel(layout, "text", { side: "right", kind: "tab", group: 5, slot: 0 })).toBe(layout);
+  });
+});
+
+describe("dropPanel as a new group", () => {
+  it("splits a tab out into a new group at the slot", () => {
+    const next = dropPanel(layout, "text", { side: "left", kind: "group", slot: 1 });
+    expect(tabs(next, "left")).toEqual([["templates", "photos"], ["text"], ["pages"]]);
+    expect(next.left[1]).toEqual({ panels: ["text"], active: "text", collapsed: false });
+  });
+
+  it("moves a single-tab group, counting the dragged group in the slots", () => {
+    // 左 [A] [pages]：把 pages 拖到最上面（slot 0）
+    expect(tabs(dropPanel(layout, "pages", { side: "left", kind: "group", slot: 0 }), "left")).toEqual([
+      ["pages"],
+      ["templates", "text", "photos"],
+    ]);
+    const three: DockLayout = { ...layout, left: [...layout.left, { panels: ["draw"], active: "draw", collapsed: false }] };
+    // [A] [pages] [draw]：把 pages 拖到最下面（slot 3）
+    expect(tabs(dropPanel(three, "pages", { side: "left", kind: "group", slot: 3 }), "left")).toEqual([
+      ["templates", "text", "photos"],
+      ["draw"],
+      ["pages"],
+    ]);
+  });
+
+  it("returns the same reference when a single-tab group is dropped right above or below itself", () => {
+    expect(dropPanel(layout, "pages", { side: "left", kind: "group", slot: 1 })).toBe(layout);
+    expect(dropPanel(layout, "pages", { side: "left", kind: "group", slot: 2 })).toBe(layout);
+  });
+
+  it("moves to the other side and clamps the slot", () => {
+    const next = dropPanel(layout, "pages", { side: "right", kind: "group", slot: 99 });
+    expect(tabs(next, "right")).toEqual([["layers"], ["pages"]]);
+    expect(tabs(next, "left")).toEqual([["templates", "text", "photos"]]);
+    expect(tabs(dropPanel(layout, "text", { side: "right", kind: "group", slot: -3 }), "right")).toEqual([
+      ["text"],
+      ["layers"],
+    ]);
+  });
+
+  it("opens a closed panel as a new group", () => {
+    expect(tabs(dropPanel(layout, "draw", { side: "right", kind: "group", slot: 0 }), "right")).toEqual([
+      ["draw"],
+      ["layers"],
+    ]);
+  });
+});
+
+describe("dropMovesPanel", () => {
+  it("is false when the tab would stay where it is (even if it only becomes shown)", () => {
+    expect(dropMovesPanel(layout, "text", { side: "left", kind: "tab", group: 0, slot: 1 })).toBe(false);
+    expect(dropMovesPanel(layout, "text", { side: "left", kind: "tab", group: 0, slot: 2 })).toBe(false);
+    expect(dropMovesPanel(layout, "pages", { side: "left", kind: "group", slot: 2 })).toBe(false);
+    expect(dropMovesPanel(layout, "pages", { side: "left", kind: "tab", group: 1, slot: 0 })).toBe(false);
+  });
+
+  it("is true when the tab order or grouping changes", () => {
+    expect(dropMovesPanel(layout, "text", { side: "left", kind: "tab", group: 0, slot: 0 })).toBe(true);
+    expect(dropMovesPanel(layout, "text", { side: "left", kind: "tab", group: 1, slot: 0 })).toBe(true);
+    expect(dropMovesPanel(layout, "text", { side: "left", kind: "group", slot: 0 })).toBe(true);
+    expect(dropMovesPanel(layout, "draw", { side: "right", kind: "group", slot: 0 })).toBe(true);
+  });
+});
+
+describe("insertionSlot", () => {
+  it("counts the item centers before the pointer", () => {
+    expect(insertionSlot([100, 300, 500], 50)).toBe(0);
+    expect(insertionSlot([100, 300, 500], 301)).toBe(2);
+    expect(insertionSlot([100, 300, 500], 900)).toBe(3);
+    expect(insertionSlot([], 10)).toBe(0);
   });
 });
 
@@ -192,15 +321,20 @@ describe("parseDockLayout", () => {
     expect(parseDockLayout([])).toBe(DEFAULT_DOCK_LAYOUT);
   });
 
-  it("drops unknown and duplicate panels and repairs fields", () => {
+  it("drops unknown and duplicate panels and empty groups, and repairs fields", () => {
     const parsed = parseDockLayout({
-      left: [{ id: "text", collapsed: "yes" }, { id: "nope" }, "layers", { id: "text" }],
-      right: [{ id: "text" }, { id: "layers", collapsed: true }],
+      left: [
+        { panels: ["text", "nope", "text"], active: "nope", collapsed: "yes" },
+        { panels: ["nope"] },
+        { id: "layers" },
+        "layers",
+      ],
+      right: [{ panels: ["text", "layers", "photos"], active: "photos", collapsed: true }],
       width: { left: "wide", right: 10_000 },
     });
     expect(parsed).toEqual({
-      left: [{ id: "text", collapsed: false }],
-      right: [{ id: "layers", collapsed: true }],
+      left: [{ panels: ["text"], active: "text", collapsed: false }],
+      right: [{ panels: ["layers", "photos"], active: "photos", collapsed: true }],
       width: { left: DOCK_WIDTH.default, right: DOCK_WIDTH.max },
     });
   });
@@ -211,5 +345,15 @@ describe("parseDockLayout", () => {
       right: [],
       width: { left: DOCK_WIDTH.default, right: DOCK_WIDTH.default },
     });
+  });
+
+  it("drops v2 panel entries (no panels array) but keeps the widths", () => {
+    expect(parseDockLayout({ left: [{ id: "text", collapsed: false }], right: [], width: { left: 250, right: 300 } })).toEqual({
+      left: [],
+      right: [],
+      width: { left: 250, right: 300 },
+    });
+    expect(parseDockWidths({ width: { left: 250 } })).toEqual({ left: 250, right: DOCK_WIDTH.default });
+    expect(parseDockWidths(null)).toEqual({ left: DOCK_WIDTH.default, right: DOCK_WIDTH.default });
   });
 });

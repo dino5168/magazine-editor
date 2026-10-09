@@ -1,9 +1,9 @@
-import { DEFAULT_DOCK_LAYOUT, isPanelVisible, movePanel, parseDockLayout, type DockLayout } from "./dock-layout";
+import { DEFAULT_DOCK_LAYOUT, parseDockLayout, parseDockWidths, type DockLayout } from "./dock-layout";
 
 // 版本號放在 key 裡：之後格式不相容時換新 key，舊資料自然被忽略（或在 loadDockLayout 轉換）
-export const DOCK_LAYOUT_STORAGE_KEY = "magazine-editor.dockLayout.v2";
-/** v1 had no property panel; v1 layouts are kept and get the panel added once. */
-export const DOCK_LAYOUT_STORAGE_KEY_V1 = "magazine-editor.dockLayout.v1";
+export const DOCK_LAYOUT_STORAGE_KEY = "magazine-editor.dockLayout.v3";
+/** Older layouts (v2: panels stacked top to bottom; v1: no property panel); only their widths are kept. */
+export const OLDER_DOCK_LAYOUT_STORAGE_KEYS = ["magazine-editor.dockLayout.v2", "magazine-editor.dockLayout.v1"] as const;
 
 type ReadableStorage = Pick<Storage, "getItem">;
 type WritableStorage = Pick<Storage, "setItem">;
@@ -25,8 +25,8 @@ export function getBrowserStorage(): Storage | null {
 
 /**
  * Loads the saved dock layout. Missing, unreadable or malformed data yields the default layout.
- * A v1 layout is upgraded by opening the property panel at the top of the right side (the
- * selection toolbar it replaces was always visible).
+ * A layout from before panel groups (v2 / v1) is not converted: the default groups are used with
+ * the saved dock widths.
  *
  * Args:
  *   storage: Storage to read from, or null.
@@ -38,10 +38,11 @@ export function loadDockLayout(storage: ReadableStorage | null): DockLayout {
   try {
     const raw = storage?.getItem(DOCK_LAYOUT_STORAGE_KEY);
     if (raw) return parseDockLayout(JSON.parse(raw));
-    const v1 = storage?.getItem(DOCK_LAYOUT_STORAGE_KEY_V1);
-    if (!v1) return DEFAULT_DOCK_LAYOUT;
-    const layout = parseDockLayout(JSON.parse(v1));
-    return isPanelVisible(layout, "properties") ? layout : movePanel(layout, "properties", "right", 0);
+    for (const key of OLDER_DOCK_LAYOUT_STORAGE_KEYS) {
+      const older = storage?.getItem(key);
+      if (older) return { ...DEFAULT_DOCK_LAYOUT, width: parseDockWidths(JSON.parse(older)) };
+    }
+    return DEFAULT_DOCK_LAYOUT;
   } catch {
     return DEFAULT_DOCK_LAYOUT;
   }

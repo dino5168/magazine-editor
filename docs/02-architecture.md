@@ -63,7 +63,7 @@ flowchart TB
 | `src/pages/`、`src/App.tsx`、`src/main.tsx` | 約 200 | 程式進入點、版面組合、選單指令接線 | 需要(很短) |
 | `src/lib/project/` | 約 750 | 新增 / 開啟 / 儲存 / 另存、匯入圖片、自動備份、關閉前提示;呼叫 Rust 的地方 | 之後再看(06 會講) |
 | `src/lib/menu/`、`src/components/app/`(不含 `app-sidebar.tsx`) | 約 650 | 選單列、快捷鍵、「要儲存變更嗎?」與「要復原嗎?」對話框 | 之後再看 |
-| `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠、拖曳、分隔條、版面記憶 | 之後再看 |
+| `src/components/dock/`、`src/lib/dock/` | 約 900 | 工具面板:左右停靠的頁籤群組、拖曳頁籤、分隔條、版面記憶 | 之後再看 |
 | `src/components/pointer-drag.ts`、`src/components/drag-ghost.tsx` | 約 130 | 拖曳的共用流程(門檻、Esc 取消、拖曳後不誤觸點擊)與跟著游標的標籤;工具面板與頁籤拖曳共用 | 之後再看 |
 | `src/lib/editor/page-order.ts`、`src/components/editor/use-page-tab-drag.ts` | 約 210 | 頁面排序:新順序的計算、拖曳頁籤(插入線、邊緣自動捲動) | 之後再看 |
 | `src/lib/preferences/`、`src/components/app/settings/`(頁碼管理以外) | 約 500 | 設定:設定頁清單(選單與對話框都由它產生)、格線等 App 偏好(localStorage)、「頁面設定」「格線與參考線」對話框與共用外框 | 之後再看 |
@@ -120,7 +120,7 @@ EditorState
 
 `savedDocument` 的用法很簡單:`present` 和 `savedDocument` 是**同一個物件**就代表沒有修改。修改後再復原回存檔時的樣子,兩者又變回同一個物件,視窗標題的 `●` 就自動消失。
 
-另外,**工具面板的版面** (`dockLayout`:哪些面板開著、在哪一側、寬度) 不在 `EditorState` 裡,而是 `home-page.tsx` 自己的 `useState`,因為只有版面需要知道;它也不會被復原,而是存在瀏覽器的 `localStorage`。
+另外,**工具面板的版面** (`dockLayout`:哪些面板開著、在哪一側的哪一組頁籤、寬度) 不在 `EditorState` 裡,而是 `home-page.tsx` 自己的 `useState`,因為只有版面需要知道;它也不會被復原,而是存在瀏覽器的 `localStorage`。
 
 **為什麼要分開?** 按 Ctrl+Z 時,使用者期待的是「剛才改的內容回來」,而不是「剛才的縮放比例或選取狀態回來」。所以只有文件內容 (`present`) 進入歷史紀錄。
 

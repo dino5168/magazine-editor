@@ -2,14 +2,10 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 import { insertionSlot } from "@/lib/dock/dock-layout";
 import type { PageId } from "@/lib/editor/types";
 import { moveDragGhost } from "../drag-ghost";
-import { startPointerDrag } from "../pointer-drag";
+import { edgeScrollDelta, startPointerDrag } from "../pointer-drag";
 
 /** Drop is accepted this far above / below the tab bar (px), so a slightly off drag still counts. */
 const VERTICAL_TOLERANCE_PX = 48;
-/** Distance from the bar's left / right edge (px) where dragging scrolls the tabs. */
-const EDGE_SCROLL_ZONE_PX = 40;
-/** Fastest auto-scroll (px per frame), reached at the very edge or beyond it. */
-const EDGE_SCROLL_MAX_SPEED = 14;
 
 export interface PageTabDrag {
   readonly id: PageId;
@@ -73,13 +69,11 @@ export function usePageTabDrag(tabListRef: RefObject<HTMLElement | null>, onDrop
       const autoScroll = (): void => {
         const list = tabListRef.current;
         if (list && slot !== null) {
-          const rect = list.getBoundingClientRect();
-          const left = rect.left + EDGE_SCROLL_ZONE_PX - pointer.x;
-          const right = pointer.x - (rect.right - EDGE_SCROLL_ZONE_PX);
-          const speed = (depth: number) => Math.min(EDGE_SCROLL_MAX_SPEED, Math.ceil((depth / EDGE_SCROLL_ZONE_PX) * EDGE_SCROLL_MAX_SPEED));
-          if (left > 0) list.scrollLeft -= speed(left);
-          else if (right > 0) list.scrollLeft += speed(right);
-          if (left > 0 || right > 0) update();
+          const delta = edgeScrollDelta(list.getBoundingClientRect(), pointer.x);
+          if (delta !== 0) {
+            list.scrollLeft += delta;
+            update();
+          }
         }
         frame = requestAnimationFrame(autoScroll);
       };

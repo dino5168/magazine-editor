@@ -103,10 +103,10 @@ npm run build          # 型別檢查 + 打包前端
 ┌──────────────────────────────────────────────────────────────┐
 │ 選單列:檔案(F)  設定(S)  視圖(V)  工具面板(P)                 │ ← app-menubar.tsx
 ├────────────┬─┬───────────────────────────────┬─┬────────────┤
-│ ▾ 範本     │ │ 上方列:名稱、格線、縮放、匯出  │ │ ▾ 屬性     │ ← editor-top-bar.tsx、view-toggle-buttons.tsx
+│ ▾[範本]文字│ │ 上方列:名稱、格線、縮放、匯出  │ │ ▾[屬性]    │ ← 頁籤列:dock-panel.tsx;editor-top-bar.tsx、view-toggle-buttons.tsx
 │  (面板內容) │║├───────────────────────────────┤║│ 樣式|文字|調整│ ← properties-panel.tsx
 │            │║│ 尺規(上方、左方)+ 畫布        │║│            │ ← canvas-ruler.tsx、editor-canvas.tsx
-│ ▾ 頁面     │ │                               │ │ ▾ 圖層     │ ← 頁面:pages-panel.tsx
+│ ▾[頁面]    │ │                               │ │ ▾[圖層]    │ ← 頁面:pages-panel.tsx
 │ 主頁 / 頁面 │ │                               │ │  (面板內容) │
 │            │ │  ┌↶ ↷ 🗑 ⧉ ⋮┐                 │ │            │ ← 動作列
 │            │ │  │▶ ✋ T □ 🖼 ^│               │ │            │ ← bottom-toolbar.tsx
@@ -120,7 +120,7 @@ npm run build          # 型別檢查 + 打包前端
 - 畫布下方是**底部工具列**(參考 tldraw):先選工具(選取 V、手形 H、文字 T、圖形 R / O),再到畫布上點擊或拖曳建立,建立完回到選取工具;按住空白鍵拖曳可以平移畫面。上面的小列是動作列:復原、重做、刪除、複製(Ctrl+D)、⋮(圖層順序)。
 - 右側最上方的「屬性」面板(參考 draw.io)顯示目前選取物件的屬性,分成樣式 / 文字 / 調整三頁;沒有選取時顯示操作提示。
 - 左側「頁面」面板(參考 Affinity 的 Pages)上半是主頁、下半是頁面,點縮圖切換;編輯主頁時畫布上方有提示和「回到頁面」(`master-edit-banner.tsx`)。
-- 左右兩側是**工具面板**(參考 Krita):從選單列的「工具面板」勾選要顯示哪些,拖曳標題列可以換到另一側或調整順序,點標題列可以收合。面板內容在 `src/components/editor/panels/*.tsx`,外框在 `src/components/dock/`。版面會記住,重開 App 後還原。
+- 左右兩側是**工具面板**(參考 Affinity):每一側由上到下有幾個**群組**,每組頂端一排頁籤、一次顯示一個面板(例如左上一組是範本 / 文字 / 相片 / 元素 / 素材 / 背景)。點頁籤切換,✕ 關閉,左端的箭頭收合整組。拖曳頁籤:放在別組的頁籤列上 = 併進那一組,放在群組之間 = 自己另成一組,也可以拖到另一側。頁籤太多放不下時可以用滾輪橫捲。從選單列的「工具面板」勾選要顯示哪些。面板內容在 `src/components/editor/panels/*.tsx`,外框在 `src/components/dock/`。版面會記住,重開 App 後還原。
 
 整個版面組合在 `src/pages/home-page.tsx`。`app-menubar.tsx` 在 `src/components/app/`,工具面板的外框在 `src/components/dock/`,其餘都在 `src/components/editor/`。
 

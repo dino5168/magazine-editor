@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_DOCK_LAYOUT, type DockLayout } from "../dock-layout";
-import { DOCK_LAYOUT_STORAGE_KEY, DOCK_LAYOUT_STORAGE_KEY_V1, loadDockLayout, saveDockLayout } from "../dock-storage";
+import { DOCK_LAYOUT_STORAGE_KEY, OLDER_DOCK_LAYOUT_STORAGE_KEYS, loadDockLayout, saveDockLayout } from "../dock-storage";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -13,12 +13,11 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 const layout: DockLayout = {
   left: [],
-  right: [
-    { id: "layers", collapsed: true },
-    { id: "text", collapsed: false },
-  ],
+  right: [{ panels: ["layers", "text"], active: "text", collapsed: true }],
   width: { left: 320, right: 400 },
 };
+
+const [V2_KEY, V1_KEY] = OLDER_DOCK_LAYOUT_STORAGE_KEYS;
 
 describe("dock layout storage", () => {
   it("round-trips a layout", () => {
@@ -39,34 +38,29 @@ describe("dock layout storage", () => {
   });
 
   it("repairs saved data through parseDockLayout", () => {
-    const saved = JSON.stringify({ left: [{ id: "nope" }, { id: "draw" }], right: [], width: { left: 1, right: 300 } });
+    const saved = JSON.stringify({ left: [{ panels: ["nope", "draw"] }], right: [], width: { left: 1, right: 300 } });
     expect(loadDockLayout(memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY]: saved }))).toEqual({
-      left: [{ id: "draw", collapsed: false }],
+      left: [{ panels: ["draw"], active: "draw", collapsed: false }],
       right: [],
       width: { left: 200, right: 300 },
     });
   });
 
-  it("keeps a v1 layout and opens the property panel at the top right once", () => {
-    const v1 = JSON.stringify({ left: [{ id: "text" }], right: [{ id: "layers", collapsed: true }], width: { left: 300, right: 300 } });
-    const loaded = loadDockLayout(memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1 }));
-    expect(loaded.left).toEqual([{ id: "text", collapsed: false }]);
-    expect(loaded.right).toEqual([
-      { id: "properties", collapsed: false },
-      { id: "layers", collapsed: true },
-    ]);
+  it("replaces a v2 / v1 layout with the default groups, keeping only the widths", () => {
+    const v2 = JSON.stringify({ left: [{ id: "text" }], right: [{ id: "layers", collapsed: true }], width: { left: 260, right: 410 } });
+    const fromV2 = loadDockLayout(memoryStorage({ [V2_KEY]: v2 }));
+    expect(fromV2).toEqual({ ...DEFAULT_DOCK_LAYOUT, width: { left: 260, right: 410 } });
 
-    // v2 已經存在時以 v2 為準（使用者之後關掉屬性面板，不會再被打開）
-    const v2 = JSON.stringify({ left: [], right: [{ id: "layers" }], width: { left: 300, right: 300 } });
-    const both = memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1, [DOCK_LAYOUT_STORAGE_KEY]: v2 });
-    expect(loadDockLayout(both).right).toEqual([{ id: "layers", collapsed: false }]);
+    const v1 = JSON.stringify({ left: [], right: [], width: { left: 240, right: 300 } });
+    expect(loadDockLayout(memoryStorage({ [V1_KEY]: v1 })).width).toEqual({ left: 240, right: 300 });
+    // 兩個都有時以較新的 v2 為準
+    expect(loadDockLayout(memoryStorage({ [V1_KEY]: v1, [V2_KEY]: v2 })).width).toEqual({ left: 260, right: 410 });
   });
 
-  it("does not move a property panel that a v1 layout already has", () => {
-    const v1 = JSON.stringify({ left: [{ id: "properties" }], right: [], width: { left: 300, right: 300 } });
-    const loaded = loadDockLayout(memoryStorage({ [DOCK_LAYOUT_STORAGE_KEY_V1]: v1 }));
-    expect(loaded.left).toEqual([{ id: "properties", collapsed: false }]);
-    expect(loaded.right).toEqual([]);
+  it("prefers a v3 layout over older ones", () => {
+    const storage = memoryStorage({ [V2_KEY]: JSON.stringify({ width: { left: 500, right: 500 } }) });
+    saveDockLayout(storage, layout);
+    expect(loadDockLayout(storage)).toEqual(layout);
   });
 
   it("ignores storage that throws", () => {

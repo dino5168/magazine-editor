@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含 Krita 式工具面板，見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -74,13 +74,13 @@ src/
       grid-dialog.tsx             # 「格線與參考線」：格線（間距、吸附）/ 內容區對齊線 / 邊界參考線三區，各自的顯示開關與顏色・粗細・線型；即時預覽；恢復預設 / 設為預設 / 原廠設定（App 偏好）
       page-numbers-dialog.tsx     # 「頁碼管理」：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
-    dock/                         # 工具面板（Krita 式停靠）的 UI
-      dock-area.tsx               # 一側的停靠區：面板上下堆疊、插入提示線、空白側的放置區
-      dock-panel.tsx              # 面板外框：標題列（收合 / 拖曳 / 關閉）+ DockScrollArea（`scroll: "self"` 的面板不包，內容自己捲動）
+    dock/                         # 工具面板（Affinity 式頁籤群組停靠）的 UI
+      dock-area.tsx               # 一側的停靠區：群組上下堆疊、只掛每組目前頁籤的面板、群組之間的插入線、空白側的放置區
+      dock-panel.tsx              # DockPanelGroup：頁籤列（收合、頁籤切換 / 關閉 / 拖曳、插入直線、滾輪橫捲、← → Home End）+ tabpanel；DockScrollArea（`scroll: "self"` 的面板不包，內容自己捲動）
       dock-splitter.tsx           # size control bar：拖曳 / 雙擊還原 / 鍵盤 ←→ 調整停靠區寬度
-      use-dock-drag.ts            # 拖曳標題列移動面板（命中判斷；按下 / 門檻 / Esc 交給 pointer-drag.ts）
+      use-dock-drag.ts            # 拖曳頁籤（命中判斷：頁籤列 = 併入、其他 = 另成一組；靠邊自動捲動；按下 / 門檻 / Esc 交給 pointer-drag.ts）
       dock-drag-ghost.tsx         # 拖曳時跟著游標的面板 icon + 名稱（DragGhost 的包裝）
-    pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、游標（預設 grabbing，可指定）、吞掉拖曳後的 click、Esc 取消、清除），工具面板、頁籤拖曳與「頁面」面板的分區高度共用
+    pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、游標（預設 grabbing，可指定）、吞掉拖曳後的 click、Esc 取消、清除），工具面板、頁籤拖曳與「頁面」面板的分區高度共用；edgeScrollDelta：拖曳靠近頁籤列邊緣時的自動捲動量（頁面頁籤列與停靠區頁籤列共用）
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
     library/                      # 素材管理的 UI（見「素材管理」）
       library-dialog.tsx          # LibraryDialogProvider / useLibraryDialog().openLibrary(view?)；三欄管理視窗（樹｜瀑布流｜資訊）、刪除資料夾 / 永久刪除的確認
@@ -153,8 +153,8 @@ src/
     dock/                         # 工具面板版面（不含 UI）
       panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導
       pages-panel-layout.ts       # 「頁面」面板兩區的收合與高度比例（純函式、最小高度、parse、localStorage 讀寫）
-      dock-layout.ts              # DockLayout 型別與純函式（開關 / 移動 / 拖放 / 收合 / 寬度）、parseDockLayout
-      dock-storage.ts             # 版面存取 localStorage（損壞時回到預設）
+      dock-layout.ts              # DockLayout / DockGroup 型別與純函式（開關 / 切換頁籤 / 拖放（併入、另成一組）/ 收合 / 寬度）、parseDockLayout / parseDockWidths
+      dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
       __tests__/
     export/                       # 匯出 PDF 的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
@@ -404,7 +404,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 計畫與決定：`docs/Plans/imp-頁面調整.html`。
 
 - 三種入口，最後都是一次 `page/reorder`（一筆復原），目前頁不變：
-  - **拖曳頁籤**（`use-page-tab-drag.ts`）：按在選單 / 刪除按鈕上或改名中不開始拖曳；4 px 門檻，點擊與雙擊改名照常；只在放下會改變順序時畫插入線；頁籤列上下 48 px 外放開 = 取消；靠近左右邊緣 40 px 自動捲動。插入位置用 `lib/dock` 的 `insertionSlot`（任一軸），空隙換算新位置用 `slotToIndex`。
+  - **拖曳頁籤**（`use-page-tab-drag.ts`）：按在選單 / 刪除按鈕上或改名中不開始拖曳；4 px 門檻，點擊與雙擊改名照常；只在放下會改變順序時畫插入線；頁籤列上下 48 px 外放開 = 取消；靠近左右邊緣 40 px 自動捲動（`pointer-drag.ts` 的 `edgeScrollDelta`，停靠區的頁籤列也用）。插入位置用 `lib/dock` 的 `insertionSlot`（任一軸），空隙換算新位置用 `slotToIndex`。
   - **目前頁籤的 `˅` 選單**：向左 / 向右 / 移到最前 / 移到最後（`shiftedPageOrder` 回傳 `null` 時停用）；`≡` 選單沒有這些項目。
   - **Ctrl+Shift+PageUp / PageDown**：往前 / 往後一格（`use-editor-shortcuts.ts`，在換頁之前判斷）。
 - 頁碼規則跟著**頁序**：頁面換位置後頁碼依新位置重新計算。
@@ -481,21 +481,33 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 ## 工具面板（`lib/dock` + `components/dock`）
 
-參考 Krita 的 Docker。計畫與決定：`docs/01-Plans/imp-tool-bar.md`。
+原本參考 Krita 的 Docker（計畫：`docs/01-Plans/imp-tool-bar.md`）；2026-10-09 改成 **Affinity 式的頁籤群組**（計畫與決定：`docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區-實作.md`）。
 
 - **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
+- **頁籤群組**：一側由上到下是幾個**群組**，每組頂端一排頁籤、一次顯示一個面板。預設：左 `[範本 文字 相片 元素 素材 背景]` / `[頁面]`，右 `[屬性]` / `[圖層]`（「繪圖」是佔位，不在預設）。
+  - 點頁籤切換；頁籤上的 ✕ 關閉（目前頁籤一直顯示，其他頁籤滑過才浮在右端，不佔寬度）；頁籤列左端的箭頭收合整組（只剩頁籤列）。展開的群組平分高度。
+  - **背景頁籤不掛載**（`DockArea` 只 render `PANELS[group.active]`，以面板 id 為 key）：看不到的面板不訂閱編輯器狀態、不多做 re-render。代價是面板自己的暫時狀態（屬性面板的子分頁、捲動位置、「限制寬高比」）切走再回來會重置。
+  - 頁籤列放不下時橫向捲動（捲軸隱藏）：滾輪直向轉橫向；目前頁籤一直捲在看得到的地方（`DockPanelGroup` 的 effect 自己算 `scrollLeft`，不用 `scrollIntoView`）；拖曳靠近邊緣自動捲動。
+  - 鍵盤：頁籤列 ← →（頭尾循環）/ Home / End 切換並移動焦點；這幾個鍵 `stopPropagation`，否則會傳到編輯器、移動畫布上選取的物件（`use-editor-shortcuts` 在 `window` bubble 階段）。
+  - 外觀：目前頁籤有框線、和內容同底色、蓋住頁籤列的底線。底線是 inset 陰影（用 border 要讓頁籤往下凸 1 px，頁籤列會多出垂直捲動）；目前頁籤**不加粗**（粗體較寬，切換時整排位移）。頁籤上的間距不要放在 shadcn `Button` 的 margin：它有 `transition-all`，margin 會慢慢長出來，頁籤捲進畫面的位置就差幾 px。
+  - 頁籤列自己畫（`role="tablist"` / `tab` / `tabpanel`），**不用 shadcn `Tabs`**：Radix Tabs 按下就切換、有自己的 roving focus，和拖曳頁籤、關閉鈕混在一起不好控制。屬性面板裡面的子分頁才用 shadcn `Tabs`（所以查 `[role="tab"]` 時要限定 `[data-dock-tab] > [role="tab"]`）。
 - **屬性面板**（`properties`，預設在右側最上方）取代了原本的上方選取工具列：
   - 分頁依物件類型：圖形 = 樣式 / 文字 / 調整，文字 = 文字 / 調整，圖片 = 調整。名稱與分頁列固定在面板頂端（sticky）。
   - 數字欄位用 `NumberField`：Enter / 失焦才寫入，一次編輯 = 一筆復原。
   - 「限制寬高比」是面板的編輯選項，不存進文件。
 - **面板的單一資料來源**是 `lib/dock/panels.ts` 的 `PANEL_DEFINITIONS`；`PANELS`（內容）、`PANEL_ICONS`（icon）以 `satisfies Record<PanelId, …>` 檢查完整性，選單指令自動產生。**新增面板**：在 `PANEL_DEFINITIONS` 加一筆 → 補 `PANELS` 與 `PANEL_ICONS`（漏了會編譯失敗）。
-- `DockLayout`（左右各一個由上到下的面板清單 + 兩側寬度）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。
-- 同一側多個面板上下堆疊，展開的平分高度，收合只剩標題列。一個面板最多出現一次。
+- `DockLayout`（左右各一個由上到下的 `DockGroup[]` + 兩側寬度；`DockGroup` = `panels`（頁籤順序）/ `active` / `collapsed`）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。規則：一個面板在整個版面最多出現一次；群組不會是空的（最後一個頁籤關掉 = 群組消失）；`active` 一定在 `panels` 裡。
+  - `togglePanel`（選單勾選）：打開 = 加到預設那一側**第一組**的最後並顯示（那側沒有群組就新建一組）；已打開（含背景頁籤）= 關閉。選單的勾選 = 在某個群組裡，不是「看得到」。
+  - `closePanel`：關掉目前頁籤時顯示下一個（最後一個就顯示前一個）。`activatePanel`、`toggleCollapsed`（以組裡任一面板指定那一組）。
+  - `dropPanel(layout, id, target)`：`DropTarget` 有兩種——`{ kind: "tab", group, slot }` 插進某組的頁籤列（併入 / 同列換位置）、`{ kind: "group", slot }` 在群組之間另成一組；slot 都**含被拖的那一個**（拖曳時看到的樣子）。放下的面板成為那組的目前頁籤；併入收合的組時保持收合。`dropMovesPanel` 判斷位置有沒有變（原位放下只是切換頁籤，不畫提示）。
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
-- **拖曳停靠**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（只有從檔案總管拖檔案進素材庫用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁籤拖曳也用它，改動時兩邊都要測）。命中判斷靠 `data-dock-side` / `data-dock-panel` 屬性。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
-- **記憶**：`localStorage` key `magazine-editor.dockLayout.v2`，讀取一律過 `parseDockLayout`（不信任儲存內容）。格式不相容時換 key。只有 v1 時沿用它，並把屬性面板加到右側最上方一次（`loadDockLayout`）。`npm run dev` 與安裝版 origin 不同，各記一份。
+- **拖曳頁籤**（`useDockDrag`）：用 pointer events 自己做，**不用 HTML5 drag & drop**（只有從檔案總管拖檔案進素材庫用那一套）。按下後移動 4px 才算拖曳、結束後吞掉下一次 click、Esc 取消，這些由 `components/pointer-drag.ts` 的 `startPointerDrag` 處理（頁面頁籤拖曳也用它，改動時兩邊都要測）。React state 只在目標改變時更新，跟著游標的標籤直接改 style，避免每次 pointermove 重畫畫布。
+  - 命中判斷靠屬性：停靠區（含空白側的放置區）`data-dock-side`、群組 `data-dock-group`、頁籤列 `data-dock-tabbar`、頁籤 `data-dock-tab`。**指到頁籤列 = 併入那一組**（頁籤的水平中心算 `insertionSlot`，畫直線 `TabDropIndicator`、整列淡淡標示）；**停靠區其他地方 = 在群組之間另成一組**（群組的垂直中心，畫橫線）。提示線都是寬 / 高 0，不影響版面。
+  - 拖曳靠近頁籤列左右邊緣時自動捲動那一列：`pointer-drag.ts` 的 `edgeScrollDelta`，和頁面頁籤列（`use-page-tab-drag.ts`）共用同一個算法。
+- **記憶**：`localStorage` key `magazine-editor.dockLayout.v3`，讀取一律過 `parseDockLayout`（不信任儲存內容：未知 / 重複 id、空群組丟掉，`active` 無效改成第一個）。格式不相容時換 key。**v2 / v1（上下堆疊的格式）不轉換**：用新的預設群組，只沿用兩側寬度（`parseDockWidths`，使用者決定）。`npm run dev` 與安裝版 origin 不同，各記一份。
 - Radix `ScrollArea` 內層是 `display: table`，長文字會撐寬面板；`DockScrollArea`（`dock-panel.tsx` 匯出）用 `[&_[data-slot=scroll-area-viewport]>div]:block!` 修正，面板裡需要捲動區時用它。
-- 面板預設由 `DockPanel` 包一個捲動區；需要把高度分給好幾塊、各自捲動的面板，在 `PANEL_DEFINITIONS` 設 `scroll: "self"`（目前只有「頁面」），內容會放在 `flex-1 min-h-0` 的容器裡。
+- 面板預設由 `DockPanelGroup` 包一個捲動區；需要把高度分給好幾塊、各自捲動的面板，在 `PANEL_DEFINITIONS` 設 `scroll: "self"`（目前只有「頁面」），內容會放在 `flex-1 min-h-0` 的 tabpanel 裡。
+- 之後可以另排（沒做）：群組之間的分隔條調整高度（現在平分）、雙擊頁籤列收合（Affinity 的做法）、浮動面板。
 - Tailwind v4 的 `inset-y-0` 是邏輯屬性（`inset-block`），和直書（`writing-mode: vertical-rl`）放在同一個元素會變成水平方向。
 
 ## 素材管理（`lib/library` + `components/library` + `src-tauri/src/project/library.rs`）

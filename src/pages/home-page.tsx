@@ -20,7 +20,9 @@ import { useAddImage } from "@/components/editor/panels/use-add-image";
 import {
   CANVAS_MIN_WIDTH,
   DEFAULT_DOCK_LAYOUT,
+  activatePanel,
   closePanel,
+  dropMovesPanel,
   dropPanel,
   isPanelVisible,
   setDockWidth,
@@ -125,14 +127,14 @@ function EditorLayout() {
     [],
   );
   const { drag, startDrag, ghostRef } = useDockDrag(onDropPanel);
-  // 放下後位置不變（例如拖到自己的上下緣）時不顯示提示線
-  const dropTarget = drag?.target && dropPanel(dockLayout, drag.id, drag.target) !== dockLayout ? drag.target : null;
-  const dropSlotOf = (side: DockSide) =>
-    dropTarget?.side === side ? dropTarget.slot : null;
+  // 放下後位置不變（例如拖到自己旁邊）時不顯示提示線
+  const dropTarget = drag?.target && dropMovesPanel(dockLayout, drag.id, drag.target) ? drag.target : null;
+  const dropOf = (side: DockSide) => (dropTarget?.side === side ? dropTarget : null);
 
   // 參考固定，停靠區拖曳寬度時面板內容才不會重新 render
   const dockProps = useMemo(
     () => ({
+      onActivate: updateDock(activatePanel),
       onToggleCollapsed: updateDock(toggleCollapsed),
       onClose: updateDock(closePanel),
       onDragStart: startDrag,
@@ -152,10 +154,10 @@ function EditorLayout() {
       <div className="relative flex min-h-0 min-w-0">
         <DockArea
           side="left"
-          panels={dockLayout.left}
+          groups={dockLayout.left}
           width={dockLayout.width.left}
           onResize={resizeLeft}
-          dropSlot={dropSlotOf("left")}
+          drop={dropOf("left")}
           {...dockProps}
         />
         <div {...DOCK_CENTER_PROPS} style={{ minWidth: CANVAS_MIN_WIDTH }} className="flex flex-1 flex-col overflow-hidden">
@@ -170,10 +172,10 @@ function EditorLayout() {
         </div>
         <DockArea
           side="right"
-          panels={dockLayout.right}
+          groups={dockLayout.right}
           width={dockLayout.width.right}
           onResize={resizeRight}
-          dropSlot={dropSlotOf("right")}
+          drop={dropOf("right")}
           {...dockProps}
         />
       </div>
