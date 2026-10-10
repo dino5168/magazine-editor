@@ -10,6 +10,7 @@ import type { ShapeKind } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
 import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
+import { TEXT_STYLE_NAME_MAX_LENGTH } from "@/lib/editor/style-sheet";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
   FONT_SIZE_MAX,
@@ -89,6 +90,12 @@ const stroke = z
 
 const verticalAlign = z.enum(["top", "middle", "bottom"]).describe("圖形內文字的垂直對齊");
 
+const styleRef = z.string().min(1).describe("文字樣式的名稱或 id（由 list_text_styles 取得）");
+const styleName = z.string().min(1).max(TEXT_STYLE_NAME_MAX_LENGTH * 2);
+
+const STYLE_LINK_HELP =
+  "style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。";
+
 const STYLE_HELP =
   "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。";
 
@@ -139,9 +146,10 @@ export const TOOL_DEFINITIONS = {
   },
   add_text: {
     title: "新增文字",
-    description: `在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。預設樣式：黑體 11 pt、靠左、#171717。${STYLE_HELP} 一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。${STYLE_LINK_HELP}${STYLE_HELP} 一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
+      style: styleRef.optional(),
       text: z.string().min(1).max(TEXT_MAX_LENGTH).describe("文字內容，\\n 換行"),
       x: coordinate,
       y: coordinate,
@@ -153,7 +161,7 @@ export const TOOL_DEFINITIONS = {
   },
   add_shape: {
     title: "新增圖形",
-    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} 省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
       shape: z.enum(SHAPE_KINDS),
@@ -165,6 +173,7 @@ export const TOOL_DEFINITIONS = {
       fill: elementColor.optional().describe("填色，#rrggbb 或 #rrggbbaa（#00000000 = 透明）"),
       stroke: stroke.optional(),
       text: z.string().min(1).max(TEXT_MAX_LENGTH).optional().describe("圖形內的文字，\\n 換行"),
+      style: styleRef.optional(),
       verticalAlign: verticalAlign.optional(),
       ...textStyleInput.shape,
     }),
@@ -228,6 +237,41 @@ export const TOOL_DEFINITIONS = {
     input: z.strictObject({
       pageIds: z.array(z.string().min(1)).min(1).max(500).describe("頁面 id（由 list_pages 的 pages 取得）"),
       masterId: z.string().min(1).nullable().describe("主頁 id（由 list_pages 的 masters 取得）；null = 取消套用"),
+    }),
+    readOnly: false,
+  },
+  list_text_styles: {
+    title: "文字樣式清單",
+    description:
+      "列出文件的文字樣式（樣式表）：id、名稱、樣式欄位（同 add_text 的 font / fontSize / bold / italic / underline / strikethrough / align / textColor / shadow）與連到它的文字數（文字物件與圖形內文字，含主頁）。文字連到樣式後，改樣式時沒被覆寫的欄位會跟著變。",
+    input: z.strictObject({}),
+    readOnly: true,
+  },
+  add_text_style: {
+    title: "新增文字樣式",
+    description: `在樣式表新增一個文字樣式，回傳 id。名稱必填（最多 ${TEXT_STYLE_NAME_MAX_LENGTH} 字、不可和其他樣式同名）；省略的欄位用內建「內文」的值（黑體 11 pt、靠左、#171717）。${STYLE_HELP} 新增後可以用 apply_text_style 或 add_text 的 style 讓文字連到它。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({ name: styleName.describe("樣式名稱"), ...textStyleInput.shape }),
+    readOnly: false,
+  },
+  update_text_style: {
+    title: "修改文字樣式",
+    description: `修改文字樣式的欄位或名稱，只改有給的欄位。連到它的文字（所有頁面與主頁）會跟著改，但各自覆寫（和舊樣式不同）的欄位不變。${STYLE_HELP} 回傳是否有變更與受影響的文字數。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({ style: styleRef, name: styleName.optional().describe("新名稱"), ...textStyleInput.shape }),
+    readOnly: false,
+  },
+  delete_text_style: {
+    title: "刪除文字樣式",
+    description: "刪除文字樣式。連到它的文字外觀不變，只是不再連到樣式。回傳取消連結的文字數。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({ style: styleRef }),
+    readOnly: false,
+  },
+  apply_text_style: {
+    title: "套用文字樣式",
+    description:
+      "讓同一頁（或同一主頁）的文字物件與圖形內文字連到文字樣式，並取樣式的所有值（清除覆寫）；style 為 null = 只取消連結、外觀不變。圖片與沒有文字的圖形會略過並列在 skipped。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({
+      ids: z.array(elementId).min(1).max(500),
+      style: styleRef.nullable().describe("文字樣式的名稱或 id；null = 取消連結"),
     }),
     readOnly: false,
   },

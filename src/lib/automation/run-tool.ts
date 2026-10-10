@@ -10,16 +10,20 @@ import {
   addPage,
   addShape,
   addText,
+  addTextStyle,
+  applyTextStyle,
   deleteElements,
+  deleteTextStyle,
   renameDocument,
   renamePage,
   setPageBackground,
   setPageMaster,
   stepHistory,
   updateElement,
+  updateTextStyle,
   type ApplyAction,
 } from "./edits";
-import { getDocumentSummary, getElement, listElements, listPages } from "./queries";
+import { getDocumentSummary, getElement, listElements, listPages, listTextStyles } from "./queries";
 import { TOOL_DEFINITIONS, isToolName, type ToolArgs, type ToolName } from "./tool-definitions";
 
 /** What a tool can see and do. */
@@ -50,6 +54,11 @@ const HANDLERS: ToolHandlers = {
   add_page: (args, { state, apply }) => addPage(state, apply, args),
   add_master: (args, { state, apply }) => addMaster(state, apply, args),
   set_page_master: (args, { state, apply }) => setPageMaster(state, apply, args),
+  list_text_styles: (_args, { state }) => ok(listTextStyles(state)),
+  add_text_style: (args, { state, apply }) => addTextStyle(state, apply, args),
+  update_text_style: (args, { state, apply }) => updateTextStyle(state, apply, args),
+  delete_text_style: (args, { state, apply }) => deleteTextStyle(state, apply, args),
+  apply_text_style: (args, { state, apply }) => applyTextStyle(state, apply, args),
   rename_page: (args, { state, apply }) => renamePage(state, apply, args),
   set_page_background: (args, { state, apply }) => setPageBackground(state, apply, args),
   rename_document: (args, { apply }) => renameDocument(apply, args),

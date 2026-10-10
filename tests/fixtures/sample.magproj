@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -53,6 +53,47 @@
         }
       }
     ],
+    "textStyles": [
+      {
+        "id": "text-style-heading",
+        "name": "標題",
+        "fontSize": 32,
+        "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+        "fontStyle": "bold",
+        "italic": false,
+        "underline": false,
+        "strikethrough": false,
+        "shadow": null,
+        "align": "center",
+        "fill": "#171717"
+      },
+      {
+        "id": "text-style-body",
+        "name": "內文",
+        "fontSize": 11,
+        "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+        "fontStyle": "normal",
+        "italic": false,
+        "underline": false,
+        "strikethrough": false,
+        "shadow": null,
+        "align": "center",
+        "fill": "#171717"
+      },
+      {
+        "id": "style-footer",
+        "name": "頁尾",
+        "fontSize": 9,
+        "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+        "fontStyle": "normal",
+        "italic": false,
+        "underline": false,
+        "strikethrough": false,
+        "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
+        "align": "right",
+        "fill": "#525252"
+      }
+    ],
     "masters": [
       {
         "id": "master-a",
@@ -99,9 +140,10 @@
             "italic": false,
             "underline": false,
             "strikethrough": false,
-            "shadow": null,
+            "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
             "align": "right",
-            "fill": "#525252"
+            "fill": "#525252",
+            "styleId": "style-footer"
           },
           {
             "id": "el-master-logo",
@@ -141,7 +183,8 @@
             "strikethrough": true,
             "shadow": { "color": "#00000080", "offsetX": 2, "offsetY": -1.5 },
             "align": "center",
-            "fill": "#171717"
+            "fill": "#171717",
+            "styleId": null
           },
           {
             "id": "el-rect",
@@ -178,7 +221,8 @@
               "shadow": null,
               "align": "center",
               "verticalAlign": "middle",
-              "fill": "#171717"
+              "fill": "#171717",
+              "styleId": "text-style-body"
             }
           },
           {

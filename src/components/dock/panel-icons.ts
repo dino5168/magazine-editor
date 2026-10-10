@@ -5,6 +5,7 @@ import {
   LayoutTemplate,
   Layers,
   PaintBucket,
+  Pilcrow,
   Pencil,
   Shapes,
   SlidersHorizontal,
@@ -24,5 +25,6 @@ export const PANEL_ICONS = {
   background: PaintBucket,
   pages: Files,
   properties: SlidersHorizontal,
+  styles: Pilcrow,
   layers: Layers,
 } as const satisfies Record<PanelId, LucideIcon>;

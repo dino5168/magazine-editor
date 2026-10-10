@@ -1,4 +1,4 @@
-import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow } from "./types";
+import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow, TextStyle } from "./types";
 import { mmToPt } from "./units";
 
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
@@ -180,20 +180,38 @@ export function isShapeGeometry(value: unknown): value is ShapeGeometry {
  *   True when the value can be stored as `ShapeElement.label`.
  */
 export function isShapeLabel(value: unknown): value is ShapeLabel {
-  if (typeof value !== "object" || value === null) return false;
-  const label = value as Record<string, unknown>;
+  if (!isTextStyle(value)) return false;
+  const label = value as unknown as Record<string, unknown>;
   return (
     typeof label.text === "string" &&
-    typeof label.fontSize === "number" &&
-    label.fontSize >= FONT_SIZE_MIN &&
-    label.fontSize <= FONT_SIZE_MAX &&
-    typeof label.fontFamily === "string" &&
-    (label.fontStyle === "normal" || label.fontStyle === "bold") &&
-    hasValidTextDecoration(label) &&
-    ["left", "center", "right"].includes(label.align as string) &&
     ["top", "middle", "bottom"].includes(label.verticalAlign as string) &&
-    typeof label.fill === "string" &&
-    isElementColor(label.fill)
+    (label.styleId === null || typeof label.styleId === "string")
+  );
+}
+
+/**
+ * Checks the text style fields of a value (supported font size, known weight and alignment, valid
+ * decoration, element color); other fields are ignored. Shape labels and text styles share it.
+ *
+ * Args:
+ *   value: Candidate style.
+ *
+ * Returns:
+ *   True when every `TextStyle` field is valid.
+ */
+export function isTextStyle(value: unknown): value is TextStyle {
+  if (typeof value !== "object" || value === null) return false;
+  const style = value as Record<string, unknown>;
+  return (
+    typeof style.fontSize === "number" &&
+    style.fontSize >= FONT_SIZE_MIN &&
+    style.fontSize <= FONT_SIZE_MAX &&
+    typeof style.fontFamily === "string" &&
+    (style.fontStyle === "normal" || style.fontStyle === "bold") &&
+    hasValidTextDecoration(style) &&
+    ["left", "center", "right"].includes(style.align as string) &&
+    typeof style.fill === "string" &&
+    isElementColor(style.fill)
   );
 }
 

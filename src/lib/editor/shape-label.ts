@@ -18,6 +18,7 @@ const DEFAULT_LABEL: Omit<ShapeLabel, "text"> = {
   align: "center",
   verticalAlign: "middle",
   fill: DEFAULT_TEXT_FILL,
+  styleId: null,
 };
 
 /** The frame (shape-local pt) the label is laid out in. */

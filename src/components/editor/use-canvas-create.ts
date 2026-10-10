@@ -9,7 +9,7 @@ import {
 } from "@/lib/editor/element-factory";
 import { snapPointToGrid } from "@/lib/editor/geometry";
 import type { ToolId } from "@/lib/editor/tools";
-import type { CanvasElement, PageId, Point, TextElement } from "@/lib/editor/types";
+import type { CanvasElement, PageId, Point, TextElement, TextStyleDef } from "@/lib/editor/types";
 
 /** Pointer movement below this (screen px, in either direction) is a click, not a drag. */
 const CLICK_TOLERANCE_PX = 4;
@@ -32,6 +32,8 @@ interface UseCanvasCreateOptions {
   readonly pageAt: (screen: Point) => { readonly pageId: PageId; readonly toPt: (screen: Point) => Point };
   /** Grid spacing (pt) new elements snap to, or null when snapping is off. */
   readonly snapSpacing: number | null;
+  /** Style the text tool's text links to (the document's 內文), or null for unlinked 內文 values. */
+  readonly textStyle: TextStyleDef | null;
   /** Receives the empty text the text tool creates; the canvas edits it before adding it. */
   readonly onTextDraft: (draft: TextElement) => void;
 }
@@ -59,7 +61,15 @@ function relative(element: HTMLElement, event: { clientX: number; clientY: numbe
  *   cursor: CSS cursor for the container, or undefined.
  *   handlers: Props to spread on the scroll container.
  */
-export function useCanvasCreate({ scrollRef, tool, shapeKind, pageAt, snapSpacing, onTextDraft }: UseCanvasCreateOptions) {
+export function useCanvasCreate({
+  scrollRef,
+  tool,
+  shapeKind,
+  pageAt,
+  snapSpacing,
+  textStyle,
+  onTextDraft,
+}: UseCanvasCreateOptions) {
   const dispatch = useEditorDispatch();
   const dragRef = useRef<CreateDrag | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -107,7 +117,9 @@ export function useCanvasCreate({ scrollRef, tool, shapeKind, pageAt, snapSpacin
     const startPt = toPt(drag.start);
     const box = boundsFromPoints(snap(startPt), snap(toPt(drag.current)));
     if (tool === "text") {
-      onTextDraft(dx < CLICK_TOLERANCE_PX ? snapTopLeft(createToolText(startPt, null)) : createToolText(startPt, box));
+      onTextDraft(
+        dx < CLICK_TOLERANCE_PX ? snapTopLeft(createToolText(startPt, null, textStyle)) : createToolText(startPt, box, textStyle),
+      );
     } else {
       // 其中一邊太短（或吸附後變成 0）時當成點擊：避免建立出一條線一樣、選不到的圖形
       const click = dx < CLICK_TOLERANCE_PX || dy < CLICK_TOLERANCE_PX || box.minX === box.maxX || box.minY === box.maxY;

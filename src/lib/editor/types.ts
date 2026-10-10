@@ -43,7 +43,22 @@ export interface TextStyle {
   readonly fill: string;
 }
 
-export interface TextElement extends BaseElement, TextStyle {
+/**
+ * A named text style in the document's style sheet (`EditorDocument.textStyles`). Texts linked to
+ * it keep their own copy of every field; a field that differs from the style is an override.
+ */
+export interface TextStyleDef extends TextStyle {
+  readonly id: string;
+  readonly name: string;
+}
+
+/** Text that can be linked to a style sheet entry. */
+export interface StyledText extends TextStyle {
+  /** `TextStyleDef.id` it follows; null = not linked. */
+  readonly styleId: string | null;
+}
+
+export interface TextElement extends BaseElement, StyledText {
   readonly type: "text";
   readonly text: string;
   /** Wrapping width. */
@@ -59,7 +74,7 @@ export interface Stroke {
 }
 
 /** Text inside a shape (draw.io's label). */
-export interface ShapeLabel extends TextStyle {
+export interface ShapeLabel extends StyledText {
   readonly text: string;
   readonly verticalAlign: "top" | "middle" | "bottom";
 }
@@ -192,6 +207,8 @@ export interface EditorDocument {
    * are drawn on the canvas and exported, but are not elements (see `page-numbers.ts`).
    */
   readonly pageNumberRules: readonly PageNumberRule[];
+  /** Style sheet; ids and names unique (`style-sheet.ts`). */
+  readonly textStyles: readonly TextStyleDef[];
   /** Kept apart from `pages`: page order, page numbers and export only ever see pages. */
   readonly masters: readonly MasterPage[];
   readonly pages: readonly Page[];

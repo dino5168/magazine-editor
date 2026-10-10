@@ -19,6 +19,7 @@ import { TEXT_VARIABLES } from "@/lib/editor/variables";
 import { ColorPicker } from "../color-picker";
 import { NumberField } from "../number-field";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
+import { TextStyleLink } from "../text-style-link";
 
 type TabId = "style" | "text" | "arrange";
 
@@ -209,6 +210,9 @@ function VariablesSection({ text, onChange }: { readonly text: string; readonly 
 function TextTab({ text, update }: { readonly text: TextElement; readonly update: Update }) {
   return (
     <>
+      <Section title="文字樣式">
+        <TextStyleLink elementId={text.id} text={text} />
+      </Section>
       <TextStyleControls id={text.id} style={text} onChange={update} />
       <VariablesSection text={text.text} onChange={(next) => update({ text: next })} />
     </>
@@ -223,6 +227,9 @@ function ShapeTextTab({ shape, update }: { readonly shape: ShapeElement; readonl
   const setLabel = (patch: Partial<ShapeLabel>) => update({ label: { ...label, ...patch } });
   return (
     <>
+      <Section title="文字樣式">
+        <TextStyleLink elementId={shape.id} text={label} />
+      </Section>
       <TextStyleControls
         id={shape.id}
         style={label}

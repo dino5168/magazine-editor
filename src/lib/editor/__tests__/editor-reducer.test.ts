@@ -21,12 +21,14 @@ import {
 } from "../editor-reducer";
 import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
+import { defaultTextStyles, nextTextStyleName } from "../style-sheet";
 import type { EditorDocument, MasterPage, Page } from "../types";
 
 function blankState(): EditorState {
   const document: EditorDocument = {
     name: "測試文件",
     margins: DEFAULT_MARGINS,
+    textStyles: [],
     pageNumberRules: [],
     masters: [],
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
@@ -741,6 +743,7 @@ describe("editorReducer / moving across the spine", () => {
     const document: EditorDocument = {
       name: "測試",
       margins: DEFAULT_MARGINS,
+      textStyles: [],
       pageNumberRules: [],
       masters: [],
       pages: [page("p1"), { ...page("p2"), elements: [a, b, c] }, { ...page("p3"), elements: [target] }],
@@ -937,6 +940,7 @@ describe("editorReducer / project", () => {
     const document: EditorDocument = {
       name: "另一個專案",
       margins: DEFAULT_MARGINS,
+      textStyles: [],
       pageNumberRules: [],
       masters: [],
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
@@ -977,5 +981,119 @@ describe("editorReducer / project", () => {
     });
     expect(loaded.savedDocument).toBeNull();
     expect(selectIsDirty(loaded)).toBe(true);
+  });
+});
+
+describe("editorReducer / text styles", () => {
+  const [heading, , body] = defaultTextStyles();
+
+  /** A page with a text and a labelled shape; the style sheet holds the built-in styles. */
+  function styledState() {
+    const text = { ...createTextElement("body", { x: 100, y: 100 }), styleId: body.id };
+    const shape = { ...createShapeElement("rect", { x: 300, y: 300 }), label: { ...createLabel("圖"), styleId: null } };
+    const initial = blankState();
+    const document = {
+      ...initial.history.present,
+      textStyles: defaultTextStyles(),
+      pages: [{ ...initial.history.present.pages[0], elements: [text, shape] }],
+    };
+    return { state: createInitialState(document), text, shape };
+  }
+
+  const elementsOf = (state: EditorState) => selectActivePage(state).elements;
+
+  it("textStyle/update makes linked texts follow, keeps overrides, one undo step", () => {
+    const { state: initial, text } = styledState();
+    const overridden = run(initial, { type: "element/update", id: text.id, patch: { fill: "#dc2626" } });
+    const state = run(overridden, { type: "textStyle/update", id: body.id, style: { ...body, fontSize: 12, fill: "#1e3a8a" } });
+    expect(elementsOf(state)[0]).toMatchObject({ fontSize: 12, fill: "#dc2626", styleId: body.id });
+    expect(state.history.present.textStyles[2]).toMatchObject({ fontSize: 12, fill: "#1e3a8a", name: "內文" });
+    expect(state.history.past).toHaveLength(overridden.history.past.length + 1);
+    // 不連結的圖形內文字不動
+    expect(elementsOf(state)[1]).toBe(elementsOf(overridden)[1]);
+    expect(run(state, { type: "history/undo" }).history.present).toBe(overridden.history.present);
+  });
+
+  it("textStyle/update can rename in the same undo step", () => {
+    const { state } = styledState();
+    const next = run(state, { type: "textStyle/update", id: body.id, style: { ...body, fontSize: 12 }, name: " 本文 " });
+    expect(next.history.present.textStyles[2]).toMatchObject({ name: "本文", fontSize: 12 });
+    expect(next.history.past).toHaveLength(1);
+    expect(run(state, { type: "textStyle/update", id: body.id, style: body, name: "內文" })).toBe(state);
+    // 只改名也可以；名稱重複時整個不做
+    expect(run(state, { type: "textStyle/update", id: body.id, style: body, name: "本文" }).history.present.textStyles[2].name).toBe("本文");
+    expect(run(state, { type: "textStyle/update", id: body.id, style: { ...body, fontSize: 12 }, name: heading.name })).toBe(state);
+  });
+
+  it("textStyle/update ignores the same values, unknown styles and invalid fields", () => {
+    const { state } = styledState();
+    expect(run(state, { type: "textStyle/update", id: body.id, style: body })).toBe(state);
+    expect(run(state, { type: "textStyle/update", id: "missing", style: { ...body, fontSize: 30 } })).toBe(state);
+    expect(run(state, { type: "textStyle/update", id: body.id, style: { ...body, fontSize: 1 } })).toBe(state);
+    expect(run(state, { type: "textStyle/update", id: body.id, style: { ...body, fill: "red" } })).toBe(state);
+  });
+
+  it("textStyle/add appends a style and can link the selection in the same step", () => {
+    const { state: initial, text, shape } = styledState();
+    const style = { ...body, id: "custom", name: nextTextStyleName(defaultTextStyles()), fontSize: 15 };
+    const state = run(initial, {
+      type: "textStyle/add",
+      style,
+      link: { pageId: selectActivePage(initial).id, ids: [text.id, shape.id] },
+    });
+    expect(state.history.present.textStyles.map((s) => s.id)).toEqual([...defaultTextStyles().map((s) => s.id), "custom"]);
+    expect(elementsOf(state)[0]).toMatchObject({ styleId: "custom", fontSize: 15 });
+    expect(elementsOf(state)[1]).toMatchObject({ label: { styleId: "custom", fontSize: 15, text: "圖" } });
+    expect(state.history.past).toHaveLength(1);
+
+    expect(run(initial, { type: "textStyle/add", style: { ...style, id: body.id } })).toBe(initial);
+    expect(run(initial, { type: "textStyle/add", style: { ...style, name: body.name } })).toBe(initial);
+    expect(run(initial, { type: "textStyle/add", style: { ...style, name: " x" } })).toBe(initial);
+    expect(run(initial, { type: "textStyle/add", style, link: { pageId: "missing", ids: [text.id] } })).toBe(initial);
+  });
+
+  it("textStyle/rename trims, keeps names unique and ignores no-ops", () => {
+    const { state } = styledState();
+    const renamed = run(state, { type: "textStyle/rename", id: body.id, name: "  本文  " });
+    expect(renamed.history.present.textStyles[2].name).toBe("本文");
+    expect(run(renamed, { type: "textStyle/rename", id: body.id, name: "本文" })).toBe(renamed);
+    expect(run(state, { type: "textStyle/rename", id: body.id, name: heading.name })).toBe(state);
+    expect(run(state, { type: "textStyle/rename", id: body.id, name: "   " })).toBe(state);
+    expect(run(state, { type: "textStyle/rename", id: "missing", name: "x" })).toBe(state);
+  });
+
+  it("textStyle/delete unlinks texts without changing their look", () => {
+    const { state: initial, text } = styledState();
+    const state = run(initial, { type: "textStyle/delete", id: body.id });
+    expect(state.history.present.textStyles.map((s) => s.id)).not.toContain(body.id);
+    expect(elementsOf(state)[0]).toEqual({ ...text, styleId: null });
+    expect(run(state, { type: "textStyle/delete", id: body.id })).toBe(state);
+    expect(elementsOf(run(state, { type: "history/undo" }))[0]).toEqual(text);
+  });
+
+  it("element/applyTextStyle links texts and labels, skips other elements, null unlinks", () => {
+    const { state: initial, text, shape } = styledState();
+    const plain = createShapeElement("ellipse", { x: 0, y: 0 });
+    const withImage = run(initial, { type: "element/add", element: plain });
+    const state = run(withImage, { type: "element/applyTextStyle", ids: [text.id, shape.id, plain.id], styleId: heading.id });
+    expect(elementsOf(state)[0]).toMatchObject({ styleId: heading.id, fontSize: 32, fontStyle: "bold" });
+    expect(elementsOf(state)[1]).toMatchObject({ label: { styleId: heading.id, fontSize: 32 } });
+    // 沒有文字的圖形不動
+    expect(elementsOf(state)[2]).toBe(plain);
+    expect(state.history.past).toHaveLength(withImage.history.past.length + 1);
+
+    const unlinked = run(state, { type: "element/applyTextStyle", ids: [text.id], styleId: null });
+    expect(elementsOf(unlinked)[0]).toEqual({ ...elementsOf(state)[0], styleId: null });
+    expect(run(state, { type: "element/applyTextStyle", ids: [text.id], styleId: heading.id })).toBe(state);
+    expect(run(state, { type: "element/applyTextStyle", ids: [text.id], styleId: "missing" })).toBe(state);
+  });
+
+  it("rejects elements and patches that link a missing style", () => {
+    const { state, text, shape } = styledState();
+    const orphan = { ...createTextElement("body", { x: 0, y: 0 }), styleId: "missing" };
+    expect(run(state, { type: "element/add", element: orphan })).toBe(state);
+    expect(run(state, { type: "element/update", id: text.id, patch: { styleId: "missing" } })).toBe(state);
+    expect(run(state, { type: "element/update", id: shape.id, patch: { label: { ...shape.label, styleId: "missing" } } })).toBe(state);
+    expect(run(state, { type: "element/update", id: text.id, patch: { styleId: heading.id } })).not.toBe(state);
   });
 });

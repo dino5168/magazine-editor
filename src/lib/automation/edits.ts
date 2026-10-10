@@ -12,12 +12,28 @@ import {
   buildAddedPages,
 } from "@/lib/editor/add-pages";
 import type { EditorAction, EditorState } from "@/lib/editor/editor-reducer";
-import { createMasterPage, createShapeInBox, createTextElement } from "@/lib/editor/element-factory";
+import {
+  builtInTextStyle,
+  createId,
+  createMasterPage,
+  createShapeInBox,
+  createTextElement,
+} from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadius } from "@/lib/editor/properties";
 import { createLabel } from "@/lib/editor/shape-label";
-import type { CanvasElement, ElementPatch, PageId, ShapeElement, TextElement, TextStyle } from "@/lib/editor/types";
+import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
+import type {
+  CanvasElement,
+  ElementPatch,
+  PageId,
+  ShapeElement,
+  StyledText,
+  TextElement,
+  TextStyle,
+  TextStyleDef,
+} from "@/lib/editor/types";
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, validateName, type Result } from "@/lib/editor/validation";
 import { getElement } from "./queries";
 import type { ToolArgs, TextStyleInput } from "./tool-definitions";
@@ -98,10 +114,36 @@ function addElement(apply: ApplyAction, element: CanvasElement, pageId: PageId) 
   return ok({ id: element.id, pageId });
 }
 
+/**
+ * A text style by id, or by name (trimmed, exact).
+ *
+ * Args:
+ *   state: Editor state.
+ *   ref: Id or name from the AI.
+ *
+ * Returns:
+ *   The style, or an error pointing to `list_text_styles`.
+ */
+export function findTextStyle(state: EditorState, ref: string): Result<TextStyleDef> {
+  const { textStyles } = state.history.present;
+  const style = textStyles.find((s) => s.id === ref) ?? textStyles.find((s) => s.name === ref.trim());
+  return style ? ok(style) : fail(`找不到文字樣式「${ref}」，請先用 list_text_styles 取得名稱或 id`);
+}
+
+/** The style's values and link when `ref` is given; nothing when it is undefined. */
+function styleLink(state: EditorState, ref: string | undefined): Result<Partial<StyledText>> {
+  if (ref === undefined) return ok({});
+  const style = findTextStyle(state, ref);
+  return style.error ? style : ok({ ...pickTextStyle(style.data), styleId: style.data.id });
+}
+
 /** Tool `add_text`. */
 export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_text">) {
   const sheet = targetSheet(state, args.pageId);
   if (sheet.error) return sheet;
+  const link = styleLink(state, args.style);
+  if (link.error) return link;
+  // 先取樣式的值，再套這次給的欄位（和樣式不同 = 覆寫）
   const element: TextElement = {
     ...createTextElement("body", { x: 0, y: 0 }),
     x: args.x,
@@ -110,6 +152,7 @@ export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"
     text: args.text,
     width: args.width ?? DEFAULT_TEXT_WIDTH,
     align: "left",
+    ...link.data,
     ...textStyleFields(pickStyle(args)),
   };
   return addElement(apply, element, sheet.data);
@@ -120,9 +163,11 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
   const sheet = targetSheet(state, args.pageId);
   if (sheet.error) return sheet;
   const style = pickStyle(args);
-  if (args.text === undefined && (hasKeys(style) || args.verticalAlign !== undefined)) {
-    return fail("文字樣式與 verticalAlign 用在圖形內的文字：請同時給 text");
+  if (args.text === undefined && (hasKeys(style) || args.verticalAlign !== undefined || args.style !== undefined)) {
+    return fail("style、文字樣式欄位與 verticalAlign 用在圖形內的文字：請同時給 text");
   }
+  const link = styleLink(state, args.style);
+  if (link.error) return link;
   const shape = createShapeInBox(args.shape, {
     minX: args.x,
     minY: args.y,
@@ -139,6 +184,7 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
         ? null
         : {
             ...createLabel(args.text),
+            ...link.data,
             ...textStyleFields(style),
             ...(args.verticalAlign !== undefined && { verticalAlign: args.verticalAlign }),
           },
@@ -318,4 +364,65 @@ export function stepHistory(apply: ApplyAction, direction: "undo" | "redo") {
   const next = apply({ type: direction === "undo" ? "history/undo" : "history/redo" });
   if (!next) return fail(direction === "undo" ? "沒有可以復原的步驟" : "沒有可以重做的步驟");
   return ok({ canUndo: next.history.past.length > 0, canRedo: next.history.future.length > 0 });
+}
+
+/** Tool `add_text_style`: starts from the built-in 內文 values. */
+export function addTextStyle(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_text_style">) {
+  const error = textStyleNameError(args.name, state.history.present.textStyles, null);
+  if (error) return fail(error);
+  const style: TextStyleDef = {
+    ...pickTextStyle(builtInTextStyle("body")),
+    ...textStyleFields(pickStyle(args)),
+    id: createId(),
+    name: args.name.trim(),
+  };
+  if (!apply({ type: "textStyle/add", style })) return fail("App 沒有接受這個樣式（參數不合法）");
+  return ok({ id: style.id, name: style.name });
+}
+
+/** Tool `update_text_style`. */
+export function updateTextStyle(state: EditorState, apply: ApplyAction, args: ToolArgs<"update_text_style">) {
+  const found = findTextStyle(state, args.style);
+  if (found.error) return found;
+  const style = found.data;
+  const fields = textStyleFields(pickStyle(args));
+  if (!hasKeys(fields) && args.name === undefined) return fail("沒有要修改的欄位");
+  if (args.name !== undefined) {
+    const error = textStyleNameError(args.name, state.history.present.textStyles, style.id);
+    if (error) return fail(error);
+  }
+  const next = apply({ type: "textStyle/update", id: style.id, style: { ...pickTextStyle(style), ...fields }, name: args.name });
+  const linkedTexts = textStyleUsage(state.history.present).get(style.id) ?? 0;
+  return ok({ id: style.id, name: args.name?.trim() ?? style.name, changed: next !== null, linkedTexts });
+}
+
+/** Tool `delete_text_style`. */
+export function deleteTextStyle(state: EditorState, apply: ApplyAction, args: ToolArgs<"delete_text_style">) {
+  const found = findTextStyle(state, args.style);
+  if (found.error) return found;
+  const unlinkedTexts = textStyleUsage(state.history.present).get(found.data.id) ?? 0;
+  if (!apply({ type: "textStyle/delete", id: found.data.id })) return fail("App 沒有刪除這個樣式");
+  return ok({ deleted: found.data.id, name: found.data.name, unlinkedTexts });
+}
+
+/** Tool `apply_text_style`: elements without text are skipped and reported. */
+export function applyTextStyle(state: EditorState, apply: ApplyAction, args: ToolArgs<"apply_text_style">) {
+  const style = args.style === null ? null : findTextStyle(state, args.style);
+  if (style?.error) return style;
+  const ids = [...new Set(args.ids)];
+  const sheets = new Set<PageId>();
+  const applicable: string[] = [];
+  const skipped: string[] = [];
+  for (const id of ids) {
+    const found = getElement(state, id);
+    if (found.error) return found;
+    sheets.add(found.data.sheet.id);
+    (styledTextOf(found.data.element) ? applicable : skipped).push(id);
+  }
+  if (sheets.size > 1) return fail("一次只能套用同一頁（或同一主頁）的物件，請分頁呼叫");
+  if (applicable.length === 0) return fail("這些物件都沒有文字（圖片、沒有文字的圖形不能套用文字樣式）");
+  const [pageId] = sheets;
+  const styleId = style?.data.id ?? null;
+  const next = apply({ type: "element/applyTextStyle", ids: applicable, styleId, pageId });
+  return ok({ style: styleId, applied: applicable.length, skipped, changed: next !== null });
 }

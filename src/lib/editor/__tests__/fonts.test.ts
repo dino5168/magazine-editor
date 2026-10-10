@@ -49,6 +49,7 @@ describe("usedFontFamilies", () => {
     const document: EditorDocument = {
       name: "doc",
       margins: DEFAULT_MARGINS,
+      textStyles: [],
       pageNumberRules: [],
       masters: [],
       pages: [

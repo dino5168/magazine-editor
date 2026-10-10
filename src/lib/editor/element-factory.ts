@@ -2,7 +2,8 @@ import { DEFAULT_FONT_OPTION } from "./fonts";
 import { estimateTextHeight } from "./geometry";
 import type { PageSetup } from "./page-setup";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
-import { PLAIN_TEXT_DECORATION } from "./text-style";
+import { BUILT_IN_TEXT_STYLE_IDS, defaultTextStyles, pickTextStyle } from "./style-sheet";
+import { DEFAULT_TEXT_FILL } from "./text-style";
 import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
 import type {
   Bounds,
@@ -18,12 +19,13 @@ import type {
   ShapeGeometry,
   Size,
   TextElement,
+  TextStyleDef,
 } from "./types";
 
 /** 新文字的字型：字型清單的第一個選項（黑體） */
 export const DEFAULT_FONT_FAMILY = DEFAULT_FONT_OPTION.family;
 export const DEFAULT_SHAPE_FILL = "#64748b";
-export const DEFAULT_TEXT_FILL = "#171717";
+export { DEFAULT_TEXT_FILL };
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
 /** Margins of a new document (15 mm on every side). Files without margins load as all 0 instead. */
 export const DEFAULT_MARGINS: Margins = (() => {
@@ -41,17 +43,32 @@ export type ShapeKind = "rect" | "roundedRect" | "ellipse" | "triangle" | "star"
 
 interface TextPresetConfig {
   readonly label: string;
+  /** Placeholder text of a new text. */
   readonly text: string;
-  readonly fontSize: number;
-  readonly fontStyle: TextElement["fontStyle"];
+  /** Wrapping width of a new text (pt). */
   readonly width: number;
 }
 
+/**
+ * Placeholder text and width of new text per built-in style. The font values come from the
+ * built-in styles (`defaultTextStyles`), the single source for both.
+ */
 export const TEXT_PRESETS = {
-  heading: { label: "新增標題", text: "標題", fontSize: 32, fontStyle: "bold", width: 360 },
-  subheading: { label: "新增副標題", text: "副標題", fontSize: 20, fontStyle: "normal", width: 320 },
-  body: { label: "新增內文", text: "雙擊這裡編輯內文", fontSize: 11, fontStyle: "normal", width: 280 },
+  heading: { label: "新增標題", text: "標題", width: 360 },
+  subheading: { label: "新增副標題", text: "副標題", width: 320 },
+  body: { label: "新增內文", text: "雙擊這裡編輯內文", width: 280 },
 } as const satisfies Record<TextPreset, TextPresetConfig>;
+
+/** Built-in style of a preset (its values, also when the document has no such style). */
+export function builtInTextStyle(preset: TextPreset): TextStyleDef {
+  // defaultTextStyles 一定有三個內建樣式
+  return defaultTextStyles().find((style) => style.id === BUILT_IN_TEXT_STYLE_IDS[preset])!;
+}
+
+function presetOfStyle(styleId: string): TextPreset | null {
+  const entry = Object.entries(BUILT_IN_TEXT_STYLE_IDS).find(([, id]) => id === styleId);
+  return entry ? (entry[0] as TextPreset) : null;
+}
 
 /**
  * Generates a unique element or page id.
@@ -74,21 +91,33 @@ export function createId(): string {
  *   New text element.
  */
 export function createTextElement(preset: TextPreset, center: Point): TextElement {
-  const config = TEXT_PRESETS[preset];
+  return { ...createStyledText(builtInTextStyle(preset), center), styleId: null };
+}
+
+/**
+ * Creates a text element linked to a style, centered on a point (the text panel). Built-in styles
+ * use their preset's placeholder and width; other styles show their name.
+ *
+ * Args:
+ *   style: Style to follow.
+ *   center: Center position in pt.
+ *
+ * Returns:
+ *   New text element with the style's values and `styleId`.
+ */
+export function createStyledText(style: TextStyleDef, center: Point): TextElement {
+  const preset = presetOfStyle(style.id);
+  const { text, width } = preset ? TEXT_PRESETS[preset] : { text: style.name, width: TEXT_PRESETS.body.width };
   return {
     id: createId(),
     type: "text",
-    x: center.x - config.width / 2,
-    y: center.y - (config.fontSize * 1.2) / 2,
+    x: center.x - width / 2,
+    y: center.y - (style.fontSize * 1.2) / 2,
     rotation: 0,
-    text: config.text,
-    width: config.width,
-    fontSize: config.fontSize,
-    fontFamily: DEFAULT_FONT_FAMILY,
-    fontStyle: config.fontStyle,
-    ...PLAIN_TEXT_DECORATION,
-    align: "center",
-    fill: DEFAULT_TEXT_FILL,
+    text,
+    width,
+    ...pickTextStyle(style),
+    styleId: style.id,
   };
 }
 
@@ -181,8 +210,6 @@ export function createShapeElement(kind: ShapeKind, center: Point): ShapeElement
 
 /** Text created by dragging is never narrower than this, in pt. */
 export const MIN_TEXT_WIDTH = 40;
-/** Style of text created with the text tool. */
-const TOOL_TEXT_PRESET: TextPreset = "subheading";
 
 /**
  * Normalizes two drag corners into bounds.
@@ -244,13 +271,15 @@ export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
  * Args:
  *   start: Click point, or drag start, in pt.
  *   box: Dragged box, or null for a click.
+ *   style: The document's 內文 style to link to; null (the document has none) = the built-in 內文
+ *     values, not linked.
  *
  * Returns:
  *   Text element with empty text (added to the document only when the user types something).
  */
-export function createToolText(start: Point, box: Bounds | null): TextElement {
-  const config = TEXT_PRESETS[TOOL_TEXT_PRESET];
-  const lineHeight = config.fontSize * 1.2;
+export function createToolText(start: Point, box: Bounds | null, style: TextStyleDef | null): TextElement {
+  const values = style ?? builtInTextStyle("body");
+  const lineHeight = values.fontSize * 1.2;
   return {
     id: createId(),
     type: "text",
@@ -258,13 +287,9 @@ export function createToolText(start: Point, box: Bounds | null): TextElement {
     y: box ? box.minY : start.y - lineHeight / 2,
     rotation: 0,
     text: "",
-    width: box ? Math.max(MIN_TEXT_WIDTH, box.maxX - box.minX) : config.width,
-    fontSize: config.fontSize,
-    fontFamily: DEFAULT_FONT_FAMILY,
-    fontStyle: config.fontStyle,
-    ...PLAIN_TEXT_DECORATION,
-    align: "left",
-    fill: DEFAULT_TEXT_FILL,
+    width: box ? Math.max(MIN_TEXT_WIDTH, box.maxX - box.minX) : TEXT_PRESETS.body.width,
+    ...pickTextStyle(values),
+    styleId: style?.id ?? null,
   };
 }
 
@@ -367,6 +392,7 @@ export function createBlankDocument(setup: PageSetup = DEFAULT_NEW_PAGE_SETUP): 
     name: "未命名文件",
     margins: setup.margins,
     pageNumberRules: [],
+    textStyles: defaultTextStyles(),
     masters: [],
     pages: [createPage("Page-1", setup.size, DEFAULT_PAGE_BACKGROUND)],
   };
@@ -397,7 +423,14 @@ export function createSampleDocument(): EditorDocument {
     { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
     { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
   ];
-  return { name: "未命名文件", margins: DEFAULT_MARGINS, pageNumberRules: [], masters: [], pages: [{ ...page, elements }] };
+  return {
+    name: "未命名文件",
+    margins: DEFAULT_MARGINS,
+    pageNumberRules: [],
+    textStyles: defaultTextStyles(),
+    masters: [],
+    pages: [{ ...page, elements }],
+  };
 }
 
 const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };

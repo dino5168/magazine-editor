@@ -24,6 +24,7 @@ export const PANEL_DEFINITIONS = [
   { id: "background", label: "背景", defaultSide: "left" },
   { id: "pages", label: "頁面", defaultSide: "left", scroll: "self" },
   { id: "properties", label: "屬性", defaultSide: "right" },
+  { id: "styles", label: "樣式", defaultSide: "right" },
   { id: "layers", label: "圖層", defaultSide: "right" },
 ] as const satisfies readonly PanelDefinition[];
 

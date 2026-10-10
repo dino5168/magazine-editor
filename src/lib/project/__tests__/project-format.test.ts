@@ -8,6 +8,7 @@ import {
 } from "@/lib/editor/element-factory";
 import { isMasterGraphValid, masterChain } from "@/lib/editor/master-pages";
 import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
+import { isTextStyleSheet, styleOverrides } from "@/lib/editor/style-sheet";
 import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
 import { isTextShadow } from "@/lib/editor/validation";
 import type { CanvasElement, ElementType, GeometryKind, ShapeElement, ShapeLabel, Stroke } from "@/lib/editor/types";
@@ -66,6 +67,7 @@ describe("project file fixture", () => {
       "italic",
       "shadow",
       "strikethrough",
+      "styleId",
       "text",
       "underline",
       "verticalAlign",
@@ -109,5 +111,18 @@ describe("project file fixture", () => {
     expect(text).toMatchObject({ italic: true, underline: true, strikethrough: true });
     expect(text?.type === "text" && text.shadow && isTextShadow(text.shadow)).toBe(true);
     expect(sortedKeys(text?.type === "text" ? text.shadow! : {})).toEqual(sortedKeys(DEFAULT_TEXT_SHADOW));
+  });
+
+  it("stores the text style sheet and links with the TypeScript field names and rules", () => {
+    const { textStyles, masters } = fixture.document;
+    expect(isTextStyleSheet(textStyles)).toBe(true);
+    expect(sortedKeys(textStyles[0])).toEqual(sortedKeys(createBlankDocument().textStyles[0]));
+    const byId = new Map(textStyles.map((style) => [style.id, style]));
+    // 頁尾連到「頁尾」、沒有覆寫；圖形內文字連到「內文」、字級是覆寫；封面標題沒有連結
+    const footer = masters[1].elements.find((element) => element.type === "text")!;
+    expect(footer.type === "text" && styleOverrides(footer, byId.get(footer.styleId!)!)).toEqual([]);
+    const label = shapes.find((shape) => shape.label !== null)!.label!;
+    expect(styleOverrides(label, byId.get(label.styleId!)!)).toEqual(["fontSize"]);
+    expect(elements.find((element) => element.type === "text")).toMatchObject({ styleId: null });
   });
 });

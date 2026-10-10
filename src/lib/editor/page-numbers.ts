@@ -247,7 +247,7 @@ export function pageNumberShape(
     geometry: { kind: "rect", cornerRadius: 0 },
     fill: TRANSPARENT,
     stroke,
-    label: { ...textStyle, text, align, verticalAlign: "middle" },
+    label: { ...textStyle, text, align, verticalAlign: "middle", styleId: null },
   };
 }
 

@@ -300,3 +300,71 @@ describe("pages, document and history", () => {
     expect(session.error("redo")).toContain("沒有可以重做");
   });
 });
+
+describe("text styles", () => {
+  // fixture：「標題」「內文」「頁尾」；主頁頁尾連「頁尾」、橢圓內文字連「內文」（覆寫字級 14）
+  const session = () => toolSession(createInitialState(fixture));
+
+  it("list_text_styles uses the add_text vocabulary and counts linked texts", () => {
+    const styles = session().ok("list_text_styles");
+    expect(styles.map((s: { name: string }) => s.name)).toEqual(["標題", "內文", "頁尾"]);
+    expect(styles[2]).toMatchObject({ id: "style-footer", font: "黑體", fontSize: 9, bold: false, align: "right", textColor: "#525252", usedBy: 1 });
+    expect(styles[0].usedBy).toBe(0);
+    expect(session().ok("get_document").textStyles).toBe(3);
+  });
+
+  it("list_elements names the linked style", () => {
+    const { elements } = session().ok("list_elements", { pageId: "page-1" });
+    expect(elements.find((e: { id: string }) => e.id === "el-ellipse").textStyle).toBe("內文");
+    expect(elements.find((e: { id: string }) => e.id === "el-text")).not.toHaveProperty("textStyle");
+  });
+
+  it("add_text with a style links it; explicit fields become overrides", () => {
+    const s = session();
+    const { id } = s.ok("add_text", { text: "引言", x: 0, y: 0, style: "頁尾", bold: true });
+    expect(elementOf(s, id)).toMatchObject({ styleId: "style-footer", fontSize: 9, align: "right", fill: "#525252", fontStyle: "bold" });
+    expect(s.error("add_text", { text: "x", x: 0, y: 0, style: "不存在" })).toContain("list_text_styles");
+    // 也可以用 id
+    expect(elementOf(s, s.ok("add_text", { text: "y", x: 0, y: 0, style: "text-style-body" }).id).styleId).toBe("text-style-body");
+  });
+
+  it("add_shape links the label; style needs text", () => {
+    const s = session();
+    const { id } = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 50, text: "框", style: "標題" });
+    expect(elementOf(s, id).label).toMatchObject({ styleId: "text-style-heading", fontSize: 32, text: "框" });
+    expect(s.error("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 50, style: "標題" })).toContain("text");
+  });
+
+  it("add / update / delete text styles, each one undo step", () => {
+    const s = session();
+    const { id } = s.ok("add_text_style", { name: " 引言 ", italic: true, fontSize: 13 });
+    const styles = s.state.history.present.textStyles;
+    expect(styles[styles.length - 1]).toMatchObject({ id, name: "引言", italic: true, fontSize: 13, align: "left" });
+    expect(s.error("add_text_style", { name: "內文" })).toContain("已經有");
+
+    const updated = s.ok("update_text_style", { style: "內文", fontSize: 12, textColor: "#1e3a8a", name: "本文" });
+    expect(updated).toMatchObject({ id: "text-style-body", name: "本文", changed: true, linkedTexts: 1 });
+    // 圖形內文字的字級是覆寫（14），顏色跟著樣式
+    expect(elementOf(s, "el-ellipse").label).toMatchObject({ fontSize: 14, fill: "#1e3a8a" });
+    expect(s.error("update_text_style", { style: "本文" })).toContain("沒有要修改");
+    expect(s.error("update_text_style", { style: "本文", name: "標題" })).toContain("已經有");
+    expect(s.ok("update_text_style", { style: "本文", fontSize: 12 }).changed).toBe(false);
+
+    const past = s.state.history.past.length;
+    expect(s.ok("delete_text_style", { style: "頁尾" })).toEqual({ deleted: "style-footer", name: "頁尾", unlinkedTexts: 1 });
+    expect(s.state.history.present.masters[1].elements[0]).toMatchObject({ styleId: null, fontSize: 9 });
+    expect(s.state.history.past).toHaveLength(past + 1);
+  });
+
+  it("apply_text_style links texts and labels, reports skipped elements, null unlinks", () => {
+    const s = session();
+    const applied = s.ok("apply_text_style", { ids: ["el-text", "el-ellipse", "el-image"], style: "標題" });
+    expect(applied).toEqual({ style: "text-style-heading", applied: 2, skipped: ["el-image"], changed: true });
+    expect(elementOf(s, "el-text")).toMatchObject({ styleId: "text-style-heading", fontSize: 32, italic: false });
+    expect(elementOf(s, "el-ellipse").label).toMatchObject({ styleId: "text-style-heading", fontSize: 32 });
+    expect(s.ok("apply_text_style", { ids: ["el-text"], style: null })).toMatchObject({ style: null, changed: true });
+    expect(elementOf(s, "el-text")).toMatchObject({ styleId: null, fontSize: 32 });
+    expect(s.error("apply_text_style", { ids: ["el-image"], style: "標題" })).toContain("沒有文字");
+    expect(s.error("apply_text_style", { ids: ["el-text", "el-master-footer"], style: "標題" })).toContain("同一頁");
+  });
+});

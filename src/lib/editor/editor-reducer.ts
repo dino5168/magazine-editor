@@ -2,6 +2,16 @@ import { createPage, createSampleDocument, nextPageNames, type ShapeKind } from 
 import { canSetParent, copyElements, deleteMaster, findSheet, isMasterId } from "./master-pages";
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
 import { isPageOrder } from "./page-order";
+import {
+  TEXT_STYLE_NAME_MAX_LENGTH,
+  deleteTextStyle,
+  isTextStyleSheet,
+  linkTextStyle,
+  mapElementText,
+  pickTextStyle,
+  restyleDocument,
+  styledTextOf,
+} from "./style-sheet";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
@@ -14,6 +24,7 @@ import {
   isShapeLabel,
   isStroke,
   isTextShadow,
+  isTextStyle,
   validateName,
 } from "./validation";
 import { clampZoom } from "./viewport";
@@ -29,6 +40,8 @@ import type {
   PageNumberRule,
   Sheet,
   Size,
+  TextStyle,
+  TextStyleDef,
 } from "./types";
 
 export const HISTORY_LIMIT = 100;
@@ -137,6 +150,33 @@ export type EditorAction =
   | { readonly type: "master/setParent"; readonly id: PageId; readonly parentId: PageId | null }
   /** Removes a master page; whatever was based on it moves to its parent. */
   | { readonly type: "master/delete"; readonly id: PageId }
+  /**
+   * Text style sheet (`style-sheet.ts`), each one undo step; invalid input is a no-op. `add` may also
+   * link texts to the new style (「建立新樣式」 from a selection) in the same step.
+   */
+  | {
+      readonly type: "textStyle/add";
+      readonly style: TextStyleDef;
+      readonly link?: { readonly pageId: PageId; readonly ids: readonly ElementId[] };
+    }
+  /**
+   * New field values (the id stays) and optionally a new name; linked texts follow except where they
+   * override it. The style dialog sends both in one undo step.
+   */
+  | { readonly type: "textStyle/update"; readonly id: string; readonly style: TextStyle; readonly name?: string }
+  | { readonly type: "textStyle/rename"; readonly id: string; readonly name: string }
+  /** Removes a style; its texts keep their look and are unlinked. */
+  | { readonly type: "textStyle/delete"; readonly id: string }
+  /**
+   * Links texts (text elements, the label of shapes) to a style and gives them its values; `null`
+   * unlinks them and keeps their look. Other elements are skipped.
+   */
+  | {
+      readonly type: "element/applyTextStyle";
+      readonly ids: readonly ElementId[];
+      readonly styleId: string | null;
+      readonly pageId?: PageId;
+    }
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
   | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
@@ -352,8 +392,22 @@ function applyPatch(current: CanvasElement, patch: ElementPatch): CanvasElement 
   return changed ? ({ ...current, ...patch } as CanvasElement) : current;
 }
 
+/** A `styleId` must be null or name a style of the document (Rust `require_style`). */
+function isStyleLink(document: EditorDocument, styleId: unknown): boolean {
+  return styleId === null || document.textStyles.some((style) => style.id === styleId);
+}
+
+/** The style links an element or a patch brings in (its own `styleId`, its label's) are valid. */
+function hasValidStyleLinks(document: EditorDocument, value: CanvasElement | ElementPatch): boolean {
+  const fields = value as Record<string, unknown>;
+  if ("styleId" in fields && !isStyleLink(document, fields.styleId)) return false;
+  const label = fields.label as { readonly styleId?: unknown } | null | undefined;
+  return !label || isStyleLink(document, label.styleId);
+}
+
 function updateElements(state: EditorState, entries: readonly ElementPatchEntry[], pageId?: PageId): EditorState {
   if (!entries.every((entry) => isValidPatch(entry.patch))) return state;
+  if (!entries.every((entry) => hasValidStyleLinks(state.history.present, entry.patch))) return state;
   const patches = new Map(entries.map((entry) => [entry.id, entry.patch]));
   // 全部的變更放在同一次 commit：多選移動 = 一筆復原
   return updateSheet(state, targetSheetId(state, pageId), (page) => {
@@ -368,12 +422,54 @@ function updateElements(state: EditorState, entries: readonly ElementPatchEntry[
   });
 }
 
+/**
+ * Renames a style (trimmed, unique). Returns the new document, the same one when the name does not
+ * change, or null when the style is unknown or the name invalid / taken.
+ */
+function renameTextStyle(document: EditorDocument, id: string, name: string): EditorDocument | null {
+  const target = document.textStyles.find((style) => style.id === id);
+  const result = validateName(name, TEXT_STYLE_NAME_MAX_LENGTH);
+  if (!target || result.error) return null;
+  if (result.data === target.name) return document;
+  if (document.textStyles.some((style) => style.name === result.data)) return null;
+  return { ...document, textStyles: document.textStyles.map((style) => (style === target ? { ...style, name: result.data } : style)) };
+}
+
+/**
+ * Links (or with null, unlinks) the texts of these elements on one sheet.
+ *
+ * Returns the new document, the same one when nothing changes, or null when the sheet does not exist.
+ */
+function linkElements(
+  document: EditorDocument,
+  sheetId: PageId,
+  ids: readonly ElementId[],
+  style: TextStyleDef | null,
+): EditorDocument | null {
+  const sheet = findSheet(document, sheetId);
+  if (!sheet) return null;
+  const targets = new Set(ids);
+  let changed = false;
+  const elements = sheet.elements.map((element) => {
+    if (!targets.has(element.id) || !styledTextOf(element)) return element;
+    const next = mapElementText(element, (text) => linkTextStyle(text, style));
+    if (next !== element) changed = true;
+    return next;
+  });
+  if (!changed) return document;
+  const replace = <S extends Sheet>(sheets: readonly S[]) => sheets.map((s) => (s.id === sheetId ? { ...s, elements } : s));
+  return isMasterId(document, sheetId)
+    ? { ...document, masters: replace(document.masters) }
+    : { ...document, pages: replace(document.pages) };
+}
+
 function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/add": (state, action) => {
+    if (!hasValidStyleLinks(state.history.present, action.element)) return state;
     const sheetId = targetSheetId(state, action.pageId);
     const next = updateSheet(state, sheetId, (page) => ({ ...page, elements: [...page.elements, action.element] }));
     if (next === state) return state;
@@ -613,6 +709,40 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const next = commit(state, nextDocument);
     if (state.activePageId !== action.id) return next;
     return { ...next, activePageId: nextDocument.pages[0].id, selectedIds: NO_SELECTION };
+  },
+
+  "textStyle/add": (state, action) => {
+    const document = state.history.present;
+    const textStyles = [...document.textStyles, action.style];
+    if (!isTextStyleSheet(textStyles)) return state;
+    const added = { ...document, textStyles };
+    if (!action.link) return commit(state, added);
+    // 連結的文字和新樣式同一筆復原；頁面不存在就整個不做
+    const linked = linkElements(added, action.link.pageId, action.link.ids, action.style);
+    return linked ? commit(state, linked) : state;
+  },
+
+  "textStyle/update": (state, action) => {
+    if (!isTextStyle(action.style)) return state;
+    const restyled = restyleDocument(state.history.present, action.id, pickTextStyle(action.style));
+    if (action.name === undefined) return commit(state, restyled);
+    const renamed = renameTextStyle(restyled, action.id, action.name);
+    return renamed ? commit(state, renamed) : state;
+  },
+
+  "textStyle/rename": (state, action) => {
+    const renamed = renameTextStyle(state.history.present, action.id, action.name);
+    return renamed ? commit(state, renamed) : state;
+  },
+
+  "textStyle/delete": (state, action) => commit(state, deleteTextStyle(state.history.present, action.id)),
+
+  "element/applyTextStyle": (state, action) => {
+    const document = state.history.present;
+    const style = action.styleId === null ? null : document.textStyles.find((s) => s.id === action.styleId);
+    if (style === undefined) return state;
+    const linked = linkElements(document, targetSheetId(state, action.pageId), action.ids, style);
+    return linked ? commit(state, linked) : state;
   },
 
   "document/rename": (state, action) => {

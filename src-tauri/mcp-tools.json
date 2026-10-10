@@ -121,6 +121,7 @@
             "panel.background",
             "panel.pages",
             "panel.properties",
+            "panel.styles",
             "panel.layers",
             "panel.resetLayout"
           ],
@@ -139,7 +140,7 @@
   {
     "name": "add_text",
     "title": "新增文字",
-    "description": "在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。預設樣式：黑體 11 pt、靠左、#171717。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 一次呼叫 = 一筆復原紀錄。",
+    "description": "在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -147,6 +148,11 @@
           "type": "string",
           "minLength": 1,
           "description": "頁面或主頁的 id（由 list_pages 取得）"
+        },
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "description": "文字樣式的名稱或 id（由 list_text_styles 取得）"
         },
         "text": {
           "type": "string",
@@ -266,7 +272,7 @@
   {
     "name": "add_shape",
     "title": "新增圖形",
-    "description": "在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），它的樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。",
+    "description": "在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），它的樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 style 讓圖形內文字連到文字樣式（需要同時給 text）。省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -359,6 +365,11 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 10000
+        },
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "description": "文字樣式的名稱或 id（由 list_text_styles 取得）"
         },
         "verticalAlign": {
           "type": "string",
@@ -787,6 +798,283 @@
       "required": [
         "pageIds",
         "masterId"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "list_text_styles",
+    "title": "文字樣式清單",
+    "description": "列出文件的文字樣式（樣式表）：id、名稱、樣式欄位（同 add_text 的 font / fontSize / bold / italic / underline / strikethrough / align / textColor / shadow）與連到它的文字數（文字物件與圖形內文字，含主頁）。文字連到樣式後，改樣式時沒被覆寫的欄位會跟著變。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "add_text_style",
+    "title": "新增文字樣式",
+    "description": "在樣式表新增一個文字樣式，回傳 id。名稱必填（最多 50 字、不可和其他樣式同名）；省略的欄位用內建「內文」的值（黑體 11 pt、靠左、#171717）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 新增後可以用 apply_text_style 或 add_text 的 style 讓文字連到它。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "樣式名稱"
+        },
+        "fontSize": {
+          "type": "number",
+          "minimum": 6,
+          "maximum": 400,
+          "description": "字級（pt）"
+        },
+        "font": {
+          "type": "string",
+          "enum": [
+            "黑體",
+            "明體",
+            "楷體",
+            "圓體"
+          ],
+          "description": "字體"
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "strikethrough": {
+          "type": "boolean"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "textColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                },
+                "offsetX": {
+                  "type": "number",
+                  "minimum": -50,
+                  "maximum": 50
+                },
+                "offsetY": {
+                  "type": "number",
+                  "minimum": -50,
+                  "maximum": 50
+                }
+              },
+              "required": [
+                "color",
+                "offsetX",
+                "offsetY"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "文字硬陰影（不模糊，偏移以頁面方向為準，pt）；null = 沒有陰影"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "update_text_style",
+    "title": "修改文字樣式",
+    "description": "修改文字樣式的欄位或名稱，只改有給的欄位。連到它的文字（所有頁面與主頁）會跟著改，但各自覆寫（和舊樣式不同）的欄位不變。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。 回傳是否有變更與受影響的文字數。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "description": "文字樣式的名稱或 id（由 list_text_styles 取得）"
+        },
+        "name": {
+          "description": "新名稱",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "fontSize": {
+          "type": "number",
+          "minimum": 6,
+          "maximum": 400,
+          "description": "字級（pt）"
+        },
+        "font": {
+          "type": "string",
+          "enum": [
+            "黑體",
+            "明體",
+            "楷體",
+            "圓體"
+          ],
+          "description": "字體"
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "strikethrough": {
+          "type": "boolean"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "textColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                },
+                "offsetX": {
+                  "type": "number",
+                  "minimum": -50,
+                  "maximum": 50
+                },
+                "offsetY": {
+                  "type": "number",
+                  "minimum": -50,
+                  "maximum": 50
+                }
+              },
+              "required": [
+                "color",
+                "offsetX",
+                "offsetY"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "文字硬陰影（不模糊，偏移以頁面方向為準，pt）；null = 沒有陰影"
+        }
+      },
+      "required": [
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "delete_text_style",
+    "title": "刪除文字樣式",
+    "description": "刪除文字樣式。連到它的文字外觀不變，只是不再連到樣式。回傳取消連結的文字數。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "description": "文字樣式的名稱或 id（由 list_text_styles 取得）"
+        }
+      },
+      "required": [
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "apply_text_style",
+    "title": "套用文字樣式",
+    "description": "讓同一頁（或同一主頁）的文字物件與圖形內文字連到文字樣式，並取樣式的所有值（清除覆寫）；style 為 null = 只取消連結、外觀不變。圖片與沒有文字的圖形會略過並列在 skipped。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "minItems": 1,
+          "maxItems": 500,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "物件 id（由 list_elements 取得）"
+          }
+        },
+        "style": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "文字樣式的名稱或 id（由 list_text_styles 取得）"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "文字樣式的名稱或 id；null = 取消連結"
+        }
+      },
+      "required": [
+        "ids",
+        "style"
       ],
       "additionalProperties": false
     },

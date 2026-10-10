@@ -4,8 +4,10 @@
  * 只讀 `history.present` 與目前頁，不改任何東西。數字四捨五入到 0.01 pt（清單）或原樣（單一物件）。
  */
 import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/editor-reducer";
+import { findFontOption } from "@/lib/editor/fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
-import type { CanvasElement, PageId, Sheet } from "@/lib/editor/types";
+import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
+import type { CanvasElement, PageId, Sheet, TextShadow, TextStyleDef } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 
 /** Longest text excerpt in element lists (characters, not UTF-16 units). */
@@ -20,6 +22,7 @@ export interface DocumentSummary {
   readonly pageSizes: readonly { readonly width: number; readonly height: number; readonly pages: number }[];
   readonly margins: { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
   readonly pageNumberRules: number;
+  readonly textStyles: number;
   readonly unsavedChanges: boolean;
   /** What the user is looking at: a page, or a master page being edited. */
   readonly activeSheet: SheetRef;
@@ -69,6 +72,26 @@ export interface ElementSummary {
   readonly rotation: number;
   /** Text (excerpt), shape kind and label, or image source. */
   readonly summary: string;
+  /** Name of the text style the text (or the shape's label) is linked to; omitted when none. */
+  readonly textStyle?: string;
+}
+
+/** A text style in the vocabulary of the tools' style arguments (`add_text`). */
+export interface TextStyleSummary {
+  readonly id: string;
+  readonly name: string;
+  /** Font menu name (黑體…), or the CSS family when it is not one of them. */
+  readonly font: string;
+  readonly fontSize: number;
+  readonly bold: boolean;
+  readonly italic: boolean;
+  readonly underline: boolean;
+  readonly strikethrough: boolean;
+  readonly align: "left" | "center" | "right";
+  readonly textColor: string;
+  readonly shadow: TextShadow | null;
+  /** Texts linked to it (text elements and shape labels, pages and master pages). */
+  readonly usedBy: number;
 }
 
 export interface ElementDetail {
@@ -139,6 +162,7 @@ export function getDocumentSummary(state: EditorState): DocumentSummary {
     pageSizes: [...sizes.values()].sort((a, b) => b.pages - a.pages),
     margins: { top: round(top), right: round(right), bottom: round(bottom), left: round(left) },
     pageNumberRules: document.pageNumberRules.length,
+    textStyles: document.textStyles.length,
     unsavedChanges: selectIsDirty(state),
     activeSheet: sheetRef(state, selectActivePage(state)),
   };
@@ -195,6 +219,7 @@ export function listElements(
 ): Result<{ sheet: SheetRef; elements: ElementSummary[] }> {
   const sheet = pageId === undefined ? selectActivePage(state) : findSheet(state.history.present, pageId);
   if (!sheet) return { data: null, error: new Error(`找不到頁面「${pageId}」，請先用 list_pages 取得 id`) };
+  const styleNames = new Map(state.history.present.textStyles.map((style) => [style.id, style.name]));
   const elements = sheet.elements.map((element, layer) => ({
     id: element.id,
     type: element.type,
@@ -205,6 +230,7 @@ export function listElements(
     ...(element.type === "text" ? {} : { height: round(element.height) }),
     rotation: round(element.rotation),
     summary: elementSummary(element),
+    ...linkedStyle(element, styleNames),
   }));
   return { data: { sheet: sheetRef(state, sheet), elements }, error: null };
 }
@@ -228,4 +254,42 @@ export function getElement(state: EditorState, id: string): Result<ElementDetail
     }
   }
   return { data: null, error: new Error(`找不到物件「${id}」，請先用 list_elements 取得 id`) };
+}
+
+function linkedStyle(element: CanvasElement, names: ReadonlyMap<string, string>): { textStyle?: string } {
+  const styleId = styledTextOf(element)?.styleId;
+  const name = styleId ? names.get(styleId) : undefined;
+  return name === undefined ? {} : { textStyle: name };
+}
+
+function styleSummary(style: TextStyleDef, usedBy: number): TextStyleSummary {
+  return {
+    id: style.id,
+    name: style.name,
+    font: findFontOption(style.fontFamily)?.label ?? style.fontFamily,
+    fontSize: style.fontSize,
+    bold: style.fontStyle === "bold",
+    italic: style.italic,
+    underline: style.underline,
+    strikethrough: style.strikethrough,
+    align: style.align,
+    textColor: style.fill,
+    shadow: style.shadow,
+    usedBy,
+  };
+}
+
+/**
+ * The document's text styles (tool `list_text_styles`).
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   Every style with its fields and how many texts are linked to it.
+ */
+export function listTextStyles(state: EditorState): TextStyleSummary[] {
+  const document = state.history.present;
+  const usage = textStyleUsage(document);
+  return document.textStyles.map((style) => styleSummary(style, usage.get(style.id) ?? 0));
 }

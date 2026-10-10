@@ -33,6 +33,7 @@ const page = (id: string, masterId: string | null = null): Page => ({
 const doc = (masters: MasterPage[], pages: Page[]): EditorDocument => ({
   name: "測試",
   margins: DEFAULT_MARGINS,
+  textStyles: [],
   pageNumberRules: [],
   masters,
   pages,

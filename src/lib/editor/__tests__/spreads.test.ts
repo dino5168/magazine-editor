@@ -45,6 +45,7 @@ describe("canvasSheets", () => {
   const document: EditorDocument = {
     name: "測試",
     margins: DEFAULT_MARGINS,
+    textStyles: [],
     pageNumberRules: [],
     masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", elements: [], parentId: null }],
     pages,

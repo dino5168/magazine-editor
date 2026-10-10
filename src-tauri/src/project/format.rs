@@ -15,7 +15,10 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v5: `document.pageNumberRules`. Missing in older files and backups → no page numbers.
 /// v6: text styles (text elements, shape labels, page numbers) gain `italic` / `underline` /
 /// `strikethrough` / `shadow`. Missing in older files and backups → plain text.
-pub const SCHEMA_VERSION: u32 = 7;
+/// v7: `document.masters` and `Page.masterId`.
+/// v8: `document.textStyles` (style sheet) and `styleId` on text elements and shape labels. Older
+/// files and backups read as the built-in styles (`default_text_styles`) with nothing linked.
+pub const SCHEMA_VERSION: u32 = 8;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -36,6 +39,9 @@ pub const MASTER_DEPTH_MAX: usize = 8;
 pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
 /// Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in `src/lib/editor/validation.ts`.
 pub const TEXT_SHADOW_OFFSET_MAX: f64 = 50.0;
+/// Longest text style name (characters, after trimming); same as `TEXT_STYLE_NAME_MAX_LENGTH` in
+/// `src/lib/editor/style-sheet.ts`.
+pub const TEXT_STYLE_NAME_MAX_LENGTH: usize = 50;
 pub const ASSET_DIR: &str = "assets/images";
 /// Text assets (`.txt` / `.md`) of the asset library.
 pub const TEXT_ASSET_DIR: &str = "assets/texts";
@@ -67,6 +73,10 @@ pub struct Document {
     /// Missing in files before v5 → no page numbers.
     #[serde(default, rename = "pageNumberRules")]
     pub page_number_rules: Vec<PageNumberRule>,
+    /// Style sheet. Linked texts keep their own copy of every field, so the exporters never read
+    /// it. Missing in files before v8 → the built-in styles.
+    #[serde(default = "default_text_styles", rename = "textStyles")]
+    pub text_styles: Vec<TextStyleDef>,
     /// Content shared by the pages that use it. The frontend draws it into each page before
     /// exporting, so the exporters never read it. Missing in older files → none.
     #[serde(default)]
@@ -217,6 +227,47 @@ pub struct TextElement {
     pub decoration: TextDecoration,
     pub align: Align,
     pub fill: String,
+    /// `TextStyleDef.id` it follows. Missing in files before v8 → not linked.
+    #[serde(default)]
+    pub style_id: Option<String>,
+}
+
+/// A named text style in the document's style sheet (TS `TextStyleDef`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TextStyleDef {
+    pub id: String,
+    pub name: String,
+    pub font_size: f64,
+    pub font_family: String,
+    pub font_style: FontStyle,
+    #[serde(flatten)]
+    pub decoration: TextDecoration,
+    pub align: Align,
+    pub fill: String,
+}
+
+/// Font of the built-in styles (TS `DEFAULT_FONT_OPTION.family`).
+const BUILT_IN_FONT_FAMILY: &str = "\"Geist\", \"Noto Sans TC\", sans-serif";
+
+/// Built-in styles (標題 / 副標題 / 內文); same as TS `defaultTextStyles`. Both sides are checked
+/// against `tests/fixtures/default-text-styles.json`.
+pub fn default_text_styles() -> Vec<TextStyleDef> {
+    let style = |id: &str, name: &str, font_size: f64, font_style: FontStyle, align: Align| TextStyleDef {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        font_size,
+        font_family: BUILT_IN_FONT_FAMILY.to_owned(),
+        font_style,
+        decoration: TextDecoration::default(),
+        align,
+        fill: "#171717".to_owned(),
+    };
+    vec![
+        style("text-style-heading", "標題", 32.0, FontStyle::Bold, Align::Center),
+        style("text-style-subheading", "副標題", 20.0, FontStyle::Normal, Align::Center),
+        style("text-style-body", "內文", 11.0, FontStyle::Normal, Align::Left),
+    ]
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -255,6 +306,9 @@ pub struct ShapeLabel {
     pub align: Align,
     pub vertical_align: VerticalAlign,
     pub fill: String,
+    /// Missing in files before v8 → not linked.
+    #[serde(default)]
+    pub style_id: Option<String>,
 }
 
 /// What is drawn inside a shape's box.
@@ -449,11 +503,12 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
     }
     validate_margins(&document.margins)?;
     validate_page_number_rules(&document.page_number_rules)?;
+    let styles = validate_text_styles(&document.text_styles)?;
     for page in &document.pages {
-        validate_sheet(&page.id, page.width, page.height, &page.background, &page.elements)?;
+        validate_sheet(&page.id, page.width, page.height, &page.background, &page.elements, &styles)?;
     }
     for master in &document.masters {
-        validate_sheet(&master.id, master.width, master.height, &master.background, &master.elements)?;
+        validate_sheet(&master.id, master.width, master.height, &master.background, &master.elements, &styles)?;
     }
     validate_master_graph(document)?;
     for asset in assets {
@@ -463,16 +518,59 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
 }
 
 /// What pages and master pages have in common.
-fn validate_sheet(id: &str, width: f64, height: f64, background: &str, elements: &[Element]) -> AppResult<()> {
+fn validate_sheet(
+    id: &str,
+    width: f64,
+    height: f64,
+    background: &str,
+    elements: &[Element],
+    styles: &StyleIds,
+) -> AppResult<()> {
     require_id(id)?;
     if !(width > 0.0 && height > 0.0) {
         return Err(AppError::invalid_project(format!("page {id} has a non-positive size")));
     }
     require_background_color(background)?;
     for element in elements {
-        validate_element(element)?;
+        validate_element(element, styles)?;
     }
     Ok(())
+}
+
+type StyleIds<'a> = std::collections::HashSet<&'a str>;
+
+/// Same rules as TS `isTextStyleSheet`: ids 1–64 bytes, names trimmed, non-empty, at most
+/// TEXT_STYLE_NAME_MAX_LENGTH characters, ids and names unique, font size in range, valid colors.
+fn validate_text_styles(styles: &[TextStyleDef]) -> AppResult<StyleIds<'_>> {
+    let mut names = std::collections::HashSet::new();
+    let mut ids = StyleIds::new();
+    for style in styles {
+        let invalid = |what: &str| AppError::invalid_project(format!("text style {}: {what}", style.id));
+        require_id(&style.id)?;
+        let name = style.name.as_str();
+        if name.is_empty() || name.trim() != name || name.chars().count() > TEXT_STYLE_NAME_MAX_LENGTH {
+            return Err(invalid("invalid name"));
+        }
+        if !(FONT_SIZE_MIN..=FONT_SIZE_MAX).contains(&style.font_size) {
+            return Err(invalid("invalid font size"));
+        }
+        require_element_color(&style.fill)?;
+        validate_text_decoration(&style.decoration)?;
+        if !ids.insert(style.id.as_str()) || !names.insert(name) {
+            return Err(invalid("duplicate id or name"));
+        }
+    }
+    Ok(ids)
+}
+
+/// A text's `styleId` must name an entry of the style sheet.
+fn require_style(style_id: &Option<String>, styles: &StyleIds) -> AppResult<()> {
+    match style_id {
+        Some(id) if !styles.contains(id.as_str()) => {
+            Err(AppError::invalid_project(format!("text linked to a missing text style {id}")))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// Same rules as TS `isMasterGraphValid`: page and master ids unique across both lists, every
@@ -576,11 +674,12 @@ fn validate_text_decoration(decoration: &TextDecoration) -> AppResult<()> {
     Ok(())
 }
 
-fn validate_element(element: &Element) -> AppResult<()> {
+fn validate_element(element: &Element, styles: &StyleIds) -> AppResult<()> {
     match element {
         Element::Text(e) => {
             require_id(&e.base.id)?;
             require_element_color(&e.fill)?;
+            require_style(&e.style_id, styles)?;
             validate_text_decoration(&e.decoration)
         }
         Element::Shape(e) => {
@@ -592,6 +691,7 @@ fn validate_element(element: &Element) -> AppResult<()> {
             }
             if let Some(label) = &e.label {
                 require_element_color(&label.fill)?;
+                require_style(&label.style_id, styles)?;
                 validate_text_decoration(&label.decoration)?;
             }
             Ok(())
@@ -1137,5 +1237,70 @@ mod tests {
         };
         assert!(chain(MASTER_DEPTH_MAX).is_ok());
         assert!(matches!(chain(MASTER_DEPTH_MAX + 1), Err(AppError::InvalidProject(_))));
+    }
+
+    #[test]
+    fn default_text_styles_match_the_shared_fixture() {
+        // TS defaultTextStyles 也和這份比對
+        let expected: Value = serde_json::from_str(include_str!("../../../tests/fixtures/default-text-styles.json")).unwrap();
+        let actual = serde_json::to_value(default_text_styles()).unwrap();
+        assert_eq!(normalize(actual), normalize(expected));
+    }
+
+    #[test]
+    fn reads_text_styles_and_defaults_them_in_older_files() {
+        let document = parse_project(FIXTURE).unwrap().document;
+        assert_eq!(document.text_styles.len(), 3);
+        let Element::Text(footer) = &document.masters[1].elements[0] else { panic!("expected text") };
+        assert_eq!(footer.style_id.as_deref(), Some("style-footer"));
+
+        // v7 檔案沒有樣式表與連結：讀成內建樣式、都不連結
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(7);
+        value["document"].as_object_mut().unwrap().remove("textStyles");
+        for pointer in ["/document/masters/1/elements/0", "/document/pages/0/elements/0", "/document/pages/0/elements/2/label"] {
+            value.pointer_mut(pointer).unwrap().as_object_mut().unwrap().remove("styleId");
+        }
+        let document = parse_project(&value.to_string()).unwrap().document;
+        assert_eq!(document.text_styles, default_text_styles());
+        let Element::Text(footer) = &document.masters[1].elements[0] else { panic!("expected text") };
+        assert_eq!(footer.style_id, None);
+        assert_eq!(parse_project(FIXTURE_V2).unwrap().document.text_styles, default_text_styles());
+
+        // v8 的空樣式表要照樣保留（不是補成內建樣式）
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["document"]["textStyles"] = Value::Array(vec![]);
+        for pointer in ["/document/masters/1/elements/0", "/document/pages/0/elements/2/label"] {
+            value.pointer_mut(pointer).unwrap()["styleId"] = Value::Null;
+        }
+        assert!(parse_project(&value.to_string()).unwrap().document.text_styles.is_empty());
+    }
+
+    #[test]
+    fn rejects_invalid_text_styles_and_links() {
+        use serde_json::json;
+        let with = |edit: &dyn Fn(&mut Value)| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            edit(&mut value["document"]);
+            parse_project(&value.to_string())
+        };
+        assert!(with(&|d| d["textStyles"][2]["name"] = json!("字".repeat(TEXT_STYLE_NAME_MAX_LENGTH))).is_ok());
+        let cases: [(&str, &dyn Fn(&mut Value)); 9] = [
+            ("text links a missing style", &|d| d["pages"][0]["elements"][0]["styleId"] = json!("missing")),
+            ("label links a missing style", &|d| d["pages"][0]["elements"][2]["label"]["styleId"] = json!("missing")),
+            ("master text links a missing style", &|d| d["masters"][1]["elements"][0]["styleId"] = json!("missing")),
+            ("duplicate id", &|d| d["textStyles"][1]["id"] = d["textStyles"][0]["id"].clone()),
+            ("duplicate name", &|d| d["textStyles"][1]["name"] = d["textStyles"][0]["name"].clone()),
+            ("untrimmed name", &|d| d["textStyles"][0]["name"] = json!(" 標題")),
+            ("empty name", &|d| d["textStyles"][0]["name"] = json!("")),
+            ("long name", &|d| d["textStyles"][0]["name"] = json!("字".repeat(TEXT_STYLE_NAME_MAX_LENGTH + 1))),
+            ("font size", &|d| d["textStyles"][0]["fontSize"] = json!(FONT_SIZE_MIN - 1.0)),
+        ];
+        for (what, edit) in cases {
+            assert!(matches!(with(edit), Err(AppError::InvalidProject(_))), "{what}");
+        }
+        assert!(with(&|d| d["textStyles"][0]["fill"] = json!("red")).is_err());
+        assert!(with(&|d| d["textStyles"][0]["id"] = json!("")).is_err());
+        assert!(with(&|d| d["textStyles"][2]["shadow"] = json!({ "color": "#000000", "offsetX": 99, "offsetY": 0 })).is_err());
     }
 }

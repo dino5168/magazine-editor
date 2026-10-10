@@ -8,6 +8,7 @@ import { PagesPanel } from "./pages-panel";
 import { PhotosPanel } from "./photos-panel";
 import { DrawPanel } from "./placeholder-panels";
 import { PropertiesPanel } from "./properties-panel";
+import { StylesPanel } from "./styles-panel";
 import { TemplatesPanel } from "./templates-panel";
 import { TextPanel } from "./text-panel";
 
@@ -23,5 +24,6 @@ export const PANELS = {
   background: BackgroundPanel,
   pages: PagesPanel,
   properties: PropertiesPanel,
+  styles: StylesPanel,
   layers: LayersPanel,
 } as const satisfies Record<PanelId, ComponentType>;

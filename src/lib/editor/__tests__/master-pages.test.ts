@@ -26,6 +26,7 @@ const page = (id: string, masterId: string | null = null): Page => ({ ...SIZE, i
 const doc = (masters: MasterPage[], pages: Page[] = [page("p1")]): EditorDocument => ({
   name: "測試",
   margins: DEFAULT_MARGINS,
+  textStyles: [],
   pageNumberRules: [],
   masters,
   pages,

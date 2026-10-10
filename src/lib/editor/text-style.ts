@@ -12,6 +12,9 @@ export const PLAIN_TEXT_DECORATION: TextDecoration = {
   shadow: null,
 };
 
+/** Color of new text (text elements, shape labels, page numbers, the built-in text styles). */
+export const DEFAULT_TEXT_FILL = "#171717";
+
 /** Shadow set when the shadow switch is turned on: 50% black, 2 pt right and down. */
 export const DEFAULT_TEXT_SHADOW: TextShadow = { color: "#00000080", offsetX: 2, offsetY: 2 };
 

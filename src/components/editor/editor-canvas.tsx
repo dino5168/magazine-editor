@@ -18,6 +18,7 @@ import {
 import { usedFontFamilies } from "@/lib/editor/fonts";
 import { rulerOrigin, selectionSpans } from "@/lib/editor/ruler";
 import { canvasSheets, canvasSlotAt, pageAcrossSpine } from "@/lib/editor/spreads";
+import { BUILT_IN_TEXT_STYLE_IDS } from "@/lib/editor/style-sheet";
 import { createLabel, labelAsText, labelFrame } from "@/lib/editor/shape-label";
 import type { ElementId, ElementPatch, ElementType, PageId, Point, Size, TextElement } from "@/lib/editor/types";
 import {
@@ -176,6 +177,8 @@ export function EditorCanvas() {
     shapeKind: state.shapeKind,
     pageAt,
     snapSpacing,
+    // 文字工具建的文字連到「內文」（以固定 id 找，改名不影響）；文件沒有就不連結
+    textStyle: document.textStyles.find((style) => style.id === BUILT_IN_TEXT_STYLE_IDS.body) ?? null,
     onTextDraft: setDraftText,
   });
   const marquee = useCanvasMarquee({

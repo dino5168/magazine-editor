@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { fontLoadRequests, fontOptionsFor, type FontOption } from "./fonts";
+import { findFontOption, fontLoadRequests, fontOptionsFor, type FontOption } from "./fonts";
 
 // 每個字型選項只載入一次；loaded 只會增加，所以復原（undo）帶回來的字型一定已經載入
 const loading = new Map<string, Promise<void>>();
@@ -29,6 +29,21 @@ export function loadFontOption(option: FontOption): Promise<void> {
     loading.set(option.id, promise);
   }
   return promise;
+}
+
+/**
+ * Loads the font of a CSS family before texts switch to it (applying a text style), so the canvas
+ * never measures with a fallback font. Families outside `FONT_OPTIONS` resolve at once.
+ *
+ * Args:
+ *   family: CSS `font-family` value.
+ *
+ * Returns:
+ *   A promise resolved when the font is ready.
+ */
+export function loadFontFamily(family: string): Promise<void> {
+  const option = findFontOption(family);
+  return option ? loadFontOption(option) : Promise.resolve();
 }
 
 /**

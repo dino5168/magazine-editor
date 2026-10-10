@@ -3,10 +3,14 @@ import {
   DEFAULT_MARGINS,
   DEFAULT_NEW_PAGE_SETUP,
   MIN_TEXT_WIDTH,
+  TEXT_PRESETS,
   boundsFromPoints,
+  builtInTextStyle,
   createBlankDocument,
   createShapeElement,
   createShapeInBox,
+  createStyledText,
+  createTextElement,
   createTextFromFile,
   createToolText,
   describeElement,
@@ -115,14 +119,39 @@ describe("describeElement", () => {
 
 describe("createToolText", () => {
   it("centres the first line on a click point", () => {
-    const text = createToolText({ x: 50, y: 80 }, null);
+    const text = createToolText({ x: 50, y: 80 }, null, null);
     expect(text).toMatchObject({ type: "text", text: "", x: 50, align: "left" });
     expect(text.y + (text.fontSize * 1.2) / 2).toBeCloseTo(80);
   });
 
   it("uses the dragged box for position and wrapping width, with a minimum width", () => {
-    expect(createToolText({ x: 0, y: 0 }, box)).toMatchObject({ x: 100, y: 200, width: 200 });
-    expect(createToolText({ x: 0, y: 0 }, { minX: 10, minY: 10, maxX: 15, maxY: 12 }).width).toBe(MIN_TEXT_WIDTH);
+    expect(createToolText({ x: 0, y: 0 }, box, null)).toMatchObject({ x: 100, y: 200, width: 200 });
+    expect(createToolText({ x: 0, y: 0 }, { minX: 10, minY: 10, maxX: 15, maxY: 12 }, null).width).toBe(MIN_TEXT_WIDTH);
+  });
+
+  it("links to the document's 內文 style, or uses the built-in 內文 values unlinked", () => {
+    const body = { ...builtInTextStyle("body"), fontSize: 12, fill: "#1e3a8a" };
+    expect(createToolText({ x: 0, y: 0 }, null, body)).toMatchObject({ styleId: body.id, fontSize: 12, fill: "#1e3a8a" });
+    expect(createToolText({ x: 0, y: 0 }, null, null)).toMatchObject({ styleId: null, fontSize: 11, align: "left" });
+  });
+});
+
+describe("createStyledText", () => {
+  it("links the style and uses the built-in placeholder for built-in styles", () => {
+    const heading = builtInTextStyle("heading");
+    const text = createStyledText(heading, { x: 300, y: 100 });
+    expect(text).toMatchObject({ styleId: heading.id, text: TEXT_PRESETS.heading.text, width: TEXT_PRESETS.heading.width, fontSize: 32 });
+    expect(text.x + text.width / 2).toBe(300);
+  });
+
+  it("shows the name of other styles", () => {
+    const custom = { ...builtInTextStyle("body"), id: "custom", name: "引言", italic: true };
+    expect(createStyledText(custom, { x: 0, y: 0 })).toMatchObject({ styleId: "custom", text: "引言", italic: true });
+  });
+
+  it("createTextElement uses the built-in values without linking", () => {
+    expect(createTextElement("body", { x: 0, y: 0 })).toMatchObject({ styleId: null, fontSize: 11, align: "left" });
+    expect(createTextElement("heading", { x: 0, y: 0 })).toMatchObject({ styleId: null, fontSize: 32, fontStyle: "bold", align: "center" });
   });
 });
 

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "text-style-heading",
+    "name": "標題",
+    "fontSize": 32,
+    "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+    "fontStyle": "bold",
+    "italic": false,
+    "underline": false,
+    "strikethrough": false,
+    "shadow": null,
+    "align": "center",
+    "fill": "#171717"
+  },
+  {
+    "id": "text-style-subheading",
+    "name": "副標題",
+    "fontSize": 20,
+    "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+    "fontStyle": "normal",
+    "italic": false,
+    "underline": false,
+    "strikethrough": false,
+    "shadow": null,
+    "align": "center",
+    "fill": "#171717"
+  },
+  {
+    "id": "text-style-body",
+    "name": "內文",
+    "fontSize": 11,
+    "fontFamily": "\"Geist\", \"Noto Sans TC\", sans-serif",
+    "fontStyle": "normal",
+    "italic": false,
+    "underline": false,
+    "strikethrough": false,
+    "shadow": null,
+    "align": "left",
+    "fill": "#171717"
+  }
+]
