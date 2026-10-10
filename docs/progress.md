@@ -10,6 +10,8 @@
 
 ## 目前階段
 
+- **設計方式探討(2026-10-10,只討論、沒改程式)**:任務檔 `docs/01-Plans-2026-10/08-設計方式探討.md`,總結 `08-設計方式總結.md`。決定:「雙向建構」方向對,但本專案是固定版面,不另建自動排版引擎;下一步順序 = **樣式系統(段落 / 字元樣式、文件色票)** → 主頁上的欄格線 / 版心 → 範本 → 內容系統(富文字 → 文字框串接 / 溢排 → 文章匯入)。樣式的細節實作時再討論。素材管理只做人工驗證、不擴充。待確認:樣式系統與 EPUB 重構(`plan-epubv2` 階段 1 起)的先後。
+
 - **軟體增加 MCP Server(2026-10-09,第一階段六個步驟全部完成;步驟 6 = 偏好設定開關(預設關)、TopBar 狀態圖示、`CLAUDE.md`「MCP」一節:步驟 1–3(查詢工具、App 端 named pipe、橋接程式 `magazine-mcp.exe`(rmcp =3.5.1)、`.mcp.json`)commit `f23f5f0`;步驟 4 選單指令工具 `list_commands` / `run_command`、步驟 5 編輯工具(新增文字 / 圖形、修改、刪除、頁面、文件名稱、復原 / 重做;reducer 的 `element/*` 加可選 `pageId`)、步驟 6 commit `fe856f3`(已推送到 GitHub `main`);Claude Code 本身的實測待使用者做;下一步是第二階段:隨新功能補工具;2026-10-10 第二階段:`add_master`(新增主頁,預設與規則同「新增主頁」對話框)、`set_page_master`(頁面套用 / 取消主頁,不切換畫面),commit `95a3105`(已推送到 GitHub `main`))**:任務檔 `docs/01-Plans-2026-10/07-軟體增加McpServer.md`(不 commit),計畫 `docs/01-Plans-2026-10/07-軟體增加McpServer-實作.md` 與流程圖 `Claude-McpServer-System.html`(要 commit)。Claude Code 以 stdio 啟動橋接程式 `magazine-mcp.exe`(Rust + `rmcp`),經 named pipe 轉給開著的 App,由前端的自動化指令層(zod 驗證)執行。使用者確認:「系統命令」= App 選單指令 + 編輯;MCP 預設關、偏好設定開;AI 修改直接套用、一次呼叫一筆復原;加入 zod 4。第一階段六個步驟。取代 `docs/01-Plans/eval-mcp-server.md` 的「HTTP 內嵌」建議。
 
 - **工具面板停靠區改成 Tabs(2026-10-09,五個步驟全部完成,commit `b79ede6`,已推送;桌面版人工驗證待做)**:任務檔 `docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區.md`(不 commit),計畫 `docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區-實作.md`(要 commit)。參考 Affinity:一側由上到下好幾個群組,每組一排頁籤。使用者確認:多組堆疊;舊版面(v2)改用新預設、只留寬度;背景頁籤卸載;頁籤放不下時水平捲動;新預設 = 左 [範本 文字 相片 元素 素材 背景] / [頁面]、右 [屬性] / [圖層]。
