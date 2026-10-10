@@ -16,11 +16,13 @@ import {
   builtInTextStyle,
   createId,
   createMasterPage,
+  createImageElement,
   createShapeInBox,
   createTextElement,
 } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
-import { nextMasterName } from "@/lib/editor/master-pages";
+import { pageCenter } from "@/lib/editor/geometry";
+import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadius } from "@/lib/editor/properties";
 import { createLabel } from "@/lib/editor/shape-label";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
@@ -35,6 +37,7 @@ import type {
   TextStyleDef,
 } from "@/lib/editor/types";
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, validateName, type Result } from "@/lib/editor/validation";
+import type { Library, LibraryItem } from "@/lib/library/types";
 import { getElement } from "./queries";
 import type { ToolArgs, TextStyleInput } from "./tool-definitions";
 
@@ -156,6 +159,63 @@ export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"
     ...textStyleFields(pickStyle(args)),
   };
   return addElement(apply, element, sheet.data);
+}
+
+/**
+ * A library item by id, or by name (trimmed, exact). Items in the trash are only found to say so.
+ *
+ * Args:
+ *   library: The asset library.
+ *   ref: Id or name from the AI.
+ *
+ * Returns:
+ *   The item, or an error pointing to `list_library_items` (unknown, or several with that name).
+ */
+export function findLibraryItem(library: Library, ref: string): Result<LibraryItem> {
+  const byId = library.items.find((item) => item.id === ref);
+  if (byId) return ok(byId);
+  const named = library.items.filter((item) => item.name === ref.trim());
+  // 同名時以不在垃圾桶的為準；只有垃圾桶裡有，才回報「在垃圾桶」
+  const candidates = named.some((item) => !item.trashed) ? named.filter((item) => !item.trashed) : named;
+  if (candidates.length === 1) return ok(candidates[0]);
+  if (candidates.length > 1) {
+    return fail(`有 ${candidates.length} 個素材叫「${ref.trim()}」（${candidates.map((item) => item.id).join("、")}），請改用 id`);
+  }
+  return fail(`找不到素材「${ref}」，請先用 list_library_items 取得名稱或 id`);
+}
+
+/** Tool `place_library_item` (images only). */
+export function placeLibraryItem(
+  state: EditorState,
+  library: Library,
+  apply: ApplyAction,
+  args: ToolArgs<"place_library_item">,
+) {
+  const sheetId = targetSheet(state, args.pageId);
+  if (sheetId.error) return sheetId;
+  const found = findLibraryItem(library, args.item);
+  if (found.error) return found;
+  const item = found.data;
+  if (item.trashed) return fail(`素材「${item.name}」在垃圾桶裡，請使用者先在素材管理還原`);
+  if (item.kind === "audio") return fail("音訊不能放到頁面");
+  if (item.kind === "text") {
+    return fail(`目前只能放圖片；文字檔「${item.name}」請用 list_library_items 的摘錄（或使用者提供的內容）以 add_text 加入`);
+  }
+  const sheet = findSheet(state.history.present, sheetId.data)!;
+  // 和素材面板放到頁面相同（太大時縮小）；給寬度時依原圖比例算高度
+  const placed = createImageElement(item.src, item, sheet, pageCenter(sheet));
+  const width = args.width ?? placed.width;
+  // 比例用原圖像素（同 createImageElement 的下限 1），不用縮小後的尺寸，免得多出浮點誤差
+  const height = args.width === undefined ? placed.height : (width * Math.max(item.height, 1)) / Math.max(item.width, 1);
+  const element = {
+    ...placed,
+    width,
+    height,
+    x: args.x ?? (sheet.width - width) / 2,
+    y: args.y ?? (sheet.height - height) / 2,
+  };
+  const added = addElement(apply, element, sheetId.data);
+  return added.error ? added : ok({ ...added.data, width, height });
 }
 
 /** Tool `add_shape`. */

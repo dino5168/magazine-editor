@@ -20,6 +20,7 @@ import {
   STROKE_WIDTH_MIN,
   TEXT_SHADOW_OFFSET_MAX,
 } from "@/lib/editor/validation";
+import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
 import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
 
 export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
@@ -272,6 +273,31 @@ export const TOOL_DEFINITIONS = {
     input: z.strictObject({
       ids: z.array(elementId).min(1).max(500),
       style: styleRef.nullable().describe("文字樣式的名稱或 id；null = 取消連結"),
+    }),
+    readOnly: false,
+  },
+  list_library_items: {
+    title: "素材清單",
+    description:
+      "列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。素材只能由使用者在 App 裡匯入，這裡不能新增或刪除。",
+    input: z.strictObject({
+      kind: z.enum(["image", "text", "audio"]).optional().describe("只列這一種素材"),
+      query: z.string().max(ITEM_NAME_MAX_CHARS).optional().describe("名稱包含這段文字（不分大小寫）"),
+      folderId: z.string().min(1).optional().describe("只列這個資料夾（含子資料夾）的素材；id 由本工具回傳的 folders 取得"),
+      includeTrashed: z.boolean().optional().describe("也列出垃圾桶裡的素材（預設 false）"),
+    }),
+    readOnly: true,
+  },
+  place_library_item: {
+    title: "把素材放到頁面",
+    description:
+      "把素材庫裡的圖片放到頁面或主頁（放在最上層），回傳新物件的 id 與尺寸（pt）。item 是素材 id 或名稱（名稱要完全相符；同名的素材不只一個時請改用 id）。x / y 是圖片外框左上角（pt），省略的那一軸置中於頁面。width 省略時和使用者從素材面板放到頁面相同：原始像素當 pt，太大時縮到頁面寬、高的一半以內；給 width 時高度依原圖比例算（要改比例再用 update_element）。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。目前只能放圖片：文字檔請讀 list_library_items 的摘錄後用 add_text，音訊不能放到頁面，垃圾桶裡的素材要使用者先還原。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({
+      item: z.string().min(1).max(ITEM_NAME_MAX_CHARS).describe("素材 id 或名稱（由 list_library_items 取得）"),
+      pageId: pageId.optional(),
+      x: coordinate.optional(),
+      y: coordinate.optional(),
+      width: length.optional().describe("寬度（pt），高度依原圖比例"),
     }),
     readOnly: false,
   },

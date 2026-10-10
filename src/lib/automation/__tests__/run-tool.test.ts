@@ -3,8 +3,10 @@ import { createInitialState, editorReducer } from "@/lib/editor/editor-reducer";
 import type { EditorDocument } from "@/lib/editor/types";
 import { excerpt, TEXT_EXCERPT_LENGTH } from "../queries";
 import { TOOL_DEFINITIONS, TOOL_NAMES } from "../tool-definitions";
-import { toolSession } from "./tool-session";
+import type { Library } from "@/lib/library/types";
+import { NO_COMMANDS, toolSession } from "./tool-session";
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
+import libraryJson from "../../../../tests/fixtures/sample-library.json?raw";
 
 const document = (JSON.parse(fixtureJson) as { document: EditorDocument }).document;
 const state = createInitialState(document);
@@ -101,6 +103,56 @@ describe("runTool: queries", () => {
     const readOnlySession = toolSession(state);
     for (const name of readOnly) readOnlySession.call(name, {});
     expect(readOnlySession.state).toBe(state);
+  });
+});
+
+describe("list_library_items", () => {
+  const library = toolSession(state, NO_COMMANDS, JSON.parse(libraryJson) as Library);
+  const ids = (items: { id: string }[]) => items.map((item) => item.id);
+
+  it("lists folders with paths and items newest first, without the trash", () => {
+    const { folders, items } = library.ok("list_library_items");
+    expect(folders).toContainEqual({ id: "f-people", name: "人物", parentId: "f-cover", path: "封面 / 人物" });
+    expect(ids(items)).toEqual(["i-illustration", "i-interview", "i-editorial", "i-unsorted", "i-cover-photo"]);
+    expect(items.find((item: any) => item.id === "i-cover-photo")).toEqual({
+      id: "i-cover-photo",
+      name: "封面照片.png",
+      kind: "image",
+      folder: "封面 / 人物",
+      bytes: 345678,
+      trashed: false,
+      width: 1600,
+      height: 900,
+    });
+    // 文字檔附摘錄（一行），音訊只有共同欄位
+    expect(items.find((item: any) => item.id === "i-editorial").excerpt).toBe("# 創刊詞 ⏎  ⏎ 這是一本關於城市與生活的雜誌。");
+    expect(items.find((item: any) => item.id === "i-interview")).not.toHaveProperty("width");
+    expect(items.find((item: any) => item.id === "i-unsorted").folder).toBeNull();
+  });
+
+  it("filters by kind, name and folder (with subfolders)", () => {
+    expect(ids(library.ok("list_library_items", { kind: "image" }).items)).toEqual([
+      "i-illustration",
+      "i-unsorted",
+      "i-cover-photo",
+    ]);
+    expect(ids(library.ok("list_library_items", { query: "封面" }).items)).toEqual(["i-cover-photo"]);
+    expect(ids(library.ok("list_library_items", { folderId: "f-cover" }).items)).toEqual(["i-cover-photo"]);
+    expect(library.error("list_library_items", { folderId: "nope" })).toContain("folders");
+  });
+
+  it("adds trashed items last only when asked", () => {
+    const { items } = library.ok("list_library_items", { includeTrashed: true, kind: "image" });
+    expect(ids(items)).toEqual(["i-illustration", "i-unsorted", "i-cover-photo", "i-old-cover"]);
+    expect(items.at(-1)).toMatchObject({ trashed: true, folder: null });
+    // 垃圾桶的素材沒有資料夾
+    expect(ids(library.ok("list_library_items", { includeTrashed: true, folderId: "f-cover" }).items)).toEqual([
+      "i-cover-photo",
+    ]);
+  });
+
+  it("works on an empty library", () => {
+    expect(data("list_library_items")).toEqual({ folders: [], items: [] });
   });
 });
 

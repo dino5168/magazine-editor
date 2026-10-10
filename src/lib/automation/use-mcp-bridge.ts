@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { editorReducer } from "@/lib/editor/editor-reducer";
+import type { Library } from "@/lib/library/types";
 import { describeCommandError, isDesktop, projectApi, type McpToolResponse } from "@/lib/project/project-api";
 import type { CommandAccess } from "./commands";
 import type { ApplyAction } from "./edits";
@@ -49,13 +50,18 @@ const DISABLED_MESSAGE = "使用者已在雜誌編輯軟體關閉 Claude Code �
  * Args:
  *   commands: Menu command handlers and checked state, the same the menu bar uses.
  *   enabled: Whether the user allows Claude Code to connect.
+ *   getLibrary: The latest asset library (`LibraryControl.getLibrary`, includes changes not rendered yet).
  */
-export function useMcpBridge(commands: CommandAccess, enabled: boolean): void {
+export function useMcpBridge(commands: CommandAccess, enabled: boolean, getLibrary: () => Library): void {
   const state = useEditorState();
   const dispatch = useEditorDispatch();
   // 事件處理只註冊一次，用 ref 讀最新的值；layout effect 在 commit 當下同步更新，不會晚於下一個呼叫
   const stateRef = useRef(state);
   const commandsRef = useRef(commands);
+  const getLibraryRef = useRef(getLibrary);
+  useLayoutEffect(() => {
+    getLibraryRef.current = getLibrary;
+  }, [getLibrary]);
   const enabledRef = useRef(enabled);
   useLayoutEffect(() => {
     stateRef.current = state;
@@ -107,7 +113,12 @@ export function useMcpBridge(commands: CommandAccess, enabled: boolean): void {
         void projectApi.mcpRespond(payload.id, { status: "error", error: DISABLED_MESSAGE });
         return;
       }
-      const context: ToolContext = { state: stateRef.current, commands: commandsRef.current, apply };
+      const context: ToolContext = {
+        state: stateRef.current,
+        library: getLibraryRef.current(),
+        commands: commandsRef.current,
+        apply,
+      };
       const response = answer(payload, context);
       recordMcpCall({ tool: payload.tool, ok: response.status === "ok", at: Date.now() });
       void projectApi.mcpRespond(payload.id, response);

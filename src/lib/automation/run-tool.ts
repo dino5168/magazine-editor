@@ -4,6 +4,7 @@
 import { z } from "zod";
 import type { EditorState } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
+import type { Library } from "@/lib/library/types";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
   addMaster,
@@ -14,6 +15,7 @@ import {
   applyTextStyle,
   deleteElements,
   deleteTextStyle,
+  placeLibraryItem,
   renameDocument,
   renamePage,
   setPageBackground,
@@ -23,12 +25,14 @@ import {
   updateTextStyle,
   type ApplyAction,
 } from "./edits";
-import { getDocumentSummary, getElement, listElements, listPages, listTextStyles } from "./queries";
+import { getDocumentSummary, getElement, listElements, listLibraryItems, listPages, listTextStyles } from "./queries";
 import { TOOL_DEFINITIONS, isToolName, type ToolArgs, type ToolName } from "./tool-definitions";
 
 /** What a tool can see and do. */
 export interface ToolContext {
   readonly state: EditorState;
+  /** The project's asset library (read only; tools never change it). */
+  readonly library: Library;
   readonly commands: CommandAccess;
   /** Dispatches one action (= one undo step) and reports the resulting state. */
   readonly apply: ApplyAction;
@@ -59,6 +63,8 @@ const HANDLERS: ToolHandlers = {
   update_text_style: (args, { state, apply }) => updateTextStyle(state, apply, args),
   delete_text_style: (args, { state, apply }) => deleteTextStyle(state, apply, args),
   apply_text_style: (args, { state, apply }) => applyTextStyle(state, apply, args),
+  list_library_items: (args, { library }) => listLibraryItems(library, args),
+  place_library_item: (args, { state, library, apply }) => placeLibraryItem(state, library, apply, args),
   rename_page: (args, { state, apply }) => renamePage(state, apply, args),
   set_page_background: (args, { state, apply }) => setPageBackground(state, apply, args),
   rename_document: (args, { apply }) => renameDocument(apply, args),

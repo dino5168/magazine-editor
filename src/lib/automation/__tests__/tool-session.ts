@@ -1,5 +1,6 @@
 import { expect } from "vitest";
 import { editorReducer, type EditorState } from "@/lib/editor/editor-reducer";
+import { EMPTY_LIBRARY, type Library } from "@/lib/library/types";
 import { createPlaceholderHandlers } from "@/lib/menu/commands";
 import type { CommandAccess } from "../commands";
 import { runTool } from "../run-tool";
@@ -13,11 +14,12 @@ export const NO_COMMANDS: CommandAccess = { handlers: createPlaceholderHandlers(
  * Args:
  *   initial: Starting editor state.
  *   commands: Menu commands seen by the tools.
+ *   library: Asset library seen by the tools (tools only read it).
  *
  * Returns:
  *   Helpers to call tools and read the current state.
  */
-export function toolSession(initial: EditorState, commands: CommandAccess = NO_COMMANDS) {
+export function toolSession(initial: EditorState, commands: CommandAccess = NO_COMMANDS, library: Library = EMPTY_LIBRARY) {
   let state = initial;
   const apply = (action: Parameters<typeof editorReducer>[1]) => {
     const next = editorReducer(state, action);
@@ -25,7 +27,7 @@ export function toolSession(initial: EditorState, commands: CommandAccess = NO_C
     state = next;
     return next;
   };
-  const call = (name: string, args?: unknown) => runTool(name, args, { state, commands, apply });
+  const call = (name: string, args?: unknown) => runTool(name, args, { state, library, commands, apply });
   return {
     get state() {
       return state;

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMcpBridge } from "@/lib/automation/use-mcp-bridge";
+import { useLibraryControl } from "@/lib/library/library-context";
 import type { CommandHandlers, CommandId } from "@/lib/menu/commands";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 
@@ -16,9 +17,11 @@ interface McpBridgeProps {
  */
 export function McpBridge({ handlers, isChecked }: McpBridgeProps) {
   const { mcpEnabled } = usePreferences();
+  const { getLibrary } = useLibraryControl();
   useMcpBridge(
     useMemo(() => ({ handlers, isChecked }), [handlers, isChecked]),
     mcpEnabled,
+    getLibrary,
   );
   return null;
 }

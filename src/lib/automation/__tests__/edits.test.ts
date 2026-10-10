@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createInitialState, selectActivePage } from "@/lib/editor/editor-reducer";
 import { createBlankDocument } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
-import type { EditorDocument, ShapeElement, TextElement } from "@/lib/editor/types";
+import type { EditorDocument, ImageElement, ShapeElement, TextElement } from "@/lib/editor/types";
+import type { Library } from "@/lib/library/types";
 import { DEFAULT_TEXT_WIDTH } from "../edits";
-import { toolSession } from "./tool-session";
+import { NO_COMMANDS, toolSession } from "./tool-session";
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
+import libraryJson from "../../../../tests/fixtures/sample-library.json?raw";
 
 const fixture = (JSON.parse(fixtureJson) as { document: EditorDocument }).document;
 
@@ -98,6 +100,67 @@ describe("add_text", () => {
     expect(session.error("add_text", { text: "x", x: 0, y: 0, textColor: "red" })).toContain("#rrggbb");
     expect(session.error("add_text", { text: "x", x: 1e9, y: 0 })).toContain("參數 x");
     expect(session.error("add_text", { text: "x", x: 0, y: 0, pageId: "nope" })).toContain("list_pages");
+    expect(session.state).toBe(before);
+  });
+});
+
+describe("place_library_item", () => {
+  const library = JSON.parse(libraryJson) as Library;
+  function withLibrary() {
+    const { session, first, second } = twoPages();
+    return { session: toolSession(session.state, NO_COMMANDS, library), first, second };
+  }
+
+  it("places an image at the page center like the library panel, one undo step", () => {
+    const { session, first } = withLibrary();
+    const { id, pageId, width, height } = session.ok("place_library_item", { item: "i-cover-photo" });
+    const element = elementOf(session, id) as ImageElement;
+    // A4 直式：1600×900 px 縮到頁寬的一半
+    expect(pageId).toBe(first.id);
+    expect(element).toMatchObject({ type: "image", src: "assets/images/0123456789abcdef0123456789abcdef.png", rotation: 0 });
+    expect(element.width).toBeCloseTo(first.width / 2);
+    expect(element.height).toBeCloseTo((first.width / 2) * (900 / 1600));
+    expect([width, height]).toEqual([element.width, element.height]);
+    expect(element.x + element.width / 2).toBeCloseTo(first.width / 2);
+    expect(element.y + element.height / 2).toBeCloseTo(first.height / 2);
+    expect(session.state.history.past).toHaveLength(1);
+  });
+
+  it("finds the item by name and keeps the aspect ratio for a given width and position", () => {
+    const { session } = withLibrary();
+    const { id } = session.ok("place_library_item", { item: " 未命名-01.png ", x: 10, y: 20, width: 200 });
+    expect(elementOf(session, id)).toMatchObject({ x: 10, y: 20, width: 200, height: 300 });
+  });
+
+  it("centers only the axis that is not given", () => {
+    const { session, first } = withLibrary();
+    const { id } = session.ok("place_library_item", { item: "i-unsorted", x: 0, width: 100 });
+    expect(elementOf(session, id)).toMatchObject({ x: 0, y: (first.height - 150) / 2 });
+  });
+
+  it("adds to another page without switching the user's page", () => {
+    const { session, first, second } = withLibrary();
+    const { pageId } = session.ok("place_library_item", { item: "i-illustration", pageId: second.id });
+    expect(pageId).toBe(second.id);
+    expect(session.state.activePageId).toBe(first.id);
+    expect(session.state.history.present.pages[1].elements).toHaveLength(1);
+    expect(session.error("place_library_item", { item: "i-illustration", pageId: "nope" })).toContain("list_pages");
+  });
+
+  it("rejects text, audio, trashed, unknown and ambiguous items without changing anything", () => {
+    const duplicated: Library = {
+      ...library,
+      items: [...library.items, { ...library.items[0], id: "i-copy", src: "assets/images/55555555555555555555555555555555.png" }],
+    };
+    const { session } = withLibrary();
+    const before = session.state;
+    expect(session.error("place_library_item", { item: "i-editorial" })).toContain("add_text");
+    expect(session.error("place_library_item", { item: "訪談錄音.mp3" })).toContain("音訊");
+    expect(session.error("place_library_item", { item: "舊封面試排.jpg" })).toContain("垃圾桶");
+    expect(session.error("place_library_item", { item: "nope" })).toContain("list_library_items");
+    const ambiguous = toolSession(before, NO_COMMANDS, duplicated).error("place_library_item", { item: "封面照片.png" });
+    expect(ambiguous).toContain("i-cover-photo");
+    expect(ambiguous).toContain("i-copy");
     expect(session.state).toBe(before);
   });
 });
