@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-10
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-11
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -426,16 +426,16 @@
       <text class="field" x="25" y="874">fontFamily<tspan class="ft">: string</tspan></text>
       <text class="field" x="25" y="894">fontStyle<tspan class="ft">: "normal"|"bold"</tspan></text>
       <text class="field" x="25" y="914">italic<tspan class="ft">: boolean</tspan></text>
-      <text class="field" x="25" y="934">underline<tspan class="ft">: boolean</tspan></text>
-      <text class="field" x="25" y="954">strikethrough<tspan class="ft">: boolean</tspan></text>
-      <text class="field" x="25" y="974">shadow<tspan class="ft">: TextShadow | null</tspan></text>
+      <text class="field" x="25" y="934">underline / strikethrough<tspan class="ft">: boolean</tspan></text>
+      <text class="field" x="25" y="954">shadow<tspan class="ft">: TextShadow | null</tspan></text>
+      <text class="field" x="25" y="974">lineHeight / letterSpacing<tspan class="ft">: number</tspan></text>
       <text class="field" x="25" y="994">align<tspan class="ft">: "left"|"center"|"right"</tspan></text>
       <text class="field" x="25" y="1014">fill<tspan class="ft">: string</tspan></text>
   </a>
   <!-- TextStyle 擁有 shadow（0 或 1 個） -->
-  <polygon class="diamond" points="255,970 267,964 279,970 267,976"/>
-  <line class="edge" x1="279" y1="970" x2="300" y2="970"/>
-  <text class="mult" x="296" y="987" text-anchor="end">0..1</text>
+  <polygon class="diamond" points="255,950 267,944 279,950 267,956"/>
+  <line class="edge" x1="279" y1="950" x2="300" y2="950"/>
+  <text class="mult" x="296" y="967" text-anchor="end">0..1</text>
   <a href="#t-TextShadow" class="node doc">
     <title>TextShadow：點擊查看說明</title>
     <rect class="body" x="300" y="912" width="160" height="116" rx="6"/>
@@ -767,7 +767,7 @@
 <section class="card doc" id="t-PageNumberStyle">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>PageNumberStyle</code><span class="badge">interface</span></h4>
-  <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定），再加上框線。</p>
+  <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定）與 <code>lineHeight</code> / <code>letterSpacing</code>（直書頁碼是每字一行，行距由程式決定），再加上框線。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> / <code>fill</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
@@ -850,14 +850,14 @@
     <tr><td><code>text</code></td><td><code>string</code></td><td>內容，可以包含換行 <code>\n</code></td></tr>
     <tr><td><code>width</code></td><td><code>number</code></td><td><strong>換行寬度</strong>（pt）。拖曳控制點縮放文字時只會改變這個值，不會改變字級</td></tr>
   </table></div>
-  <p><strong>沒有 <code>height</code></strong>：高度由 <code>text</code>、<code>width</code>、<code>fontSize</code> 決定，需要時由 <code>geometry.ts</code> 的 <code>estimateTextHeight()</code> 估算（行高 1.2 倍）。</p>
+  <p><strong>沒有 <code>height</code></strong>：高度由 <code>text</code>、<code>width</code>、<code>fontSize</code> 決定，需要時由 <code>geometry.ts</code> 的 <code>estimateTextHeight()</code> 估算（行數 × 字級 × <code>lineHeight</code>）。</p>
   <p class="uses">使用位置：<code>components/editor/editor-canvas.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>components/editor/text-editor-overlay.tsx</code> · <code>components/editor/use-canvas-create.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/editor/geometry.ts</code> · <code>lib/editor/shape-label.ts</code> · <code>lib/export/export-request.ts</code> · <code>lib/export/text-layout.ts</code></p>
 </section>
 
 <section class="card doc" id="t-TextStyle">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>TextStyle</code><span class="badge">interface</span></h4>
-  <p>文字的樣式。<code>TextElement</code> 與圖形內文字 <code>ShapeLabel</code> 經由 <a href="#t-StyledText"><code>StyledText</code></a> extends 它，樣式表的 <a href="#t-TextStyleDef"><code>TextStyleDef</code></a> 也是，頁碼的 <code>PageNumberStyle</code> 是它去掉 <code>align</code>。屬性面板與頁碼對話框共用一份控制項（<code>style-controls.tsx</code> 的 <code>TextStyleFields</code>）。</p>
+  <p>文字的樣式。<code>TextElement</code> 與圖形內文字 <code>ShapeLabel</code> 經由 <a href="#t-StyledText"><code>StyledText</code></a> extends 它，樣式表的 <a href="#t-TextStyleDef"><code>TextStyleDef</code></a> 也是，頁碼的 <code>PageNumberStyle</code> 是它去掉 <code>align</code> 與行距 / 字距。屬性面板與頁碼對話框共用一份控制項（<code>style-controls.tsx</code> 的 <code>TextStyleFields</code>）。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>fontSize</code></td><td><code>number</code></td><td>字級（pt），6–400</td></tr>
@@ -866,10 +866,13 @@
     <tr><td><code>italic</code></td><td><code>boolean</code></td><td>斜體。沒有斜體字型檔，由畫布 / PDF / EPUB 把字形斜切（字寬不變，換行不受影響）</td></tr>
     <tr><td><code>underline</code> / <code>strikethrough</code></td><td><code>boolean</code></td><td>底線 / 刪除線，可以同時開</td></tr>
     <tr><td><code>shadow</code></td><td><a href="#t-TextShadow"><code>TextShadow</code></a><code> | null</code></td><td>硬陰影；<code>null</code> = 沒有陰影。修改時整個取代（<code>{ shadow: { ...shadow, color } }</code>）</td></tr>
+    <tr><td><code>lineHeight</code></td><td><code>number</code></td><td>行距：基線與基線的距離 ÷ 字級（倍數，同 Konva 的 <code>lineHeight</code>），0.5–3（TS 與 Rust 都檢查）。改字級時行距跟著縮放</td></tr>
+    <tr><td><code>letterSpacing</code></td><td><code>number</code></td><td>字距：每個字後面多加的距離，單位是字級的 1/1000（‰，同 InDesign 的「追蹤」），−200–1000。畫布換算成 pt 交給 Konva</td></tr>
     <tr><td><code>align</code></td><td><code>"left" | "center" | "right"</code></td><td>水平對齊</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>文字顏色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code>（半透明）</td></tr>
   </table></div>
   <p><code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> 是 2026-10-05 加的（<code>schemaVersion</code> 6），新文字的預設值是 <code>text-style.ts</code> 的 <code>PLAIN_TEXT_DECORATION</code>；v6 之前的檔案讀成全部關閉。</p>
+  <p><code>lineHeight</code> / <code>letterSpacing</code> 是 2026-10-11 加的（<code>schemaVersion</code> 9），預設值是 <code>text-style.ts</code> 的 <code>DEFAULT_TEXT_SPACING</code>（1.2 / 0，就是以前固定的值；內建「內文」樣式的行距是 1.5）；v9 之前的檔案讀成 1.2 / 0。頁碼沒有這兩個欄位。</p>
   <p class="uses">使用位置：<code>components/editor/style-controls.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/text-style.ts</code>；其他檔案都透過 <code>TextElement</code> / <code>ShapeLabel</code> / <code>PageNumberStyle</code> 使用</p>
 </section>
 

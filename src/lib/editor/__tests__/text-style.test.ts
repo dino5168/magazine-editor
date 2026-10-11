@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TEXT_SHADOW,
+  DEFAULT_TEXT_SPACING,
+  LETTER_SPACING_MAX,
+  LETTER_SPACING_MIN,
+  LINE_HEIGHT_MAX,
+  LINE_HEIGHT_MIN,
   PLAIN_TEXT_DECORATION,
+  clampLetterSpacing,
+  clampLineHeight,
+  hasValidTextSpacing,
   konvaFontStyle,
   konvaTextStyle,
+  letterSpacingPt,
   localShadowOffset,
   textDecorationLine,
 } from "../text-style";
@@ -25,9 +34,33 @@ describe("konvaFontStyle / textDecorationLine", () => {
   });
 });
 
+describe("hasValidTextSpacing", () => {
+  it("accepts the range Rust accepts (format.rs validate_text_spacing)", () => {
+    expect(hasValidTextSpacing({ ...DEFAULT_TEXT_SPACING })).toBe(true);
+    expect(hasValidTextSpacing({ lineHeight: LINE_HEIGHT_MIN, letterSpacing: LETTER_SPACING_MIN })).toBe(true);
+    expect(hasValidTextSpacing({ lineHeight: LINE_HEIGHT_MAX, letterSpacing: LETTER_SPACING_MAX })).toBe(true);
+    expect(hasValidTextSpacing({ lineHeight: 0.49, letterSpacing: 0 })).toBe(false);
+    expect(hasValidTextSpacing({ lineHeight: 1.2, letterSpacing: 1000.5 })).toBe(false);
+    expect(hasValidTextSpacing({ lineHeight: Number.NaN, letterSpacing: 0 })).toBe(false);
+    expect(hasValidTextSpacing({ lineHeight: 1.2 })).toBe(false);
+  });
+});
+
+describe("clampLineHeight / clampLetterSpacing", () => {
+  it("limits typed values to the range and rounds them", () => {
+    expect(clampLineHeight(1.2 + 0.1)).toBe(1.3);
+    expect(clampLineHeight(0.1)).toBe(LINE_HEIGHT_MIN);
+    expect(clampLineHeight(9)).toBe(LINE_HEIGHT_MAX);
+    expect(clampLineHeight(1.234)).toBe(1.23);
+    expect(clampLetterSpacing(12.6)).toBe(13);
+    expect(clampLetterSpacing(-999)).toBe(LETTER_SPACING_MIN);
+    expect(clampLetterSpacing(5000)).toBe(LETTER_SPACING_MAX);
+  });
+});
+
 describe("konvaTextStyle", () => {
   it("turns the shadow off explicitly when there is none", () => {
-    expect(konvaTextStyle({ fontStyle: "normal", ...PLAIN_TEXT_DECORATION })).toMatchObject({
+    expect(konvaTextStyle({ fontStyle: "normal", fontSize: 10, ...PLAIN_TEXT_DECORATION, ...DEFAULT_TEXT_SPACING })).toMatchObject({
       fontStyle: "normal",
       textDecoration: "",
       shadowEnabled: false,
@@ -36,10 +69,25 @@ describe("konvaTextStyle", () => {
     });
   });
 
+  it("passes the line height and turns letter spacing (1/1000 of the font size) into pt", () => {
+    const style = { fontStyle: "normal", fontSize: 40, ...PLAIN_TEXT_DECORATION, lineHeight: 1.5, letterSpacing: 250 } as const;
+    expect(konvaTextStyle(style)).toMatchObject({ lineHeight: 1.5, letterSpacing: 10 });
+    expect(konvaTextStyle({ ...style, letterSpacing: -50 }).letterSpacing).toBe(-2);
+    expect(letterSpacingPt({ fontSize: 11, letterSpacing: 0 })).toBe(0);
+  });
+
   it("splits the shadow alpha into shadowOpacity and never blurs", () => {
-    const style = { fontStyle: "bold", ...PLAIN_TEXT_DECORATION, shadow: { color: "#ff000080", offsetX: 3, offsetY: -2 } } as const;
+    const style = {
+      fontStyle: "bold",
+      fontSize: 10,
+      ...PLAIN_TEXT_DECORATION,
+      ...DEFAULT_TEXT_SPACING,
+      shadow: { color: "#ff000080", offsetX: 3, offsetY: -2 },
+    } as const;
     expect(konvaTextStyle(style)).toEqual({
       fontStyle: "bold",
+      lineHeight: 1.2,
+      letterSpacing: 0,
       textDecoration: "",
       shadowEnabled: true,
       shadowColor: "#ff0000",

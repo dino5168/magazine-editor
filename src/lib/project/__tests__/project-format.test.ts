@@ -65,6 +65,8 @@ describe("project file fixture", () => {
       "fontSize",
       "fontStyle",
       "italic",
+      "letterSpacing",
+      "lineHeight",
       "shadow",
       "strikethrough",
       "styleId",

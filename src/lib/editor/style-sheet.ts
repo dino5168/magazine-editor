@@ -6,7 +6,7 @@
  * 所以畫布、量測與匯出都照舊讀物件上的值。計畫：`docs/01-Plans-2026-10/09-樣式系統-實作.md`。
  */
 import { DEFAULT_FONT_OPTION } from "./fonts";
-import { DEFAULT_TEXT_FILL, PLAIN_TEXT_DECORATION } from "./text-style";
+import { DEFAULT_LINE_HEIGHT, DEFAULT_TEXT_FILL, PLAIN_TEXT_DECORATION } from "./text-style";
 import type { CanvasElement, EditorDocument, Sheet, StyledText, TextShadow, TextStyle, TextStyleDef } from "./types";
 import { PAGE_NAME_MAX_LENGTH, isTextStyle, validateName } from "./validation";
 
@@ -24,6 +24,8 @@ const KEY_SET: { readonly [K in keyof TextStyle]: true } = {
   underline: true,
   strikethrough: true,
   shadow: true,
+  lineHeight: true,
+  letterSpacing: true,
   align: true,
   fill: true,
 };
@@ -41,6 +43,8 @@ export const TEXT_STYLE_KEY_LABELS: { readonly [K in TextStyleKey]: string } = {
   underline: "底線",
   strikethrough: "刪除線",
   shadow: "陰影",
+  lineHeight: "行距",
+  letterSpacing: "字距",
   align: "對齊",
   fill: "顏色",
 };
@@ -52,12 +56,16 @@ export const BUILT_IN_TEXT_STYLE_IDS = {
   body: "text-style-body",
 } as const;
 
+/** Line height of the built-in 內文 style: Chinese body text needs more room than headings. */
+const BODY_LINE_HEIGHT = 1.5;
+
 function builtIn(
   id: string,
   name: string,
   fontSize: number,
   fontStyle: TextStyle["fontStyle"],
   align: TextStyle["align"],
+  lineHeight: number,
 ): TextStyleDef {
   return {
     id,
@@ -66,13 +74,15 @@ function builtIn(
     fontFamily: DEFAULT_FONT_OPTION.family,
     fontStyle,
     ...PLAIN_TEXT_DECORATION,
+    lineHeight,
+    letterSpacing: 0,
     align,
     fill: DEFAULT_TEXT_FILL,
   };
 }
 
 /**
- * Styles of a new document: 標題 / 副標題 (centered) and 內文 (left aligned). New text elements
+ * Styles of a new document: 標題 / 副標題 (centered, line height 1.2) and 內文 (left aligned, 1.5). New text elements
  * (`createTextElement`) take their values from here.
  *
  * Returns:
@@ -80,9 +90,9 @@ function builtIn(
  */
 export function defaultTextStyles(): readonly TextStyleDef[] {
   return [
-    builtIn(BUILT_IN_TEXT_STYLE_IDS.heading, "標題", 32, "bold", "center"),
-    builtIn(BUILT_IN_TEXT_STYLE_IDS.subheading, "副標題", 20, "normal", "center"),
-    builtIn(BUILT_IN_TEXT_STYLE_IDS.body, "內文", 11, "normal", "left"),
+    builtIn(BUILT_IN_TEXT_STYLE_IDS.heading, "標題", 32, "bold", "center", DEFAULT_LINE_HEIGHT),
+    builtIn(BUILT_IN_TEXT_STYLE_IDS.subheading, "副標題", 20, "normal", "center", DEFAULT_LINE_HEIGHT),
+    builtIn(BUILT_IN_TEXT_STYLE_IDS.body, "內文", 11, "normal", "left", BODY_LINE_HEIGHT),
   ];
 }
 
@@ -138,6 +148,8 @@ export function pickTextStyle(source: TextStyle): TextStyle {
     underline: source.underline,
     strikethrough: source.strikethrough,
     shadow: source.shadow,
+    lineHeight: source.lineHeight,
+    letterSpacing: source.letterSpacing,
     align: source.align,
     fill: source.fill,
   };

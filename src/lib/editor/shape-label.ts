@@ -1,6 +1,5 @@
 import { DEFAULT_FONT_FAMILY, DEFAULT_TEXT_FILL } from "./element-factory";
-import { TEXT_LINE_HEIGHT } from "./geometry";
-import { PLAIN_TEXT_DECORATION } from "./text-style";
+import { DEFAULT_TEXT_SPACING, PLAIN_TEXT_DECORATION } from "./text-style";
 import type { Point, ShapeElement, ShapeLabel, TextElement } from "./types";
 
 /**
@@ -15,6 +14,7 @@ const DEFAULT_LABEL: Omit<ShapeLabel, "text"> = {
   fontFamily: DEFAULT_FONT_FAMILY,
   fontStyle: "normal",
   ...PLAIN_TEXT_DECORATION,
+  ...DEFAULT_TEXT_SPACING,
   align: "center",
   verticalAlign: "middle",
   fill: DEFAULT_TEXT_FILL,
@@ -67,12 +67,13 @@ export function labelFrame(shape: ShapeElement): LabelFrame {
  * Args:
  *   lineCount: Number of wrapped lines.
  *   fontSize: Font size in pt.
+ *   lineHeight: Line height (× font size).
  *
  * Returns:
  *   Height in pt.
  */
-export function textBlockHeight(lineCount: number, fontSize: number): number {
-  return lineCount * fontSize * TEXT_LINE_HEIGHT;
+export function textBlockHeight(lineCount: number, fontSize: number, lineHeight: number): number {
+  return lineCount * fontSize * lineHeight;
 }
 
 /**

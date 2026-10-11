@@ -11,6 +11,7 @@ import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
 import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
 import { TEXT_STYLE_NAME_MAX_LENGTH } from "@/lib/editor/style-sheet";
+import { LETTER_SPACING_MAX, LETTER_SPACING_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_MIN } from "@/lib/editor/text-style";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
   FONT_SIZE_MAX,
@@ -74,6 +75,16 @@ const textStyleShape = {
     })
     .nullable()
     .describe("文字硬陰影（不模糊，偏移以頁面方向為準，pt）；null = 沒有陰影"),
+  lineHeight: z
+    .number()
+    .min(LINE_HEIGHT_MIN)
+    .max(LINE_HEIGHT_MAX)
+    .describe("行距：行與行基線的距離 ÷ 字級（倍數，例如 1.5）；預設 1.2，內建「內文」樣式 1.5"),
+  letterSpacing: z
+    .number()
+    .min(LETTER_SPACING_MIN)
+    .max(LETTER_SPACING_MAX)
+    .describe("字距：每個字後面多加的距離，單位是字級的 1/1000（‰，例如 100 = 0.1 個字），可為負；預設 0"),
 };
 
 /** Optional text style arguments (text elements, the text inside shapes). */
@@ -98,7 +109,7 @@ const STYLE_LINK_HELP =
   "style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。";
 
 const STYLE_HELP =
-  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow。";
+  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
 
 /** Every tool, keyed by its MCP name; `satisfies` keeps the literal schema types. */
 export const TOOL_DEFINITIONS = {
@@ -244,7 +255,7 @@ export const TOOL_DEFINITIONS = {
   list_text_styles: {
     title: "文字樣式清單",
     description:
-      "列出文件的文字樣式（樣式表）：id、名稱、樣式欄位（同 add_text 的 font / fontSize / bold / italic / underline / strikethrough / align / textColor / shadow）與連到它的文字數（文字物件與圖形內文字，含主頁）。文字連到樣式後，改樣式時沒被覆寫的欄位會跟著變。",
+      "列出文件的文字樣式（樣式表）：id、名稱、樣式欄位（同 add_text 的 font / fontSize / bold / italic / underline / strikethrough / align / textColor / shadow / lineHeight / letterSpacing）與連到它的文字數（文字物件與圖形內文字，含主頁）。文字連到樣式後，改樣式時沒被覆寫的欄位會跟著變。",
     input: z.strictObject({}),
     readOnly: true,
   },

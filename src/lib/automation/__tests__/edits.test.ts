@@ -398,6 +398,27 @@ describe("text styles", () => {
     expect(s.error("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 50, style: "標題" })).toContain("text");
   });
 
+  it("line height and letter spacing: add, update, styles and range checks", () => {
+    const s = session();
+    const { id } = s.ok("add_text", { text: "字距", x: 0, y: 0, lineHeight: 1.8, letterSpacing: 120 });
+    expect(elementOf(s, id)).toMatchObject({ lineHeight: 1.8, letterSpacing: 120 });
+    s.ok("update_element", { id, letterSpacing: -30 });
+    expect(elementOf(s, id)).toMatchObject({ lineHeight: 1.8, letterSpacing: -30 });
+    expect(s.error("add_text", { text: "x", x: 0, y: 0, lineHeight: 3.5 })).toContain("參數 lineHeight");
+    expect(s.error("update_element", { id, letterSpacing: 1001 })).toContain("參數 letterSpacing");
+
+    const shape = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 50, text: "框", lineHeight: 2 });
+    expect(elementOf(s, shape.id).label).toMatchObject({ lineHeight: 2, letterSpacing: 0 });
+
+    // 樣式：省略時用內建「內文」（行距 1.5）；連到樣式的文字跟著改沒覆寫的行距
+    const style = s.ok("add_text_style", { name: "寬鬆", letterSpacing: 50 });
+    const listed = s.ok("list_text_styles").find((x: { id: string }) => x.id === style.id);
+    expect(listed).toMatchObject({ lineHeight: 1.5, letterSpacing: 50 });
+    const linked = s.ok("add_text", { text: "連結", x: 0, y: 0, style: "寬鬆" });
+    s.ok("update_text_style", { style: "寬鬆", lineHeight: 2.2 });
+    expect(elementOf(s, linked.id)).toMatchObject({ lineHeight: 2.2, letterSpacing: 50 });
+  });
+
   it("add / update / delete text styles, each one undo step", () => {
     const s = session();
     const { id } = s.ok("add_text_style", { name: " 引言 ", italic: true, fontSize: 13 });

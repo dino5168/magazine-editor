@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-10(MCP 素材庫工具,完成)
+最後更新:2026-10-11(文字行距與字距,全部步驟完成)
 
 ---
 
 ## 目前階段
+
+- **文字行距與字距(2026-10-11,全部步驟完成,尚未 commit;桌面版人工驗證待做:屬性面板操作、存檔重開 v9、匯出外觀;MCP 已在 Claude Code 實測。**要 commit 的範圍**:程式碼(前端與 Rust,含 `template.typ`)、`tests/fixtures/sample.magproj`、`default-text-styles.json`、`src-tauri/mcp-tools.json`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `docs/01-Plans-2026-10/12-新增文字屬性-行高與字距-實作.md`;任務檔 `12-新增文字屬性-行高與字距.md` 不 commit。**v9 存檔後舊版 App 無法開啟。** 經過:步驟 1、2、4 完成:步驟 2 併入檔案格式 v9,行距已接上畫布 / PDF / EPUB,新「內文」行距 1.5;步驟 4 畫布與編輯框畫出字距(經 `konvaTextStyle`);步驟 5 屬性面板與樣式對話框的「行距」「字距」欄位(頁碼沒有);步驟 6 PDF 字距:每行起點用編輯器行寬算、逐字元叢集放 `h(字距)`(Typst `tracking` 在換字型處少一個字距,不用),疊圖 15 段 ≤ 0.5 pt;步驟 7 EPUB 字距(CSS `letter-spacing` + 每行 `margin-left` 起點,疊圖 ≤ 0.5 pt);步驟 8 MCP 工具加 `lineHeight` / `letterSpacing`(已重編橋接程式,Claude Code 實測待做);下一步是步驟 9 文件;vitest 568、cargo 148)**:任務檔 `docs/01-Plans-2026-10/12-新增文字屬性-行高與字距.md`(不 commit),計畫 `docs/01-Plans-2026-10/12-新增文字屬性-行高與字距-實作.md`(要 commit)。`TextStyle` 加 `lineHeight`(倍數,舊檔 1.2)與 `letterSpacing`(1/1000 字,舊檔 0),經 `konvaTextStyle` 一次套到畫布 / 圖形內文字 / 量測;檔案格式 v9(Rust `TextSpacing` flatten,缺欄位用預設、不需升級步驟)。使用者確認:行距倍數、字距 ‰、內建「內文」改 1.5、頁碼這次不加。共九個步驟,步驟 1 先實測 Konva 字距(行尾字距、是否逐字畫失去 kerning),決定 PDF / EPUB 置中靠右的抵銷方式。
 
 - **MCP 素材庫工具(2026-10-10,五個步驟全部完成,已推送)**:`list_library_items`(列出素材庫的資料夾與素材,唯讀)、`place_library_item`(把素材庫的圖片放到頁面 / 主頁,id 或名稱指定,只有 `width` 依原圖比例,尺寸規則同素材面板;文字檔、音訊、垃圾桶拒絕)。`ToolContext.library` 由 `getLibrary()` 每次呼叫時取。已在桌面版實測(`mcp-server.webp` 放到 Page-6)。任務檔 `docs/01-Plans-2026-10/10-mcpserver-測試文字.md`(不 commit),計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`(要 commit)。注意:改了工具清單後,橋接程式被 Claude Code 佔用時要先改名再編,並在 `/mcp` 重新連線。
 

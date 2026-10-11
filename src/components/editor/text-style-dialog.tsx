@@ -32,6 +32,8 @@ function previewStyle(style: TextStyle): CSSProperties {
     fontWeight: style.fontStyle === "bold" ? 700 : 400,
     fontStyle: style.italic ? "italic" : "normal",
     textDecorationLine: textDecorationLine(style) || "none",
+    // 預覽只有一行，行距看不出來；字距照字級比例
+    letterSpacing: `${style.letterSpacing / 1000}em`,
     color: style.fill,
     textShadow: shadow ? `${shadow.offsetX}px ${shadow.offsetY}px 0 ${shadow.color}` : "none",
     textAlign: style.align,
@@ -107,6 +109,7 @@ function TextStyleForm({ target, onDone }: { readonly target: TextStyleDialogTar
           style={draft}
           onChange={change}
           align={{ value: draft.align, onChange: (align) => change({ align }) }}
+          spacing={{ value: draft, onChange: change }}
         />
       </div>
       <div className="truncate rounded-md border bg-white px-3 py-2" style={previewStyle(draft)} aria-label="預覽">

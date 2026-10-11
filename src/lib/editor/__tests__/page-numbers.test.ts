@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TEXT_LINE_HEIGHT } from "../geometry";
+import { DEFAULT_LINE_HEIGHT as TEXT_LINE_HEIGHT } from "../text-style";
 import {
   createPageNumberRule,
   describePageNumberRule,

@@ -121,7 +121,9 @@ describe("createToolText", () => {
   it("centres the first line on a click point", () => {
     const text = createToolText({ x: 50, y: 80 }, null, null);
     expect(text).toMatchObject({ type: "text", text: "", x: 50, align: "left" });
-    expect(text.y + (text.fontSize * 1.2) / 2).toBeCloseTo(80);
+    // 內文的行距 1.5
+    expect(text.lineHeight).toBe(1.5);
+    expect(text.y + (text.fontSize * 1.5) / 2).toBeCloseTo(80);
   });
 
   it("uses the dragged box for position and wrapping width, with a minimum width", () => {

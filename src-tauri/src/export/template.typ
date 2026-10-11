@@ -18,6 +18,14 @@
 }
 
 // 一行文字。top-edge / bottom-edge 設為 baseline：box 的上緣就是基線，dy 直接對應編輯器算出的基線位置
+// 字距：編輯器（Konva）有字距時一個字一個字畫（每個字單獨量寬，沒有 kerning 與連字），
+// 這裡也把每個字（grapheme cluster）分開，中間放固定的 h(字距)。不用 Typst 的 tracking：
+// 它在換字型的地方（拉丁 ↔ 中文）會少加一個字距，中英混排就和畫布對不上。
+// 每行的起點由 Rust 用編輯器量到的行寬算好（lineStarts），靠左放在那裡，不交給 Typst 對齊
+#let line-content(el, line) = if el.letterSpacing == 0 { line } else {
+  line.clusters().map(c => [#c]).join(h(pt(el.letterSpacing)))
+}
+
 #let text-line(el, i, line, paint, dx, dy) = {
   let body = box(text(
     font: el.fonts,
@@ -26,11 +34,16 @@
     fill: paint,
     top-edge: "baseline",
     bottom-edge: "baseline",
-    line,
+    line-content(el, line),
   ))
   // 斜體：沒有斜體字型檔，照瀏覽器的模擬斜體以基線為軸斜切（Typst 不會自己模擬）
   let body = if el.slant == 0 { body } else { skew(ax: -calc.atan(el.slant), origin: top + left, reflow: false, body) }
-  place(top + alignments.at(el.align), dx: pt(dx), dy: pt(el.baseline + i * el.lineHeight + dy), body)
+  let y = pt(el.baseline + i * el.lineHeight + dy)
+  if el.lineStarts == none {
+    place(top + alignments.at(el.align), dx: pt(dx), dy: y, body)
+  } else {
+    place(top + left, dx: pt(el.lineStarts.at(i) + dx), dy: y, body)
+  }
 }
 
 // 底線 / 刪除線：位置與長度由 Rust 照 Konva 的公式算好（render.rs 的 decoration_lines）

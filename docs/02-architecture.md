@@ -70,7 +70,7 @@ flowchart TB
 | `src/lib/editor/page-numbers.ts`、`src/components/app/settings/page-numbers-dialog.tsx` | 約 750 | 頁碼管理:頁碼規則 → 畫布與匯出用的「虛擬圖形」、「頁碼管理」對話框。頁碼不是物件,只存規則 | 之後再看 |
 | `src/lib/editor/master-pages.ts`、`variables.ts`、`add-pages.ts`、`src/components/editor/panels/pages-panel.tsx`、`page-dialogs.tsx`、`sheet-thumbnail.tsx` | 約 1,300 | 主頁與動態變數:主頁的階層(以…為基礎)、頁面上要畫哪些主頁內容、`{頁碼}` 等變數換成各頁的值、「頁面」面板(縮圖)、「新增頁面」「新增主頁」對話框 | 之後再看 |
 | `src/lib/editor/spreads.ts`、`src/components/editor/canvas-sheet.tsx` | 約 350 | 單頁 / 雙頁:跨頁怎麼配對(第 1 頁在右)、畫布要畫哪幾頁與各自的位置;每一頁畫在一個有位移的 Konva Group 裡,所以畫布上的座標要分「跨頁座標」與「頁面座標」 | 之後再看 |
-| `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 400 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影怎麼轉成畫布的屬性 | 之後再看 |
+| `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 500 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影與行距 / 字距怎麼轉成畫布的屬性(字距存字級的 1/1000,畫布換成 pt) | 之後再看 |
 | `src/lib/editor/style-sheet.ts`、`src/components/editor/panels/styles-panel.tsx`、`text-style-link.tsx`、`text-style-dialog.tsx` | 約 900 | 文字樣式(樣式表):文字連到樣式、覆寫怎麼判斷(和樣式不同的欄位)、改樣式時哪些文字跟著變;「樣式」面板、屬性面板的樣式區塊、編輯對話框。文字仍存完整的值,所以畫布與匯出不用查樣式表 | 之後再看 |
 | `src/lib/export/` | 約 150 | 匯出前用 Konva 量測每段文字的分行(與每行寬度、頁碼的寬度),並在匯出的副本上把主頁內容展開到每一頁、換掉變數、加上頁碼 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |

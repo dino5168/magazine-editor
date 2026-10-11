@@ -94,6 +94,10 @@ export interface TextStyleSummary {
   readonly align: "left" | "center" | "right";
   readonly textColor: string;
   readonly shadow: TextShadow | null;
+  /** × font size. */
+  readonly lineHeight: number;
+  /** 1/1000 of the font size. */
+  readonly letterSpacing: number;
   /** Texts linked to it (text elements and shape labels, pages and master pages). */
   readonly usedBy: number;
 }
@@ -302,6 +306,8 @@ function styleSummary(style: TextStyleDef, usedBy: number): TextStyleSummary {
     align: style.align,
     textColor: style.fill,
     shadow: style.shadow,
+    lineHeight: style.lineHeight,
+    letterSpacing: style.letterSpacing,
     usedBy,
   };
 }

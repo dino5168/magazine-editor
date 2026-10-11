@@ -12,6 +12,7 @@ import {
   restyleDocument,
   styledTextOf,
 } from "./style-sheet";
+import { isLetterSpacing, isLineHeight } from "./text-style";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
@@ -379,6 +380,8 @@ function isValidPatch(patch: ElementPatch): boolean {
   if ("shadow" in patch && patch.shadow !== null && !isTextShadow(patch.shadow)) return false;
   const fields: Record<string, unknown> = patch;
   if (TEXT_FLAGS.some((flag) => flag in fields && typeof fields[flag] !== "boolean")) return false;
+  if ("lineHeight" in fields && !isLineHeight(fields.lineHeight)) return false;
+  if ("letterSpacing" in fields && !isLetterSpacing(fields.letterSpacing)) return false;
   // NaN / Infinity 一律不接受
   return !Object.values(patch).some((value) => typeof value === "number" && !Number.isFinite(value));
 }

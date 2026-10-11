@@ -68,6 +68,8 @@ const STYLE_KEYS = [
   "align",
   "textColor",
   "shadow",
+  "lineHeight",
+  "letterSpacing",
 ] as const satisfies readonly (keyof TextStyleInput)[];
 
 function pickStyle(args: TextStyleInput): TextStyleInput {
@@ -97,6 +99,8 @@ export function textStyleFields(style: TextStyleInput): Partial<TextStyle> {
   if (style.align !== undefined) fields.align = style.align;
   if (style.textColor !== undefined) fields.fill = style.textColor;
   if (style.shadow !== undefined) fields.shadow = style.shadow;
+  if (style.lineHeight !== undefined) fields.lineHeight = style.lineHeight;
+  if (style.letterSpacing !== undefined) fields.letterSpacing = style.letterSpacing;
   return fields;
 }
 

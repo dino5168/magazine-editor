@@ -3,7 +3,7 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
 import useImage from "use-image";
-import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, TEXT_LINE_HEIGHT, snapPointToGrid } from "@/lib/editor/geometry";
+import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
@@ -144,7 +144,7 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
     // 分行只取決於文字、樣式與換行寬度；圖形的位置、旋轉改變時不必重新量測
     [label, frame.width],
   );
-  const y = frame.y + labelTextOffset(frame, label.verticalAlign, textBlockHeight(lineCount, label.fontSize));
+  const y = frame.y + labelTextOffset(frame, label.verticalAlign, textBlockHeight(lineCount, label.fontSize, label.lineHeight));
   return (
     <Text
       ref={excludeFromBounds}
@@ -157,7 +157,6 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
       {...konvaTextStyle(label)}
       align={label.align}
       fill={label.fill}
-      lineHeight={TEXT_LINE_HEIGHT}
       visible={!hidden}
     />
   );
@@ -210,7 +209,6 @@ function textAttrs(element: TextElement) {
     ...konvaTextStyle(element),
     align: element.align,
     fill: element.fill,
-    lineHeight: TEXT_LINE_HEIGHT,
   };
 }
 

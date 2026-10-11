@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
 import { localShadowOffset, textDecorationLine } from "@/lib/editor/text-style";
 import type { Point, ShapeLabel, TextElement } from "@/lib/editor/types";
 import { cn } from "@/lib/utils";
@@ -108,7 +107,10 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
       style={{
         ...(frame ? { width: "100%" } : placement),
         fontSize: element.fontSize * zoom,
-        lineHeight: TEXT_LINE_HEIGHT,
+        lineHeight: element.lineHeight,
+        // 同畫布：字距是字級的千分之幾；有字距時 Konva 逐字畫、沒有 kerning，編輯框也關掉
+        letterSpacing: `${element.letterSpacing / 1000}em`,
+        fontKerning: element.letterSpacing === 0 ? "auto" : "none",
         fontFamily: element.fontFamily,
         fontWeight: element.fontStyle === "bold" ? 700 : 400,
         fontStyle: element.italic ? "italic" : "normal",

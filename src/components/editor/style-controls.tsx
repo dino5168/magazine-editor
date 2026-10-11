@@ -18,7 +18,16 @@ import { cn } from "@/lib/utils";
 import { findFontOption, FONT_OPTIONS } from "@/lib/editor/fonts";
 import { loadFontOption } from "@/lib/editor/use-fonts-ready";
 import { DEFAULT_STROKE, dashPattern } from "@/lib/editor/stroke";
-import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
+import {
+  DEFAULT_TEXT_SHADOW,
+  LETTER_SPACING_MAX,
+  LETTER_SPACING_MIN,
+  LINE_HEIGHT_MAX,
+  LINE_HEIGHT_MIN,
+  clampLetterSpacing,
+  clampLineHeight,
+  type TextSpacing,
+} from "@/lib/editor/text-style";
 import type { ShapeLabel, Stroke, TextShadow, TextStyle } from "@/lib/editor/types";
 import {
   FONT_SIZE_MAX,
@@ -115,7 +124,7 @@ export function FontFamilySelect({ value, onChange }: { readonly value: string; 
 /** 字級的 − / ＋：每按一下 1 pt */
 const FONT_SIZE_STEP = { size: 1, min: FONT_SIZE_MIN, max: FONT_SIZE_MAX } as const;
 
-type FontStyleFields = Omit<TextStyle, "align">;
+type FontStyleFields = Omit<TextStyle, "align" | "lineHeight" | "letterSpacing">;
 
 interface TextStyleFieldsProps {
   /** Part of the number fields' keys, so they reset when another element is shown. */
@@ -126,10 +135,17 @@ interface TextStyleFieldsProps {
   readonly align?: { readonly value: TextStyle["align"]; readonly onChange: (value: TextStyle["align"]) => void };
   /** Only for the text inside shapes. */
   readonly verticalAlign?: { readonly value: ShapeLabel["verticalAlign"]; readonly onChange: (value: ShapeLabel["verticalAlign"]) => void };
+  /** Line height and letter spacing; omitted for page numbers (they always use the defaults). */
+  readonly spacing?: { readonly value: TextSpacing; readonly onChange: (patch: Partial<TextSpacing>) => void };
 }
 
+/** 行距的 − / ＋：每按一下 0.1 倍；字距：每按一下 10‰ */
+const LINE_HEIGHT_STEP = { size: 0.1, min: LINE_HEIGHT_MIN, max: LINE_HEIGHT_MAX } as const;
+const LETTER_SPACING_STEP = { size: 10, min: LETTER_SPACING_MIN, max: LETTER_SPACING_MAX } as const;
+
 /**
- * Font, font size, bold / italic / underline / strikethrough, optional alignment, color and shadow.
+ * Font, font size, optional line height / letter spacing, bold / italic / underline /
+ * strikethrough, optional alignment, color and shadow.
  *
  * Args:
  *   props: Current style, change callback and the optional alignment controls.
@@ -137,7 +153,7 @@ interface TextStyleFieldsProps {
  * Returns:
  *   The controls, without a surrounding section.
  */
-export function TextStyleFields({ id, style, onChange, align, verticalAlign }: TextStyleFieldsProps) {
+export function TextStyleFields({ id, style, onChange, align, verticalAlign, spacing }: TextStyleFieldsProps) {
   return (
     <>
       <FontFamilySelect value={style.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} />
@@ -149,6 +165,26 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign }: T
         step={FONT_SIZE_STEP}
         onCommit={(size) => onChange({ fontSize: clampFontSize(size) })}
       />
+      {spacing && (
+        <>
+          <NumberField
+            key={`${id}-lh-${spacing.value.lineHeight}`}
+            label="行距"
+            unit="倍"
+            value={spacing.value.lineHeight}
+            step={LINE_HEIGHT_STEP}
+            onCommit={(value) => spacing.onChange({ lineHeight: clampLineHeight(value) })}
+          />
+          <NumberField
+            key={`${id}-ls-${spacing.value.letterSpacing}`}
+            label="字距"
+            unit="‰"
+            value={spacing.value.letterSpacing}
+            step={LETTER_SPACING_STEP}
+            onCommit={(value) => spacing.onChange({ letterSpacing: clampLetterSpacing(value) })}
+          />
+        </>
+      )}
       <div className="flex flex-wrap items-center gap-1">
         <IconButton
           label="粗體"

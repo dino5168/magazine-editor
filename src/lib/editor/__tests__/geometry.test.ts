@@ -74,16 +74,17 @@ describe("getElementBounds", () => {
 
 describe("estimateTextHeight", () => {
   it("wraps CJK text by width", () => {
-    const text = { ...createTextElement("body", { x: 0, y: 0 }), text: "一二三四五六七八九十", fontSize: 10, width: 50 };
+    const text = { ...createTextElement("body", { x: 0, y: 0 }), text: "一二三四五六七八九十", fontSize: 10, width: 50, lineHeight: 1.2 };
 
     // 10 個全形字 × 10pt = 100pt，寬 50pt → 2 行
     expect(estimateTextHeight(text)).toBeCloseTo(2 * 10 * 1.2);
   });
 
   it("counts explicit line breaks", () => {
-    const text = { ...createTextElement("body", { x: 0, y: 0 }), text: "a\nb\nc", fontSize: 10, width: 500 };
+    const text = { ...createTextElement("body", { x: 0, y: 0 }), text: "a\nb\nc", fontSize: 10, width: 500, lineHeight: 2 };
 
-    expect(estimateTextHeight(text)).toBeCloseTo(3 * 10 * 1.2);
+    // 行距跟著物件：3 行 × 10pt × 2
+    expect(estimateTextHeight(text)).toBeCloseTo(3 * 10 * 2);
   });
 });
 

@@ -174,6 +174,7 @@ function TextStyleControls({
         onChange={onChange}
         align={{ value: style.align, onChange: (align) => onChange({ align }) }}
         verticalAlign={verticalAlign}
+        spacing={{ value: style, onChange }}
       />
     </Section>
   );

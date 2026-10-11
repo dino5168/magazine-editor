@@ -16,8 +16,6 @@ use crate::project::shape;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Same value as `TEXT_LINE_HEIGHT` in `src/lib/editor/geometry.ts`.
-pub const TEXT_LINE_HEIGHT: f64 = 1.2;
 /// Inset between a shape's box and its text; same value as `LABEL_PADDING_PT` in
 /// `src/lib/editor/shape-label.ts`.
 pub const LABEL_PADDING_PT: f64 = 4.0;
@@ -94,6 +92,14 @@ pub struct RenderText {
     /// Thickness (pt) of every decoration line.
     pub decoration_thickness: f64,
     pub shadow: Option<RenderShadow>,
+    /// Extra space (pt) after every character; 0 = none.
+    pub letter_spacing: f64,
+    /// With letter spacing, where each line starts (pt from the box's left edge), from the
+    /// editor's line widths: Konva then draws one character at a time without kerning, and both its
+    /// widths and the formats' own alignment count the spacing after the last character
+    /// differently, so the formats place every line left-aligned at this x instead of aligning it
+    /// themselves. `None` without letter spacing (or without line widths from an old request).
+    pub line_starts: Option<Vec<f64>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,8 +151,21 @@ struct TextStyleRef<'a> {
     family: &'a str,
     font_style: FontStyle,
     decoration: &'a TextDecoration,
+    /// × font size.
+    line_height: f64,
+    /// 1/1000 of the font size.
+    letter_spacing: f64,
     align: Align,
     fill: &'a str,
+}
+
+/// Where a line of `width` starts in a box of `box_width`, as Konva aligns it.
+fn line_start(width: f64, box_width: f64, align: Align) -> f64 {
+    match align {
+        Align::Left => 0.0,
+        Align::Center => (box_width - width) / 2.0,
+        Align::Right => box_width - width,
+    }
 }
 
 /// Underline / strikethrough segments of every line, placed like Konva places them.
@@ -164,11 +183,7 @@ fn decoration_lines(layout: &TextLayout, box_width: f64, line_height: f64, style
         if length <= 0.0 {
             continue;
         }
-        let x = match style.align {
-            Align::Left => 0.0,
-            Align::Center => (box_width - width) / 2.0,
-            Align::Right => box_width - width,
-        };
+        let x = line_start(width, box_width, style.align);
         let baseline = layout.baseline + line as f64 * line_height;
         if underline {
             out.push(DecorationLine { line, kind: DecorationKind::Underline, x, y: baseline + offset, length });
@@ -207,10 +222,15 @@ fn render_shadow(shadow: &TextShadow, fill: &str, rotation: f64, whole_block: bo
 }
 
 fn render_text(layout: TextLayout, box_width: f64, rotation: f64, style: &TextStyleRef) -> RenderText {
-    let line_height = style.size * TEXT_LINE_HEIGHT;
+    let line_height = style.size * style.line_height;
     let decorations = decoration_lines(&layout, box_width, line_height, style);
     let shadow = style.decoration.shadow.as_ref().map(|shadow| render_shadow(shadow, style.fill, rotation, !decorations.is_empty()));
+    let letter_spacing = style.size * style.letter_spacing / 1000.0;
+    let line_starts = (letter_spacing != 0.0 && !layout.line_widths.is_empty())
+        .then(|| layout.line_widths.iter().map(|width| line_start(*width, box_width, style.align)).collect());
     RenderText {
+        letter_spacing,
+        line_starts,
         lines: layout.lines,
         baseline: layout.baseline,
         line_height,
@@ -336,7 +356,7 @@ fn shape_kind(shape: &ShapeElement) -> RenderKind {
     }
 }
 
-fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size: f64) -> AppResult<TextLayout> {
+fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size: f64, line_height: f64) -> AppResult<TextLayout> {
     match layouts.get(id) {
         Some(layout)
             if layout.lines.len() > MAX_LINES_PER_TEXT
@@ -350,7 +370,7 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
         // 前端應該為每個文字物件都提供分行結果；缺少時退回以換行符號分行、估計基線
         None => Ok(TextLayout {
             lines: text.split('\n').map(str::to_owned).collect(),
-            baseline: size * (TEXT_LINE_HEIGHT / 2.0 + 0.35),
+            baseline: size * (line_height / 2.0 + 0.35),
             line_widths: Vec::new(),
         }),
     }
@@ -362,13 +382,15 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
 /// the text block placed by its vertical alignment (overflowing freely), all rotated with the shape.
 fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> AppResult<Option<RenderElement>> {
     let Some(label) = shape.label.as_ref().filter(|label| !label.text.is_empty()) else { return Ok(None) };
-    let layout = text_layout(layouts, &format!("{}#label", shape.base.id), &label.text, label.font_size)?;
-    let line_height = label.font_size * TEXT_LINE_HEIGHT;
+    let layout = text_layout(layouts, &format!("{}#label", shape.base.id), &label.text, label.font_size, label.spacing.line_height)?;
+    let line_height = label.font_size * label.spacing.line_height;
     let style = TextStyleRef {
         size: label.font_size,
         family: &label.font_family,
         font_style: label.font_style,
         decoration: &label.decoration,
+        line_height: label.spacing.line_height,
+        letter_spacing: label.spacing.letter_spacing,
         align: label.align,
         fill: &label.fill,
     };
@@ -408,12 +430,14 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
         for element in &page.elements {
             let (base, kind) = match element {
                 Element::Text(e) => {
-                    let layout = text_layout(&request.text_layouts, &e.base.id, &e.text, e.font_size)?;
+                    let layout = text_layout(&request.text_layouts, &e.base.id, &e.text, e.font_size, e.spacing.line_height)?;
                     let style = TextStyleRef {
                         size: e.font_size,
                         family: &e.font_family,
                         font_style: e.font_style,
                         decoration: &e.decoration,
+                        line_height: e.spacing.line_height,
+                        letter_spacing: e.spacing.letter_spacing,
                         align: e.align,
                         fill: &e.fill,
                     };
@@ -510,8 +534,8 @@ mod tests {
         assert_eq!(text.lines, vec!["圖形內", "文字"], "uses the editor's line breaks");
         assert_eq!((text.width, text.size, text.baseline), (112.0, 14.0, 12.0));
         assert_eq!(element.x, 124.0);
-        // 框高 72，兩行共 2 × 14 × 1.2 = 33.6，上下各留 19.2
-        assert!((element.y - (444.0 + 19.2)).abs() < 1e-9, "{}", element.y);
+        // 框高 72，兩行共 2 × 14 × 1.5（行距）= 42，上下各留 15
+        assert!((element.y - (444.0 + 15.0)).abs() < 1e-9, "{}", element.y);
     }
 
     #[test]
@@ -577,7 +601,8 @@ mod tests {
         let root = project_with_image();
         let (document, _) = build_render(root.path(), &request(fixture_document())).unwrap();
         let RenderKind::Text(text) = &document.pages[0].elements[0].kind else { panic!("expected text") };
-        assert_eq!(text.line_height, text.size * TEXT_LINE_HEIGHT);
+        // fixture 的文字行距 1.4
+        assert_eq!(text.line_height, text.size * 1.4);
         assert!(text.baseline > 0.0);
         // 沒有 layout 時以 \n 分行
         assert_eq!(text.lines, vec!["雜誌標題", "副標"]);
@@ -607,7 +632,7 @@ mod tests {
         assert!(text.italic);
         // 36 pt：位移 round(9) = 9、線粗 2.4；置中：x = (420 − 寬) / 2，長度取整數；空行不畫
         let line = |line, kind, x, y, length| DecorationLine { line, kind, x, y, length };
-        let second = 30.0 + 36.0 * TEXT_LINE_HEIGHT;
+        let second = 30.0 + 36.0 * 1.4;
         assert_eq!(
             text.decorations,
             vec![
@@ -623,6 +648,19 @@ mod tests {
         assert_eq!(right.decorations.iter().map(|d| d.x).collect::<Vec<_>>(), vec![420.0 - 144.4, 420.0 - 72.0]);
         let (_, plain) = decorated_text(|t| (t.decoration.underline, t.decoration.strikethrough) = (false, false));
         assert!(plain.decorations.is_empty());
+    }
+
+    #[test]
+    fn letter_spacing_places_lines_from_the_editors_widths() {
+        // fixture 的文字：36 pt、字距 −20‰ → −0.72 pt；置中，每行起點 = (420 − 行寬) / 2，和底線同一個 x
+        let (_, text) = decorated_text(|_| {});
+        assert!((text.letter_spacing - -0.72).abs() < 1e-12);
+        assert_eq!(text.line_starts, Some(vec![137.8, 174.0, 210.0]));
+        let (_, right) = decorated_text(|t| t.align = Align::Right);
+        assert_eq!(right.line_starts, Some(vec![420.0 - 144.4, 420.0 - 72.0, 420.0]));
+        // 沒有字距：照舊交給各格式自己對齊
+        let (_, none) = decorated_text(|t| t.spacing.letter_spacing = 0.0);
+        assert_eq!((none.letter_spacing, none.line_starts), (0.0, None));
     }
 
     #[test]

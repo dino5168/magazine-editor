@@ -1,5 +1,4 @@
 import Konva from "konva";
-import { TEXT_LINE_HEIGHT } from "@/lib/editor/geometry";
 import { konvaFontStyle, konvaTextStyle } from "@/lib/editor/text-style";
 import type { PageNumberStyle, TextElement } from "@/lib/editor/types";
 import type { TextLayout } from "./export-request";
@@ -22,7 +21,6 @@ export function measureTextLayout(element: TextElement): TextLayout {
     fontFamily: element.fontFamily,
     ...konvaTextStyle(element),
     align: element.align,
-    lineHeight: TEXT_LINE_HEIGHT,
   });
   try {
     const lines = node.textArr.map((line) => line.text);
@@ -30,7 +28,7 @@ export function measureTextLayout(element: TextElement): TextLayout {
     const metrics = node.measureSize("M");
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
-    const lineHeight = element.fontSize * TEXT_LINE_HEIGHT;
+    const lineHeight = element.fontSize * element.lineHeight;
     return { lines, baseline: (ascent - descent) / 2 + lineHeight / 2, lineWidths: node.textArr.map((line) => line.width) };
   } finally {
     node.destroy();

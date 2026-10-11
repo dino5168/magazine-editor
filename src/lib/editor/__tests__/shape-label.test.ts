@@ -27,7 +27,7 @@ describe("labelFrame", () => {
 
 describe("labelTextOffset", () => {
   const frame = labelFrame(shape);
-  const twoLines = textBlockHeight(2, 10); // 24
+  const twoLines = textBlockHeight(2, 10, 1.2); // 24
 
   it("aligns the text block to the top, middle or bottom of the frame", () => {
     expect(labelTextOffset(frame, "top", twoLines)).toBe(0);

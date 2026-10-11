@@ -38,6 +38,10 @@ export interface TextStyle {
   readonly strikethrough: boolean;
   /** null = no shadow. */
   readonly shadow: TextShadow | null;
+  /** Distance between baselines ÷ font size (Konva `lineHeight`); 1.2 in files before v9. */
+  readonly lineHeight: number;
+  /** Extra space after every character, in 1/1000 of the font size (may be negative); 0 before v9. */
+  readonly letterSpacing: number;
   readonly align: "left" | "center" | "right";
   /** Text color. */
   readonly fill: string;
@@ -179,7 +183,8 @@ export interface PageNumberFace {
 }
 
 /** Look of a page number, shared by the odd and even pages of a rule. */
-export interface PageNumberStyle extends Omit<TextStyle, "align"> {
+/** Page numbers keep the default line height and no letter spacing (vertical ones are one character per line). */
+export interface PageNumberStyle extends Omit<TextStyle, "align" | "lineHeight" | "letterSpacing"> {
   /** null = no border. */
   readonly stroke: Stroke | null;
 }

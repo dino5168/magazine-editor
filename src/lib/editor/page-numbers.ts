@@ -1,5 +1,4 @@
 import { DEFAULT_FONT_FAMILY, DEFAULT_TEXT_FILL } from "./element-factory";
-import { TEXT_LINE_HEIGHT } from "./geometry";
 import { LABEL_PADDING_PT } from "./shape-label";
 import type {
   Margins,
@@ -12,7 +11,7 @@ import type {
   Sheet,
   TextStyle,
 } from "./types";
-import { PLAIN_TEXT_DECORATION } from "./text-style";
+import { DEFAULT_LINE_HEIGHT, DEFAULT_TEXT_SPACING, PLAIN_TEXT_DECORATION } from "./text-style";
 import { mmToPt } from "./units";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, isStroke } from "./validation";
 
@@ -218,7 +217,7 @@ export function pageNumberShape(
   const lines = text.split("\n");
   const textWidth = Math.max(...lines.map((line) => measure(line, rule.style))) + WRAP_SLACK_PT;
   const width = textWidth + 2 * LABEL_PADDING_PT;
-  const height = lines.length * textStyle.fontSize * TEXT_LINE_HEIGHT + 2 * LABEL_PADDING_PT;
+  const height = lines.length * textStyle.fontSize * DEFAULT_LINE_HEIGHT + 2 * LABEL_PADDING_PT;
   const align = isVerticalPosition(position) ? "center" : horizontalAlign(position);
 
   let x: number;
@@ -247,7 +246,7 @@ export function pageNumberShape(
     geometry: { kind: "rect", cornerRadius: 0 },
     fill: TRANSPARENT,
     stroke,
-    label: { ...textStyle, text, align, verticalAlign: "middle", styleId: null },
+    label: { ...textStyle, ...DEFAULT_TEXT_SPACING, text, align, verticalAlign: "middle", styleId: null },
   };
 }
 

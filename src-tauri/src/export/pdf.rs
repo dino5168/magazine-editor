@@ -115,6 +115,7 @@ fn element_data(element: &RenderElement) -> Value {
             })).collect::<Vec<_>>(),
             "decorationThickness": e.decoration_thickness,
             "shadow": e.shadow.as_ref().map(|s| json!({ "color": s.color, "dx": s.dx, "dy": s.dy, "wholeBlock": s.whole_block })),
+            "letterSpacing": e.letter_spacing, "lineStarts": e.line_starts,
         }),
         RenderKind::Rect(e) => json!({
             "kind": "rect", "x": x, "y": y, "rotation": rotation,
@@ -242,6 +243,22 @@ mod tests {
         req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![] });
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
+    }
+
+    #[test]
+    fn renders_letter_spaced_lines_at_their_starts() {
+        // fixture 的文字有字距（−20‰）：帶行寬時每行靠左放在 lineStarts，也要排得出來
+        let mut req = request(fixture_document());
+        req.text_layouts.insert(
+            "el-text".into(),
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![141.1, 70.6] },
+        );
+        let root = project_with_image();
+        assert!(render_pdf(root.path(), &req, fonts()).is_ok());
+        let data = to_data(&build_render(root.path(), &req).unwrap().0);
+        let text = &data["pages"][0]["elements"][0];
+        assert_eq!(text["letterSpacing"], serde_json::json!(-0.72));
+        assert_eq!(text["lineStarts"], serde_json::json!([(420.0 - 141.1) / 2.0, (420.0 - 70.6) / 2.0]));
     }
 
     #[test]

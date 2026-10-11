@@ -112,7 +112,7 @@ export function createStyledText(style: TextStyleDef, center: Point): TextElemen
     id: createId(),
     type: "text",
     x: center.x - width / 2,
-    y: center.y - (style.fontSize * 1.2) / 2,
+    y: center.y - (style.fontSize * style.lineHeight) / 2,
     rotation: 0,
     text,
     width,
@@ -279,7 +279,7 @@ export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
  */
 export function createToolText(start: Point, box: Bounds | null, style: TextStyleDef | null): TextElement {
   const values = style ?? builtInTextStyle("body");
-  const lineHeight = values.fontSize * 1.2;
+  const lineHeight = values.fontSize * values.lineHeight;
   return {
     id: createId(),
     type: "text",

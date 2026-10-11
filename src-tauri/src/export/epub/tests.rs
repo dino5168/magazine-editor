@@ -316,7 +316,7 @@ fn baseline_matches_css_line_box() {
         let face = ttf_parser::Face::parse(font.data, 0).unwrap();
         let hhea = (face.ascender(), face.descender());
         let (ascent, descent) = (f64::from(hhea.0), -f64::from(hhea.1));
-        let line = f64::from(face.units_per_em()) * crate::export::render::TEXT_LINE_HEIGHT;
+        let line = f64::from(face.units_per_em()) * crate::project::format::DEFAULT_LINE_HEIGHT;
         let editor = (ascent - descent) / 2.0 + line / 2.0;
         let css = (line - (ascent + descent)) / 2.0 + ascent;
         assert!((editor - css).abs() < 1e-9, "{}", font.file);
@@ -349,7 +349,8 @@ fn decorated_page(edit: impl FnOnce(&mut crate::project::format::TextElement)) -
 
 #[test]
 fn text_decoration_is_drawn_like_the_pdf() {
-    let xhtml = decorated_page(|_| {});
+    // 字距另外測（letter_spacing_places_lines_like_the_pdf）
+    let xhtml = decorated_page(|t| t.spacing.letter_spacing = 0.0);
     let page = parse(&xhtml);
     let text = page.descendants().find(|n| n.attribute("class") == Some("el t")).unwrap();
     let style = text.attribute("style").unwrap();
@@ -378,8 +379,33 @@ fn text_decoration_is_drawn_like_the_pdf() {
     // 線是文字以外的元素，抽出的文字仍然只有原本那兩行
     assert_eq!(lines.iter().filter_map(|n| n.text()).collect::<Vec<_>>(), vec!["雜誌標題", "副標"]);
 
-    let plain = decorated_page(|t| t.decoration = crate::project::format::TextDecoration::default());
+    let plain = decorated_page(|t| {
+        t.decoration = crate::project::format::TextDecoration::default();
+        t.spacing.letter_spacing = 0.0;
+    });
     assert!(!plain.contains("skewX") && !plain.contains("text-shadow") && !plain.contains(r#"class="d"#));
+    assert!(!plain.contains("letter-spacing") && !plain.contains("margin-left"));
+}
+
+#[test]
+fn letter_spacing_places_lines_like_the_pdf() {
+    // fixture 的文字：36 pt、字距 −20‰ = −0.72 px；置中，行寬 144 / 72 → 起點 138 / 174（和 PDF 的 lineStarts 相同）
+    let xhtml = decorated_page(|_| {});
+    let page = parse(&xhtml);
+    let text = page.descendants().find(|n| n.attribute("class") == Some("el t")).unwrap();
+    let style = text.attribute("style").unwrap();
+    assert!(style.contains(";letter-spacing:-0.72px;font-kerning:none;font-variant-ligatures:none"), "{style}");
+    let lines: Vec<_> = text.children().filter(|n| n.has_tag_name("div")).map(|n| n.attribute("style").unwrap()).collect();
+    assert_eq!(
+        lines,
+        vec![
+            "text-align:left;margin-left:138px;transform:skewX(-14.0362deg);transform-origin:0 30px",
+            "text-align:left;margin-left:174px;transform:skewX(-14.0362deg);transform-origin:0 30px",
+        ]
+    );
+    // 沒有斜體也照樣放在起點
+    let upright = decorated_page(|t| t.decoration.italic = false);
+    assert!(upright.contains(r#"<div style="text-align:left;margin-left:138px">雜誌標題</div>"#), "{upright}");
 }
 
 /// Writes `preview.epub` for opening in a reading system or running epubcheck (not part of the

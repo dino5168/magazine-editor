@@ -155,11 +155,15 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
     if let Some(shadow) = &text.shadow {
         let _ = write!(style, ";text-shadow:{}px {}px 0 {}", num(shadow.dx), num(shadow.dy), css_color(&shadow.color));
     }
+    // 字距：編輯器（Konva）有字距時逐字畫，沒有 kerning 與連字，這裡也關掉
+    if text.letter_spacing != 0.0 {
+        let _ = write!(style, ";letter-spacing:{}px;font-kerning:none;font-variant-ligatures:none", num(text.letter_spacing));
+    }
     rotate(&mut style, element.rotation);
     // 斜體：照瀏覽器的模擬斜體，以基線為軸斜切每一行（不用 font-style，斜率才不會因閱讀器而不同）
     let italic = if text.italic {
         format!(
-            r#" style="transform:skewX({}deg);transform-origin:0 {}px""#,
+            "transform:skewX({}deg);transform-origin:0 {}px",
             num(-SYNTHETIC_ITALIC_SLANT.atan().to_degrees()),
             num(text.baseline)
         )
@@ -167,12 +171,24 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
         String::new()
     };
     let _ = write!(out, r#"<div class="el t" style="{style}">"#);
-    for line in &text.lines {
+    for (index, line) in text.lines.iter().enumerate() {
         if line.is_empty() {
             // 空行沒有行框，高度會塌成 0；明確給一行的高度，後面的行才會在正確位置
             let _ = write!(out, r#"<div style="height:{}px"></div>"#, num(text.line_height));
+            continue;
+        }
+        // 有字距時每行靠左放在 render model 算好的起點（CSS 的行尾也有字距，自己對齊會偏；文字比框寬時起點是負的，所以用 margin 不用 padding）
+        let start = text.line_starts.as_ref().and_then(|starts| starts.get(index));
+        let line_style = match (start, italic.is_empty()) {
+            (Some(x), true) => format!("text-align:left;margin-left:{}px", num(*x)),
+            (Some(x), false) => format!("text-align:left;margin-left:{}px;{italic}", num(*x)),
+            (None, false) => italic.clone(),
+            (None, true) => String::new(),
+        };
+        if line_style.is_empty() {
+            let _ = write!(out, "<div>{}</div>", escape(line));
         } else {
-            let _ = write!(out, "<div{italic}>{}</div>", escape(line));
+            let _ = write!(out, r#"<div style="{line_style}">{}</div>"#, escape(line));
         }
     }
     // 底線 / 刪除線：位置由 render model 照 Konva 的公式算好（CSS 的 text-decoration 位置由字型決定，對不上）。

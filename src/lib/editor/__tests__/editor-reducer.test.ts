@@ -21,8 +21,8 @@ import {
 } from "../editor-reducer";
 import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
-import { defaultTextStyles, nextTextStyleName } from "../style-sheet";
-import type { EditorDocument, MasterPage, Page } from "../types";
+import { defaultTextStyles, nextTextStyleName, pickTextStyle, styleOverrides } from "../style-sheet";
+import type { EditorDocument, MasterPage, Page, TextElement } from "../types";
 
 function blankState(): EditorState {
   const document: EditorDocument = {
@@ -1095,5 +1095,22 @@ describe("editorReducer / text styles", () => {
     expect(run(state, { type: "element/update", id: text.id, patch: { styleId: "missing" } })).toBe(state);
     expect(run(state, { type: "element/update", id: shape.id, patch: { label: { ...shape.label, styleId: "missing" } } })).toBe(state);
     expect(run(state, { type: "element/update", id: text.id, patch: { styleId: heading.id } })).not.toBe(state);
+  });
+
+  it("accepts line height and letter spacing within range only; a changed value is an override", () => {
+    const { state, text, shape } = styledState();
+    const update = (patch: object, id = text.id) => run(state, { type: "element/update", id, patch } as EditorAction);
+    for (const patch of [{ lineHeight: 0.4 }, { lineHeight: 3.1 }, { letterSpacing: -201 }, { letterSpacing: 1001 }, { lineHeight: Number.NaN }]) {
+      expect(update(patch)).toBe(state);
+    }
+    expect(update({ label: { ...shape.label, lineHeight: 5 } }, shape.id)).toBe(state);
+    const spaced = update({ lineHeight: 2, letterSpacing: 100 });
+    const element = elementsOf(spaced).find((e) => e.id === text.id) as TextElement;
+    expect(element).toMatchObject({ lineHeight: 2, letterSpacing: 100 });
+    const style = spaced.history.present.textStyles.find((s) => s.id === element.styleId)!;
+    expect(styleOverrides(element, style)).toEqual(["lineHeight", "letterSpacing"]);
+    // 改樣式的行距：被覆寫的文字不跟著變
+    const restyled = run(spaced, { type: "textStyle/update", id: style.id, style: { ...pickTextStyle(style), lineHeight: 1.8 } });
+    expect((elementsOf(restyled).find((e) => e.id === text.id) as TextElement).lineHeight).toBe(2);
   });
 });

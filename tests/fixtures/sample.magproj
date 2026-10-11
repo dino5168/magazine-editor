@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -64,6 +64,8 @@
         "underline": false,
         "strikethrough": false,
         "shadow": null,
+        "lineHeight": 1.2,
+        "letterSpacing": 0,
         "align": "center",
         "fill": "#171717"
       },
@@ -77,6 +79,8 @@
         "underline": false,
         "strikethrough": false,
         "shadow": null,
+        "lineHeight": 1.5,
+        "letterSpacing": 0,
         "align": "center",
         "fill": "#171717"
       },
@@ -90,6 +94,8 @@
         "underline": false,
         "strikethrough": false,
         "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
+        "lineHeight": 1.2,
+        "letterSpacing": 50,
         "align": "right",
         "fill": "#525252"
       }
@@ -141,6 +147,8 @@
             "underline": false,
             "strikethrough": false,
             "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
+            "lineHeight": 1.2,
+            "letterSpacing": 50,
             "align": "right",
             "fill": "#525252",
             "styleId": "style-footer"
@@ -182,6 +190,8 @@
             "underline": true,
             "strikethrough": true,
             "shadow": { "color": "#00000080", "offsetX": 2, "offsetY": -1.5 },
+            "lineHeight": 1.4,
+            "letterSpacing": -20,
             "align": "center",
             "fill": "#171717",
             "styleId": null
@@ -219,6 +229,8 @@
               "underline": false,
               "strikethrough": false,
               "shadow": null,
+              "lineHeight": 1.5,
+              "letterSpacing": 0,
               "align": "center",
               "verticalAlign": "middle",
               "fill": "#171717",

@@ -18,7 +18,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v7: `document.masters` and `Page.masterId`.
 /// v8: `document.textStyles` (style sheet) and `styleId` on text elements and shape labels. Older
 /// files and backups read as the built-in styles (`default_text_styles`) with nothing linked.
-pub const SCHEMA_VERSION: u32 = 8;
+/// v9: `lineHeight` / `letterSpacing` on text elements, shape labels and text styles (not page
+/// numbers). Missing in older files and backups → 1.2 / 0, the values that used to be fixed.
+pub const SCHEMA_VERSION: u32 = 9;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -39,6 +41,15 @@ pub const MASTER_DEPTH_MAX: usize = 8;
 pub const PAGE_NUMBER_AFFIX_MAX_LENGTH: usize = 20;
 /// Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in `src/lib/editor/validation.ts`.
 pub const TEXT_SHADOW_OFFSET_MAX: f64 = 50.0;
+/// Line height of files before v9 (× font size); same as `DEFAULT_LINE_HEIGHT` in `src/lib/editor/text-style.ts`.
+pub const DEFAULT_LINE_HEIGHT: f64 = 1.2;
+/// Line height range; same as `LINE_HEIGHT_MIN` / `_MAX` in `src/lib/editor/text-style.ts`.
+pub const LINE_HEIGHT_MIN: f64 = 0.5;
+pub const LINE_HEIGHT_MAX: f64 = 3.0;
+/// Letter spacing range (1/1000 of the font size); same as `LETTER_SPACING_MIN` / `_MAX` in
+/// `src/lib/editor/text-style.ts`.
+pub const LETTER_SPACING_MIN: f64 = -200.0;
+pub const LETTER_SPACING_MAX: f64 = 1000.0;
 /// Longest text style name (characters, after trimming); same as `TEXT_STYLE_NAME_MAX_LENGTH` in
 /// `src/lib/editor/style-sheet.ts`.
 pub const TEXT_STYLE_NAME_MAX_LENGTH: usize = 50;
@@ -205,6 +216,23 @@ pub struct TextDecoration {
     pub shadow: Option<TextShadow>,
 }
 
+/// Line height and letter spacing of a text style (TS `TextSpacing`). Missing in files before v9,
+/// which read as the values that used to be fixed.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct TextSpacing {
+    /// Distance between baselines ÷ font size.
+    pub line_height: f64,
+    /// Extra space after every character, in 1/1000 of the font size (may be negative).
+    pub letter_spacing: f64,
+}
+
+impl Default for TextSpacing {
+    fn default() -> Self {
+        Self { line_height: DEFAULT_LINE_HEIGHT, letter_spacing: 0.0 }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Align {
@@ -225,6 +253,8 @@ pub struct TextElement {
     pub font_style: FontStyle,
     #[serde(flatten)]
     pub decoration: TextDecoration,
+    #[serde(flatten)]
+    pub spacing: TextSpacing,
     pub align: Align,
     pub fill: String,
     /// `TextStyleDef.id` it follows. Missing in files before v8 → not linked.
@@ -243,6 +273,8 @@ pub struct TextStyleDef {
     pub font_style: FontStyle,
     #[serde(flatten)]
     pub decoration: TextDecoration,
+    #[serde(flatten)]
+    pub spacing: TextSpacing,
     pub align: Align,
     pub fill: String,
 }
@@ -253,20 +285,22 @@ const BUILT_IN_FONT_FAMILY: &str = "\"Geist\", \"Noto Sans TC\", sans-serif";
 /// Built-in styles (標題 / 副標題 / 內文); same as TS `defaultTextStyles`. Both sides are checked
 /// against `tests/fixtures/default-text-styles.json`.
 pub fn default_text_styles() -> Vec<TextStyleDef> {
-    let style = |id: &str, name: &str, font_size: f64, font_style: FontStyle, align: Align| TextStyleDef {
+    let style = |id: &str, name: &str, font_size: f64, font_style: FontStyle, align: Align, line_height: f64| TextStyleDef {
         id: id.to_owned(),
         name: name.to_owned(),
         font_size,
         font_family: BUILT_IN_FONT_FAMILY.to_owned(),
         font_style,
         decoration: TextDecoration::default(),
+        spacing: TextSpacing { line_height, letter_spacing: 0.0 },
         align,
         fill: "#171717".to_owned(),
     };
     vec![
-        style("text-style-heading", "標題", 32.0, FontStyle::Bold, Align::Center),
-        style("text-style-subheading", "副標題", 20.0, FontStyle::Normal, Align::Center),
-        style("text-style-body", "內文", 11.0, FontStyle::Normal, Align::Left),
+        style("text-style-heading", "標題", 32.0, FontStyle::Bold, Align::Center, DEFAULT_LINE_HEIGHT),
+        style("text-style-subheading", "副標題", 20.0, FontStyle::Normal, Align::Center, DEFAULT_LINE_HEIGHT),
+        // 中文內文比標題需要更大的行距
+        style("text-style-body", "內文", 11.0, FontStyle::Normal, Align::Left, 1.5),
     ]
 }
 
@@ -303,6 +337,8 @@ pub struct ShapeLabel {
     pub font_style: FontStyle,
     #[serde(flatten)]
     pub decoration: TextDecoration,
+    #[serde(flatten)]
+    pub spacing: TextSpacing,
     pub align: Align,
     pub vertical_align: VerticalAlign,
     pub fill: String,
@@ -556,6 +592,7 @@ fn validate_text_styles(styles: &[TextStyleDef]) -> AppResult<StyleIds<'_>> {
         }
         require_element_color(&style.fill)?;
         validate_text_decoration(&style.decoration)?;
+        validate_text_spacing(&style.spacing)?;
         if !ids.insert(style.id.as_str()) || !names.insert(name) {
             return Err(invalid("duplicate id or name"));
         }
@@ -674,12 +711,25 @@ fn validate_text_decoration(decoration: &TextDecoration) -> AppResult<()> {
     Ok(())
 }
 
+/// Same rules as TS `hasValidTextSpacing`: line height in [LINE_HEIGHT_MIN, LINE_HEIGHT_MAX],
+/// letter spacing in [LETTER_SPACING_MIN, LETTER_SPACING_MAX] (NaN fails both).
+fn validate_text_spacing(spacing: &TextSpacing) -> AppResult<()> {
+    if !(LINE_HEIGHT_MIN..=LINE_HEIGHT_MAX).contains(&spacing.line_height) {
+        return Err(AppError::invalid_project(format!("invalid line height {}", spacing.line_height)));
+    }
+    if !(LETTER_SPACING_MIN..=LETTER_SPACING_MAX).contains(&spacing.letter_spacing) {
+        return Err(AppError::invalid_project(format!("invalid letter spacing {}", spacing.letter_spacing)));
+    }
+    Ok(())
+}
+
 fn validate_element(element: &Element, styles: &StyleIds) -> AppResult<()> {
     match element {
         Element::Text(e) => {
             require_id(&e.base.id)?;
             require_element_color(&e.fill)?;
             require_style(&e.style_id, styles)?;
+            validate_text_spacing(&e.spacing)?;
             validate_text_decoration(&e.decoration)
         }
         Element::Shape(e) => {
@@ -693,6 +743,7 @@ fn validate_element(element: &Element, styles: &StyleIds) -> AppResult<()> {
                 require_element_color(&label.fill)?;
                 require_style(&label.style_id, styles)?;
                 validate_text_decoration(&label.decoration)?;
+                validate_text_spacing(&label.spacing)?;
             }
             Ok(())
         }
@@ -883,10 +934,14 @@ mod tests {
                         (a, b) => assert_eq!(a, b),
                     }
                 }
-                // v6 之前沒有文字裝飾：讀成預設值，其他欄位不變
+                // v6 之前沒有文字裝飾、v9 之前沒有行距與字距：讀成預設值，其他欄位不變
                 (Element::Text(old), Element::Text(new)) => {
                     assert_eq!(old.decoration, TextDecoration::default());
-                    assert_eq!(*old, TextElement { decoration: TextDecoration::default(), ..new.clone() });
+                    assert_eq!(old.spacing, TextSpacing::default());
+                    assert_eq!(
+                        *old,
+                        TextElement { decoration: TextDecoration::default(), spacing: TextSpacing::default(), ..new.clone() }
+                    );
                 }
                 (old, new) => assert_eq!(old, new),
             }
@@ -914,6 +969,52 @@ mod tests {
             panic!("expected text")
         };
         assert_eq!(text.decoration, TextDecoration::default());
+    }
+
+    #[test]
+    fn reads_text_spacing_and_defaults_it_in_older_files() {
+        let project = parse_project(FIXTURE).unwrap();
+        let Element::Text(text) = &project.document.pages[0].elements[0] else { panic!("expected text") };
+        assert_eq!(text.spacing, TextSpacing { line_height: 1.4, letter_spacing: -20.0 });
+        let footer = project.document.text_styles.iter().find(|style| style.id == "style-footer").unwrap();
+        assert_eq!(footer.spacing, TextSpacing { line_height: 1.2, letter_spacing: 50.0 });
+
+        // v8 檔案沒有這兩個欄位：讀成以前固定的 1.2 / 0
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(8);
+        let remove = |value: &mut Value, pointer: &str| {
+            let object = value.pointer_mut(pointer).unwrap().as_object_mut().unwrap();
+            object.remove("lineHeight");
+            object.remove("letterSpacing");
+        };
+        remove(&mut value, "/document/pages/0/elements/0");
+        remove(&mut value, "/document/pages/0/elements/2/label");
+        remove(&mut value, "/document/textStyles/0");
+        let document = parse_project(&value.to_string()).unwrap().document;
+        let Element::Text(text) = &document.pages[0].elements[0] else { panic!("expected text") };
+        let Element::Shape(ellipse) = &document.pages[0].elements[2] else { panic!("expected the ellipse") };
+        assert_eq!(text.spacing, TextSpacing::default());
+        assert_eq!(ellipse.label.as_ref().unwrap().spacing, TextSpacing { line_height: DEFAULT_LINE_HEIGHT, letter_spacing: 0.0 });
+        assert_eq!(document.text_styles[0].spacing, TextSpacing::default());
+    }
+
+    #[test]
+    fn rejects_text_spacing_out_of_range() {
+        let with = |pointer: &str, key: &str, number: f64| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value.pointer_mut(pointer).unwrap()[key] = Value::from(number);
+            parse_project(&value.to_string())
+        };
+        for pointer in ["/document/pages/0/elements/0", "/document/pages/0/elements/2/label", "/document/textStyles/0"] {
+            assert!(with(pointer, "lineHeight", LINE_HEIGHT_MIN).is_ok(), "{pointer}");
+            assert!(with(pointer, "lineHeight", LINE_HEIGHT_MAX).is_ok(), "{pointer}");
+            assert!(with(pointer, "lineHeight", 0.4).is_err(), "{pointer}");
+            assert!(with(pointer, "lineHeight", 3.1).is_err(), "{pointer}");
+            assert!(with(pointer, "letterSpacing", LETTER_SPACING_MIN).is_ok(), "{pointer}");
+            assert!(with(pointer, "letterSpacing", LETTER_SPACING_MAX).is_ok(), "{pointer}");
+            assert!(with(pointer, "letterSpacing", -201.0).is_err(), "{pointer}");
+            assert!(with(pointer, "letterSpacing", 1001.0).is_err(), "{pointer}");
+        }
     }
 
     #[test]

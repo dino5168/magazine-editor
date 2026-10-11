@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -184,7 +184,7 @@ src/
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
       stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性；畫布參考線的 Konva 屬性（guideLineAttrs，螢幕 px ÷ zoom）與對齊線 1/2 / 1/4 的倍數（CONTENT_GUIDE_EMPHASIS）
       style-sheet.ts              # 文字樣式（樣式表）的純邏輯：內建樣式 defaultTextStyles、覆寫比對 styleOverrides、套用 / 跟著樣式改（applyTextStyle / restyle / restyleDocument / linkTextStyle）、走過所有文字 mapStyledTexts、使用數 textStyleUsage、名稱檢查與驗證（和 Rust 同規則）
-      text-style.ts               # 文字裝飾：預設值（PLAIN_TEXT_DECORATION、DEFAULT_TEXT_FILL、DEFAULT_TEXT_SHADOW）、轉成 Konva 屬性（konvaTextStyle）、陰影偏移換成物件座標（localShadowOffset）
+      text-style.ts               # 文字裝飾與行距 / 字距：預設值（PLAIN_TEXT_DECORATION、DEFAULT_TEXT_SPACING、DEFAULT_LINE_HEIGHT、DEFAULT_TEXT_FILL、DEFAULT_TEXT_SHADOW）、範圍與驗證 / 夾值（hasValidTextSpacing、clampLineHeight、clampLetterSpacing）、轉成 Konva 屬性（konvaTextStyle、letterSpacingPt）、陰影偏移換成物件座標（localShadowOffset）
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
@@ -218,7 +218,7 @@ src-tauri/
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 .mcp.json                         # Claude Code 的專案 MCP 設定：server「magazine-editor」→ src-tauri/target/debug/magazine-mcp.exe
-tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v8：三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v9：封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/default-text-styles.json  # 內建三個文字樣式：TS defaultTextStyles 與 Rust default_text_styles（舊檔升級時加上）都和它比對
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture（兩層資料夾、未分類、文字、音訊、來自已刪除資料夾的垃圾桶素材）
@@ -243,7 +243,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 雙擊圖形編輯（`TextEditorOverlay` 的 `frame` 模式）。清空文字 = `label: null`。
 - **邊框**（`Stroke`）畫在外框線的**中心**（Konva / Typst / SVG 都是）；Transformer 設 `ignoreStroke`，控制框不含邊線。
 - **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
-- **文字樣式**（`TextStyle`，文字物件、圖形內文字、頁碼共用）：`fontStyle`（`normal` / `bold`，選字型檔）之外還有 `italic` / `underline` / `strikethrough`（boolean）與 `shadow: TextShadow | null`（v6 起；舊檔讀成全部關閉）。怎麼畫見「文字裝飾」。
+- **文字樣式**（`TextStyle`，文字物件、圖形內文字、頁碼共用）：`fontStyle`（`normal` / `bold`，選字型檔）之外還有 `italic` / `underline` / `strikethrough`（boolean）與 `shadow: TextShadow | null`（v6 起；舊檔讀成全部關閉）。怎麼畫見「文字裝飾」。v9 起還有 `lineHeight`（行距倍數）/ `letterSpacing`（字距，字級的 1/1000），頁碼（`PageNumberStyle`）沒有這兩個欄位，見「行距與字距」。
 - **文字樣式（樣式表，v8 起）**：`EditorDocument.textStyles: TextStyleDef[]`（id、名稱都不重複）；文字物件與圖形內文字 extends `StyledText`（`TextStyle` + `styleId: string | null`）。**物件照存完整的實際值**，`styleId` 只記連到哪個樣式；覆寫不另外存（和樣式不同的欄位 = 覆寫）。所以畫布、量測、匯出（含 Rust）都不讀樣式表。見「文字樣式」。
 - `stroke` / `label` / `geometry` / `shadow` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
@@ -385,11 +385,24 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **有線又有陰影時，Konva 改用 buffer canvas**：整段文字畫好再投一個陰影在最底下（`RenderShadow.whole_block`）；沒有線時每行各自投陰影。PDF 照兩種情況畫；EPUB 的文字陰影是 `text-shadow`（不複製文字），線的陰影是 `z-index: -1` 的 `span.d.s`（`.t` 有 `z-index: 0`）。
 - **已知限制**：半透明陰影在有線的文字上，重疊處 PDF / EPUB 比畫布深（Typst 沒有群組透明度）；EPUB 逐行畫文字陰影，行與行的陰影重疊時順序可能和畫布不同。
 
+### 行距與字距（`lib/editor/text-style.ts` + `style-controls.tsx` + 匯出）
+
+計畫、Konva 實測與決定：`docs/01-Plans-2026-10/12-新增文字屬性-行高與字距-實作.md`（2.6 節是 Konva 10.5.0 的實測）。
+
+- **模型**（v9）：`TextStyle.lineHeight` = 基線距離 ÷ 字級（倍數，0.5–3）；`letterSpacing` = 每個字後面多加的距離，**字級的 1/1000**（‰，InDesign 的「追蹤」，−200–1000）。兩者都跟著字級縮放。預設 `DEFAULT_TEXT_SPACING`（1.2 / 0 = 以前固定的值，舊檔與備份讀成這組）；內建「內文」行距 1.5（使用者決定）。範圍常數 `LINE_HEIGHT_MIN/MAX`、`LETTER_SPACING_MIN/MAX` 與 `DEFAULT_LINE_HEIGHT` 在 `text-style.ts`，Rust `format.rs` 同值。**頁碼沒有**這兩個欄位（直書頁碼每字一行），頁碼的圖形內文字用預設值。
+- **畫布**：`konvaTextStyle()` 也帶 `lineHeight` 與 `letterSpacing`（`letterSpacingPt` 換成 pt），文字、圖形內文字、頁碼、`measureTextLayout` 都經過它，**不要在節點上另外寫 `lineHeight`**。高度估算（`estimateTextHeight`、`textBlockHeight`）讀物件的行距。文字編輯框用 `letter-spacing: ‰/1000 em`，有字距時 `font-kerning: none`。
+- **Konva 10.5.0 的字距行為**（實測）：字距 ≠ 0 時**逐字畫**（每個字單獨量寬），kerning 與連字消失；行寬 = 有 kerning 的整行寬 + 字數 × 字距（含行尾字距），置中 / 靠右與換行都用這個寬。所以畫面上英文字距一不是 0 就會略寬、靠右的英文可能超出框一點（已知限制，匯出照畫面）。**升級 Konva 時要重測。**
+- **匯出**（`render.rs` 的 `RenderText.letter_spacing` / `line_starts`）：字距 ≠ 0 時每行起點由 Rust 用前端量到的行寬依對齊算（`line_start`，和底線同一個函式），PDF / EPUB 都**靠左放在起點**，不交給 Typst / CSS 對齊（它們的行尾字距與 kerning 和 Konva 不同）。
+  - PDF：每行拆成字元叢集（`str.clusters()`），中間放 `h(字距)`。**不用 Typst 的 `tracking`**：它在換字型處（拉丁 ↔ 中文）少加一個字距，中英混排會偏 2–5 pt。
+  - EPUB：`.t` 加 `letter-spacing` + `font-kerning: none` + `font-variant-ligatures: none`，每行 `text-align: left; margin-left: <起點>`（起點可能是負的，不能用 padding）。CSS 沒有 tracking 的問題，文字不拆。
+  - 疊圖比對（中英、正負字距、三種對齊、行距 2、底線＋粗體）：PDF、EPUB 和畫布都 ≤ 0.5 pt。
+- **UI**：`TextStyleFields` 的可選 `spacing` prop（屬性面板、樣式對話框傳入；頁碼對話框不傳），字級下方「行距（倍，± 0.1）」「字距（‰，± 10）」；輸入值經 `clampLineHeight`（取到 0.01）/ `clampLetterSpacing`（取整數）。reducer 的 `isValidPatch` 擋範圍外的值。覆寫提示的欄位名是「行距」「字距」（`TEXT_STYLE_KEY_LABELS`）。
+
 ### 文字樣式（`lib/editor/style-sheet.ts` + `styles-panel.tsx` / `text-style-link.tsx` / `text-style-dialog.tsx`）
 
 計畫與決定：`docs/01-Plans-2026-10/09-樣式系統-實作.md`（方向見 `08-設計方式總結.md`：先做樣式，之後欄格線 → 範本 → 富文字）。
 
-- **模型**：見「文件模型」的文字樣式。只有一種「文字樣式」（整個文字框一種）；字元樣式等富文字再做。欄位 = `TextStyle` 全部欄位（`TEXT_STYLE_KEYS`，mapped type 守著），行距 / 字距不在內（`TEXT_LINE_HEIGHT` 是前端與 Rust 共用的常數）。
+- **模型**：見「文件模型」的文字樣式。只有一種「文字樣式」（整個文字框一種）；字元樣式等富文字再做。欄位 = `TextStyle` 全部欄位（`TEXT_STYLE_KEYS`，mapped type 守著），2026-10-11 起含行距 / 字距。
 - **覆寫由比對得出**（使用者決定）：`styleOverrides(文字, 樣式)` = 值不同的欄位。改樣式時 `restyle` 只改「和舊樣式相同」的欄位；「以目前設定更新樣式」= `textStyle/update` 傳入文字目前的值（被覆寫的欄位剛好等於新值，覆寫自然消失）。代價：覆寫成剛好等於樣式的值會被當成沒覆寫。
 - **內建樣式**：「標題」32 pt 粗置中、「副標題」20 pt 置中、「內文」11 pt **靠左**，固定 id `text-style-heading` / `-subheading` / `-body`（`BUILT_IN_TEXT_STYLE_IDS`；Rust 升級舊檔時用同一組）。新文件帶這三個；`TEXT_PRESETS` 只剩預設文字與寬度，字型數值來自內建樣式（`builtInTextStyle`）。
 - **建立文字**：「文字」面板列出文件的樣式，新文字連到該樣式（`createStyledText`；文件沒有樣式時顯示原本三個按鈕、不連結）。文字工具（T）連到「內文」（以固定 id 找，改名不影響；沒有就用內建值、不連結）。`createTextElement(preset)` = 內建值、不連結（MCP 沒帶 `style`、素材庫的文字檔）。
@@ -399,7 +412,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 對話框（`TextStyleDialog`）：名稱 + `TextStyleFields` + 預覽，「確定」才寫入（編輯 = 一次 `textStyle/update` 含新名稱）。**`<form>` 只包名稱欄**：shadcn `Button` 沒有預設 `type="button"`，`NumberField` 的 −／＋ 放進表單時 Enter 會「按下」它而不是送出。
 - **字型**：套用 / 新增樣式的文字前先 `loadFontFamily`（`use-fonts-ready.ts`），畫布才不會用替代字型量換行。
 - **MCP**：見「MCP」的目前的工具。
-- 不做（之後另排）：字元樣式、樣式繼承（based on）、行距 / 字距、樣式群組、文件色票（另開任務檔）、從其他專案匯入樣式、頁碼連到樣式。
+- 不做（之後另排）：字元樣式、樣式繼承（based on）、樣式群組、文件色票（另開任務檔）、從其他專案匯入樣式、頁碼連到樣式。
 
 ### 單頁 / 雙頁（跨頁）（`spreads.ts` + `canvas-sheet.tsx` + `pages-panel.tsx`）
 
@@ -567,7 +580,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 8；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 9；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
@@ -597,7 +610,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **換行由編輯器決定，Typst 只負責定位**（所見即所得的關鍵）：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 畫的節點完全相同）取得 `lines`、`baseline` 與 `lineWidths`（底線 / 刪除線的長度），`buildExportRequest()` 把每個 text 物件的結果放進 `ExportRequest.textLayouts`（以 element id 為 key）。模板逐行 `place`，不讓 Typst 再斷行。
   - 因此 `measureTextLayout` **必須在字型載入後**呼叫（編輯器已顯示即符合），否則量出來的行寬是錯的。
   - **前端與 Rust 各有一份、改一邊要改兩邊的常數**（兩邊的測試用同一組數字守著）：
-    - `TEXT_LINE_HEIGHT = 1.2`：`geometry.ts` / `export/render.rs`。
+    - 行距 / 字距：`DEFAULT_LINE_HEIGHT = 1.2`（舊檔的行距）、`LINE_HEIGHT_MIN/MAX`（0.5–3）、`LETTER_SPACING_MIN/MAX`（−200–1000 ‰）：`text-style.ts` / `format.rs`（`validate_text_spacing`）。行距本身存在每個物件上（v9 起）。
     - `LABEL_PADDING_PT = 4`：`shape-label.ts` / `render.rs`。
     - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`。虛線 3w + 3w；點線 0 + 2w，圓頭。
     - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。
@@ -643,7 +656,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **工具是單一資料來源**：`lib/automation/tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、寫給 AI 看的中文說明、zod strict schema、`readOnly`）。`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作會編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 的 `toMatchFileSnapshot` 產生並比對，橋接程式 `include_str!` 內嵌（App 沒開時 Claude Code 仍看得到工具）。
   - **新增工具**：在 `TOOL_DEFINITIONS` 加一筆 → 在 `HANDLERS` 實作（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，寫測試，用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp`。
   - 參數驗證失敗回中文訊息（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex（和 `isElementColor` / `isHexColor` 同規則）才會出現在 JSON Schema；不用 ajv（`new Function` 會被 CSP 擋）。
-- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位）；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）。
+- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰））；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）。
   - `run_command` 和點選單呼叫**同一個 handler**（`home-page.tsx` 的 `menuHandlers` 傳給 `McpBridge`）；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」且不執行（不會跳 toast）。會開對話框的指令只觸發，不等結果。
   - 編輯：**一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外：和 UI 一樣切到新頁）。`update_element` 依物件類型檢查欄位（文字沒有 height、文字顏色是 `textColor`、圖片只能改位置尺寸）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。
   - `ToolContext.apply`：先用純 reducer 算出結果（回報有沒有變更），再 dispatch 同一個 action，**並先把結果記在 ref**：「新增後立刻修改」的第二個呼叫可能比 React 重畫早到。

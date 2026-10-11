@@ -1,6 +1,5 @@
 import type { Bounds, CanvasElement, ElementId, Margins, Point, Sheet, Size, TextElement } from "./types";
 
-export const TEXT_LINE_HEIGHT = 1.2;
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
 export const MIN_ELEMENT_SIZE_PT = 4;
 
@@ -29,7 +28,7 @@ export function estimateTextHeight(element: TextElement): number {
     }
     lines += Math.max(1, Math.ceil((widthEm * element.fontSize) / wrapWidth));
   }
-  return lines * element.fontSize * TEXT_LINE_HEIGHT;
+  return lines * element.fontSize * element.lineHeight;
 }
 
 function localBounds(element: CanvasElement): Bounds {
