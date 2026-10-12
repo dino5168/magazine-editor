@@ -26,6 +26,13 @@ export interface TextShadow {
   readonly offsetY: number;
 }
 
+/**
+ * Horizontal alignment of each line. `distributed`（首尾置中 / 分散對齊, v10）: every line,
+ * the last one included, runs from the box's left edge to its right edge (a lone character is
+ * centred); lines wrap as with `left`.
+ */
+export type TextAlign = "left" | "center" | "right" | "distributed";
+
 /** Text style shared by text elements, the text inside shapes and page numbers. */
 export interface TextStyle {
   readonly fontSize: number;
@@ -42,7 +49,7 @@ export interface TextStyle {
   readonly lineHeight: number;
   /** Extra space after every character, in 1/1000 of the font size (may be negative); 0 before v9. */
   readonly letterSpacing: number;
-  readonly align: "left" | "center" | "right";
+  readonly align: TextAlign;
   /** Text color. */
   readonly fill: string;
 }

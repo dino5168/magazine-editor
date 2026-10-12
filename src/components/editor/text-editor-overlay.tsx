@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { localShadowOffset, textDecorationLine } from "@/lib/editor/text-style";
+import { cssTextAlign, localShadowOffset, textDecorationLine } from "@/lib/editor/text-style";
 import type { Point, ShapeLabel, TextElement } from "@/lib/editor/types";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +116,7 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
         fontStyle: element.italic ? "italic" : "normal",
         textDecorationLine: textDecorationLine(element) || "none",
         textShadow: cssTextShadow(element, zoom),
-        textAlign: element.align,
+        ...cssTextAlign(element.align),
         color: element.fill,
       }}
     />

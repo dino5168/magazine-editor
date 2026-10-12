@@ -1,5 +1,5 @@
 import { colorAlpha } from "./palette";
-import type { Point, TextShadow, TextStyle } from "./types";
+import type { Point, TextAlign, TextShadow, TextStyle } from "./types";
 
 /** Italic / underline / strikethrough / shadow of a text style. */
 export type TextDecoration = Pick<TextStyle, "italic" | "underline" | "strikethrough" | "shadow">;
@@ -68,6 +68,43 @@ export function clampLineHeight(value: number): number {
  */
 export function clampLetterSpacing(value: number): number {
   return Math.round(Math.min(LETTER_SPACING_MAX, Math.max(LETTER_SPACING_MIN, value)));
+}
+
+/** Every text alignment, in the order of the property panel's buttons; same as `Align` in Rust `format.rs`. */
+export const TEXT_ALIGNS = ["left", "center", "right", "distributed"] as const satisfies readonly TextAlign[];
+
+export function isTextAlign(value: unknown): value is TextAlign {
+  return (TEXT_ALIGNS as readonly unknown[]).includes(value);
+}
+
+/**
+ * CSS alignment of HTML that shows a text (the text editor overlay, the style dialog preview).
+ * Distributed text is approximated with `justify` on every line: Chrome spreads Chinese between
+ * every character but Latin text only at spaces, and leaves a lone character at the start; the
+ * canvas is exact.
+ *
+ * Args:
+ *   align: Alignment of the text.
+ *
+ * Returns:
+ *   `textAlign` / `textAlignLast` for a React style.
+ */
+export function cssTextAlign(align: TextAlign): { textAlign: "left" | "center" | "right" | "justify"; textAlignLast: "auto" | "justify" } {
+  return align === "distributed" ? { textAlign: "justify", textAlignLast: "justify" } : { textAlign: align, textAlignLast: "auto" };
+}
+
+/**
+ * Alignment handed to Konva: distributed lines wrap like left-aligned ones (and are drawn by
+ * `drawDistributedText`).
+ *
+ * Args:
+ *   align: Alignment of the text.
+ *
+ * Returns:
+ *   A Konva / CSS alignment.
+ */
+export function konvaAlign(align: TextAlign): "left" | "center" | "right" {
+  return align === "distributed" ? "left" : align;
 }
 
 export function isLineHeight(value: unknown): value is number {

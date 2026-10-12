@@ -142,7 +142,7 @@ fn user_text_is_data_not_markup() {
     document.name = format!("{hostile}\u{0}");
     document.pages[0].name = hostile.to_owned();
     let mut req = request(document);
-    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0, line_widths: vec![] });
+    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0, line_widths: vec![], line_gaps: vec![] });
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
 
@@ -340,7 +340,7 @@ fn decorated_page(edit: impl FnOnce(&mut crate::project::format::TextElement)) -
     let mut req = request(document);
     req.text_layouts.insert(
         "el-text".into(),
-        TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![144.0, 72.0] },
+        TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![144.0, 72.0], line_gaps: vec![] },
     );
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
@@ -399,13 +399,13 @@ fn letter_spacing_places_lines_like_the_pdf() {
     assert_eq!(
         lines,
         vec![
-            "text-align:left;margin-left:138px;transform:skewX(-14.0362deg);transform-origin:0 30px",
-            "text-align:left;margin-left:174px;transform:skewX(-14.0362deg);transform-origin:0 30px",
+            "text-align:left;margin-left:138px;white-space:nowrap;transform:skewX(-14.0362deg);transform-origin:0 30px",
+            "text-align:left;margin-left:174px;white-space:nowrap;transform:skewX(-14.0362deg);transform-origin:0 30px",
         ]
     );
     // 沒有斜體也照樣放在起點
     let upright = decorated_page(|t| t.decoration.italic = false);
-    assert!(upright.contains(r#"<div style="text-align:left;margin-left:138px">雜誌標題</div>"#), "{upright}");
+    assert!(upright.contains(r#"<div style="text-align:left;margin-left:138px;white-space:nowrap">雜誌標題</div>"#), "{upright}");
 }
 
 /// Writes `preview.epub` for opening in a reading system or running epubcheck (not part of the
@@ -423,4 +423,36 @@ fn epub_preview() {
     };
     let output = render_epub(root.path(), &req).unwrap();
     std::fs::write(std::path::Path::new(&dir).join("preview.epub"), output.bytes).unwrap();
+}
+
+#[test]
+fn distributed_lines_use_the_editors_gaps_like_the_pdf() {
+    // 首尾置中、字距 0：第一行 4 個字貼齊 420 寬（間距 92），單字「副」置中（起點 192）
+    let mut document = fixture_document();
+    let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+    text.align = crate::project::format::Align::Distributed;
+    text.spacing.letter_spacing = 0.0;
+    text.decoration = crate::project::format::TextDecoration::default();
+    let mut req = request(document);
+    req.text_layouts.insert(
+        "el-text".into(),
+        TextLayout { lines: vec!["雜誌標題".into(), "副".into()], baseline: 30.0, line_widths: vec![420.0, 36.0], line_gaps: vec![92.0, 0.0] },
+    );
+    let root = project_with_image();
+    let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
+    let xhtml = text_of(&entries, "OEBPS/pages/page-1.xhtml");
+    let page = parse(xhtml);
+    let text = page.descendants().find(|n| n.attribute("class") == Some("el t")).unwrap();
+    let style = text.attribute("style").unwrap();
+    // 逐字畫：沒有 kerning 與連字；整段沒有字距（每行自己的在行上）
+    assert!(style.contains(";font-kerning:none;font-variant-ligatures:none"), "{style}");
+    assert!(!style.contains("letter-spacing"), "{style}");
+    let lines: Vec<_> = text.children().filter(|n| n.has_tag_name("div")).map(|n| n.attribute("style").unwrap()).collect();
+    assert_eq!(
+        lines,
+        vec![
+            "text-align:left;margin-left:0px;white-space:nowrap;letter-spacing:92px",
+            "text-align:left;margin-left:192px;white-space:nowrap;letter-spacing:0px",
+        ]
+    );
 }

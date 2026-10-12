@@ -11,7 +11,7 @@ import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
 import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
 import { TEXT_STYLE_NAME_MAX_LENGTH } from "@/lib/editor/style-sheet";
-import { LETTER_SPACING_MAX, LETTER_SPACING_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_MIN } from "@/lib/editor/text-style";
+import { LETTER_SPACING_MAX, LETTER_SPACING_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_MIN, TEXT_ALIGNS } from "@/lib/editor/text-style";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
   FONT_SIZE_MAX,
@@ -65,7 +65,7 @@ const textStyleShape = {
   italic: z.boolean(),
   underline: z.boolean(),
   strikethrough: z.boolean(),
-  align: z.enum(["left", "center", "right"]),
+  align: z.enum(TEXT_ALIGNS),
   textColor: elementColor.describe("文字顏色，#rrggbb 或 #rrggbbaa"),
   shadow: z
     .strictObject({
@@ -109,7 +109,7 @@ const STYLE_LINK_HELP =
   "style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。";
 
 const STYLE_HELP =
-  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right）、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
+  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
 
 /** Every tool, keyed by its MCP name; `satisfies` keeps the literal schema types. */
 export const TOOL_DEFINITIONS = {

@@ -22,19 +22,27 @@
 // 這裡也把每個字（grapheme cluster）分開，中間放固定的 h(字距)。不用 Typst 的 tracking：
 // 它在換字型的地方（拉丁 ↔ 中文）會少加一個字距，中英混排就和畫布對不上。
 // 每行的起點由 Rust 用編輯器量到的行寬算好（lineStarts），靠左放在那裡，不交給 Typst 對齊
-#let line-content(el, line) = if el.letterSpacing == 0 { line } else {
-  line.clusters().map(c => [#c]).join(h(pt(el.letterSpacing)))
+// 首尾置中：每一行字與字的距離不同（lineGaps，編輯器算好，已含字距），同樣逐字放
+#let line-content(el, i, line) = {
+  let gap = if el.lineGaps == none { el.letterSpacing } else { el.lineGaps.at(i) }
+  if line == "" or (el.lineGaps == none and gap == 0) { line } else {
+    line.clusters().map(c => [#c]).join(h(pt(gap)))
+  }
 }
 
+// 換行由編輯器決定，一行絕不能再被 Typst 折斷。box 的寬度預設受文字框限制：首尾置中的行剛好等於框寬，
+// Typst 量的字寬只要比瀏覽器寬一點，最後一個字就會被折到下一行。靠左放在起點的行給一個不會用完的寬度
+#let no-wrap-width(el) = if el.lineStarts == none { auto } else { pt(el.width) + 1000pt }
+
 #let text-line(el, i, line, paint, dx, dy) = {
-  let body = box(text(
+  let body = box(width: no-wrap-width(el), text(
     font: el.fonts,
     size: pt(el.size),
     weight: if el.bold { "bold" } else { "regular" },
     fill: paint,
     top-edge: "baseline",
     bottom-edge: "baseline",
-    line-content(el, line),
+    line-content(el, i, line),
   ))
   // 斜體：沒有斜體字型檔，照瀏覽器的模擬斜體以基線為軸斜切（Typst 不會自己模擬）
   let body = if el.slant == 0 { body } else { skew(ax: -calc.atan(el.slant), origin: top + left, reflow: false, body) }

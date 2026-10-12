@@ -217,6 +217,13 @@ describe("update_element", () => {
     expect(session.state.history.past).toHaveLength(1);
   });
 
+  it("sets the distributed alignment and rejects unknown ones", () => {
+    const session = toolSession(createInitialState(fixture));
+    expect(session.ok("update_element", { id: "el-text", align: "distributed" }).changed).toBe(true);
+    expect(elementOf(session, "el-text")).toMatchObject({ align: "distributed" });
+    expect(session.error("update_element", { id: "el-text", align: "justify" })).toContain("align");
+  });
+
   it("rejects fields that do not belong to the element type", () => {
     const session = toolSession(createInitialState(fixture));
     expect(session.error("update_element", { id: "el-text", height: 10 })).toContain("height");

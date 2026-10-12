@@ -20,7 +20,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// files and backups read as the built-in styles (`default_text_styles`) with nothing linked.
 /// v9: `lineHeight` / `letterSpacing` on text elements, shape labels and text styles (not page
 /// numbers). Missing in older files and backups → 1.2 / 0, the values that used to be fixed.
-pub const SCHEMA_VERSION: u32 = 9;
+/// v10: `align` may be `distributed` (首尾置中). No new fields; older apps cannot read the value, so
+/// the version tells them the file is newer.
+pub const SCHEMA_VERSION: u32 = 10;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -239,6 +241,8 @@ pub enum Align {
     Left,
     Center,
     Right,
+    /// 首尾置中（分散對齊）：每一行首字貼左緣、末字貼右緣（含最後一行，單字置中），換行同靠左。
+    Distributed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -996,6 +1000,19 @@ mod tests {
         assert_eq!(text.spacing, TextSpacing::default());
         assert_eq!(ellipse.label.as_ref().unwrap().spacing, TextSpacing { line_height: DEFAULT_LINE_HEIGHT, letter_spacing: 0.0 });
         assert_eq!(document.text_styles[0].spacing, TextSpacing::default());
+    }
+
+    #[test]
+    fn reads_the_distributed_alignment_and_rejects_unknown_ones() {
+        let project = parse_project(FIXTURE).unwrap();
+        let heading = project.document.text_styles.iter().find(|style| style.id == "text-style-heading").unwrap();
+        assert_eq!(heading.align, Align::Distributed);
+        let saved = serde_json::to_value(heading).unwrap();
+        assert_eq!(saved["align"], "distributed");
+
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["document"]["pages"][0]["elements"][0]["align"] = Value::from("justify");
+        assert!(parse_project(&value.to_string()).is_err());
     }
 
     #[test]

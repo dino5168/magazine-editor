@@ -10,13 +10,16 @@ import {
   clampLetterSpacing,
   clampLineHeight,
   hasValidTextSpacing,
+  cssTextAlign,
+  isTextAlign,
+  konvaAlign,
   konvaFontStyle,
   konvaTextStyle,
   letterSpacingPt,
   localShadowOffset,
   textDecorationLine,
 } from "../text-style";
-import { isTextShadow } from "../validation";
+import { isTextShadow, isTextStyle } from "../validation";
 
 describe("konvaFontStyle / textDecorationLine", () => {
   it("combines weight and italic in CSS shorthand order", () => {
@@ -120,5 +123,29 @@ describe("localShadowOffset", () => {
 describe("defaults", () => {
   it("are valid", () => {
     expect(isTextShadow(DEFAULT_TEXT_SHADOW)).toBe(true);
+  });
+});
+
+describe("text alignment", () => {
+  it("knows the four alignments", () => {
+    expect(["left", "center", "right", "distributed"].every(isTextAlign)).toBe(true);
+    expect(isTextAlign("justify")).toBe(false);
+    expect(isTextAlign(undefined)).toBe(false);
+  });
+
+  it("wraps distributed text like left-aligned text in Konva", () => {
+    expect(konvaAlign("distributed")).toBe("left");
+    expect(konvaAlign("center")).toBe("center");
+  });
+
+  it("approximates distributed text with justify on every line in HTML", () => {
+    expect(cssTextAlign("distributed")).toEqual({ textAlign: "justify", textAlignLast: "justify" });
+    expect(cssTextAlign("right")).toEqual({ textAlign: "right", textAlignLast: "auto" });
+  });
+
+  it("is checked with the rest of the text style", () => {
+    const style = { ...DEFAULT_TEXT_SPACING, ...PLAIN_TEXT_DECORATION, fontSize: 12, fontFamily: "x", fontStyle: "normal", fill: "#000000" };
+    expect(isTextStyle({ ...style, align: "distributed" })).toBe(true);
+    expect(isTextStyle({ ...style, align: "justify" })).toBe(false);
   });
 });

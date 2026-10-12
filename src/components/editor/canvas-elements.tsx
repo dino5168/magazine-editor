@@ -7,6 +7,7 @@ import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/edito
 import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
+import { konvaAlignAttrs } from "@/lib/editor/distributed-text";
 import { konvaTextStyle } from "@/lib/editor/text-style";
 import type {
   CanvasElement,
@@ -155,7 +156,7 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
       fontSize={label.fontSize}
       fontFamily={label.fontFamily}
       {...konvaTextStyle(label)}
-      align={label.align}
+      {...konvaAlignAttrs(label.align)}
       fill={label.fill}
       visible={!hidden}
     />
@@ -207,7 +208,7 @@ function textAttrs(element: TextElement) {
     fontSize: element.fontSize,
     fontFamily: element.fontFamily,
     ...konvaTextStyle(element),
-    align: element.align,
+    ...konvaAlignAttrs(element.align),
     fill: element.fill,
   };
 }

@@ -1,5 +1,5 @@
 import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow, TextStyle } from "./types";
-import { hasValidTextSpacing } from "./text-style";
+import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
 
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
@@ -211,7 +211,7 @@ export function isTextStyle(value: unknown): value is TextStyle {
     (style.fontStyle === "normal" || style.fontStyle === "bold") &&
     hasValidTextDecoration(style) &&
     hasValidTextSpacing(style) &&
-    ["left", "center", "right"].includes(style.align as string) &&
+    isTextAlign(style.align) &&
     typeof style.fill === "string" &&
     isElementColor(style.fill)
   );

@@ -32,6 +32,10 @@ pub struct TextLayout {
     /// requests captured before it existed; the lines then span the text box.
     #[serde(default, rename = "lineWidths")]
     pub line_widths: Vec<f64>,
+    /// Distributed text only: distance (pt) between neighbouring characters of each line, as the
+    /// canvas spreads them (letter spacing included). Empty otherwise.
+    #[serde(default, rename = "lineGaps")]
+    pub line_gaps: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize)]

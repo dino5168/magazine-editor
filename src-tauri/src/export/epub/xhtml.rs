@@ -129,6 +129,8 @@ fn align_name(align: Align) -> &'static str {
         Align::Left => "left",
         Align::Center => "center",
         Align::Right => "right",
+        // 每一行的起點由 render model 算好（line_starts），靠左放
+        Align::Distributed => "left",
     }
 }
 
@@ -155,9 +157,12 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
     if let Some(shadow) = &text.shadow {
         let _ = write!(style, ";text-shadow:{}px {}px 0 {}", num(shadow.dx), num(shadow.dy), css_color(&shadow.color));
     }
-    // 字距：編輯器（Konva）有字距時逐字畫，沒有 kerning 與連字，這裡也關掉
+    // 字距：編輯器（Konva）有字距時逐字畫，沒有 kerning 與連字，這裡也關掉；首尾置中也是逐字畫（每行的字距在行上）
     if text.letter_spacing != 0.0 {
-        let _ = write!(style, ";letter-spacing:{}px;font-kerning:none;font-variant-ligatures:none", num(text.letter_spacing));
+        let _ = write!(style, ";letter-spacing:{}px", num(text.letter_spacing));
+    }
+    if text.letter_spacing != 0.0 || text.line_gaps.is_some() {
+        style.push_str(";font-kerning:none;font-variant-ligatures:none");
     }
     rotate(&mut style, element.rotation);
     // 斜體：照瀏覽器的模擬斜體，以基線為軸斜切每一行（不用 font-style，斜率才不會因閱讀器而不同）
@@ -177,14 +182,20 @@ fn text(out: &mut String, element: &RenderElement, text: &RenderText) {
             let _ = write!(out, r#"<div style="height:{}px"></div>"#, num(text.line_height));
             continue;
         }
-        // 有字距時每行靠左放在 render model 算好的起點（CSS 的行尾也有字距，自己對齊會偏；文字比框寬時起點是負的，所以用 margin 不用 padding）
-        let start = text.line_starts.as_ref().and_then(|starts| starts.get(index));
-        let line_style = match (start, italic.is_empty()) {
-            (Some(x), true) => format!("text-align:left;margin-left:{}px", num(*x)),
-            (Some(x), false) => format!("text-align:left;margin-left:{}px;{italic}", num(*x)),
-            (None, false) => italic.clone(),
-            (None, true) => String::new(),
-        };
+        // 有起點（字距、首尾置中）時每行靠左放在 render model 算好的起點（CSS 的行尾也有字距，自己對齊會偏；文字比框寬時起點是負的，
+        // 所以用 margin 不用 padding）。換行由編輯器決定：閱讀器量的字寬稍寬時不能把行尾的字折下去，所以 nowrap
+        let mut parts: Vec<String> = Vec::new();
+        if let Some(x) = text.line_starts.as_ref().and_then(|starts| starts.get(index)) {
+            parts.push(format!("text-align:left;margin-left:{}px;white-space:nowrap", num(*x)));
+        }
+        // 首尾置中：這一行字與字的距離（編輯器算好）；CSS 的行尾多一個字距，靠左放又不換行，看不到
+        if let Some(gap) = text.line_gaps.as_ref().and_then(|gaps| gaps.get(index)) {
+            parts.push(format!("letter-spacing:{}px", num(*gap)));
+        }
+        if !italic.is_empty() {
+            parts.push(italic.clone());
+        }
+        let line_style = parts.join(";");
         if line_style.is_empty() {
             let _ = write!(out, "<div>{}</div>", escape(line));
         } else {

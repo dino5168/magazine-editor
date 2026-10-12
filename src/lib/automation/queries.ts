@@ -7,7 +7,7 @@ import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/
 import { findFontOption } from "@/lib/editor/fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
-import type { CanvasElement, PageId, Sheet, TextShadow, TextStyleDef } from "@/lib/editor/types";
+import type { CanvasElement, PageId, Sheet, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import { visibleItems } from "@/lib/library/library-selectors";
 import { folderPath } from "@/lib/library/library-tree";
@@ -91,7 +91,7 @@ export interface TextStyleSummary {
   readonly italic: boolean;
   readonly underline: boolean;
   readonly strikethrough: boolean;
-  readonly align: "left" | "center" | "right";
+  readonly align: TextAlign;
   readonly textColor: string;
   readonly shadow: TextShadow | null;
   /** × font size. */

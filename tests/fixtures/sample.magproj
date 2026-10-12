@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -66,7 +66,7 @@
         "shadow": null,
         "lineHeight": 1.2,
         "letterSpacing": 0,
-        "align": "center",
+        "align": "distributed",
         "fill": "#171717"
       },
       {

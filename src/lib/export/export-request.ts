@@ -11,8 +11,16 @@ export interface TextLayout {
   readonly lines: readonly string[];
   /** Distance (pt) from the element's top to the first line's baseline. */
   readonly baseline: number;
-  /** Width (pt) of each line as Konva measured it; the underline / strikethrough follow it. */
+  /**
+   * Width (pt) of each line as the canvas draws it; the underline / strikethrough follow it. For
+   * distributed text: from the first character's left edge to the last one's right edge.
+   */
   readonly lineWidths: readonly number[];
+  /**
+   * Distributed text only: distance (pt) between neighbouring characters of each line
+   * (`distributeText`), letter spacing included.
+   */
+  readonly lineGaps?: readonly number[];
 }
 
 /** Payload of the `export_pdf` command. */

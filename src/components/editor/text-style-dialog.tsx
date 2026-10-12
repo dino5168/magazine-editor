@@ -6,7 +6,7 @@ import { SettingsDialog, SettingsDialogFooter } from "@/components/app/settings/
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { createId } from "@/lib/editor/element-factory";
 import { textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
-import { textDecorationLine } from "@/lib/editor/text-style";
+import { cssTextAlign, textDecorationLine } from "@/lib/editor/text-style";
 import type { TextStyle, TextStyleDef } from "@/lib/editor/types";
 import { TextStyleFields } from "./style-controls";
 
@@ -36,7 +36,7 @@ function previewStyle(style: TextStyle): CSSProperties {
     letterSpacing: `${style.letterSpacing / 1000}em`,
     color: style.fill,
     textShadow: shadow ? `${shadow.offsetX}px ${shadow.offsetY}px 0 ${shadow.color}` : "none",
-    textAlign: style.align,
+    ...cssTextAlign(style.align),
   };
 }
 

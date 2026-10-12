@@ -8,6 +8,7 @@ import {
   Strikethrough,
   TextAlignCenter,
   TextAlignEnd,
+  TextAlignJustify,
   TextAlignStart,
   Underline,
   type LucideIcon,
@@ -24,11 +25,12 @@ import {
   LETTER_SPACING_MIN,
   LINE_HEIGHT_MAX,
   LINE_HEIGHT_MIN,
+  TEXT_ALIGNS,
   clampLetterSpacing,
   clampLineHeight,
   type TextSpacing,
 } from "@/lib/editor/text-style";
-import type { ShapeLabel, Stroke, TextShadow, TextStyle } from "@/lib/editor/types";
+import type { ShapeLabel, Stroke, TextAlign, TextShadow, TextStyle } from "@/lib/editor/types";
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -54,11 +56,20 @@ export function Row({ label, children }: { readonly label: string; readonly chil
   );
 }
 
-const ALIGN_OPTIONS: readonly { readonly value: TextStyle["align"]; readonly label: string; readonly icon: LucideIcon }[] = [
-  { value: "left", label: "靠左對齊", icon: TextAlignStart },
-  { value: "center", label: "置中對齊", icon: TextAlignCenter },
-  { value: "right", label: "靠右對齊", icon: TextAlignEnd },
-];
+// 一組按鈕（字型樣式 / 水平對齊 / 垂直對齊）：組內不換行、間距較密，預設寬度的屬性面板放得下一行
+function ButtonGroup({ children }: { readonly children: ReactNode }) {
+  return <div className="flex items-center gap-0.5">{children}</div>;
+}
+
+const ALIGN_BUTTONS = {
+  left: { label: "靠左對齊", icon: TextAlignStart },
+  center: { label: "置中對齊", icon: TextAlignCenter },
+  right: { label: "靠右對齊", icon: TextAlignEnd },
+  distributed: { label: "分散對齊（首尾置中）", icon: TextAlignJustify },
+} satisfies Record<TextAlign, { readonly label: string; readonly icon: LucideIcon }>;
+
+// 按鈕順序同 TEXT_ALIGNS
+const ALIGN_OPTIONS = TEXT_ALIGNS.map((value) => ({ value, ...ALIGN_BUTTONS[value] }));
 
 const VERTICAL_ALIGN_OPTIONS: readonly {
   readonly value: ShapeLabel["verticalAlign"];
@@ -185,56 +196,63 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign, spa
           />
         </>
       )}
+      {/* 每組按鈕是一個單位：放不下時整組換行，不會拆開 */}
       <div className="flex flex-wrap items-center gap-1">
-        <IconButton
-          label="粗體"
-          aria-pressed={style.fontStyle === "bold"}
-          className={cn(style.fontStyle === "bold" && "bg-muted")}
-          onClick={() => onChange({ fontStyle: style.fontStyle === "bold" ? "normal" : "bold" })}
-        >
-          <Bold />
-        </IconButton>
-        {DECORATION_TOGGLES.map(({ key, label, icon: Icon }) => (
+        <ButtonGroup>
           <IconButton
-            key={key}
-            label={label}
-            aria-pressed={style[key]}
-            className={cn(style[key] && "bg-muted")}
-            onClick={() => onChange({ [key]: !style[key] })}
+            label="粗體"
+            aria-pressed={style.fontStyle === "bold"}
+            className={cn(style.fontStyle === "bold" && "bg-muted")}
+            onClick={() => onChange({ fontStyle: style.fontStyle === "bold" ? "normal" : "bold" })}
           >
-            <Icon />
+            <Bold />
           </IconButton>
-        ))}
+          {DECORATION_TOGGLES.map(({ key, label, icon: Icon }) => (
+            <IconButton
+              key={key}
+              label={label}
+              aria-pressed={style[key]}
+              className={cn(style[key] && "bg-muted")}
+              onClick={() => onChange({ [key]: !style[key] })}
+            >
+              <Icon />
+            </IconButton>
+          ))}
+        </ButtonGroup>
         {align && (
           <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-            {ALIGN_OPTIONS.map(({ value, label, icon: Icon }) => (
-              <IconButton
-                key={value}
-                label={label}
-                aria-pressed={align.value === value}
-                className={cn(align.value === value && "bg-muted")}
-                onClick={() => align.onChange(value)}
-              >
-                <Icon />
-              </IconButton>
-            ))}
+            <ButtonGroup>
+              {ALIGN_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <IconButton
+                  key={value}
+                  label={label}
+                  aria-pressed={align.value === value}
+                  className={cn(align.value === value && "bg-muted")}
+                  onClick={() => align.onChange(value)}
+                >
+                  <Icon />
+                </IconButton>
+              ))}
+            </ButtonGroup>
           </>
         )}
         {verticalAlign && (
           <>
             <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-            {VERTICAL_ALIGN_OPTIONS.map(({ value, label, icon: Icon }) => (
-              <IconButton
-                key={value}
-                label={label}
-                aria-pressed={verticalAlign.value === value}
-                className={cn(verticalAlign.value === value && "bg-muted")}
-                onClick={() => verticalAlign.onChange(value)}
-              >
-                <Icon />
-              </IconButton>
-            ))}
+            <ButtonGroup>
+              {VERTICAL_ALIGN_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <IconButton
+                  key={value}
+                  label={label}
+                  aria-pressed={verticalAlign.value === value}
+                  className={cn(verticalAlign.value === value && "bg-muted")}
+                  onClick={() => verticalAlign.onChange(value)}
+                >
+                  <Icon />
+                </IconButton>
+              ))}
+            </ButtonGroup>
           </>
         )}
       </div>

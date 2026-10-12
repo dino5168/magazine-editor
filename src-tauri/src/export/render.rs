@@ -98,8 +98,12 @@ pub struct RenderText {
     /// editor's line widths: Konva then draws one character at a time without kerning, and both its
     /// widths and the formats' own alignment count the spacing after the last character
     /// differently, so the formats place every line left-aligned at this x instead of aligning it
-    /// themselves. `None` without letter spacing (or without line widths from an old request).
+    /// themselves. Distributed text always has them (0, or centred for a lone character). `None`
+    /// without letter spacing (or without line widths from an old request).
     pub line_starts: Option<Vec<f64>>,
+    /// Distributed text: distance (pt) between neighbouring characters of each line, as the canvas
+    /// spreads them; the formats use it instead of `letter_spacing`. `None` for other alignments.
+    pub line_gaps: Option<Vec<f64>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -165,6 +169,8 @@ fn line_start(width: f64, box_width: f64, align: Align) -> f64 {
         Align::Left => 0.0,
         Align::Center => (box_width - width) / 2.0,
         Align::Right => box_width - width,
+        // 首尾置中的行寬是畫出來的寬：兩字以上 = 框寬（起點 0），單字置中
+        Align::Distributed => (box_width - width) / 2.0,
     }
 }
 
@@ -226,11 +232,15 @@ fn render_text(layout: TextLayout, box_width: f64, rotation: f64, style: &TextSt
     let decorations = decoration_lines(&layout, box_width, line_height, style);
     let shadow = style.decoration.shadow.as_ref().map(|shadow| render_shadow(shadow, style.fill, rotation, !decorations.is_empty()));
     let letter_spacing = style.size * style.letter_spacing / 1000.0;
-    let line_starts = (letter_spacing != 0.0 && !layout.line_widths.is_empty())
+    let distributed = style.align == Align::Distributed;
+    // 首尾置中：每行字與字的距離由編輯器算好（和畫布逐字放的位置相同）；舊的 request 沒有時退回一般字距
+    let line_gaps = (distributed && layout.line_gaps.len() == layout.lines.len()).then(|| layout.line_gaps.clone());
+    let line_starts = ((letter_spacing != 0.0 || distributed) && !layout.line_widths.is_empty())
         .then(|| layout.line_widths.iter().map(|width| line_start(*width, box_width, style.align)).collect());
     RenderText {
         letter_spacing,
         line_starts,
+        line_gaps,
         lines: layout.lines,
         baseline: layout.baseline,
         line_height,
@@ -372,6 +382,7 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
             lines: text.split('\n').map(str::to_owned).collect(),
             baseline: size * (line_height / 2.0 + 0.35),
             line_widths: Vec::new(),
+            line_gaps: Vec::new(),
         }),
     }
 }
@@ -528,7 +539,7 @@ mod tests {
         // fixture 的橢圓：外框 (120, 440) 120 × 80，文字 14 pt、置中、垂直置中
         let root = project_with_image();
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![] });
+        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![], line_gaps: vec![] });
         let (document, _) = build_render(root.path(), &req).unwrap();
         let (element, text) = label_of(&document);
         assert_eq!(text.lines, vec!["圖形內", "文字"], "uses the editor's line breaks");
@@ -617,7 +628,7 @@ mod tests {
         let mut req = request(document);
         req.text_layouts.insert(
             "el-text".into(),
-            TextLayout { lines: vec!["雜誌標題".into(), "副標".into(), String::new()], baseline: 30.0, line_widths: vec![144.4, 72.0, 0.0] },
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into(), String::new()], baseline: 30.0, line_widths: vec![144.4, 72.0, 0.0], line_gaps: vec![] },
         );
         let root = project_with_image();
         let (rendered, _) = build_render(root.path(), &req).unwrap();
@@ -661,6 +672,39 @@ mod tests {
         // 沒有字距：照舊交給各格式自己對齊
         let (_, none) = decorated_text(|t| t.spacing.letter_spacing = 0.0);
         assert_eq!((none.letter_spacing, none.line_starts), (0.0, None));
+    }
+
+    #[test]
+    fn distributed_lines_run_edge_to_edge_with_the_editors_gaps() {
+        let render = |gaps: Vec<f64>| {
+            let mut document = fixture_document();
+            let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+            text.align = Align::Distributed;
+            let mut req = request(document);
+            // 編輯器的結果：兩字以上行寬 = 框寬 420；單字「副」（36 寬）置中；空行
+            req.text_layouts.insert(
+                "el-text".into(),
+                TextLayout { lines: vec!["雜誌標題".into(), "副".into(), String::new()], baseline: 30.0, line_widths: vec![420.0, 36.0, 0.0], line_gaps: gaps },
+            );
+            let root = project_with_image();
+            let (rendered, _) = build_render(root.path(), &req).unwrap();
+            let RenderKind::Text(text) = rendered.pages[0].elements[0].kind.clone() else { panic!("expected text") };
+            text
+        };
+        let text = render(vec![92.0, 0.0, 0.0]);
+        assert_eq!(text.line_gaps, Some(vec![92.0, 0.0, 0.0]));
+        // 起點：兩字以上 0、單字置中、空行（寬 0）在中間（不畫）
+        assert_eq!(text.line_starts, Some(vec![0.0, 192.0, 210.0]));
+        // 底線 / 刪除線畫滿整行（fixture 的文字兩種線都有）
+        let underlines: Vec<_> = text.decorations.iter().filter(|d| d.kind == DecorationKind::Underline).map(|d| (d.x, d.length)).collect();
+        assert_eq!(underlines, vec![(0.0, 420.0), (192.0, 36.0)]);
+
+        // 舊的 request 沒有 lineGaps（或數量不對）：退回一般字距，起點照算
+        let old = render(vec![]);
+        assert_eq!((old.line_gaps, old.line_starts), (None, Some(vec![0.0, 192.0, 210.0])));
+        // 其他對齊不帶 line_gaps
+        let (_, centred) = decorated_text(|_| {});
+        assert_eq!(centred.line_gaps, None);
     }
 
     #[test]
@@ -708,7 +752,7 @@ mod tests {
         let root = project_with_image();
         for widths in [vec![10.0], vec![10.0, f64::NAN], vec![10.0, -1.0]] {
             let mut req = request(fixture_document());
-            req.text_layouts.insert("el-text".into(), TextLayout { lines: vec!["a".into(), "b".into()], baseline: 10.0, line_widths: widths });
+            req.text_layouts.insert("el-text".into(), TextLayout { lines: vec!["a".into(), "b".into()], baseline: 10.0, line_widths: widths, line_gaps: vec![] });
             assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
         }
     }
@@ -716,7 +760,7 @@ mod tests {
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![] });
         let root = project_with_image();
         assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
     }

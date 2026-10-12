@@ -24,6 +24,8 @@ fn align_name(align: Align) -> &'static str {
         Align::Left => "left",
         Align::Center => "center",
         Align::Right => "right",
+        // 每一行的起點與字距由 render model 算好（line_starts、line_gaps），靠左放
+        Align::Distributed => "left",
     }
 }
 
@@ -115,7 +117,7 @@ fn element_data(element: &RenderElement) -> Value {
             })).collect::<Vec<_>>(),
             "decorationThickness": e.decoration_thickness,
             "shadow": e.shadow.as_ref().map(|s| json!({ "color": s.color, "dx": s.dx, "dy": s.dy, "wholeBlock": s.whole_block })),
-            "letterSpacing": e.letter_spacing, "lineStarts": e.line_starts,
+            "letterSpacing": e.letter_spacing, "lineStarts": e.line_starts, "lineGaps": e.line_gaps,
         }),
         RenderKind::Rect(e) => json!({
             "kind": "rect", "x": x, "y": y, "rotation": rotation,
@@ -240,7 +242,7 @@ mod tests {
             text.text = tricky.to_owned();
         }
         let mut req = request(document);
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![], line_gaps: vec![] });
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
     }
@@ -251,7 +253,7 @@ mod tests {
         let mut req = request(fixture_document());
         req.text_layouts.insert(
             "el-text".into(),
-            TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![141.1, 70.6] },
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![141.1, 70.6], line_gaps: vec![] },
         );
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
@@ -264,7 +266,7 @@ mod tests {
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![] });
         let root = project_with_image();
         assert!(matches!(render_pdf(root.path(), &req, fonts()), Err(AppError::InvalidInput(_))));
     }
@@ -423,7 +425,7 @@ mod tests {
         text.decoration = TextDecoration::default();
         edit(text);
         let mut req = request(document);
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![line.into()], baseline: 90.0, line_widths: vec![width] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![line.into()], baseline: 90.0, line_widths: vec![width], line_gaps: vec![] });
         req
     }
 
@@ -452,6 +454,49 @@ mod tests {
             let expected = SYNTHETIC_ITALIC_SLANT * f64::from(BASELINE_Y - y);
             assert!((shift - expected).abs() <= 1.5, "row {y}: shift {shift}, expected {expected}");
         }
+    }
+
+    /// Left edge of every run of dark pixels in a row (whole page width).
+    fn dark_runs(raster: &Raster, y: u32) -> Vec<u32> {
+        let mut runs = Vec::new();
+        let mut inside = false;
+        for x in 0..590 {
+            let dark = is_black(rgb_at(raster, x, y));
+            if dark && !inside {
+                runs.push(x);
+            }
+            inside = dark;
+        }
+        runs
+    }
+
+    #[test]
+    fn distributed_text_places_characters_by_the_editors_gaps() {
+        // 50 pt 的「丨」兩個：第二個的起點 = 第一個 + 字寬 50 + 編輯器算的間距 100（字距不影響）
+        let distributed = |line: &str, width: f64, gap: f64| {
+            let mut req = single_text(line, width, |t| {
+                t.font_size = 50.0;
+                t.align = Align::Distributed;
+                t.spacing.letter_spacing = 100.0;
+            });
+            req.text_layouts.get_mut("el-text").unwrap().line_gaps = vec![gap];
+            render_request(&req)
+        };
+        let pair = dark_runs(&distributed("丨丨", 400.0, 100.0), 180);
+        assert_eq!(pair.len(), 2, "{pair:?}");
+        assert!((f64::from(pair[1] - pair[0]) - 150.0).abs() <= 1.5, "{pair:?}");
+
+        // 行比文字框寬一點（Typst 量的字寬比瀏覽器寬時就會這樣）：仍是同一行，不能把最後一個字折到下一行
+        let mut req = single_text("丨丨", 100.0, |t| (t.font_size, t.width, t.align) = (50.0, 100.0, Align::Distributed));
+        req.text_layouts.get_mut("el-text").unwrap().line_gaps = vec![10.0];
+        let overflowing = dark_runs(&render_request(&req), 180);
+        assert_eq!(overflowing.len(), 2, "both characters on the first line: {overflowing:?}");
+
+        // 單字置中：起點 = (400 − 50) / 2，比靠左往右 175
+        let left = dark_runs(&render_request(&single_text("丨", 50.0, |t| t.font_size = 50.0)), 180);
+        let single = dark_runs(&distributed("丨", 50.0, 0.0), 180);
+        assert_eq!((left.len(), single.len()), (1, 1));
+        assert!((f64::from(single[0] - left[0]) - 175.0).abs() <= 1.5, "{left:?} {single:?}");
     }
 
     #[test]
