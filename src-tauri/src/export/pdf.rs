@@ -442,7 +442,7 @@ mod tests {
     fn stroked_rect(width: f64, dash: StrokeDash) -> crate::project::format::Document {
         let mut document = single_rect("#ffffff");
         let Element::Shape(rect) = &mut document.pages[0].elements[0] else { unreachable!() };
-        rect.stroke = Some(Stroke { color: "#000000".into(), width, dash });
+        rect.stroke = Some(Stroke { color: "#000000".into(), swatch_id: None, width, dash });
         document
     }
 
@@ -463,7 +463,7 @@ mod tests {
         };
         // 沒有邊框（Typst rect 的 radius 字典）與有邊框（自己畫的路徑）都一樣
         assert_eq!(corners(None), [true, false, true, false]);
-        let stroke = Stroke { color: "#0000ff".into(), width: 1.0, dash: StrokeDash::Solid };
+        let stroke = Stroke { color: "#0000ff".into(), swatch_id: None, width: 1.0, dash: StrokeDash::Solid };
         assert_eq!(corners(Some(stroke)), [true, false, true, false]);
     }
 
@@ -510,7 +510,7 @@ mod tests {
         let mut document = fixture_document();
         for element in &mut document.pages[0].elements {
             if let Element::Shape(shape) = element {
-                shape.stroke = Some(Stroke { color: "#000000".into(), width: 3.0, dash: StrokeDash::Dotted });
+                shape.stroke = Some(Stroke { color: "#000000".into(), swatch_id: None, width: 3.0, dash: StrokeDash::Dotted });
             }
         }
         let root = project_with_image();
@@ -654,7 +654,7 @@ mod tests {
     #[test]
     fn shadows_are_drawn_under_the_text_at_the_offset() {
         // 有底線：整段的陰影在最下面，底線本體蓋在陰影上
-        let shadow = Some(TextShadow { color: "#ff0000".into(), offset_x: 5.0, offset_y: 5.0 });
+        let shadow = Some(TextShadow { color: "#ff0000".into(), swatch_id: None, offset_x: 5.0, offset_y: 5.0 });
         let raster = render_request(&single_text("  ", 100.0, |t| {
             t.decoration.underline = true;
             t.decoration.shadow = shadow.clone();
@@ -665,7 +665,7 @@ mod tests {
 
         // 沒有線：每行的陰影緊接在該行之前，往右 8 pt
         let raster = render_request(&single_text("丨", 100.0, |t| {
-            t.decoration.shadow = Some(TextShadow { color: "#ff0000".into(), offset_x: 8.0, offset_y: 0.0 });
+            t.decoration.shadow = Some(TextShadow { color: "#ff0000".into(), swatch_id: None, offset_x: 8.0, offset_y: 0.0 });
         }));
         let right_edge = (100..500).rev().find(|&x| is_black(rgb_at(&raster, x, 160))).unwrap();
         assert!(is_red(rgb_at(&raster, right_edge + 4, 160)), "red right of the stroke");

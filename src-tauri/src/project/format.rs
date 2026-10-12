@@ -24,7 +24,11 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// the version tells them the file is newer.
 /// v11: a rectangle's `cornerRadius` may be four numbers (top-left, top-right, bottom-right,
 /// bottom-left) when the corners differ. Older files and backups keep their single number.
-pub const SCHEMA_VERSION: u32 = 11;
+/// v12: `document.swatches` (named opaque colors) and a link next to every color: `fillSwatchId`
+/// (texts, shape labels, text styles, page numbers, shapes), `swatchId` (strokes, text shadows),
+/// `backgroundSwatchId` (pages, master pages). Uses keep their own color, so the exporters never
+/// read the swatches. Missing in older files and backups → no swatches, nothing linked.
+pub const SCHEMA_VERSION: u32 = 12;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -57,6 +61,9 @@ pub const LETTER_SPACING_MAX: f64 = 1000.0;
 /// Longest text style name (characters, after trimming); same as `TEXT_STYLE_NAME_MAX_LENGTH` in
 /// `src/lib/editor/style-sheet.ts`.
 pub const TEXT_STYLE_NAME_MAX_LENGTH: usize = 50;
+/// Longest swatch name (characters, after trimming); same as `SWATCH_NAME_MAX_LENGTH` in
+/// `src/lib/editor/validation.ts`.
+pub const SWATCH_NAME_MAX_LENGTH: usize = 50;
 pub const ASSET_DIR: &str = "assets/images";
 /// Text assets (`.txt` / `.md`) of the asset library.
 pub const TEXT_ASSET_DIR: &str = "assets/texts";
@@ -92,11 +99,24 @@ pub struct Document {
     /// it. Missing in files before v8 → the built-in styles.
     #[serde(default = "default_text_styles", rename = "textStyles")]
     pub text_styles: Vec<TextStyleDef>,
+    /// Document colors. Uses keep their own copy of the color, so the exporters never read them.
+    /// Missing in files before v12 → none.
+    #[serde(default)]
+    pub swatches: Vec<Swatch>,
     /// Content shared by the pages that use it. The frontend draws it into each page before
     /// exporting, so the exporters never read it. Missing in older files → none.
     #[serde(default)]
     pub masters: Vec<MasterPage>,
     pub pages: Vec<Page>,
+}
+
+/// A named, opaque document color (TS `Swatch`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Swatch {
+    pub id: String,
+    pub name: String,
+    /// `#rrggbb`, lowercase.
+    pub color: String,
 }
 
 /// Where a page number sits on the page.
@@ -131,6 +151,9 @@ pub struct PageNumberStyle {
     #[serde(flatten)]
     pub decoration: TextDecoration,
     pub fill: String,
+    /// `Swatch.id` the fill follows. Missing in files before v12 → not linked.
+    #[serde(default)]
+    pub fill_swatch_id: Option<String>,
     pub stroke: Option<Stroke>,
 }
 
@@ -164,6 +187,9 @@ pub struct Page {
     pub width: f64,
     pub height: f64,
     pub background: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default, rename = "backgroundSwatchId")]
+    pub background_swatch_id: Option<String>,
     pub elements: Vec<Element>,
     /// Master page drawn under the elements. Missing in older files → none.
     #[serde(default, rename = "masterId")]
@@ -178,6 +204,8 @@ pub struct MasterPage {
     pub width: f64,
     pub height: f64,
     pub background: String,
+    #[serde(default, rename = "backgroundSwatchId")]
+    pub background_swatch_id: Option<String>,
     pub elements: Vec<Element>,
     #[serde(default, rename = "parentId")]
     pub parent_id: Option<String>,
@@ -203,6 +231,9 @@ pub enum FontStyle {
 #[serde(rename_all = "camelCase")]
 pub struct TextShadow {
     pub color: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default)]
+    pub swatch_id: Option<String>,
     /// pt, towards the page's right / bottom whatever the element's rotation.
     pub offset_x: f64,
     pub offset_y: f64,
@@ -263,6 +294,9 @@ pub struct TextElement {
     pub spacing: TextSpacing,
     pub align: Align,
     pub fill: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default)]
+    pub fill_swatch_id: Option<String>,
     /// `TextStyleDef.id` it follows. Missing in files before v8 → not linked.
     #[serde(default)]
     pub style_id: Option<String>,
@@ -283,6 +317,9 @@ pub struct TextStyleDef {
     pub spacing: TextSpacing,
     pub align: Align,
     pub fill: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default)]
+    pub fill_swatch_id: Option<String>,
 }
 
 /// Font of the built-in styles (TS `DEFAULT_FONT_OPTION.family`).
@@ -301,6 +338,7 @@ pub fn default_text_styles() -> Vec<TextStyleDef> {
         spacing: TextSpacing { line_height, letter_spacing: 0.0 },
         align,
         fill: "#171717".to_owned(),
+        fill_swatch_id: None,
     };
     vec![
         style("text-style-heading", "標題", 32.0, FontStyle::Bold, Align::Center, DEFAULT_LINE_HEIGHT),
@@ -329,6 +367,9 @@ pub enum StrokeDash {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Stroke {
     pub color: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default, rename = "swatchId")]
+    pub swatch_id: Option<String>,
     pub width: f64,
     pub dash: StrokeDash,
 }
@@ -348,6 +389,9 @@ pub struct ShapeLabel {
     pub align: Align,
     pub vertical_align: VerticalAlign,
     pub fill: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default)]
+    pub fill_swatch_id: Option<String>,
     /// Missing in files before v8 → not linked.
     #[serde(default)]
     pub style_id: Option<String>,
@@ -402,6 +446,9 @@ pub struct ShapeElement {
     pub height: f64,
     pub geometry: ShapeGeometry,
     pub fill: String,
+    /// Missing in files before v12 → not linked.
+    #[serde(default, rename = "fillSwatchId")]
+    pub fill_swatch_id: Option<String>,
     pub stroke: Option<Stroke>,
     pub label: Option<ShapeLabel>,
 }
@@ -564,13 +611,14 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
         return Err(AppError::invalid_project("document has no pages"));
     }
     validate_margins(&document.margins)?;
-    validate_page_number_rules(&document.page_number_rules)?;
-    let styles = validate_text_styles(&document.text_styles)?;
+    let swatches = validate_swatches(&document.swatches)?;
+    validate_page_number_rules(&document.page_number_rules, &swatches)?;
+    let refs = Refs { styles: validate_text_styles(&document.text_styles, &swatches)?, swatches };
     for page in &document.pages {
-        validate_sheet(&page.id, page.width, page.height, &page.background, &page.elements, &styles)?;
+        validate_sheet(&page.id, page.width, page.height, &page.background, &page.background_swatch_id, &page.elements, &refs)?;
     }
     for master in &document.masters {
-        validate_sheet(&master.id, master.width, master.height, &master.background, &master.elements, &styles)?;
+        validate_sheet(&master.id, master.width, master.height, &master.background, &master.background_swatch_id, &master.elements, &refs)?;
     }
     validate_master_graph(document)?;
     for asset in assets {
@@ -585,25 +633,73 @@ fn validate_sheet(
     width: f64,
     height: f64,
     background: &str,
+    background_swatch_id: &Option<String>,
     elements: &[Element],
-    styles: &StyleIds,
+    refs: &Refs,
 ) -> AppResult<()> {
     require_id(id)?;
     if !(width > 0.0 && height > 0.0) {
         return Err(AppError::invalid_project(format!("page {id} has a non-positive size")));
     }
     require_background_color(background)?;
+    require_swatch(background_swatch_id, &refs.swatches)?;
     for element in elements {
-        validate_element(element, styles)?;
+        validate_element(element, refs)?;
     }
     Ok(())
 }
 
 type StyleIds<'a> = std::collections::HashSet<&'a str>;
+type SwatchIds<'a> = std::collections::HashSet<&'a str>;
+
+/// What colors and texts may link to: swatches and text styles.
+struct Refs<'a> {
+    styles: StyleIds<'a>,
+    swatches: SwatchIds<'a>,
+}
+
+/// Same rules as TS `isSwatchList`: ids 1–64 bytes, names trimmed, non-empty, at most
+/// SWATCH_NAME_MAX_LENGTH characters, ids and names unique, colors lowercase `#rrggbb`.
+fn validate_swatches(swatches: &[Swatch]) -> AppResult<SwatchIds<'_>> {
+    let mut names = std::collections::HashSet::new();
+    let mut ids = SwatchIds::new();
+    for swatch in swatches {
+        let invalid = |what: &str| AppError::invalid_project(format!("swatch {}: {what}", swatch.id));
+        require_id(&swatch.id)?;
+        let name = swatch.name.as_str();
+        if name.is_empty() || name.trim() != name || name.chars().count() > SWATCH_NAME_MAX_LENGTH {
+            return Err(invalid("invalid name"));
+        }
+        if !is_swatch_color(&swatch.color) {
+            return Err(invalid("color must be lowercase #rrggbb"));
+        }
+        if !ids.insert(swatch.id.as_str()) || !names.insert(name) {
+            return Err(invalid("duplicate id or name"));
+        }
+    }
+    Ok(ids)
+}
+
+/// Same rule as TS `isSwatchColor`: `#rrggbb` in lowercase.
+fn is_swatch_color(color: &str) -> bool {
+    color.len() == 7
+        && color.starts_with('#')
+        && color[1..].bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
+/// A color's swatch link must name an entry of the swatch list.
+fn require_swatch(swatch_id: &Option<String>, swatches: &SwatchIds) -> AppResult<()> {
+    match swatch_id {
+        Some(id) if !swatches.contains(id.as_str()) => {
+            Err(AppError::invalid_project(format!("color linked to a missing swatch {id}")))
+        }
+        _ => Ok(()),
+    }
+}
 
 /// Same rules as TS `isTextStyleSheet`: ids 1–64 bytes, names trimmed, non-empty, at most
 /// TEXT_STYLE_NAME_MAX_LENGTH characters, ids and names unique, font size in range, valid colors.
-fn validate_text_styles(styles: &[TextStyleDef]) -> AppResult<StyleIds<'_>> {
+fn validate_text_styles<'a>(styles: &'a [TextStyleDef], swatches: &SwatchIds) -> AppResult<StyleIds<'a>> {
     let mut names = std::collections::HashSet::new();
     let mut ids = StyleIds::new();
     for style in styles {
@@ -617,7 +713,8 @@ fn validate_text_styles(styles: &[TextStyleDef]) -> AppResult<StyleIds<'_>> {
             return Err(invalid("invalid font size"));
         }
         require_element_color(&style.fill)?;
-        validate_text_decoration(&style.decoration)?;
+        require_swatch(&style.fill_swatch_id, swatches)?;
+        validate_text_decoration(&style.decoration, swatches)?;
         validate_text_spacing(&style.spacing)?;
         if !ids.insert(style.id.as_str()) || !names.insert(name) {
             return Err(invalid("duplicate id or name"));
@@ -682,7 +779,7 @@ fn validate_margins(margins: &Margins) -> AppResult<()> {
 /// Same rules as TS `isPageNumberRules`: 1 ≤ from ≤ to ≤ PAGE_NUMBER_MAX, start ≤ PAGE_NUMBER_MAX,
 /// single-line prefix / suffix of at most PAGE_NUMBER_AFFIX_MAX_LENGTH characters, font size in
 /// range, valid colors and border, unique ids, and no two ranges sharing a page.
-fn validate_page_number_rules(rules: &[PageNumberRule]) -> AppResult<()> {
+fn validate_page_number_rules(rules: &[PageNumberRule], swatches: &SwatchIds) -> AppResult<()> {
     let invalid = |rule: &PageNumberRule, what: &str| AppError::invalid_project(format!("page number rule {}: {what}", rule.id));
     let affix_ok = |s: &str| s.chars().count() <= PAGE_NUMBER_AFFIX_MAX_LENGTH && !s.contains(['\r', '\n']);
     for rule in rules {
@@ -697,9 +794,10 @@ fn validate_page_number_rules(rules: &[PageNumberRule]) -> AppResult<()> {
             return Err(invalid(rule, "invalid font size"));
         }
         require_element_color(&rule.style.fill)?;
-        validate_text_decoration(&rule.style.decoration)?;
+        require_swatch(&rule.style.fill_swatch_id, swatches)?;
+        validate_text_decoration(&rule.style.decoration, swatches)?;
         if let Some(stroke) = &rule.style.stroke {
-            validate_stroke(stroke)?;
+            validate_stroke(stroke, swatches)?;
         }
     }
     let mut sorted: Vec<&PageNumberRule> = rules.iter().collect();
@@ -716,8 +814,9 @@ fn validate_page_number_rules(rules: &[PageNumberRule]) -> AppResult<()> {
     Ok(())
 }
 
-fn validate_stroke(stroke: &Stroke) -> AppResult<()> {
+fn validate_stroke(stroke: &Stroke, swatches: &SwatchIds) -> AppResult<()> {
     require_element_color(&stroke.color)?;
+    require_swatch(&stroke.swatch_id, swatches)?;
     if !(stroke.width > 0.0 && stroke.width <= STROKE_WIDTH_MAX) {
         return Err(AppError::invalid_project(format!("invalid stroke width {}", stroke.width)));
     }
@@ -726,9 +825,10 @@ fn validate_stroke(stroke: &Stroke) -> AppResult<()> {
 
 /// Same rules as TS `isTextShadow`: element color, both offsets finite and within
 /// ±TEXT_SHADOW_OFFSET_MAX. The flags need no check (serde already requires booleans).
-fn validate_text_decoration(decoration: &TextDecoration) -> AppResult<()> {
+fn validate_text_decoration(decoration: &TextDecoration, swatches: &SwatchIds) -> AppResult<()> {
     let Some(shadow) = &decoration.shadow else { return Ok(()) };
     require_element_color(&shadow.color)?;
+    require_swatch(&shadow.swatch_id, swatches)?;
     for offset in [shadow.offset_x, shadow.offset_y] {
         if !(offset.is_finite() && offset.abs() <= TEXT_SHADOW_OFFSET_MAX) {
             return Err(AppError::invalid_project(format!("invalid text shadow offset {offset}")));
@@ -749,26 +849,29 @@ fn validate_text_spacing(spacing: &TextSpacing) -> AppResult<()> {
     Ok(())
 }
 
-fn validate_element(element: &Element, styles: &StyleIds) -> AppResult<()> {
+fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
     match element {
         Element::Text(e) => {
             require_id(&e.base.id)?;
             require_element_color(&e.fill)?;
-            require_style(&e.style_id, styles)?;
+            require_swatch(&e.fill_swatch_id, &refs.swatches)?;
+            require_style(&e.style_id, &refs.styles)?;
             validate_text_spacing(&e.spacing)?;
-            validate_text_decoration(&e.decoration)
+            validate_text_decoration(&e.decoration, &refs.swatches)
         }
         Element::Shape(e) => {
             require_id(&e.base.id)?;
             require_element_color(&e.fill)?;
+            require_swatch(&e.fill_swatch_id, &refs.swatches)?;
             validate_geometry(&e.geometry)?;
             if let Some(stroke) = &e.stroke {
-                validate_stroke(stroke)?;
+                validate_stroke(stroke, &refs.swatches)?;
             }
             if let Some(label) = &e.label {
                 require_element_color(&label.fill)?;
-                require_style(&label.style_id, styles)?;
-                validate_text_decoration(&label.decoration)?;
+                require_swatch(&label.fill_swatch_id, &refs.swatches)?;
+                require_style(&label.style_id, &refs.styles)?;
+                validate_text_decoration(&label.decoration, &refs.swatches)?;
                 validate_text_spacing(&label.spacing)?;
             }
             Ok(())
@@ -983,7 +1086,7 @@ mod tests {
     fn reads_text_decoration_and_defaults_it_in_older_files() {
         let project = parse_project(FIXTURE).unwrap();
         let Element::Text(text) = &project.document.pages[0].elements[0] else { panic!("expected text") };
-        let shadow = TextShadow { color: "#00000080".to_owned(), offset_x: 2.0, offset_y: -1.5 };
+        let shadow = TextShadow { color: "#00000080".to_owned(), swatch_id: None, offset_x: 2.0, offset_y: -1.5 };
         assert_eq!(
             text.decoration,
             TextDecoration { italic: true, underline: true, strikethrough: true, shadow: Some(shadow) }
@@ -1474,5 +1577,85 @@ mod tests {
         assert!(with(&|d| d["textStyles"][0]["fill"] = json!("red")).is_err());
         assert!(with(&|d| d["textStyles"][0]["id"] = json!("")).is_err());
         assert!(with(&|d| d["textStyles"][2]["shadow"] = json!({ "color": "#000000", "offsetX": 99, "offsetY": 0 })).is_err());
+    }
+
+    /// Removes the swatch list and every swatch link, as in files before v12.
+    fn strip_swatches(value: &mut Value) {
+        match value {
+            Value::Object(map) => {
+                for key in ["swatches", "fillSwatchId", "swatchId", "backgroundSwatchId"] {
+                    map.remove(key);
+                }
+                map.values_mut().for_each(strip_swatches);
+            }
+            Value::Array(items) => items.iter_mut().for_each(strip_swatches),
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn reads_swatches_and_defaults_them_in_older_files() {
+        let document = parse_project(FIXTURE).unwrap().document;
+        assert_eq!(document.swatches.len(), 6);
+        assert_eq!(document.swatches[2], Swatch { id: "swatch-brand".into(), name: "品牌紅".into(), color: "#be123c".into() });
+        assert_eq!(document.pages[0].background_swatch_id.as_deref(), Some("swatch-white"));
+        assert_eq!(document.masters[0].background_swatch_id, None);
+        let Element::Shape(ellipse) = &document.pages[0].elements[2] else { panic!("expected a shape") };
+        assert_eq!(ellipse.stroke.as_ref().unwrap().swatch_id.as_deref(), Some("swatch-brand"));
+        assert_eq!(ellipse.label.as_ref().unwrap().fill_swatch_id.as_deref(), Some("swatch-text"));
+        // 連到色票時，實際的顏色照存（含使用處自己的透明度）
+        let numbers = &document.page_number_rules[1].style;
+        assert_eq!((numbers.fill.as_str(), numbers.fill_swatch_id.as_deref()), ("#4f46e580", Some("swatch-indigo")));
+
+        // v11 檔案沒有色票與連結：讀成沒有色票、都不連結，存檔時寫出 null
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(11);
+        strip_swatches(&mut value);
+        let project = parse_project(&value.to_string()).unwrap();
+        assert!(project.document.swatches.is_empty());
+        let Element::Shape(ellipse) = &project.document.pages[0].elements[2] else { panic!("expected a shape") };
+        assert_eq!(ellipse.stroke.as_ref().unwrap().swatch_id, None);
+        let written = serde_json::to_value(&project).unwrap();
+        assert_eq!(written["document"]["pages"][0]["backgroundSwatchId"], Value::Null);
+        assert!(parse_project(FIXTURE_V2).unwrap().document.swatches.is_empty());
+    }
+
+    #[test]
+    fn rejects_invalid_swatches_and_links() {
+        use serde_json::json;
+        let with = |edit: &dyn Fn(&mut Value)| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            edit(&mut value["document"]);
+            parse_project(&value.to_string())
+        };
+        assert!(with(&|d| d["swatches"][0]["name"] = json!("字".repeat(SWATCH_NAME_MAX_LENGTH))).is_ok());
+        let missing = json!("missing");
+        let cases: [(&str, &dyn Fn(&mut Value)); 22] = [
+            ("text fill", &|d| d["masters"][1]["elements"][0]["fillSwatchId"] = missing.clone()),
+            ("text shadow", &|d| d["pages"][0]["elements"][0]["shadow"]["swatchId"] = missing.clone()),
+            ("shape fill", &|d| d["pages"][0]["elements"][1]["fillSwatchId"] = missing.clone()),
+            ("shape stroke", &|d| d["pages"][0]["elements"][2]["stroke"]["swatchId"] = missing.clone()),
+            ("label fill", &|d| d["pages"][0]["elements"][2]["label"]["fillSwatchId"] = missing.clone()),
+            ("page background", &|d| d["pages"][0]["backgroundSwatchId"] = missing.clone()),
+            ("master background", &|d| d["masters"][0]["backgroundSwatchId"] = missing.clone()),
+            ("text style fill", &|d| d["textStyles"][0]["fillSwatchId"] = missing.clone()),
+            ("text style shadow", &|d| d["textStyles"][2]["shadow"]["swatchId"] = missing.clone()),
+            ("page number fill", &|d| d["pageNumberRules"][0]["style"]["fillSwatchId"] = missing.clone()),
+            ("page number shadow", &|d| d["pageNumberRules"][1]["style"]["shadow"]["swatchId"] = missing.clone()),
+            ("page number stroke", &|d| d["pageNumberRules"][1]["style"]["stroke"]["swatchId"] = missing.clone()),
+            ("link to a removed swatch", &|d| d["swatches"].as_array_mut().unwrap().retain(|s| s["id"] != "swatch-brand")),
+            ("duplicate id", &|d| d["swatches"][1]["id"] = d["swatches"][0]["id"].clone()),
+            ("duplicate name", &|d| d["swatches"][1]["name"] = d["swatches"][0]["name"].clone()),
+            ("untrimmed name", &|d| d["swatches"][0]["name"] = json!(" 文字")),
+            ("empty name", &|d| d["swatches"][0]["name"] = json!("")),
+            ("long name", &|d| d["swatches"][0]["name"] = json!("字".repeat(SWATCH_NAME_MAX_LENGTH + 1))),
+            ("empty id", &|d| d["swatches"][1]["id"] = json!("")),
+            ("uppercase color", &|d| d["swatches"][0]["color"] = json!("#ABCDEF")),
+            ("color with alpha", &|d| d["swatches"][0]["color"] = json!("#17171780")),
+            ("named color", &|d| d["swatches"][0]["color"] = json!("red")),
+        ];
+        for (what, edit) in cases {
+            assert!(matches!(with(edit), Err(AppError::InvalidProject(_))), "{what}");
+        }
     }
 }

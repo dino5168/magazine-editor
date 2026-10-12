@@ -18,6 +18,8 @@ import {
 import { estimateTextHeight } from "../geometry";
 import { presetSize } from "../page-setup";
 import { createLabel } from "../shape-label";
+import { defaultTextStyles } from "../style-sheet";
+import { BUILT_IN_SWATCH_IDS, defaultSwatches, hasValidSwatchLinks } from "../swatches";
 import type { Bounds } from "../types";
 import { mmToPt } from "../units";
 
@@ -32,6 +34,20 @@ describe("createBlankDocument", () => {
     expect(document.margins).toBe(DEFAULT_MARGINS);
     expect(document.masters).toEqual([]);
     expect(document.pageNumberRules).toEqual([]);
+  });
+
+  it("starts with 文字 / 黑 / 白 and the built-in text styles following 文字", () => {
+    const document = createBlankDocument();
+    expect(document.swatches).toEqual(defaultSwatches());
+    expect(document.textStyles.map((style) => style.fillSwatchId)).toEqual([BUILT_IN_SWATCH_IDS.text, BUILT_IN_SWATCH_IDS.text, BUILT_IN_SWATCH_IDS.text]);
+    expect(hasValidSwatchLinks(document, document)).toBe(true);
+    // 舊檔升級用的內建樣式（和 Rust 共用 fixture）不連色票
+    expect(defaultTextStyles().every((style) => style.fillSwatchId === null)).toBe(true);
+    // 文字面板 / 文字工具建立的文字跟著樣式連到「文字」；沒連樣式的文字不連色票
+    const body = document.textStyles.find((style) => style.name === "內文")!;
+    expect(createStyledText(body, { x: 0, y: 0 }).fillSwatchId).toBe(BUILT_IN_SWATCH_IDS.text);
+    expect(createToolText({ x: 0, y: 0 }, null, body).fillSwatchId).toBe(BUILT_IN_SWATCH_IDS.text);
+    expect(createTextElement("body", { x: 0, y: 0 }).fillSwatchId).toBeNull();
   });
 
   it("uses the chosen paper size and margins", () => {

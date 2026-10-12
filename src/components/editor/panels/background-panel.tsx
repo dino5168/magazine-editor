@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActivePage, useEditorDispatch } from "@/lib/editor/editor-context";
 import { ColorPalette } from "../color-picker";
+import { DocumentSwatchesProvider } from "../document-swatches";
 
 /**
  * Panel for setting the active page background color.
@@ -11,7 +12,8 @@ import { ColorPalette } from "../color-picker";
 export function BackgroundPanel() {
   const page = useActivePage();
   const dispatch = useEditorDispatch();
-  const setColor = (color: string): void => dispatch({ type: "page/setBackground", id: page.id, color });
+  const setColor = (color: string, swatchId: string | null): void =>
+    dispatch({ type: "page/setBackground", id: page.id, color, swatchId });
 
   return (
     <Card size="sm">
@@ -21,7 +23,16 @@ export function BackgroundPanel() {
       </CardHeader>
       <CardContent>
         {/* key：切換頁面時重新 mount，色系跳到新頁面背景所在的位置 */}
-        <ColorPalette key={page.id} value={page.background} label="背景色" onCommit={setColor} allowAlpha={false} />
+        <DocumentSwatchesProvider>
+          <ColorPalette
+            key={page.id}
+            value={page.background}
+            swatchId={page.backgroundSwatchId}
+            label="背景色"
+            onCommit={setColor}
+            allowAlpha={false}
+          />
+        </DocumentSwatchesProvider>
       </CardContent>
     </Card>
   );

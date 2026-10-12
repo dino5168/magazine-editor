@@ -3,6 +3,7 @@ import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SettingsDialog, SettingsDialogFooter } from "@/components/app/settings/settings-dialog";
+import { DocumentSwatchesProvider } from "./document-swatches";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { createId } from "@/lib/editor/element-factory";
 import { textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
@@ -53,7 +54,11 @@ function previewStyle(style: TextStyle): CSSProperties {
 export function TextStyleDialog({ target, onClose }: TextStyleDialogProps) {
   return (
     <SettingsDialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
-      {target && <TextStyleForm target={target} onDone={onClose} />}
+      {target && (
+        <DocumentSwatchesProvider manage={false}>
+          <TextStyleForm target={target} onDone={onClose} />
+        </DocumentSwatchesProvider>
+      )}
     </SettingsDialog>
   );
 }

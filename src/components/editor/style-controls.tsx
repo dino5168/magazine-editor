@@ -257,7 +257,12 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign, spa
         )}
       </div>
       <Row label="文字顏色">
-        <ColorPicker value={style.fill} label="文字顏色" onCommit={(fill) => onChange({ fill })} />
+        <ColorPicker
+          value={style.fill}
+          swatchId={style.fillSwatchId}
+          label="文字顏色"
+          onCommit={(fill, fillSwatchId) => onChange({ fill, fillSwatchId })}
+        />
       </Row>
       <ShadowFields id={id} shadow={style.shadow} onChange={(shadow) => onChange({ shadow })} />
     </>
@@ -289,7 +294,12 @@ function ShadowFields({
       {shadow && (
         <>
           <Row label="陰影顏色">
-            <ColorPicker value={shadow.color} label="陰影顏色" onCommit={(color) => setShadow({ color })} />
+            <ColorPicker
+              value={shadow.color}
+              swatchId={shadow.swatchId}
+              label="陰影顏色"
+              onCommit={(color, swatchId) => setShadow({ color, swatchId })}
+            />
           </Row>
           <NumberField
             key={`${id}-shadow-x-${shadow.offsetX}`}
@@ -348,12 +358,18 @@ export interface LineWidthField {
   readonly step?: { readonly size: number; readonly min: number; readonly max: number };
 }
 
-interface LineStyleFieldsProps {
+/**
+ * What `LineStyleFields` edits: an element border (`Stroke`, with a swatch link) or a canvas guide
+ * line (`GuideLineStyle`, an App preference without one).
+ */
+type LineStyleValue = Pick<Stroke, "color" | "width" | "dash"> & { readonly swatchId?: string | null };
+
+interface LineStyleFieldsProps<T extends LineStyleValue> {
   /** Part of the width field's key. */
   readonly id: string;
-  /** Color, width and dash of the line (an element border or a canvas guide line). */
-  readonly value: Stroke;
-  readonly onChange: (next: Stroke) => void;
+  /** Color, width and dash of the line; other fields are kept as they are. */
+  readonly value: T;
+  readonly onChange: (next: T) => void;
   /** Accessible name of the color button, e.g. "邊框顏色". */
   readonly colorLabel: string;
   /** Accessible name of the dash menu; give each one its own when a form has several. */
@@ -371,12 +387,26 @@ interface LineStyleFieldsProps {
  * Returns:
  *   The controls, without a surrounding section.
  */
-export function LineStyleFields({ id, value, onChange, colorLabel, dashLabel = "線條樣式", width }: LineStyleFieldsProps) {
-  const set = (patch: Partial<Stroke>) => onChange({ ...value, ...patch });
+export function LineStyleFields<T extends LineStyleValue>({
+  id,
+  value,
+  onChange,
+  colorLabel,
+  dashLabel = "線條樣式",
+  width,
+}: LineStyleFieldsProps<T>) {
+  const set = (patch: Partial<LineStyleValue>) => onChange({ ...value, ...patch });
+  // 只有帶連結欄位的值（物件邊框）才記住色票；參考線樣式沒有這個欄位
+  const linkable = "swatchId" in value;
   return (
     <>
       <Row label="顏色">
-        <ColorPicker value={value.color} label={colorLabel} onCommit={(color) => set({ color })} />
+        <ColorPicker
+          value={value.color}
+          swatchId={value.swatchId ?? null}
+          label={colorLabel}
+          onCommit={(color, swatchId) => set(linkable ? { color, swatchId } : { color })}
+        />
       </Row>
       <NumberField
         key={`${id}-width-${value.width}`}

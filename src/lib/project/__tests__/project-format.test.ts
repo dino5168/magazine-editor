@@ -10,7 +10,7 @@ import { isMasterGraphValid, masterChain } from "@/lib/editor/master-pages";
 import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
 import { isTextStyleSheet, styleOverrides } from "@/lib/editor/style-sheet";
 import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
-import { isTextShadow } from "@/lib/editor/validation";
+import { isSwatchList, isTextShadow } from "@/lib/editor/validation";
 import type { CanvasElement, ElementType, GeometryKind, ShapeElement, ShapeLabel, Stroke } from "@/lib/editor/types";
 import type { ProjectContent } from "../project-types";
 // 與 src-tauri 的 cargo test 共用同一份 fixture；兩邊欄位名稱不一致時，其中一邊的測試會失敗
@@ -56,11 +56,12 @@ describe("project file fixture", () => {
   });
 
   it("uses the TypeScript field names for strokes and labels", () => {
-    const stroke: Stroke = { color: "#000000", width: 1, dash: "solid" };
+    const stroke: Stroke = { color: "#000000", swatchId: null, width: 1, dash: "solid" };
     const label: ShapeLabel = { ...createTextElement("body", center), text: "", verticalAlign: "middle" };
     const labelKeys = [
       "align",
       "fill",
+      "fillSwatchId",
       "fontFamily",
       "fontSize",
       "fontStyle",
@@ -126,5 +127,45 @@ describe("project file fixture", () => {
     const label = shapes.find((shape) => shape.label !== null)!.label!;
     expect(styleOverrides(label, byId.get(label.styleId!)!)).toEqual(["fontSize"]);
     expect(elements.find((element) => element.type === "text")).toMatchObject({ styleId: null });
+  });
+
+  it("stores swatches and links every kind of color to them", () => {
+    const { swatches } = fixture.document;
+    expect(isSwatchList(swatches)).toBe(true);
+    expect(sortedKeys(swatches[0])).toEqual(["color", "id", "name"]);
+    const colorOf = new Map(swatches.map((swatch) => [swatch.id, swatch.color]));
+
+    // 連結欄位 → 它旁邊的顏色欄位；fixture 裡每一種都至少有一處連到色票
+    const LINKS = { fillSwatchId: "fill", swatchId: "color", backgroundSwatchId: "background" } as const;
+    const linked = new Map<string, number>();
+    const visit = (value: unknown, path: string): void => {
+      if (Array.isArray(value)) return value.forEach((item, index) => visit(item, `${path}[${index}]`));
+      if (typeof value !== "object" || value === null) return;
+      const record = value as Record<string, unknown>;
+      for (const [link, colorKey] of Object.entries(LINKS)) {
+        if (record[link] === undefined || record[link] === null) continue;
+        const id = record[link] as string;
+        // 連到的色票存在，而且實際顏色的 RGB 就是色票的顏色（透明度是使用處自己的）
+        expect(colorOf.has(id), `${path}.${link}`).toBe(true);
+        expect((record[colorKey] as string).slice(0, 7), `${path}.${colorKey}`).toBe(colorOf.get(id));
+        const kind = `${link}:${path.replace(/\[\d+\]/g, "[]")}`;
+        linked.set(kind, (linked.get(kind) ?? 0) + 1);
+      }
+      for (const [key, child] of Object.entries(record)) visit(child, `${path}.${key}`);
+    };
+    visit(fixture.document, "document");
+    expect([...linked.keys()].sort()).toEqual([
+      "backgroundSwatchId:document.masters[]",
+      "backgroundSwatchId:document.pages[]",
+      "fillSwatchId:document.masters[].elements[]",
+      "fillSwatchId:document.pageNumberRules[].style",
+      "fillSwatchId:document.pages[].elements[].label",
+      "fillSwatchId:document.textStyles[]",
+      "swatchId:document.pageNumberRules[].style.shadow",
+      "swatchId:document.pageNumberRules[].style.stroke",
+      "swatchId:document.pages[].elements[].stroke",
+    ]);
+    // 透明度留在使用處：頁碼文字是靛藍的 50%
+    expect(fixture.document.pageNumberRules[1].style).toMatchObject({ fill: "#4f46e580", fillSwatchId: "swatch-indigo" });
   });
 });

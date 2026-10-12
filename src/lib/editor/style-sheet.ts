@@ -28,6 +28,7 @@ const KEY_SET: { readonly [K in keyof TextStyle]: true } = {
   letterSpacing: true,
   align: true,
   fill: true,
+  fillSwatchId: true,
 };
 
 export const TEXT_STYLE_KEYS = Object.keys(KEY_SET) as readonly (keyof TextStyle)[];
@@ -47,6 +48,8 @@ export const TEXT_STYLE_KEY_LABELS: { readonly [K in TextStyleKey]: string } = {
   letterSpacing: "字距",
   align: "對齊",
   fill: "顏色",
+  // styleOverrides 不會單獨回報它（併在「顏色」）
+  fillSwatchId: "顏色",
 };
 
 /** Ids of the built-in styles; fixed so Rust can add the same styles when upgrading old files. */
@@ -78,6 +81,7 @@ function builtIn(
     letterSpacing: 0,
     align,
     fill: DEFAULT_TEXT_FILL,
+    fillSwatchId: null,
   };
 }
 
@@ -98,11 +102,12 @@ export function defaultTextStyles(): readonly TextStyleDef[] {
 
 function sameShadow(a: TextShadow | null, b: TextShadow | null): boolean {
   if (a === null || b === null) return a === b;
-  return a.color === b.color && a.offsetX === b.offsetX && a.offsetY === b.offsetY;
+  return a.color === b.color && a.swatchId === b.swatchId && a.offsetX === b.offsetX && a.offsetY === b.offsetY;
 }
 
 /**
- * Whether two styles have the same value for one field (shadows compared by value).
+ * Whether two styles have the same value for one field (shadows compared by value; the text color
+ * and its swatch link compared together, so either one differing overrides both).
  *
  * Args:
  *   a: One style.
@@ -113,7 +118,10 @@ function sameShadow(a: TextShadow | null, b: TextShadow | null): boolean {
  *   True when equal.
  */
 export function sameStyleValue(a: TextStyle, b: TextStyle, key: TextStyleKey): boolean {
-  return key === "shadow" ? sameShadow(a.shadow, b.shadow) : a[key] === b[key];
+  if (key === "shadow") return sameShadow(a.shadow, b.shadow);
+  // 顏色與它連到的色票是一體的：同色但連結不同也算不同（文件色票 Q5），跟著樣式時兩者一起改
+  if (key === "fill" || key === "fillSwatchId") return a.fill === b.fill && a.fillSwatchId === b.fillSwatchId;
+  return a[key] === b[key];
 }
 
 /**
@@ -124,10 +132,11 @@ export function sameStyleValue(a: TextStyle, b: TextStyle, key: TextStyleKey): b
  *   style: The style it is linked to.
  *
  * Returns:
- *   Overridden fields in `TEXT_STYLE_KEYS` order; empty when it matches the style.
+ *   Overridden fields in `TEXT_STYLE_KEYS` order; empty when it matches the style. A different
+ *   color or swatch link is reported once, as `fill`.
  */
 export function styleOverrides(target: TextStyle, style: TextStyle): readonly TextStyleKey[] {
-  return TEXT_STYLE_KEYS.filter((key) => !sameStyleValue(target, style, key));
+  return TEXT_STYLE_KEYS.filter((key) => key !== "fillSwatchId" && !sameStyleValue(target, style, key));
 }
 
 /**
@@ -152,6 +161,7 @@ export function pickTextStyle(source: TextStyle): TextStyle {
     letterSpacing: source.letterSpacing,
     align: source.align,
     fill: source.fill,
+    fillSwatchId: source.fillSwatchId,
   };
 }
 

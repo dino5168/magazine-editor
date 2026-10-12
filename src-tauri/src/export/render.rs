@@ -794,7 +794,7 @@ mod tests {
             italic: true,
             underline: true,
             strikethrough: false,
-            shadow: Some(TextShadow { color: "#ff0000".into(), offset_x: 1.0, offset_y: 1.0 }),
+            shadow: Some(TextShadow { color: "#ff0000".into(), swatch_id: None, offset_x: 1.0, offset_y: 1.0 }),
         };
         let root = project_with_image();
         let (rendered, _) = build_render(root.path(), &request(document)).unwrap();

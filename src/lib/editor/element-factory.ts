@@ -4,6 +4,7 @@ import { estimateTextHeight } from "./geometry";
 import type { PageSetup } from "./page-setup";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
 import { BUILT_IN_TEXT_STYLE_IDS, defaultTextStyles, pickTextStyle } from "./style-sheet";
+import { BUILT_IN_SWATCH_IDS, defaultSwatches } from "./swatches";
 import { DEFAULT_TEXT_FILL } from "./text-style";
 import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
 import type {
@@ -184,6 +185,7 @@ function createShape(geometry: ShapeGeometry, box: Bounds): ShapeElement {
     height: box.maxY - box.minY,
     geometry,
     fill: DEFAULT_SHAPE_FILL,
+    fillSwatchId: null,
     stroke: null,
     label: null,
   };
@@ -336,12 +338,19 @@ export function createImageElement(src: string, natural: Size, page: Size, cente
  *   size: Page size in pt.
  *   background: Background color.
  *   masterId: Master page the page uses; null = none.
+ *   backgroundSwatchId: Swatch the background follows; null = none.
  *
  * Returns:
  *   New page without elements.
  */
-export function createPage(name: string, size: Size, background: string, masterId: PageId | null = null): Page {
-  return { id: createId(), name, width: size.width, height: size.height, background, elements: [], masterId };
+export function createPage(
+  name: string,
+  size: Size,
+  background: string,
+  masterId: PageId | null = null,
+  backgroundSwatchId: string | null = null,
+): Page {
+  return { id: createId(), name, width: size.width, height: size.height, background, backgroundSwatchId, elements: [], masterId };
 }
 
 /**
@@ -352,12 +361,19 @@ export function createPage(name: string, size: Size, background: string, masterI
  *   size: Page size in pt.
  *   background: Background color (the default of pages added with it).
  *   parentId: Master page it is based on; null = top level.
+ *   backgroundSwatchId: Swatch the background follows; null = none.
  *
  * Returns:
  *   New master page without elements.
  */
-export function createMasterPage(name: string, size: Size, background: string, parentId: PageId | null): MasterPage {
-  return { id: createId(), name, width: size.width, height: size.height, background, elements: [], parentId };
+export function createMasterPage(
+  name: string,
+  size: Size,
+  background: string,
+  parentId: PageId | null,
+  backgroundSwatchId: string | null = null,
+): MasterPage {
+  return { id: createId(), name, width: size.width, height: size.height, background, backgroundSwatchId, elements: [], parentId };
 }
 
 /**
@@ -380,6 +396,22 @@ export function nextPageNames(pages: readonly Page[], count: number): string[] {
 }
 
 /**
+ * Text styles and swatches of a new document: 文字 / 黑 / 白, and the built-in text styles following
+ * 文字 (same color), so changing that swatch recolors every heading and body text at once. Files
+ * from before swatches keep their unlinked built-in styles (`defaultTextStyles`, also what Rust
+ * adds when upgrading).
+ *
+ * Returns:
+ *   Fields for a new `EditorDocument`.
+ */
+function newDocumentStyles(): Pick<EditorDocument, "textStyles" | "swatches"> {
+  return {
+    textStyles: defaultTextStyles().map((style) => ({ ...style, fillSwatchId: BUILT_IN_SWATCH_IDS.text })),
+    swatches: defaultSwatches(),
+  };
+}
+
+/**
  * Creates the document for a new project: one blank page.
  *
  * Args:
@@ -393,7 +425,7 @@ export function createBlankDocument(setup: PageSetup = DEFAULT_NEW_PAGE_SETUP): 
     name: "未命名文件",
     margins: setup.margins,
     pageNumberRules: [],
-    textStyles: defaultTextStyles(),
+    ...newDocumentStyles(),
     masters: [],
     pages: [createPage("Page-1", setup.size, DEFAULT_PAGE_BACKGROUND)],
   };
@@ -428,7 +460,7 @@ export function createSampleDocument(): EditorDocument {
     name: "未命名文件",
     margins: DEFAULT_MARGINS,
     pageNumberRules: [],
-    textStyles: defaultTextStyles(),
+    ...newDocumentStyles(),
     masters: [],
     pages: [{ ...page, elements }],
   };

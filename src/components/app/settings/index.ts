@@ -5,11 +5,13 @@ import { McpDialog } from "./mcp-dialog";
 import { PageNumbersDialog } from "./page-numbers-dialog";
 import { PageSetupDialog } from "./page-setup-dialog";
 import type { SettingsDialogProps } from "./settings-dialog";
+import { SwatchesDialog } from "./swatches-dialog";
 
 /** The dialog of every settings page (設定 → 文件 / 偏好設定); a missing page fails to compile. */
 export const SETTINGS_DIALOGS = {
   pageSetup: PageSetupDialog,
   pageNumbers: PageNumbersDialog,
+  swatches: SwatchesDialog,
   grid: GridDialog,
   mcp: McpDialog,
 } satisfies Record<SettingsPageId, ComponentType<SettingsDialogProps>>;

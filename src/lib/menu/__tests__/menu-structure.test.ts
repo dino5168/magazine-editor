@@ -85,6 +85,7 @@ describe("menu structure", () => {
       children: [
         { kind: "item", command: "settings.pageSetup" },
         { kind: "item", command: "settings.pageNumbers" },
+        { kind: "item", command: "settings.swatches" },
       ],
     });
     expect(preferences).toEqual({

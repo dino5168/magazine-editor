@@ -21,14 +21,16 @@ import {
 } from "../editor-reducer";
 import { createPageNumberRule } from "../page-numbers";
 import { createLabel } from "../shape-label";
+import { BUILT_IN_SWATCH_IDS, defaultSwatches } from "../swatches";
 import { defaultTextStyles, nextTextStyleName, pickTextStyle, styleOverrides } from "../style-sheet";
-import type { EditorDocument, MasterPage, Page, TextElement } from "../types";
+import type { EditorDocument, MasterPage, Page, ShapeElement, TextElement } from "../types";
 
 function blankState(): EditorState {
   const document: EditorDocument = {
     name: "測試文件",
     margins: DEFAULT_MARGINS,
     textStyles: [],
+    swatches: [],
     pageNumberRules: [],
     masters: [],
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
@@ -83,7 +85,7 @@ describe("editorReducer / elements", () => {
   it("sets and removes a stroke, ignoring invalid ones", () => {
     const element = createShapeElement("rect", { x: 100, y: 100 });
     const state = run(blankState(), { type: "element/add", element });
-    const stroke = { color: "#00000080", width: 2, dash: "dotted" } as const;
+    const stroke = { color: "#00000080", swatchId: null, width: 2, dash: "dotted" } as const;
 
     const stroked = run(state, { type: "element/update", id: element.id, patch: { stroke } });
     expect(selectSelectedElement(stroked)).toMatchObject({ stroke });
@@ -114,7 +116,7 @@ describe("editorReducer / elements", () => {
   it("sets text decoration and a shadow, ignoring invalid ones", () => {
     const element = createTextElement("body", { x: 100, y: 100 });
     const state = run(blankState(), { type: "element/add", element });
-    const shadow = { color: "#00000080", offsetX: -3, offsetY: 50 };
+    const shadow = { color: "#00000080", swatchId: null, offsetX: -3, offsetY: 50 };
     const patch = { italic: true, underline: true, strikethrough: true, shadow };
 
     expect(selectSelectedElement(run(state, { type: "element/update", id: element.id, patch }))).toMatchObject(patch);
@@ -744,6 +746,7 @@ describe("editorReducer / moving across the spine", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
+      swatches: [],
       pageNumberRules: [],
       masters: [],
       pages: [page("p1"), { ...page("p2"), elements: [a, b, c] }, { ...page("p3"), elements: [target] }],
@@ -941,6 +944,7 @@ describe("editorReducer / project", () => {
       name: "另一個專案",
       margins: DEFAULT_MARGINS,
       textStyles: [],
+      swatches: [],
       pageNumberRules: [],
       masters: [],
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
@@ -995,6 +999,7 @@ describe("editorReducer / text styles", () => {
     const document = {
       ...initial.history.present,
       textStyles: defaultTextStyles(),
+      swatches: [],
       pages: [{ ...initial.history.present.pages[0], elements: [text, shape] }],
     };
     return { state: createInitialState(document), text, shape };
@@ -1112,5 +1117,119 @@ describe("editorReducer / text styles", () => {
     // 改樣式的行距：被覆寫的文字不跟著變
     const restyled = run(spaced, { type: "textStyle/update", id: style.id, style: { ...pickTextStyle(style), lineHeight: 1.8 } });
     expect((elementsOf(restyled).find((e) => e.id === text.id) as TextElement).lineHeight).toBe(2);
+  });
+});
+
+describe("editorReducer / swatches", () => {
+  const brand = { id: "brand", name: "品牌紅", color: "#be123c" };
+  const { text: TEXT, white: WHITE } = BUILT_IN_SWATCH_IDS;
+
+  function swatchState(): EditorState {
+    const state = blankState();
+    return createInitialState({ ...state.history.present, swatches: [...defaultSwatches(), brand] });
+  }
+
+  /** A rectangle filled with 品牌紅 at 50%. */
+  const linkedRect = (): ShapeElement => ({
+    ...createShapeElement("rect", { x: 100, y: 100 }),
+    fill: "#be123c80",
+    fillSwatchId: "brand",
+  });
+  const shapeOf = (state: EditorState, id: string) => selectActivePage(state).elements.find((e) => e.id === id) as ShapeElement;
+
+  it("adds, renames and recolors swatches, one undo step each", () => {
+    const added = run(blankState(), { type: "swatch/add", swatch: brand });
+    expect(added.history.present.swatches).toEqual([brand]);
+    expect(added.history.past).toHaveLength(1);
+    const renamed = run(added, { type: "swatch/update", id: "brand", name: " 主色 " });
+    expect(renamed.history.present.swatches[0].name).toBe("主色");
+    expect(run(renamed, { type: "history/undo" }).history.present.swatches[0].name).toBe("品牌紅");
+    // 名稱重複、id 重複、顏色不合法、不存在：不做
+    const invalid: EditorAction[] = [
+      { type: "swatch/add", swatch: { ...brand, id: "other" } },
+      { type: "swatch/add", swatch: { ...brand, name: "其他" } },
+      { type: "swatch/add", swatch: { id: "x", name: "x", color: "#BE123C" } },
+      { type: "swatch/update", id: "brand", color: "#be123c80" },
+      { type: "swatch/update", id: "missing", name: "x" },
+    ];
+    for (const action of invalid) expect(editorReducer(added, action), JSON.stringify(action)).toBe(added);
+  });
+
+  it("recolors every use of a swatch in one undo step, keeping each use's alpha", () => {
+    const element = linkedRect();
+    const state = run(swatchState(), { type: "element/add", element }, { type: "swatch/update", id: "brand", color: "#2563eb" });
+    expect(shapeOf(state, element.id)).toMatchObject({ fill: "#2563eb80", fillSwatchId: "brand" });
+    expect(shapeOf(run(state, { type: "history/undo" }), element.id).fill).toBe("#be123c80");
+  });
+
+  it("deletes a swatch, moving its uses to a replacement or unlinking them", () => {
+    const element = linkedRect();
+    const state = run(swatchState(), { type: "element/add", element });
+    const replaced = run(state, { type: "swatch/delete", id: "brand", replaceWith: TEXT });
+    expect(shapeOf(replaced, element.id)).toMatchObject({ fill: "#17171780", fillSwatchId: TEXT });
+    const unlinked = run(state, { type: "swatch/delete", id: "brand", replaceWith: null });
+    expect(shapeOf(unlinked, element.id)).toMatchObject({ fill: "#be123c80", fillSwatchId: null });
+    expect(editorReducer(state, { type: "swatch/delete", id: "brand", replaceWith: "missing" })).toBe(state);
+  });
+
+  it("applies the swatch dialog in one undo step and ignores invalid edits", () => {
+    const state = swatchState();
+    const swatches = [{ ...brand, color: "#16a34a" }, ...defaultSwatches()];
+    const next = run(state, { type: "swatch/applyEdits", swatches, deletions: [] });
+    expect(next.history.present.swatches).toEqual(swatches);
+    expect(next.history.past).toHaveLength(1);
+    expect(editorReducer(state, { type: "swatch/applyEdits", swatches: defaultSwatches(), deletions: [] })).toBe(state);
+  });
+
+  it("only accepts links to existing swatches whose color matches", () => {
+    const state = swatchState();
+    const element = linkedRect();
+    expect(editorReducer(state, { type: "element/add", element: { ...element, fillSwatchId: "missing" } })).toBe(state);
+    expect(editorReducer(state, { type: "element/add", element: { ...element, fill: "#000000" } })).toBe(state);
+    const stroke = { color: "#be123c", swatchId: "missing", width: 1, dash: "solid" } as const;
+    expect(editorReducer(state, { type: "element/add", element: { ...element, stroke } })).toBe(state);
+    expect(selectActivePage(run(state, { type: "element/add", element })).elements).toHaveLength(1);
+  });
+
+  it("links and unlinks element colors through updates", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(swatchState(), { type: "element/add", element });
+    const linked = run(state, { type: "element/update", id: element.id, patch: { fill: "#be123c", fillSwatchId: "brand" } });
+    expect(shapeOf(linked, element.id)).toMatchObject({ fill: "#be123c", fillSwatchId: "brand" });
+    // 只給顏色 = 取消連結；只改透明度時呼叫端連同連結一起給
+    const plain = run(linked, { type: "element/update", id: element.id, patch: { fill: "#000000" } });
+    expect(shapeOf(plain, element.id).fillSwatchId).toBeNull();
+    const faded = run(linked, { type: "element/update", id: element.id, patch: { fill: "#be123c80", fillSwatchId: "brand" } });
+    expect(shapeOf(faded, element.id)).toMatchObject({ fill: "#be123c80", fillSwatchId: "brand" });
+    // 連結和顏色對不上、連到不存在的色票、型別不對：不做
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fillSwatchId: "brand" } })).toBe(state);
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fill: "#be123c", fillSwatchId: "x" } })).toBe(state);
+    expect(editorReducer(state, { type: "element/update", id: element.id, patch: { fillSwatchId: 3 as never } })).toBe(state);
+  });
+
+  it("links page backgrounds and copies the link to new pages", () => {
+    const state = swatchState();
+    const pageId = selectActivePage(state).id;
+    const linked = run(state, { type: "page/setBackground", id: pageId, color: "#ffffff", swatchId: WHITE });
+    expect(selectActivePage(linked)).toMatchObject({ background: "#ffffff", backgroundSwatchId: WHITE });
+    expect(editorReducer(state, { type: "page/setBackground", id: pageId, color: "#000000", swatchId: WHITE })).toBe(state);
+    expect(selectActivePage(run(linked, { type: "page/add" })).backgroundSwatchId).toBe(WHITE);
+    const plain = run(linked, { type: "page/setBackground", id: pageId, color: "#ffffff" });
+    expect(selectActivePage(plain).backgroundSwatchId).toBeNull();
+  });
+
+  it("checks links in new pages, master pages, text styles and page numbers", () => {
+    const state = swatchState();
+    const page = { ...createPage("Page-2", { width: 595, height: 842 }, "#ffffff"), backgroundSwatchId: "missing" };
+    expect(editorReducer(state, { type: "page/addMany", pages: [page], index: 1 })).toBe(state);
+    const master = createMasterPage("Master A", { width: 595, height: 842 }, "#ffffff", null, "missing");
+    expect(editorReducer(state, { type: "master/add", master })).toBe(state);
+    const style = { ...defaultTextStyles()[0], id: "s", name: "s", fillSwatchId: "missing" };
+    expect(editorReducer(state, { type: "textStyle/add", style })).toBe(state);
+    const rule = createPageNumberRule("r", 1, 1);
+    const bad = { ...rule, style: { ...rule.style, fillSwatchId: "missing" } };
+    expect(editorReducer(state, { type: "document/setPageNumbering", rules: [bad] })).toBe(state);
+    const good = { ...rule, style: { ...rule.style, fill: "#171717", fillSwatchId: TEXT } };
+    expect(run(state, { type: "document/setPageNumbering", rules: [good] }).history.present.pageNumberRules).toEqual([good]);
   });
 });

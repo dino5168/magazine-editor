@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>色票系統規劃</title>
+<style>
+  :root {
+    --bg: #fafafa; --card: #ffffff; --fg: #1f2328; --muted: #656d76; --line: #d8dee4;
+    --accent: #2563eb; --accent-soft: #dbeafe; --ok: #15803d; --ok-soft: #dcfce7;
+    --warn: #b45309; --warn-soft: #fef3c7; --bad: #b91c1c; --bad-soft: #fee2e2; --code: #f3f4f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8d96a0; --line: #30363d;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --ok: #4ade80; --ok-soft: #14532d;
+      --warn: #fbbf24; --warn-soft: #422006; --bad: #f87171; --bad-soft: #450a0a; --code: #21262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.7 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  main { max-width: 940px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .88em;
+    font-family: "Cascadia Code", Consolas, monospace; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .93rem; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .step { border-left: 4px solid var(--accent); }
+  .step h3 { margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .todo { background: var(--warn-soft); color: var(--warn); }
+  .rec { background: var(--ok-soft); color: var(--ok); }
+  .no { background: var(--bad-soft); color: var(--bad); }
+  .note { background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .ask { background: var(--warn-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  .risk { background: var(--bad-soft); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 2px 0; }
+  .menus { display: flex; flex-wrap: wrap; gap: 16px; }
+  .menus pre { flex: 1 1 260px; margin: 0; }
+  figure { margin: 16px 0; }
+  figcaption { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  svg { max-width: 100%; height: auto; display: block; }
+  svg text { font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; fill: var(--fg); }
+  svg .box { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+  svg .box-ok { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.5; }
+  svg .box-no { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  svg .box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  svg .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+  svg .small { font-size: 12px; fill: var(--muted); }
+  nav.toc { font-size: .92rem; }
+  nav.toc ol { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>色票系統規劃（Color System）</h1>
+<p class="meta">來源：<code>docs/Plans-Color-System/01-色票系統規劃.md</code> · 建立：2026-10-12 · 對應 commit：<code>ab4feac</code> · 狀態：<strong>已實作（2026-10-12，檔案格式 v12）</strong>；第 7 節 Q1–Q8 已決定（2026-10-12），實作計畫：<code>docs/01-Plans-2026-10/17-文件色票-實作.md</code>（實際的步驟順序與每一步的調整以計畫為準：先做檔案格式再做純邏輯、<code>hasValidSwatchLinks</code> 另外檢查連結的 RGB、調色板的色票來源改用 context）</p>
+
+<nav class="toc card">
+  <strong>目錄</strong>
+  <ol>
+    <li>結論先講</li>
+    <li>系統目前的顏色現況</li>
+    <li>評估「PANTONE / ICC → Token 引擎 → Color Tokens → Style」是否適合</li>
+    <li>建議的架構（縮小後的版本）</li>
+    <li>改動幅度評估</li>
+    <li>選單：放在「設定」下的建議</li>
+    <li>需要使用者決定的問題</li>
+    <li>一步一步的實作規劃（草案）</li>
+    <li>規劃檢核：發現的問題與風險</li>
+    <li>之後可以再做（不在這一輪）</li>
+  </ol>
+</nav>
+
+<h2>1. 結論先講</h2>
+<div class="card">
+  <ul>
+    <li><strong>方向對，但範圍要縮小。</strong>「具名顏色（色票）→ 樣式引用色票」這條主幹符合目前系統，而且 <code>03-系統設計優先順序建議.md</code> 已經把「文件色票」排在第一階段第 1 項。</li>
+    <li><strong>PANTONE / ICC 這一層目前不適合做</strong>：主要輸出是 EPUB（螢幕、sRGB），畫布 Konva 只有 sRGB；PANTONE 色庫有授權問題；ICC 色彩管理牽動畫布、PDF、EPUB 三端。建議只在資料模型<strong>預留</strong>欄位，不實作。</li>
+    <li><strong>「全局設計 Token 引擎」不需要另外造</strong>：已經有一套可以照抄的機制——文字樣式（物件存實際值 + <code>styleId</code>，改樣式時 reducer 一次改寫所有引用）。色票照同一個模式做，<strong>畫布、量測、PDF / EPUB 匯出、Rust render 全都不用改</strong>。</li>
+    <li><strong>選單</strong>：放在「設定 → 文件 ▸ 色票...」（存進專案、可復原的文件設定，和頁面設定、頁碼管理同一組）。但<strong>日常套用要在調色板裡</strong>，選單只負責「管理」。</li>
+    <li><strong>改動幅度：中等</strong>，約等於當初「文字樣式」的一半到三分之二（檔案格式 v12、一組 reducer action、調色板多一區、一個對話框、MCP 工具），分 8 步做。</li>
+  </ul>
+</div>
+
+<h2>2. 系統目前的顏色現況</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>項目</th><th>現況</th><th>位置</th></tr>
+  <tr><td>色票來源</td><td>Tailwind v4 經典 22 色系 × 11 階 + 黑白，oklch 載入時換成 hex；<strong>沒有自訂顏色</strong>（2026-09-30 使用者決定）</td><td><code>lib/editor/palette.ts</code></td></tr>
+  <tr><td>模型存的值</td><td>一律 hex：物件 <code>#rrggbb</code> / <code>#rrggbbaa</code>，頁面背景只能 <code>#rrggbb</code></td><td><code>types.ts</code>、<code>validation.ts</code>、Rust <code>format.rs</code></td></tr>
+  <tr><td>UI</td><td><code>ColorPalette</code>（本體）與 <code>ColorPicker</code>（按鈕 + Popover）</td><td><code>components/editor/color-picker.tsx</code></td></tr>
+  <tr><td>匯出</td><td>PDF 直接把 hex 交給 Typst <code>rgb()</code>；EPUB 轉成 <code>rgba()</code> / <code>fill-opacity</code></td><td><code>export/pdf.rs</code>、<code>epub/xhtml.rs</code></td></tr>
+</table>
+</div>
+
+<h3>文件裡所有存顏色的欄位（色票要能連到的地方）</h3>
+<div class="table-wrap">
+<table>
+  <tr><th>欄位</th><th>型別位置</th><th>UI 入口</th><th>可透明</th></tr>
+  <tr><td>文字顏色 <code>fill</code></td><td><code>TextStyle.fill</code>（文字、圖形內文字、文字樣式 <code>TextStyleDef</code>、頁碼樣式都繼承它）</td><td><code>style-controls.tsx</code> 的 <code>TextStyleFields</code></td><td>是</td></tr>
+  <tr><td>文字陰影 <code>shadow.color</code></td><td><code>TextShadow</code></td><td>同上</td><td>是</td></tr>
+  <tr><td>圖形填色 <code>fill</code></td><td><code>ShapeElement.fill</code></td><td><code>properties-panel.tsx</code></td><td>是</td></tr>
+  <tr><td>邊框 <code>stroke.color</code></td><td><code>Stroke</code>（圖形、頁碼框線）</td><td><code>StrokeFields</code> → <code>LineStyleFields</code></td><td>是</td></tr>
+  <tr><td>頁面 / 主頁背景 <code>background</code></td><td><code>Sheet.background</code></td><td><code>background-panel.tsx</code>（內嵌 <code>ColorPalette</code>）</td><td><strong>否</strong></td></tr>
+</table>
+</div>
+<div class="note"><strong>不屬於文件的顏色</strong>：格線 / 內容區對齊線 / 邊界參考線的顏色是 App 偏好（localStorage），而「格線與參考線」對話框<strong>也用同一個 <code>LineStyleFields</code> → <code>ColorPicker</code></strong>。色票是文件的東西，這裡不能出現「文件色票」區（見第 9 節第 4 點）。</div>
+
+<h2>3. 評估「PANTONE / ICC → Token 引擎 → Color Tokens → Style」是否適合</h2>
+
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="使用者提出的四層架構與評估">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" style="fill: var(--muted)"/>
+    </marker>
+  </defs>
+  <rect class="box-no" x="10" y="40" width="190" height="90" rx="10"/>
+  <text x="105" y="72" text-anchor="middle" font-weight="600">標準專色庫</text>
+  <text x="105" y="94" text-anchor="middle">PANTONE / ICC</text>
+  <text x="105" y="116" text-anchor="middle" class="small">暫不做，只預留欄位</text>
+
+  <rect class="box-no" x="240" y="40" width="190" height="90" rx="10"/>
+  <text x="335" y="72" text-anchor="middle" font-weight="600">全局 Token 引擎</text>
+  <text x="335" y="94" text-anchor="middle">（另一套引擎）</text>
+  <text x="335" y="116" text-anchor="middle" class="small">不另造：沿用樣式表機制</text>
+
+  <rect class="box-ok" x="470" y="40" width="190" height="90" rx="10"/>
+  <text x="565" y="72" text-anchor="middle" font-weight="600">Color Tokens</text>
+  <text x="565" y="94" text-anchor="middle">= 文件色票</text>
+  <text x="565" y="116" text-anchor="middle" class="small">這一輪的主體</text>
+
+  <rect class="box-ok" x="700" y="40" width="190" height="90" rx="10"/>
+  <text x="795" y="72" text-anchor="middle" font-weight="600">Style &amp; Typography</text>
+  <text x="795" y="94" text-anchor="middle">文字樣式（已有）</text>
+  <text x="795" y="116" text-anchor="middle" class="small">物件樣式（下一項）</text>
+
+  <path class="arrow" d="M200,85 L236,85"/>
+  <path class="arrow" d="M430,85 L466,85"/>
+  <path class="arrow" d="M660,85 L696,85"/>
+
+  <rect class="box-ok" x="10" y="170" width="20" height="14" rx="3"/><text x="38" y="182" class="small">適合，這一輪做</text>
+  <rect class="box-no" x="170" y="170" width="20" height="14" rx="3"/><text x="198" y="182" class="small">目前不適合 / 不需要另外做</text>
+  <text x="10" y="222" class="small">理由見下表；紅框不是否定方向，是「現在做會投入很多、得到很少」。</text>
+</svg>
+<figcaption>圖 1　使用者提出的四層，與本文件的評估</figcaption>
+</figure>
+
+<div class="table-wrap">
+<table>
+  <tr><th>層</th><th>評估</th><th>理由</th></tr>
+  <tr><td>PANTONE 專色庫</td><td><span class="badge no">暫不做</span></td><td>
+    <ul>
+      <li><strong>授權</strong>：PANTONE 色值是商業授權資料（Adobe 2022 年起也要另外訂閱），不能直接內嵌進 public repo 的程式。</li>
+      <li><strong>輸出端</strong>：專色要 PDF 的 Separation 色彩空間；目前 PDF 由 Typst 產生，是否支援專色要實測（印象中只有 RGB / CMYK，<strong>未確認</strong>）。EPUB 是螢幕，專色沒有意義。</li>
+      <li><strong>專案方向</strong>：長期目標是 EPUB 固定版面為主、PDF 為衍生，且「已知限制」已寫明沒有 CMYK、出血、裁切線。</li>
+    </ul></td></tr>
+  <tr><td>ICC 色彩管理</td><td><span class="badge no">暫不做</span></td><td>Konva（Canvas 2D）只有 sRGB，無法做軟打樣（soft proof）；ICC 會同時牽動畫布、PDF（Output Intent、PDF/X）、EPUB 三端，是印刷流程的整包工作，應該和 CMYK、出血一起規劃，不是色票的一部分。</td></tr>
+  <tr><td>全局 Token 引擎</td><td><span class="badge no">不另造</span></td><td>
+    <ul>
+      <li>「引擎」做的事 = 名稱 → 值、改值時通知所有引用處。文字樣式已經有一套：物件存實際值 + 連結 id，改樣式時 reducer 一次改寫（<code>restyleDocument</code>）。<strong>照抄這套就是 token 引擎</strong>，不要再造一層。</li>
+      <li>「全局」若指跨專案：素材庫、範本都還是每個專案各自一份，跨專案的「系統庫」排在第三階段（範本）。色票先做<strong>文件層級</strong>。</li>
+    </ul></td></tr>
+  <tr><td>Color Tokens（色票）</td><td><span class="badge rec">適合</span></td><td>就是 <code>03-系統設計優先順序建議.md</code> 的「文件色票」：文件層級的具名顏色、可自訂、改色票時所有用到的地方一起變。</td></tr>
+  <tr><td>Style &amp; Typography</td><td><span class="badge rec">適合</span></td><td>文字樣式已完成；樣式的文字顏色 / 陰影顏色連到色票即可。物件樣式是下一項，<strong>先有色票，物件樣式一開始就引用色票</strong>（不用之後再遷移）。</td></tr>
+</table>
+</div>
+
+<h2>4. 建議的架構（縮小後的版本）</h2>
+
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="建議的色票資料流">
+  <rect class="box" x="10" y="20" width="200" height="110" rx="10"/>
+  <text x="110" y="48" text-anchor="middle" font-weight="600">Tailwind 色票</text>
+  <text x="110" y="72" text-anchor="middle">（已有、唯讀）</text>
+  <text x="110" y="96" text-anchor="middle" class="small">當「原色庫」：</text>
+  <text x="110" y="116" text-anchor="middle" class="small">從這裡挑色加入色票</text>
+
+  <rect class="box" x="10" y="160" width="200" height="90" rx="10"/>
+  <text x="110" y="190" text-anchor="middle" font-weight="600">自訂 hex 輸入</text>
+  <text x="110" y="214" text-anchor="middle" class="small">品牌色、指定色</text>
+  <text x="110" y="234" text-anchor="middle" class="small">（2026-10-12 已決定可以）</text>
+
+  <rect class="box-acc" x="280" y="70" width="230" height="150" rx="10"/>
+  <text x="395" y="100" text-anchor="middle" font-weight="600">文件色票</text>
+  <text x="395" y="122" text-anchor="middle"><tspan font-family="Consolas, monospace" font-size="13">document.swatches</tspan></text>
+  <text x="395" y="150" text-anchor="middle" class="small">id · 名稱 · #rrggbb</text>
+  <text x="395" y="172" text-anchor="middle" class="small">存進專案、可復原</text>
+  <text x="395" y="194" text-anchor="middle" class="small">（預留：cmyk / spot）</text>
+
+  <rect class="box-ok" x="580" y="20" width="310" height="80" rx="10"/>
+  <text x="735" y="50" text-anchor="middle" font-weight="600">文字樣式 / （之後）物件樣式</text>
+  <text x="735" y="74" text-anchor="middle" class="small">fill / shadow / stroke 連到色票</text>
+
+  <rect class="box-ok" x="580" y="120" width="310" height="80" rx="10"/>
+  <text x="735" y="150" text-anchor="middle" font-weight="600">物件、頁面背景、頁碼</text>
+  <text x="735" y="174" text-anchor="middle" class="small">實際 hex ＋ 連到哪個色票</text>
+
+  <rect class="box" x="580" y="230" width="310" height="80" rx="10"/>
+  <text x="735" y="260" text-anchor="middle" font-weight="600">畫布 · 量測 · PDF · EPUB</text>
+  <text x="735" y="284" text-anchor="middle" class="small">只讀實際 hex → 完全不用改</text>
+
+  <path class="arrow" d="M210,75 L276,120"/>
+  <path class="arrow" d="M210,205 L276,170"/>
+  <path class="arrow" d="M510,120 L576,64"/>
+  <path class="arrow" d="M510,160 L576,160"/>
+  <path class="arrow" d="M735,200 L735,226"/>
+  <text x="520" y="250" class="small">改色票 = reducer 一次</text>
+  <text x="520" y="268" class="small">改寫所有連結處（一筆復原）</text>
+</svg>
+<figcaption>圖 2　建議的資料流：色票是「具名的 hex」，引用處照存實際值</figcaption>
+</figure>
+
+<h3>4.1 資料模型（草案，細節實作時再定）</h3>
+<pre><code>// types.ts（草案）
+interface Swatch {
+  readonly id: string;
+  readonly name: string;      // 文件內不重複，例如「品牌紅」
+  readonly color: string;     // #rrggbb（不透明，見問題 Q3）
+  // 預留，不實作：readonly cmyk?: [c, m, y, k]; readonly spot?: string;
+}
+interface EditorDocument { …; readonly swatches: Swatch[] }
+
+// 引用處：照存實際 hex，另外記連到哪個色票（null = 沒連）
+interface Stroke     { color; swatchId: string | null; … }
+interface TextShadow { color; swatchId: string | null; … }
+interface TextStyle  { fill;  fillSwatchId: string | null; … }
+interface ShapeElement { fill; fillSwatchId: string | null; … }
+interface Sheet      { background; backgroundSwatchId: string | null; … }</code></pre>
+<ul>
+  <li><strong>為什麼照存實際值</strong>：和文字樣式同一個理由——畫布、<code>measureTextLayout</code>、Rust render、Typst 模板、EPUB 都不讀色票表，匯出端零改動；舊檔不需要升級成「只存引用」。</li>
+  <li><strong>透明度屬於使用處</strong>：色票是不透明的 <code>#rrggbb</code>；物件把它當成 50% 用時存 <code>withAlpha(色票, 0.5)</code> + <code>swatchId</code>。改色票時保留每個使用處自己的透明度（<code>withAlpha(新色, colorAlpha(舊值))</code>）。這等於 InDesign 的「色調 / 不透明度」，也讓頁面背景（不可透明）能共用同一組色票。</li>
+  <li><strong>斷開連結</strong>：在調色板選了不是色票的顏色 → <code>swatchId: null</code>。改透明度不斷開。</li>
+</ul>
+
+<h3>4.2 不重複造輪子：可以直接沿用的東西</h3>
+<div class="table-wrap">
+<table>
+  <tr><th>要做的事</th><th>沿用</th></tr>
+  <tr><td>改色票時改寫所有引用、走過頁面 + 主頁 + 文字樣式 + 頁碼規則</td><td><code>style-sheet.ts</code> 的 <code>restyleDocument</code> / <code>mapStyledTexts</code> 的走訪方式</td></tr>
+  <tr><td>名稱檢查、不重複、刪除時取消連結、使用數</td><td><code>style-sheet.ts</code> 的名稱規則、<code>textStyle/delete</code>、<code>textStyleUsage</code></td></tr>
+  <tr><td>Rust 驗證引用存在</td><td><code>format.rs</code> 的 <code>require_style</code> 模式（改成 <code>require_swatch</code>）</td></tr>
+  <tr><td>對話框外框、取消 / 確定、一筆復原</td><td><code>SettingsDialog</code> / <code>SettingsDialogFooter</code>、<code>SETTINGS_PAGES</code>（加一筆就有選單）</td></tr>
+  <tr><td>從 Tailwind 挑色</td><td>現有 <code>ColorPalette</code> 原封不動當「原色庫」</td></tr>
+  <tr><td>透明度</td><td><code>palette.ts</code> 的 <code>colorAlpha</code> / <code>withAlpha</code></td></tr>
+  <tr><td>MCP 工具</td><td>文字樣式工具的模式（以名稱或 id 指定、<code>tool-definitions.ts</code> 單一資料來源）</td></tr>
+  <tr><td>檔案格式升級</td><td>缺欄位 = serde 預設（空色票、<code>swatchId: null</code>），同 v4 / v5 / v9，不需要升級步驟</td></tr>
+</table>
+</div>
+
+<h2>5. 改動幅度評估</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>範圍</th><th>改動</th><th>幅度</th></tr>
+  <tr><td>文件模型 <code>types.ts</code> / Rust <code>format.rs</code> / fixture / <code>docs-website/types.html</code></td><td><code>swatches</code> + 5 個引用欄位；<code>SCHEMA_VERSION</code> 11 → 12；驗證名稱、id、引用</td><td>中</td></tr>
+  <tr><td>純邏輯（新檔 <code>lib/editor/swatches.ts</code>）</td><td>建立、改名、改色時改寫全文件、刪除時取消連結、使用數；測試</td><td>中</td></tr>
+  <tr><td>reducer</td><td><code>swatch/add</code> / <code>update</code> / <code>rename</code> / <code>delete</code> / <code>reorder</code>；<code>element/update</code> 等帶進來的 <code>swatchId</code> 要存在</td><td>中</td></tr>
+  <tr><td>文字樣式</td><td><code>TEXT_STYLE_KEYS</code> 會自動包含 <code>fillSwatchId</code>；覆寫比對要決定「同色但一個有連、一個沒連」算不算覆寫（問題 Q5）</td><td>小</td></tr>
+  <tr><td>調色板 <code>ColorPalette</code> / <code>ColorPicker</code></td><td>多一區「文件色票」；<code>onCommit</code> 改成回傳 <code>{ color, swatchId }</code>；5 個呼叫處跟著改；偏好設定對話框不顯示這一區</td><td>中</td></tr>
+  <tr><td>對話框「色票...」</td><td>新元件，列表 / 新增（從 Tailwind 或 hex）/ 改名 / 改色 / 刪除 / 排序</td><td>中</td></tr>
+  <tr><td>畫布、量測、PDF、EPUB、Rust render</td><td><strong>不用改</strong>（只讀實際 hex）</td><td>無</td></tr>
+  <tr><td>MCP</td><td><code>list_swatches</code> / <code>add_swatch</code> / <code>update_swatch</code> / <code>delete_swatch</code>；顏色參數可以寫色票名稱</td><td>小～中</td></tr>
+  <tr><td>文件</td><td><code>CLAUDE.md</code>「調色板」一節要改寫（「只能從 Tailwind 選」不再成立）、<code>docs/</code>、<code>progress.md</code></td><td>小</td></tr>
+</table>
+</div>
+<div class="note">比較：文字樣式是 8 步（含一個新工具面板）。色票的匯出端零改動、可以不做工具面板，估計<strong>同樣 8 步、但每步比較小</strong>。</div>
+
+<h2>6. 選單：放在「設定」下的建議</h2>
+<div class="menus">
+<pre><code>設定(S)
+├─ 文件 ▸
+│   ├─ 頁面設定...
+│   ├─ 頁碼管理...
+│   └─ 色票...            ← 新增（建議）
+├─ 偏好設定 ▸
+│   ├─ 格線與參考線...   Ctrl+,
+│   └─ Claude Code 連線（MCP）...
+└─ 外觀 ▸</code></pre>
+<pre><code>屬性面板 → 填色 ▣ ─┐
+                    ▼  Popover（調色板）
+  ┌───────────────────────────┐
+  │ 文件色票                    │ ← 新增的一區
+  │ ■品牌紅 ■品牌藍 ■內文灰 …  │
+  │ [管理色票...]               │ → 開「色票...」
+  ├───────────────────────────┤
+  │ Tailwind 色系 / 深淺        │ （原本的）
+  │ 不透明度 ───●──── 80%       │
+  └───────────────────────────┘</code></pre>
+</div>
+<ul>
+  <li><strong>放「文件 ▸」而不是「偏好設定 ▸」</strong>：色票存進專案、可復原、會標記未存檔，和頁面設定、頁碼管理同性質（<code>SETTINGS_GROUPS</code> 的分法正是「存在文件 / 存在這台電腦」）。</li>
+  <li><strong>只用 <code>SETTINGS_PAGES</code> 加一筆</strong>：選單項目、指令 <code>settings.swatches</code>、handler 都自動產生，對話框登記到 <code>SETTINGS_DIALOGS</code>（漏了會編譯失敗）。不用碰 <code>MENUS</code>。</li>
+  <li><strong>選單只負責管理，套用在調色板裡</strong>：每次改顏色都要開選單太慢。調色板最上面放「文件色票」一區，最後一個按鈕「管理色票...」開同一個對話框。</li>
+  <li><strong>「色票」工具面板</strong>（像「樣式」面板，點一下套用到選取）：建議<strong>先不做</strong>，等使用一陣子再決定；有了調色板那一區，面板只是多一個入口。</li>
+  <li>快捷鍵：建議不設（「色票...」不是常用的管理動作）。</li>
+</ul>
+
+<h2>7. 需要使用者決定的問題</h2>
+<div class="note">
+<strong>使用者回覆（2026-10-12）</strong>
+<div class="table-wrap">
+<table>
+  <tr><th>問題</th><th>決定</th></tr>
+  <tr><td>Q1 範圍</td><td>只做文件色票（sRGB）；PANTONE / ICC / CMYK 只預留欄位</td></tr>
+  <tr><td>Q2 Tailwind 色票</td><td>保留在調色板，當「原色庫」直接選</td></tr>
+  <tr><td>Q3 透明度</td><td><strong>色票不透明</strong>（<code>#rrggbb</code>），透明度留在使用處；取代 10-12「含不透明度」的寫法</td></tr>
+  <tr><td>Q4 自訂 hex</td><td>只在「色票...」對話框輸入（自訂色一定有名字）</td></tr>
+  <tr><td>Q5 覆寫</td><td>算覆寫：<code>fillSwatchId</code> 是文字樣式欄位，同色但連結不同 = 覆寫</td></tr>
+  <tr><td>Q6 刪除使用中的色票</td><td><strong>先問</strong>：確認框列出「N 處使用」，選「換成某個色票」或「不替換（保留顏色、取消連結）」</td></tr>
+  <tr><td>Q7 預設色票</td><td>依建議（見下）：新文件帶「文字」<code>#171717</code>、「黑」、「白」；內建三個文字樣式在新文件裡連到「文字」</td></tr>
+  <tr><td>Q8 即時預覽</td><td>依建議：第一版不做，按「確定」才套用（同頁碼管理）</td></tr>
+</table>
+</div>
+</div>
+<div class="ask">
+<ol>
+  <li><strong>Q1　範圍</strong>：這一輪只做「文件色票」（具名 sRGB 顏色），PANTONE / ICC / CMYK 只預留不實作——同意嗎？<br>
+    <span class="meta">建議：同意。印刷色彩（CMYK、專色、ICC、出血）另開一個「印刷輸出」任務，和 PDF/X 一起評估。</span></li>
+  <li><strong>Q2　Tailwind 色票的地位</strong>：(a) 保留在調色板，當「原色庫」直接選（現在的行為）；(b) 只能用來「加入色票」，物件一律選文件色票。<br>
+    <span class="meta">建議：(a)。(b) 太嚴格，排一頁草稿也要先建色票。</span></li>
+  <li><strong>Q3　色票能不能帶不透明度</strong>：10-12 的建議寫「可自訂 hex（含不透明度）」。本文件建議<strong>色票本身不透明</strong>，透明度留在使用處（理由見 4.1：頁面背景不可透明、改色票時保留各處透明度、和 InDesign 的色調概念一致）。要改成這樣嗎？</li>
+  <li><strong>Q4　自訂 hex 在哪裡輸入</strong>：(a) 只在「色票...」對話框（自訂色一定有名字）；(b) 調色板也可以直接輸入 hex（不具名）。<br>
+    <span class="meta">建議：(a)。維持「畫面上的顏色都找得到出處」，也和 09-30「不保留自訂顏色」的精神接近。</span></li>
+  <li><strong>Q5　和文字樣式的覆寫</strong>：文字樣式的顏色連到「品牌紅」，某段文字顏色值一樣但沒連色票——算不算覆寫？<br>
+    <span class="meta">建議：算（<code>fillSwatchId</code> 也是樣式欄位，比對自然包含）。否則改色票時那段文字不會跟著變，使用者會困惑。</span></li>
+  <li><strong>Q6　刪除還在使用中的色票</strong>：(a) 顏色保留、只取消連結（同文字樣式的刪除）；(b) 先問要換成哪個色票（InDesign 的做法）。<br>
+    <span class="meta">建議：先做 (a)，確認框說明「N 處使用，顏色不變、取消連結」；(b) 之後需要再加。</span></li>
+  <li><strong>Q7　新文件的預設色票</strong>：空的，還是帶幾個（黑、白、內文灰）？舊檔開啟一律是空的。<br>
+    <span class="meta">建議（2026-10-12 修訂）：帶三個——「文字」<code>#171717</code>（= 內建文字樣式與 <code>DEFAULT_TEXT_FILL</code> 的顏色）、「黑」<code>#000000</code>、「白」<code>#ffffff</code>；新文件的內建三個文字樣式連到「文字」，所以一開始改「文字」色票，所有標題 / 內文就一起變。頁面背景不預先連「白」（白紙是紙，不是設計色）。<strong>注意</strong>：<code>tests/fixtures/default-text-styles.json</code> 也是 Rust 升級舊檔時用的內建樣式，舊檔沒有色票，所以這份 fixture 的 <code>fillSwatchId</code> 要維持 <code>null</code>，連結只在 <code>createBlankDocument</code> 建立新文件時加上。</span></li>
+  <li><strong>Q8　對話框要不要即時預覽</strong>：改色票時畫布立刻變色。偏好設定的即時預覽機制只適用 App 偏好；文件要做預覽得另外做「草稿文件」。<br>
+    <span class="meta">建議：第一版不做預覽（和頁碼管理一樣按確定才套用），色票列表本身顯示色塊就夠判斷。</span></li>
+</ol>
+</div>
+
+<h2>8. 一步一步的實作規劃（草案）</h2>
+<p class="meta">每一步完成後停下來給使用者確認，再做下一步（依既有的任務檔流程：使用者寫 <code>docs/01-Plans-2026-10/17-文件色票.md</code> → 出 <code>17-文件色票-實作.md</code>）。步驟內容會依第 7 節的回答調整。</p>
+
+<div class="card step"><h3>步驟 0　確認決定 <span class="badge rec">已回覆 2026-10-12</span></h3>
+<ul><li>Q1–Q8 已決定（第 7 節上方的表）；開實作計畫時寫進計畫與 <code>progress.md</code> 的決定表，並標明取代 2026-09-30「只能從 Tailwind 選」的決定。</li></ul></div>
+
+<div class="card step"><h3>步驟 1　純邏輯 <code>lib/editor/swatches.ts</code> <span class="badge rec">完成</span></h3>
+<ul>
+  <li>型別草案、名稱規則（沿用文字樣式的長度與不重複規則）、<code>swatchUsage</code>、<code>recolorDocument</code>（改色票時改寫頁面 / 主頁 / 文字樣式 / 頁碼規則的所有連結處，保留各處透明度）、<code>unlinkSwatch</code>。</li>
+  <li>vitest。畫面不變。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 2　檔案格式 v12 <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>types.ts</code>、<code>format.rs</code>（<code>validate_swatches</code>、<code>require_swatch</code>、serde 預設）、<code>SCHEMA_VERSION</code> 12、<code>sample.magproj</code>（加兩個色票、各種引用都有一處）、<code>docs-website/types.html</code>。</li>
+  <li>cargo test + vitest 讀同一份 fixture。畫面不變。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 3　reducer <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>swatch/add</code> / <code>update</code> / <code>rename</code> / <code>delete</code> / <code>reorder</code>；各自一筆復原、沒變化回傳同一個 state。</li>
+  <li><code>element/update</code>、<code>page/setBackground</code>、<code>textStyle/*</code>、<code>document/setPageNumbering</code> 帶進來的 <code>swatchId</code> 必須存在，否則 no-op。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 4　調色板「文件色票」區 <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>ColorPalette</code> 加可選的 <code>swatches</code> prop（不傳就不顯示 → 偏好設定對話框自然沒有這區）；標示目前連到的色票。</li>
+  <li><code>onCommit</code> 帶 <code>swatchId</code>；屬性面板、<code>TextStyleFields</code>、<code>StrokeFields</code>、背景面板、頁碼對話框跟著改。</li>
+  <li>無頭 Edge 驗證：選色票 → 連結、選 Tailwind 色 → 斷開、改透明度不斷開、一次 = 一筆復原。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 5　「設定 → 文件 → 色票...」對話框 <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>SETTINGS_PAGES</code> 加 <code>swatches</code>、<code>SETTINGS_DIALOGS</code> 登記。</li>
+  <li>列表（色塊、名稱、hex、使用數）；新增（從 Tailwind 挑 / 輸入 hex）；雙擊改名；改色；拖曳排序（可沿用 <code>startPointerDrag</code> + <code>insertionSlot</code>）。</li>
+  <li>刪除使用中的色票（Q6）：確認框「N 處使用」+ 替換選單（其他色票 / 不替換）。替換 = 那些地方改成新色票的顏色並連到它（保留各處透明度）；純邏輯在步驟 1 的 <code>replaceSwatch</code>，reducer 是 <code>swatch/delete { id, replaceWith: id | null }</code>。</li>
+  <li>草稿，「確定」一次 dispatch（一筆復原）——需要一個 <code>swatch/replaceAll</code> 或 batch action，實作時再定。</li>
+  <li>調色板「管理色票...」開同一個對話框。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 6　文字樣式與覆寫 <span class="badge rec">完成</span></h3>
+<ul>
+  <li>樣式對話框、屬性面板「文字樣式」區塊的覆寫提示：<code>TEXT_STYLE_KEY_LABELS</code> 加「文字顏色色票」等標籤（依 Q5）。</li>
+  <li>改色票 → 樣式與連到樣式的文字一起變，確認沒有多出覆寫。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 7　MCP <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>list_swatches</code> / <code>add_swatch</code> / <code>update_swatch</code> / <code>delete_swatch</code>；<code>add_text</code> / <code>add_shape</code> / <code>update_element</code> / <code>set_page_background</code> 的顏色參數可以寫 <code>{ swatch: "品牌紅" }</code>。</li>
+  <li><code>npx vitest run mcp-tools -u</code>、重編 <code>magazine-mcp</code>。</li>
+</ul></div>
+
+<div class="card step"><h3>步驟 8　文件 <span class="badge rec">完成</span></h3>
+<ul>
+  <li><code>CLAUDE.md</code>：「調色板」一節改寫、新增「文件色票」一節、檔案格式 v12、目錄結構；<code>docs/</code>、<code>progress.md</code>、<code>03-系統設計優先順序建議.md</code> 的進度紀錄。</li>
+</ul></div>
+
+<h2>9. 規劃檢核：發現的問題與風險</h2>
+<div class="risk">
+<ol>
+  <li><strong>和既有決定衝突</strong>：<code>progress.md</code> 決定表與 <code>CLAUDE.md</code> 寫「顏色只能從 Tailwind v4 色票選、不保留自訂顏色」（2026-09-30）。10-12 已決定色票可以自訂，但要在實作計畫裡明確<strong>取代</strong>舊決定，並同步改 <code>CLAUDE.md</code>，否則之後的對話會被舊規則誤導。</li>
+  <li><strong>透明度定義不一致</strong>：10-12 建議「色票含不透明度」，本文件建議「色票不透明」（Q3）。<strong>已決定：色票不透明</strong>，<code>03-系統設計優先順序建議.md</code> 的寫法要在實作計畫裡註明被取代。</li>
+  <li><strong>內建文字樣式連到「文字」色票（Q7）</strong>：只在新文件加連結；<code>default-text-styles.json</code>（Rust 升級舊檔共用）維持不連結，否則舊檔升級後會引用不存在的色票、驗證失敗。</li>
+  <li><strong>引用欄位分散在 5 種結構</strong>：<code>Stroke</code>、<code>TextShadow</code>、<code>TextStyle</code>、<code>ShapeElement</code>、<code>Sheet</code>。漏改一處 = 那裡的顏色不會跟著色票變。建議 <code>swatches.ts</code> 用一個「走過所有顏色欄位」的函式（同 <code>mapStyledTexts</code>）集中處理，測試用 fixture 覆蓋每一種。</li>
+  <li><strong>偏好設定對話框共用調色板</strong>：「格線與參考線」用的是同一個 <code>ColorPicker</code>。如果文件色票區是「預設顯示」，參考線就能連到文件色票，但偏好不存在文件裡 → 換專案就失效。所以必須設計成<strong>呼叫端傳入才顯示</strong>（步驟 4）。</li>
+  <li><strong>頁碼是虛擬圖形</strong>：<code>pageNumberShape()</code> 由規則算出圖形，規則裡的顏色連色票後，改色票要改寫的是 <code>pageNumberRules</code>，不是頁面上的物件。<code>recolorDocument</code> 要記得包含它。</li>
+  <li><strong>主頁</strong>：主頁上的物件、主頁背景也是引用處；<code>referenced</code> 類的走訪要同時走 <code>pages</code> 與 <code>masters</code>（文字樣式已踩過這個點）。</li>
+  <li><strong>變更範圍可能很大</strong>：改一個色票可能改寫上百個物件，但它仍是一個 action、一筆復原，reducer 只換有變化的物件（沒變的保留原參考），不會讓縮圖全部重畫。</li>
+  <li><strong>PANTONE 名稱</strong>：如果將來讓使用者自己輸入「PANTONE 186 C」當色票名稱，這只是名稱，不涉及授權；但<strong>不要內建 PANTONE 色值表</strong>。</li>
+  <li><strong>EPUB 重構</strong>（<code>plan-epubv2</code>）：色票之後可以變成 EPUB 的 CSS 變數，但這一輪匯出照舊輸出實際值，不依賴 EPUB 重構的時程。</li>
+</ol>
+</div>
+
+<h2>10. 之後可以再做（不在這一輪）</h2>
+<div class="table-wrap">
+<table>
+  <tr><th>項目</th><th>說明</th><th>建議時機</th></tr>
+  <tr><td>色票匯入 / 匯出</td><td>不自創格式：用 <strong>Adobe Swatch Exchange（.ase）</strong>（InDesign / Illustrator 互通）或 <strong>W3C Design Tokens（DTCG JSON）</strong>（和網頁設計系統互通）</td><td>範本之前</td></tr>
+  <tr><td>色票群組</td><td>「品牌色」「內文色」分組顯示</td><td>色票數量多了再說</td></tr>
+  <tr><td>別名 token（語意層）</td><td>「標題色」→ 指向「品牌紅」；改品牌色時語意層跟著走。這才是 design token 的「語意層」</td><td>物件樣式完成後評估；多數雜誌用「樣式」就能達到同樣效果</td></tr>
+  <tr><td>跨專案色票庫</td><td>和系統素材庫、範本一起規劃</td><td>第三階段（範本）</td></tr>
+  <tr><td>CMYK 值 / 專色 / ICC / PDF/X</td><td>先實測 Typst 0.15 的 CMYK、Separation、Output Intent 支援，再決定</td><td>另開「印刷輸出」任務</td></tr>
+  <tr><td>「色票」工具面板</td><td>像「樣式」面板：點一下套用到選取的填色 / 文字色</td><td>使用一陣子後再決定</td></tr>
+  <tr><td>從文件收集顏色</td><td>掃描文件用到但沒連色票的顏色，一鍵建成色票（InDesign「加入未命名顏色」）</td><td>步驟 5 之後，小功能</td></tr>
+</table>
+</div>
+
+</main>
+</body>
+</html>

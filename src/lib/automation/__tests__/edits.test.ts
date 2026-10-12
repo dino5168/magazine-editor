@@ -182,7 +182,7 @@ describe("add_shape", () => {
     });
     const shape = elementOf(session, id) as ShapeElement;
     expect(shape).toMatchObject({ x: 10, y: 20, width: 200, height: 100, geometry: { kind: "ellipse" }, fill: "#00000000" });
-    expect(shape.stroke).toEqual({ color: "#112233", width: 2, dash: "dashed" });
+    expect(shape.stroke).toEqual({ color: "#112233", swatchId: null, width: 2, dash: "dashed" });
     expect(shape.label).toMatchObject({ text: "圓", verticalAlign: "top", fontSize: 30 });
     expect(session.state.history.past).toHaveLength(1);
   });

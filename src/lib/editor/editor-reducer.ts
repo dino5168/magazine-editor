@@ -12,6 +12,13 @@ import {
   restyleDocument,
   styledTextOf,
 } from "./style-sheet";
+import {
+  applySwatchEdits,
+  deleteSwatch,
+  hasValidSwatchLinks,
+  updateSwatch,
+  type SwatchDeletion,
+} from "./swatches";
 import { isLetterSpacing, isLineHeight } from "./text-style";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
 import {
@@ -24,6 +31,7 @@ import {
   isShapeGeometry,
   isShapeLabel,
   isStroke,
+  isSwatchLink,
   isTextShadow,
   isTextStyle,
   validateName,
@@ -41,6 +49,7 @@ import type {
   PageNumberRule,
   Sheet,
   Size,
+  Swatch,
   TextStyle,
   TextStyleDef,
 } from "./types";
@@ -136,8 +145,11 @@ export type EditorAction =
   | { readonly type: "page/delete"; readonly id: PageId }
   /** New page order (every page id once); anything else is a no-op. The active page stays active. */
   | { readonly type: "page/reorder"; readonly order: readonly PageId[] }
-  /** Background of a page or a master page. */
-  | { readonly type: "page/setBackground"; readonly id: PageId; readonly color: string }
+  /**
+   * Background of a page or a master page; `swatchId` links it to a swatch (whose color it must be),
+   * omitted or null = not linked.
+   */
+  | { readonly type: "page/setBackground"; readonly id: PageId; readonly color: string; readonly swatchId?: string | null }
   /** Adds a master page (built by the caller) at the end and switches to it. */
   | { readonly type: "master/add"; readonly master: MasterPage }
   /** Copies a master page and its elements right after it and switches to the copy. */
@@ -178,6 +190,15 @@ export type EditorAction =
       readonly styleId: string | null;
       readonly pageId?: PageId;
     }
+  /**
+   * Document swatches (`swatches.ts`), each one undo step; invalid input is a no-op. Uses of a
+   * recolored swatch follow its color; uses of a deleted one move to `replaceWith` or are unlinked.
+   */
+  | { readonly type: "swatch/add"; readonly swatch: Swatch }
+  | { readonly type: "swatch/update"; readonly id: string; readonly name?: string; readonly color?: string }
+  | { readonly type: "swatch/delete"; readonly id: string; readonly replaceWith: string | null }
+  /** Swatch dialog: the whole new list plus the deleted swatches, in one undo step. */
+  | { readonly type: "swatch/applyEdits"; readonly swatches: readonly Swatch[]; readonly deletions: readonly SwatchDeletion[] }
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
   | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
@@ -374,6 +395,7 @@ const TEXT_FLAGS = ["italic", "underline", "strikethrough"] as const;
 // 屬性面板的數字欄位、拖曳結果都直接來自使用者操作：不合法的 patch 一律不接受
 function isValidPatch(patch: ElementPatch): boolean {
   if ("fill" in patch && (typeof patch.fill !== "string" || !isElementColor(patch.fill))) return false;
+  if ("fillSwatchId" in patch && !isSwatchLink(patch.fillSwatchId)) return false;
   if ("stroke" in patch && patch.stroke !== null && !isStroke(patch.stroke)) return false;
   if ("label" in patch && patch.label !== null && !isShapeLabel(patch.label)) return false;
   if ("geometry" in patch && !isShapeGeometry(patch.geometry)) return false;
@@ -408,10 +430,20 @@ function hasValidStyleLinks(document: EditorDocument, value: CanvasElement | Ele
   return !label || isStyleLink(document, label.styleId);
 }
 
+// 只給顏色、沒給連結 = 不連到色票（同 page/setBackground 省略 swatchId）
+function withFillLink(patch: ElementPatch): ElementPatch {
+  return "fill" in patch && !("fillSwatchId" in patch) ? { ...patch, fillSwatchId: null } : patch;
+}
+
 function updateElements(state: EditorState, entries: readonly ElementPatchEntry[], pageId?: PageId): EditorState {
+  const document = state.history.present;
   if (!entries.every((entry) => isValidPatch(entry.patch))) return state;
-  if (!entries.every((entry) => hasValidStyleLinks(state.history.present, entry.patch))) return state;
-  const patches = new Map(entries.map((entry) => [entry.id, entry.patch]));
+  if (!entries.every((entry) => hasValidStyleLinks(document, entry.patch))) return state;
+  const patches = new Map(entries.map((entry) => [entry.id, withFillLink(entry.patch)]));
+  // 色票連結看套用後的物件：只改顏色或只改連結時，兩者也要對得上
+  const sheet = findSheet(document, targetSheetId(state, pageId));
+  const patched = sheet?.elements.filter((element) => patches.has(element.id)) ?? [];
+  if (!patched.every((element) => hasValidSwatchLinks(document, applyPatch(element, patches.get(element.id)!)))) return state;
   // 全部的變更放在同一次 commit：多選移動 = 一筆復原
   return updateSheet(state, targetSheetId(state, pageId), (page) => {
     let changed = false;
@@ -473,6 +505,7 @@ function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/add": (state, action) => {
     if (!hasValidStyleLinks(state.history.present, action.element)) return state;
+    if (!hasValidSwatchLinks(state.history.present, action.element)) return state;
     const sheetId = targetSheetId(state, action.pageId);
     const next = updateSheet(state, sheetId, (page) => ({ ...page, elements: [...page.elements, action.element] }));
     if (next === state) return state;
@@ -575,7 +608,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     const afterIndex = action.after === undefined ? -1 : document.pages.findIndex((p) => p.id === action.after);
     if (action.after !== undefined && afterIndex === -1) return state;
     const masterId = isMasterId(document, active.id) ? active.id : (active as Page).masterId;
-    const page = createPage(nextPageNames(document.pages, 1)[0], active, active.background, masterId);
+    const page = createPage(nextPageNames(document.pages, 1)[0], active, active.background, masterId, active.backgroundSwatchId);
     const pages = [...document.pages];
     pages.splice(afterIndex === -1 ? pages.length : afterIndex + 1, 0, page);
     return { ...commit(state, { ...document, pages }), activePageId: page.id, selectedIds: NO_SELECTION };
@@ -599,6 +632,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
           (page.masterId !== null && !masterIds.has(page.masterId)) ||
           !isPageSize(page) ||
           !isHexColor(page.background) ||
+          !hasValidSwatchLinks(document, page) ||
           validateName(page.name, PAGE_NAME_MAX_LENGTH).data !== page.name,
       )
     ) {
@@ -662,9 +696,13 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   },
 
   "page/setBackground": (state, action) => {
+    const swatchId = action.swatchId ?? null;
     if (!isHexColor(action.color)) return state;
+    if (!hasValidSwatchLinks(state.history.present, { background: action.color, backgroundSwatchId: swatchId })) return state;
     return updateSheet(state, action.id, (sheet) =>
-      sheet.background === action.color ? sheet : { ...sheet, background: action.color },
+      sheet.background === action.color && sheet.backgroundSwatchId === swatchId
+        ? sheet
+        : { ...sheet, background: action.color, backgroundSwatchId: swatchId },
     );
   },
 
@@ -676,6 +714,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       !canSetParent(document.masters, master.id, master.parentId) ||
       !isPageSize(master) ||
       !isHexColor(master.background) ||
+      !hasValidSwatchLinks(document, master) ||
       validateName(master.name, PAGE_NAME_MAX_LENGTH).data !== master.name
     ) {
       return state;
@@ -717,7 +756,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "textStyle/add": (state, action) => {
     const document = state.history.present;
     const textStyles = [...document.textStyles, action.style];
-    if (!isTextStyleSheet(textStyles)) return state;
+    if (!isTextStyleSheet(textStyles) || !hasValidSwatchLinks(document, action.style)) return state;
     const added = { ...document, textStyles };
     if (!action.link) return commit(state, added);
     // 連結的文字和新樣式同一筆復原；頁面不存在就整個不做
@@ -726,7 +765,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   },
 
   "textStyle/update": (state, action) => {
-    if (!isTextStyle(action.style)) return state;
+    if (!isTextStyle(action.style) || !hasValidSwatchLinks(state.history.present, action.style)) return state;
     const restyled = restyleDocument(state.history.present, action.id, pickTextStyle(action.style));
     if (action.name === undefined) return commit(state, restyled);
     const renamed = renameTextStyle(restyled, action.id, action.name);
@@ -746,6 +785,31 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
     if (style === undefined) return state;
     const linked = linkElements(document, targetSheetId(state, action.pageId), action.ids, style);
     return linked ? commit(state, linked) : state;
+  },
+
+  "swatch/add": (state, action) => {
+    const document = state.history.present;
+    const next = applySwatchEdits(document, [...document.swatches, action.swatch], []);
+    return next ? commit(state, next) : state;
+  },
+
+  "swatch/update": (state, action) => {
+    const change = {
+      ...(action.name !== undefined && { name: action.name.trim() }),
+      ...(action.color !== undefined && { color: action.color }),
+    };
+    const next = updateSwatch(state.history.present, action.id, change);
+    return next ? commit(state, next) : state;
+  },
+
+  "swatch/delete": (state, action) => {
+    const next = deleteSwatch(state.history.present, action.id, action.replaceWith);
+    return next ? commit(state, next) : state;
+  },
+
+  "swatch/applyEdits": (state, action) => {
+    const next = applySwatchEdits(state.history.present, action.swatches, action.deletions);
+    return next ? commit(state, next) : state;
   },
 
   "document/rename": (state, action) => {
@@ -789,8 +853,8 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   // 依 from 排序後存；內容相同時回傳同一個 state（對話框沒改動也按「確定」不會多一筆復原）
   "document/setPageNumbering": (state, action) => {
-    if (!isPageNumberRules(action.rules)) return state;
     const document = state.history.present;
+    if (!isPageNumberRules(action.rules) || !hasValidSwatchLinks(document, action.rules)) return state;
     const rules = sortPageNumberRules(action.rules);
     if (JSON.stringify(rules) === JSON.stringify(document.pageNumberRules)) return state;
     return commit(state, { ...document, pageNumberRules: rules });

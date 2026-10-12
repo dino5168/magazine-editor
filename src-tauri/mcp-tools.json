@@ -107,6 +107,7 @@
             "view.snap",
             "settings.pageSetup",
             "settings.pageNumbers",
+            "settings.swatches",
             "settings.grid",
             "settings.mcp",
             "settings.themeLight",
@@ -140,7 +141,7 @@
   {
     "name": "add_text",
     "title": "新增文字",
-    "description": "在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。 一次呼叫 = 一筆復原紀錄。",
+    "description": "在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。 一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -220,9 +221,34 @@
           ]
         },
         "textColor": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"
         },
         "shadow": {
           "anyOf": [
@@ -230,9 +256,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "offsetX": {
                   "type": "number",
@@ -285,7 +336,7 @@
   {
     "name": "add_shape",
     "title": "新增圖形",
-    "description": "在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），它的樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。 style 讓圖形內文字連到文字樣式（需要同時給 text）。省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。",
+    "description": "在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），它的樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。 style 讓圖形內文字連到文字樣式（需要同時給 text）。顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -331,9 +382,34 @@
           "description": "旋轉角度（度，順時針，繞外框左上角）"
         },
         "fill": {
-          "description": "填色，#rrggbb 或 #rrggbbaa（#00000000 = 透明）",
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$"
+          "description": "填色：#rrggbb / #rrggbbaa（#00000000 = 透明），或 { swatch, opacity? } 連到文件色票",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ]
         },
         "stroke": {
           "anyOf": [
@@ -341,9 +417,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "width": {
                   "type": "number",
@@ -431,9 +532,34 @@
           ]
         },
         "textColor": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"
         },
         "shadow": {
           "anyOf": [
@@ -441,9 +567,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "offsetX": {
                   "type": "number",
@@ -498,7 +649,7 @@
   {
     "name": "update_element",
     "title": "修改物件",
-    "description": "修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。",
+    "description": "修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -539,9 +690,34 @@
           "maxLength": 10000
         },
         "fill": {
-          "description": "圖形填色",
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$"
+          "description": "圖形填色：hex，或 { swatch, opacity? } 連到文件色票",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ]
         },
         "stroke": {
           "anyOf": [
@@ -549,9 +725,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "width": {
                   "type": "number",
@@ -666,9 +867,34 @@
           ]
         },
         "textColor": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"
         },
         "shadow": {
           "anyOf": [
@@ -676,9 +902,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "offsetX": {
                   "type": "number",
@@ -825,9 +1076,28 @@
           ]
         },
         "background": {
-          "description": "主頁背景，#rrggbb；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景",
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}$"
+          "description": "主頁背景：#rrggbb 或 { swatch } 連到文件色票；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "#rrggbb"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -940,9 +1210,34 @@
           ]
         },
         "textColor": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"
         },
         "shadow": {
           "anyOf": [
@@ -950,9 +1245,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "offsetX": {
                   "type": "number",
@@ -1056,9 +1376,34 @@
           ]
         },
         "textColor": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-          "description": "文字顏色，#rrggbb 或 #rrggbbaa"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+              "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                },
+                "opacity": {
+                  "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"
         },
         "shadow": {
           "anyOf": [
@@ -1066,9 +1411,34 @@
               "type": "object",
               "properties": {
                 "color": {
-                  "type": "string",
-                  "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
-                  "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$",
+                      "description": "#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "swatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "色票的名稱或 id（由 list_swatches 取得）"
+                        },
+                        "opacity": {
+                          "description": "不透明度 0–1，預設 1（色票本身不透明）",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "swatch"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）"
                 },
                 "offsetX": {
                   "type": "number",
@@ -1172,6 +1542,116 @@
       "required": [
         "ids",
         "style"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "list_swatches",
+    "title": "色票清單",
+    "description": "列出文件色票（具名、不透明的顏色）：id、名稱、顏色 #rrggbb、連到它的顏色數（物件的文字 / 填色 / 邊框 / 陰影、頁面與主頁背景、文字樣式、頁碼都算）。顏色參數給 { swatch: 名稱或 id } 就連到色票；改色票（update_swatch）時，連到它的地方一起變（各自的不透明度保留）。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "add_swatch",
+    "title": "新增色票",
+    "description": "新增一個文件色票，回傳 id。名稱必填（最多 50 字、不可和其他色票同名）；顏色 #rrggbb（不透明，透明度在使用的地方用 opacity 設定）。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "色票名稱，例如「品牌紅」"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "#rrggbb（不透明）"
+        }
+      },
+      "required": [
+        "name",
+        "color"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "update_swatch",
+    "title": "修改色票",
+    "description": "修改色票的名稱或顏色，只改有給的欄位。改顏色時，所有連到它的地方（所有頁面與主頁、文字樣式、頁碼）一起變，各自的不透明度保留。回傳是否有變更與連到它的顏色數。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "swatch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "色票的名稱或 id（由 list_swatches 取得）"
+        },
+        "name": {
+          "description": "新名稱",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "description": "#rrggbb（不透明）"
+        }
+      },
+      "required": [
+        "swatch"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "delete_swatch",
+    "title": "刪除色票",
+    "description": "刪除色票。連到它的地方：給 replaceWith（另一個色票的名稱或 id）時改成那個色票（各自的不透明度保留）；省略或 null 時保留原本的顏色、只取消連結。回傳受影響的顏色數。一次呼叫 = 一筆復原紀錄。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "swatch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "色票的名稱或 id（由 list_swatches 取得）"
+        },
+        "replaceWith": {
+          "description": "改連到這個色票；省略或 null = 保留顏色、取消連結",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "色票的名稱或 id（由 list_swatches 取得）"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "swatch"
       ],
       "additionalProperties": false
     },
@@ -1291,7 +1771,7 @@
   {
     "name": "set_page_background",
     "title": "頁面背景色",
-    "description": "設定頁面或主頁的背景色（#rrggbb，不能透明）。主頁的背景不會套到使用它的頁面上（每頁有自己的背景）。一次呼叫 = 一筆復原紀錄。",
+    "description": "設定頁面或主頁的背景色：#rrggbb（不能透明），或 { swatch: 色票名稱或 id } 連到文件色票（改色票時跟著變）。主頁的背景不會套到使用它的頁面上（每頁有自己的背景）。一次呼叫 = 一筆復原紀錄。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1301,9 +1781,28 @@
           "description": "頁面或主頁的 id（由 list_pages 取得）"
         },
         "color": {
-          "type": "string",
-          "pattern": "^#[0-9a-fA-F]{6}$",
-          "description": "#rrggbb"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "#rrggbb"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "swatch": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "色票的名稱或 id（由 list_swatches 取得）"
+                }
+              },
+              "required": [
+                "swatch"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "#rrggbb（不連色票），或 { swatch: 色票名稱或 id }（連到文件色票；背景不能透明）"
         }
       },
       "required": [

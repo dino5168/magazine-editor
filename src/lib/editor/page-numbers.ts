@@ -13,7 +13,7 @@ import type {
 } from "./types";
 import { DEFAULT_LINE_HEIGHT, DEFAULT_TEXT_SPACING, PLAIN_TEXT_DECORATION } from "./text-style";
 import { mmToPt } from "./units";
-import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, isStroke } from "./validation";
+import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, isStroke, isSwatchLink } from "./validation";
 
 /**
  * 頁碼管理的純邏輯。頁碼不是文件裡的物件：畫布與匯出時，由規則算出一個「虛擬圖形」
@@ -88,6 +88,7 @@ export function createPageNumberRule(id: string, from: number, to: number): Page
       fontStyle: "normal",
       ...PLAIN_TEXT_DECORATION,
       fill: DEFAULT_TEXT_FILL,
+      fillSwatchId: null,
       stroke: null,
     },
   };
@@ -245,6 +246,7 @@ export function pageNumberShape(
     height,
     geometry: { kind: "rect", cornerRadius: 0 },
     fill: TRANSPARENT,
+    fillSwatchId: null,
     stroke,
     label: { ...textStyle, ...DEFAULT_TEXT_SPACING, text, align, verticalAlign: "middle", styleId: null },
   };
@@ -302,6 +304,7 @@ function isPageNumberStyle(value: unknown): value is PageNumberStyle {
     hasValidTextDecoration(style) &&
     typeof style.fill === "string" &&
     isElementColor(style.fill) &&
+    isSwatchLink(style.fillSwatchId) &&
     (style.stroke === null || isStroke(style.stroke))
   );
 }

@@ -19,6 +19,7 @@ import {
   PAGE_NAME_MAX_LENGTH,
   STROKE_WIDTH_MAX,
   STROKE_WIDTH_MIN,
+  SWATCH_NAME_MAX_LENGTH,
   TEXT_SHADOW_OFFSET_MAX,
 } from "@/lib/editor/validation";
 import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
@@ -49,6 +50,26 @@ const elementColor = z
   .regex(/^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/, "顏色必須是 #rrggbb 或 #rrggbbaa（aa 是不透明度）")
   .describe("#rrggbb 或 #rrggbbaa（aa = 不透明度，ff 不透明）");
 const pageColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "頁面背景必須是 #rrggbb（不能透明）").describe("#rrggbb");
+const swatchRef = z.string().min(1).describe("色票的名稱或 id（由 list_swatches 取得）");
+// 顏色參數：直接給 hex（不連色票），或連到文件色票（改色票時跟著變）
+const colorInput = z
+  .union([
+    elementColor,
+    z.strictObject({
+      swatch: swatchRef,
+      opacity: z.number().min(0).max(1).optional().describe("不透明度 0–1，預設 1（色票本身不透明）"),
+    }),
+  ])
+  .describe("#rrggbb / #rrggbbaa（不連色票），或 { swatch: 色票名稱或 id, opacity?: 0–1 }（連到文件色票）");
+const pageColorInput = z
+  .union([pageColor, z.strictObject({ swatch: swatchRef })])
+  .describe("#rrggbb（不連色票），或 { swatch: 色票名稱或 id }（連到文件色票；背景不能透明）");
+const swatchHex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "色票顏色必須是 #rrggbb（不透明）").describe("#rrggbb（不透明）");
+const swatchName = z.string().min(1).max(SWATCH_NAME_MAX_LENGTH * 2);
+
+/** A color argument: hex, or a link to a document swatch. */
+export type ColorInput = z.output<typeof colorInput>;
+export type PageColorInput = z.output<typeof pageColorInput>;
 const coordinate = z.number().min(-COORDINATE_LIMIT_PT).max(COORDINATE_LIMIT_PT);
 const length = z.number().min(MIN_ELEMENT_SIZE_PT).max(COORDINATE_LIMIT_PT);
 const rotation = z.number().min(-360).max(360).describe("旋轉角度（度，順時針，繞外框左上角）");
@@ -66,10 +87,10 @@ const textStyleShape = {
   underline: z.boolean(),
   strikethrough: z.boolean(),
   align: z.enum(TEXT_ALIGNS),
-  textColor: elementColor.describe("文字顏色，#rrggbb 或 #rrggbbaa"),
+  textColor: colorInput.describe("文字顏色：#rrggbb / #rrggbbaa，或 { swatch, opacity? } 連到文件色票"),
   shadow: z
     .strictObject({
-      color: elementColor,
+      color: colorInput,
       offsetX: z.number().min(-TEXT_SHADOW_OFFSET_MAX).max(TEXT_SHADOW_OFFSET_MAX),
       offsetY: z.number().min(-TEXT_SHADOW_OFFSET_MAX).max(TEXT_SHADOW_OFFSET_MAX),
     })
@@ -93,7 +114,7 @@ export type TextStyleInput = z.output<typeof textStyleInput>;
 
 const stroke = z
   .strictObject({
-    color: elementColor,
+    color: colorInput,
     width: z.number().min(STROKE_WIDTH_MIN).max(STROKE_WIDTH_MAX).describe("線寬（pt），畫在外框線中心"),
     dash: z.enum(["solid", "dashed", "dotted"]),
   })
@@ -111,6 +132,9 @@ const STYLE_LINK_HELP =
 
 const STYLE_HELP =
   "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
+
+const COLOR_HELP =
+  "顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。";
 
 /** Every tool, keyed by its MCP name; `satisfies` keeps the literal schema types. */
 export const TOOL_DEFINITIONS = {
@@ -159,7 +183,7 @@ export const TOOL_DEFINITIONS = {
   },
   add_text: {
     title: "新增文字",
-    description: `在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。${STYLE_LINK_HELP}${STYLE_HELP} 一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個文字物件（放在最上層），回傳新物件的 id。x / y 是文字框左上角（pt），width 是換行寬度（預設 280），高度跟著文字。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。沒有 style 時的預設：黑體 11 pt、靠左、#171717，不連到樣式。${STYLE_LINK_HELP}${STYLE_HELP}${COLOR_HELP} 一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
       style: styleRef.optional(),
@@ -174,7 +198,7 @@ export const TOOL_DEFINITIONS = {
   },
   add_shape: {
     title: "新增圖形",
-    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
       shape: z.enum(SHAPE_KINDS),
@@ -183,7 +207,7 @@ export const TOOL_DEFINITIONS = {
       width: length,
       height: length,
       rotation: rotation.optional(),
-      fill: elementColor.optional().describe("填色，#rrggbb 或 #rrggbbaa（#00000000 = 透明）"),
+      fill: colorInput.optional().describe("填色：#rrggbb / #rrggbbaa（#00000000 = 透明），或 { swatch, opacity? } 連到文件色票"),
       stroke: stroke.optional(),
       text: z.string().min(1).max(TEXT_MAX_LENGTH).optional().describe("圖形內的文字，\\n 換行"),
       style: styleRef.optional(),
@@ -194,7 +218,7 @@ export const TOOL_DEFINITIONS = {
   },
   update_element: {
     title: "修改物件",
-    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       id: elementId,
       x: coordinate.optional(),
@@ -203,7 +227,7 @@ export const TOOL_DEFINITIONS = {
       height: length.optional(),
       rotation: rotation.optional(),
       text: z.string().max(TEXT_MAX_LENGTH).optional().describe("文字內容；圖形的空字串 = 移除圖形內文字"),
-      fill: elementColor.optional().describe("圖形填色"),
+      fill: colorInput.optional().describe("圖形填色：hex，或 { swatch, opacity? } 連到文件色票"),
       stroke: stroke.optional(),
       cornerRadius: z
         .union([cornerRadiusValue, z.tuple([cornerRadiusValue, cornerRadiusValue, cornerRadiusValue, cornerRadiusValue])])
@@ -242,7 +266,9 @@ export const TOOL_DEFINITIONS = {
         .nullable()
         .optional()
         .describe("以哪個主頁為基礎（先畫那個主頁的內容）；null = 不以任何主頁為基礎"),
-      background: pageColor.optional().describe("主頁背景，#rrggbb；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景"),
+      background: pageColorInput
+        .optional()
+        .describe("主頁背景：#rrggbb 或 { swatch } 連到文件色票；只在編輯主頁時看到，也是之後套用它的新頁面的預設背景"),
     }),
     readOnly: false,
   },
@@ -291,6 +317,36 @@ export const TOOL_DEFINITIONS = {
     }),
     readOnly: false,
   },
+  list_swatches: {
+    title: "色票清單",
+    description:
+      "列出文件色票（具名、不透明的顏色）：id、名稱、顏色 #rrggbb、連到它的顏色數（物件的文字 / 填色 / 邊框 / 陰影、頁面與主頁背景、文字樣式、頁碼都算）。顏色參數給 { swatch: 名稱或 id } 就連到色票；改色票（update_swatch）時，連到它的地方一起變（各自的不透明度保留）。",
+    input: z.strictObject({}),
+    readOnly: true,
+  },
+  add_swatch: {
+    title: "新增色票",
+    description: `新增一個文件色票，回傳 id。名稱必填（最多 ${SWATCH_NAME_MAX_LENGTH} 字、不可和其他色票同名）；顏色 #rrggbb（不透明，透明度在使用的地方用 opacity 設定）。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({ name: swatchName.describe("色票名稱，例如「品牌紅」"), color: swatchHex }),
+    readOnly: false,
+  },
+  update_swatch: {
+    title: "修改色票",
+    description:
+      "修改色票的名稱或顏色，只改有給的欄位。改顏色時，所有連到它的地方（所有頁面與主頁、文字樣式、頁碼）一起變，各自的不透明度保留。回傳是否有變更與連到它的顏色數。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({ swatch: swatchRef, name: swatchName.optional().describe("新名稱"), color: swatchHex.optional() }),
+    readOnly: false,
+  },
+  delete_swatch: {
+    title: "刪除色票",
+    description:
+      "刪除色票。連到它的地方：給 replaceWith（另一個色票的名稱或 id）時改成那個色票（各自的不透明度保留）；省略或 null 時保留原本的顏色、只取消連結。回傳受影響的顏色數。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({
+      swatch: swatchRef,
+      replaceWith: swatchRef.nullable().optional().describe("改連到這個色票；省略或 null = 保留顏色、取消連結"),
+    }),
+    readOnly: false,
+  },
   list_library_items: {
     title: "素材清單",
     description:
@@ -324,8 +380,9 @@ export const TOOL_DEFINITIONS = {
   },
   set_page_background: {
     title: "頁面背景色",
-    description: "設定頁面或主頁的背景色（#rrggbb，不能透明）。主頁的背景不會套到使用它的頁面上（每頁有自己的背景）。一次呼叫 = 一筆復原紀錄。",
-    input: z.strictObject({ pageId, color: pageColor }),
+    description:
+      "設定頁面或主頁的背景色：#rrggbb（不能透明），或 { swatch: 色票名稱或 id } 連到文件色票（改色票時跟著變）。主頁的背景不會套到使用它的頁面上（每頁有自己的背景）。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({ pageId, color: pageColorInput }),
     readOnly: false,
   },
   rename_document: {

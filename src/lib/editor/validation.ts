@@ -1,4 +1,4 @@
-import type { CornerRadius, Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow, TextStyle } from "./types";
+import type { CornerRadius, Margins, ShapeGeometry, ShapeLabel, Size, Stroke, Swatch, TextShadow, TextStyle } from "./types";
 import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
 
@@ -35,6 +35,7 @@ export const PAGE_SIZE_MAX_PT = mmToPt(2000);
 export const MARGIN_MAX_PT = mmToPt(2000);
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const SWATCH_COLOR_PATTERN = /^#[0-9a-f]{6}$/;
 const ELEMENT_COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 
 /** Minimal file shape so validation is testable without a DOM `File`. */
@@ -228,7 +229,8 @@ export function isTextStyle(value: unknown): value is TextStyle {
     hasValidTextSpacing(style) &&
     isTextAlign(style.align) &&
     typeof style.fill === "string" &&
-    isElementColor(style.fill)
+    isElementColor(style.fill) &&
+    isSwatchLink(style.fillSwatchId)
   );
 }
 
@@ -244,10 +246,11 @@ export function isTextStyle(value: unknown): value is TextStyle {
  */
 export function isStroke(value: unknown): value is Stroke {
   if (typeof value !== "object" || value === null) return false;
-  const { color, width, dash } = value as Record<string, unknown>;
+  const { color, swatchId, width, dash } = value as Record<string, unknown>;
   return (
     typeof color === "string" &&
     isElementColor(color) &&
+    isSwatchLink(swatchId) &&
     typeof width === "number" &&
     width > 0 &&
     width <= STROKE_WIDTH_MAX &&
@@ -270,9 +273,9 @@ export const TEXT_SHADOW_OFFSET_MAX = 50;
  */
 export function isTextShadow(value: unknown): value is TextShadow {
   if (typeof value !== "object" || value === null) return false;
-  const { color, offsetX, offsetY } = value as Record<string, unknown>;
+  const { color, swatchId, offsetX, offsetY } = value as Record<string, unknown>;
   const offset = (n: unknown) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= TEXT_SHADOW_OFFSET_MAX;
-  return typeof color === "string" && isElementColor(color) && offset(offsetX) && offset(offsetY);
+  return typeof color === "string" && isElementColor(color) && isSwatchLink(swatchId) && offset(offsetX) && offset(offsetY);
 }
 
 /**
@@ -292,6 +295,79 @@ export function hasValidTextDecoration(style: Record<string, unknown>): boolean 
     typeof style.strikethrough === "boolean" &&
     (style.shadow === null || isTextShadow(style.shadow))
   );
+}
+
+/** Longest swatch name (code points, after trimming); same as `SWATCH_NAME_MAX_LENGTH` in Rust `format.rs`. */
+export const SWATCH_NAME_MAX_LENGTH = PAGE_NAME_MAX_LENGTH;
+
+/** Longest id (UTF-16 units; ids are ASCII), same as Rust `require_id`. */
+const ID_MAX_LENGTH = 64;
+
+/**
+ * Checks the shape of a swatch link field (`fillSwatchId`, `swatchId`…): null or a possible id.
+ * Whether the swatch exists is checked against the document (Rust `require_swatch`).
+ *
+ * Args:
+ *   value: Candidate link.
+ *
+ * Returns:
+ *   True when it can be stored.
+ */
+export function isSwatchLink(value: unknown): value is string | null {
+  return value === null || (typeof value === "string" && value.length > 0 && value.length <= ID_MAX_LENGTH);
+}
+
+/**
+ * Whether a string is a swatch color: `#rrggbb` in lowercase (swatches are opaque; uses carry
+ * their own alpha). Same rule as Rust `validate_swatches`.
+ *
+ * Args:
+ *   value: Candidate color.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isSwatchColor(value: string): boolean {
+  return SWATCH_COLOR_PATTERN.test(value);
+}
+
+/**
+ * Checks one swatch: id, trimmed non-empty name of at most SWATCH_NAME_MAX_LENGTH characters,
+ * lowercase `#rrggbb` color.
+ *
+ * Args:
+ *   value: Candidate swatch.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isSwatch(value: unknown): value is Swatch {
+  if (typeof value !== "object" || value === null) return false;
+  const { id, name, color } = value as Record<string, unknown>;
+  return (
+    isSwatchLink(id) &&
+    id !== null &&
+    typeof name === "string" &&
+    validateName(name, SWATCH_NAME_MAX_LENGTH).data === name &&
+    typeof color === "string" &&
+    isSwatchColor(color)
+  );
+}
+
+/**
+ * Checks a whole swatch list: every entry valid, ids and names unique (same rules as Rust
+ * `validate_swatches`).
+ *
+ * Args:
+ *   value: Candidate list.
+ *
+ * Returns:
+ *   True when it can be stored as `EditorDocument.swatches`.
+ */
+export function isSwatchList(value: unknown): value is readonly Swatch[] {
+  if (!Array.isArray(value) || !value.every(isSwatch)) return false;
+  const swatches = value as readonly Swatch[];
+  return new Set(swatches.map((s) => s.id)).size === swatches.length && new Set(swatches.map((s) => s.name)).size === swatches.length;
 }
 
 /**

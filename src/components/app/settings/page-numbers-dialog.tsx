@@ -25,6 +25,7 @@ import {
 import type { PageNumberFace, PageNumberPosition, PageNumberRule, PageNumberStyle } from "@/lib/editor/types";
 import { clamp } from "@/lib/editor/validation";
 import { usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
+import { DocumentSwatchesProvider } from "@/components/editor/document-swatches";
 import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "./settings-dialog";
 
 /**
@@ -41,7 +42,9 @@ import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "
 export function PageNumbersDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <SettingsDialog open={open} onOpenChange={onOpenChange} className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
-      <PageNumbersForm onDone={() => onOpenChange(false)} />
+      <DocumentSwatchesProvider manage={false}>
+        <PageNumbersForm onDone={() => onOpenChange(false)} />
+      </DocumentSwatchesProvider>
     </SettingsDialog>
   );
 }

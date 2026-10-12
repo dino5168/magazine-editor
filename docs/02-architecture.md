@@ -75,6 +75,7 @@ flowchart TB
 | `src/lib/editor/content-align.ts` | 約 100 | 屬性面板的「對齊內容區」:填滿內容區的寬 / 高、對齊內容區的邊或中線(只算出要改的位置與大小,一次寫入) | 之後再看 |
 | `src/lib/editor/corner-radius.ts` | 約 120 | 矩形的圓角:一個數字或四個角、四個一樣時存成一個數字、每個角限制在短邊的一半(屬性面板與 MCP 共用) | 之後再看 |
 | `src/lib/editor/style-sheet.ts`、`src/components/editor/panels/styles-panel.tsx`、`text-style-link.tsx`、`text-style-dialog.tsx` | 約 900 | 文字樣式(樣式表):文字連到樣式、覆寫怎麼判斷(和樣式不同的欄位)、改樣式時哪些文字跟著變;「樣式」面板、屬性面板的樣式區塊、編輯對話框。文字仍存完整的值,所以畫布與匯出不用查樣式表 | 之後再看 |
+| `src/lib/editor/swatches.ts`、`swatch-draft.ts`、`src/components/editor/document-swatches.tsx`、`src/components/app/settings/swatches-dialog.tsx` | 約 900 | 文件色票:具名的不透明顏色,文字、填色、邊框、陰影、背景、頁碼、文字樣式可以連到它;改色票時所有連結處一起變(保留各自的透明度)。`mapColorSlots` 是唯一走過所有顏色欄位的函式。和文字樣式同一個模式:仍存完整的顏色,畫布與匯出不用查色票表 | 之後再看 |
 | `src/lib/export/` | 約 150 | 匯出前用 Konva 量測每段文字的分行(與每行寬度、頁碼的寬度),並在匯出的副本上把主頁內容展開到每一頁、換掉變數、加上頁碼 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |
 | `src/components/ui/` | 約 1,900 | shadcn 產生的通用元件,當作外部套件 | **跳過** |

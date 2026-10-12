@@ -4,12 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-12(素材支援 SVG,全部步驟完成)
+最後更新:2026-10-12(文件色票,全部步驟完成)
 
 ---
 
 ## 目前階段
 
+- **文件色票(2026-10-12,八個步驟全部完成,未 commit;`magazine-mcp.exe` 待重編並在 Claude Code 實測色票工具;桌面版人工驗證見「待辦 → 使用者」;**v12 存檔後舊版 App 無法開啟**)**:步驟 1 型別與檔案格式 v12、2 純邏輯 `swatches.ts`、3 reducer、4 調色板「文件色票」區、5「設定 → 文件 → 色票...」對話框、6 新文件預設色票、7 MCP 色票工具、8 文件(`CLAUDE.md` 改寫「調色板」並新增「文件色票」、`docs/01`/`02`、`03-系統設計優先順序建議.md` 進度紀錄、`Color-System.html` 狀態)。**要 commit 的範圍**:程式碼與測試(含新檔 `swatches.ts`、`swatch-draft.ts`、`document-swatches.tsx`、`swatches-dialog.tsx` 與三個測試檔)、`src-tauri/src/project/format.rs`、`export/`(`pdf.rs`、`render.rs`、`epub/tests.rs` 補欄位)、`tests/fixtures/`、`src-tauri/mcp-tools.json`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/00-需求分析/03-系統設計優先順序建議.md`、`docs/Plans-Color-System/`、計畫 `17-文件色票-實作.md`;根目錄 `README.md` 的修改與 `tsconfig*.tsbuildinfo`、`vite.config.js` / `.d.ts`(誤用 `tsc -b` 的產物)不在範圍內。原本的說明:規劃 `docs/Plans-Color-System/01-色票系統規劃.md` → 評估 `Color-System.html`(PANTONE / ICC / Token 引擎這一輪不做,沿用文字樣式的「存實際值 + 連結 id」模式,匯出端不用改)→ 計畫 `docs/01-Plans-2026-10/17-文件色票-實作.md`(8 步)。使用者確認:只做文件色票(sRGB);Tailwind 保留為原色庫;色票不透明、透明度在使用處;自訂 hex 只在「設定 → 文件 → 色票...」對話框;同色不同連結算覆寫;刪除使用中的色票先問替換;新文件帶「文字 / 黑 / 白」且內建文字樣式連到「文字」;第一版不做即時預覽。取代 2026-09-30「只能從 Tailwind 選」的決定(步驟 8 改 `CLAUDE.md`)。
 - **素材支援 SVG(2026-10-12,五個步驟全部完成,commit `a3c19a9`(已推送);桌面版人工驗證待做:匯入、存檔重開、匯出 PDF / EPUB 外觀)**:任務檔 `docs/01-Plans-2026-10/16-素材可以支援 SVG.md`(不 commit),計畫 `docs/01-Plans-2026-10/16-素材可以支援 SVG-實作.md`(要 commit)。現況:Rust 匯入、縮圖、PDF(Typst)本來就支援 SVG(內建相片就是 SVG),擋住的是前端白名單(`ALLOWED_IMAGE_TYPES`、`KIND_OF_EXTENSION`)與 EPUB 的 `image_type`。使用者確認:只有 viewBox 時用 viewBox 的寬高;原檔照存、Rust 改用 XML 解析確認根元素是 `<svg>`;SVG 內文字字型列為已知限制;素材卡片顯示「SVG」標籤。共五個步驟(1 實測 Typst / EPUB、2 Rust、3 前端、4 畫面驗證、5 文件)。步驟 1 完成(實測:Typst 讀不了的 SVG(壞 XML、寬高 0、連到絕對路徑或專案外的圖片)會讓整份 PDF 失敗 → 步驟 2 先用 Typst 的 `SvgImage::with_fonts_images` 逐張檢查、失敗的略過;SVG 文字用沒內嵌的字型(如 Arial)在 PDF 消失 → 模板畫圖片時給預設黑體當退回字型;`<img>`(畫布 / EPUB)不載入 SVG 連結的外部圖片、不執行 script)。步驟 2 完成(Rust:`assets.rs` 的 `is_svg` 用 roxmltree 確認根元素是 SVG namespace 的 `<svg>`(roxmltree 移到 dependencies);EPUB `image_type` 改用 `detect_extension`、加 `image/svg+xml`;PDF `drop_undrawable_svgs` 用 Typst 的 `SvgImage::with_fonts_images` 先檢查、讀不了的略過(新增 `comemo` 依賴,typst 用的同一版);模板給 SVG 文字退回字型 `data.svgFonts`;匯出略過圖片的提示文字改寫;新增 5 個測試,cargo 160)。步驟 3 完成(前端:`ALLOWED_IMAGE_TYPES` 加 `image/svg+xml`、`KIND_OF_EXTENSION` 加 `svg`;`image.ts` 的 `svgViewBoxSize` / `svgIntrinsicSize`:沒有絕對寬高時用 viewBox 的大小,匯入 SVG 時使用;素材卡片 `kindBadge` 顯示「SVG」;vitest 604)。步驟 4 完成(瀏覽器模式無頭 Edge 12 項:拖放匯入只收真的 SVG、SVG 標籤、viewBox-only 放成 viewBox 大小、放大後仍是向量、工具列「圖片」與面板「匯入...」接受 SVG、拖到畫布)。步驟 5 完成(`CLAUDE.md`、`docs/01`)。**要 commit 的範圍**:`src-tauri/Cargo.toml` / `Cargo.lock`、`assets.rs`、`export/`(`pdf.rs`、`world.rs`、`mod.rs`、`template.typ`、`epub/mod.rs`、`epub/tests.rs`)、前端 `validation.ts`、`library-files.ts`、`image.ts`、`use-library-import.ts`、`library-card.tsx`、`use-project-commands.ts`、`project-types.ts` 與測試(含新檔 `image.test.ts`)、`CLAUDE.md`、`docs/01`/`progress.md`、計畫 `16-素材可以支援 SVG-實作.md`;任務檔不 commit。
 
 - **屬性 → 樣式 → 圓角四角分開(2026-10-12,七個步驟全部完成,commit `2ef73a9`(已推送);桌面版人工驗證待做:四角輸入、存檔重開 v11、匯出外觀;**v11 存檔後舊版 App 無法開啟**)**:任務檔 `docs/01-Plans-2026-10/15-屬性-樣式-圓角.md`(不 commit),計畫 `docs/01-Plans-2026-10/15-屬性-樣式-圓角-實作.md`(要 commit)。使用者確認:一個「圓角」欄位 + 切換鈕展開成照角位置排的 2 × 2 四欄位(四角不同時收起顯示「混合」);`cornerRadius` 四角一樣存數字、不同才存 `[左上, 右上, 右下, 左下]`(檔案格式 v11);MCP 一起做。畫布 Konva 本來就收陣列;PDF 有邊框 `rect_path` 改四半徑、無邊框 Typst radius 字典;EPUB CSS 四值 / SVG path。共七個步驟。步驟 1 完成(Konva 實測:順序 [左上, 右上, 右下, 左下]、每角各自夾到短邊一半(不是 CSS 的等比例)、路徑起點與單一半徑相同);步驟 2 完成(`lib/editor/corner-radius.ts`:四值展開、正規化、每角限制、改一角、驗證;`types.ts` 的 `CornerRadii` / `CornerRadius`;7 個測試,vitest 600);步驟 3 完成(TS `cornerRadius: CornerRadius`、`isCornerRadius` 移到 `validation.ts`;Rust `CornerRadius` untagged enum、`SCHEMA_VERSION` 11、`RenderRect.corner_radii` 每角夾到短邊一半;fixture 封面矩形 `[12, 12, 0, 4]`;畫布已畫四角,面板暫時顯示左上、PDF / EPUB 暫用最大角;cargo 153、vitest 600);步驟 4 完成(屬性面板 `CornerRadiusFields`:一個欄位 + `Scan` 切換鈕、2 × 2 照角的位置、四角不同時收起顯示「混合」;`NumberField` 加 `mixed`;無頭 Edge 11 項);步驟 5 完成(PDF:`render.rs` 共用的 `rounded_rect_path`(四半徑、起點同 Konva)、有邊框用它、無邊框 Typst `radius` 字典;疊圖 6 個矩形 0 個明顯不同像素;cargo 154);步驟 6 完成(EPUB:無邊框 CSS `border-radius` 四值、有邊框且四角不同用 SVG `<path>`(和 PDF 同一條 `rounded_rect_path`);疊圖 6 個矩形 0 個明顯不同像素;cargo 155);步驟 7 完成(MCP `update_element` 的 `cornerRadius` 收四個數字並實測;`CLAUDE.md`、`docs/01`、`docs/02`)。**要 commit 的範圍**:程式碼與測試(含 `template.typ`)、`tests/fixtures/sample.magproj`、`src-tauri/mcp-tools.json`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `15-屬性-樣式-圓角-實作.md`;任務檔不 commit。之後另排:畫布上拖曳圓角控制點、常用組合按鈕。
@@ -294,7 +295,8 @@
 | PDF 與 EPUB **共用 `RenderModel`**,格式專屬的細節不進模型 | 座標、旋轉、分行、字型對應、圖片略過只定義一次;媒體型別之類的打包細節留在各自的產生器 |
 | 工具面板:9 個工具**各自是獨立面板**,同側**上下堆疊**,三欄之間是**可拖曳的分隔條**(不是縮放滑桿),**自行實作不加套件** | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-tool-bar.md` |
 | 工具面板版面記在 **`localStorage`**,不進專案檔、不進 SQLite | 是 App 偏好不是文件內容;SQLite 的 `settings` 資料表還沒做,等偏好設定實作時再搬。計畫中的建議值,使用者未提出異議(2026-09-30) |
-| 顏色**只能從 Tailwind v4 色票選**(經典 22 色系 + 黑白),不保留自訂顏色;頁面背景也用調色板 | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-color-picker.md` |
+| ~~顏色**只能從 Tailwind v4 色票選**(經典 22 色系 + 黑白),不保留自訂顏色~~;頁面背景也用調色板 | 使用者確認(2026-09-30),見 `docs/01-Plans/imp-color-picker.md`。**「只能從 Tailwind 選」已於 2026-10-12 被文件色票取代**(下一列) |
+| **文件色票**:文件裡的具名 sRGB 顏色(不透明,透明度存在使用處),自訂 hex 只在「設定 → 文件 → 色票...」輸入;各顏色欄位存實際值 + 連結 id,改色票時連結處一起變;Tailwind 保留為原色庫(選了 = 不連);文字同色但連結不同算覆寫;刪除使用中的色票先問替換;新文件帶「文字 / 黑 / 白」、內建文字樣式連到「文字」,舊檔沒有色票;不做即時預覽;PANTONE / CMYK / ICC 不做(檔案格式 v12) | 使用者確認(2026-10-12),見 `docs/Plans-Color-System/Color-System.html`、`docs/01-Plans-2026-10/17-文件色票-實作.md` |
 | 透明度存成顏色字串 **`#rrggbbaa`**(不另加 `opacity` 欄位),頁面背景不可透明;`SCHEMA_VERSION` 升為 2 | 不用改 `types.ts`,Konva / Typst 直接支援。使用者確認(2026-09-30) |
 | EPUB 輸出前把 8 位 hex 轉成 CSS `rgba()` / SVG `fill-opacity` | SVG 1.1 不允許 8 位 hex,較舊的閱讀引擎也不支援 |
 | rect / ellipse / polygon / star 合併成 **`shape` + `geometry`**,所有物件以外框左上角定位;draw.io 式**屬性面板**取代上方選取工具列;圖形內文字超出時照常顯示;自由繪圖這次不做 | 使用者確認(2026-10-01),見 `docs/Plans/imp-refactory-types.md` |
@@ -314,6 +316,17 @@
 ## 待辦
 
 ### 使用者
+
+- [ ] **重編 MCP 橋接程式並實測色票工具**:關掉 Claude Code 後執行 `cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp`(重編前 Claude Code 看到的是舊的工具清單),再到 Claude Code 試 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`,以及 `add_text` 的 `textColor: { swatch: "文字", opacity: 0.5 }`
+- [ ] 在 `npm run tauri dev` 手動驗證**文件色票**(Claude 只用瀏覽器模式驗證過):
+  - 「檔案 → 新增」的新文件:調色板有「文字 / 黑 / 白」;文字面板加的文字連到「文字」
+  - 「設定 → 文件 → 色票...」新增「品牌紅」(輸入 hex)→ 文字、圖形填色、邊框、陰影、頁面背景、主頁上的物件、頁碼(「頁碼管理」)各連一處 → 改「品牌紅」的顏色,全部一起變;Ctrl+Z 一次回去
+  - 半透明的填色連到色票後改色票,透明度保留
+  - 存檔重開:色票、連結、排序都在;標題 `●` 的變化正確
+  - 開一個 2026-10-12 之前存的專案(v11):沒有色票、顏色不變;調色板顯示「這份文件還沒有色票。」與「管理色票...」;存檔後**舊版 App 會拒絕開啟**(v12)
+  - 實際按「匯出 PDF」/ EPUB:連到色票的顏色(含半透明)和畫面一致
+  - 有未存檔的色票修改時等 60 秒以上再強制結束 App → 重開選「復原」:色票與連結都在
+  - 刪除有人用的色票:換成另一個 / 不替換兩種都試;「格線與參考線」對話框的調色板沒有色票區
 
 - [ ] 在 `npm run tauri dev` 手動驗證**跨頁物件**:雙頁模式把圖片拖到一半跨過書背 → 兩頁都看得到、接得起來;實際按「匯出 PDF」看第 2、3 頁是否接得起來;拖到中心過書背放開 → 改成屬於另一頁,Ctrl+Z 一次回去;**注意:以前單頁模式下剛好超出內側(左頁右緣 / 右頁左緣)的物件,現在匯出會出現在隔壁頁**
 - [ ] 在 `npm run tauri dev` 手動驗證**單頁 / 雙頁**(Claude 只用瀏覽器模式驗證過):「頁面」標題列中間切到雙頁 → 第 1 頁單獨在右、之後兩頁並排;點另一頁的物件直接選到;在另一頁用圖形 / 文字工具建立;開吸附時在右頁拖曳仍落在格線上;切回單頁;重開 App 模式仍在

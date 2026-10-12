@@ -19,7 +19,7 @@ describe("konvaStroke", () => {
   });
 
   it("uses round caps only for dotted lines", () => {
-    expect(konvaStroke({ color: "#000000", width: 4, dash: "dotted" })).toMatchObject({
+    expect(konvaStroke({ color: "#000000", swatchId: null, width: 4, dash: "dotted" })).toMatchObject({
       stroke: "#000000",
       strokeWidth: 4,
       dash: [0, 8],

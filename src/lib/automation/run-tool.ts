@@ -10,10 +10,12 @@ import {
   addMaster,
   addPage,
   addShape,
+  addSwatch,
   addText,
   addTextStyle,
   applyTextStyle,
   deleteElements,
+  deleteSwatch,
   deleteTextStyle,
   placeLibraryItem,
   renameDocument,
@@ -22,10 +24,19 @@ import {
   setPageMaster,
   stepHistory,
   updateElement,
+  updateSwatch,
   updateTextStyle,
   type ApplyAction,
 } from "./edits";
-import { getDocumentSummary, getElement, listElements, listLibraryItems, listPages, listTextStyles } from "./queries";
+import {
+  getDocumentSummary,
+  getElement,
+  listElements,
+  listLibraryItems,
+  listPages,
+  listSwatches,
+  listTextStyles,
+} from "./queries";
 import { TOOL_DEFINITIONS, isToolName, type ToolArgs, type ToolName } from "./tool-definitions";
 
 /** What a tool can see and do. */
@@ -63,6 +74,10 @@ const HANDLERS: ToolHandlers = {
   update_text_style: (args, { state, apply }) => updateTextStyle(state, apply, args),
   delete_text_style: (args, { state, apply }) => deleteTextStyle(state, apply, args),
   apply_text_style: (args, { state, apply }) => applyTextStyle(state, apply, args),
+  list_swatches: (_args, { state }) => ok(listSwatches(state)),
+  add_swatch: (args, { state, apply }) => addSwatch(state, apply, args),
+  update_swatch: (args, { state, apply }) => updateSwatch(state, apply, args),
+  delete_swatch: (args, { state, apply }) => deleteSwatch(state, apply, args),
   list_library_items: (args, { library }) => listLibraryItems(library, args),
   place_library_item: (args, { state, library, apply }) => placeLibraryItem(state, library, apply, args),
   rename_page: (args, { state, apply }) => renamePage(state, apply, args),

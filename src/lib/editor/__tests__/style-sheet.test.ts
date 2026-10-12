@@ -55,9 +55,15 @@ describe("overrides", () => {
     expect(styleOverrides(text, body)).toEqual([]);
     expect(styleOverrides({ ...text, fill: "#dc2626", fontSize: 12 }, body)).toEqual(["fontSize", "fill"]);
     // 陰影以值比較，不比參考
-    const shadow = { color: "#00000080", offsetX: 2, offsetY: 2 };
+    const shadow = { color: "#00000080", swatchId: null, offsetX: 2, offsetY: 2 };
     expect(styleOverrides({ ...text, shadow: { ...shadow } }, { ...body, shadow: { ...shadow } })).toEqual([]);
     expect(styleOverrides({ ...text, shadow }, body)).toEqual(["shadow"]);
+  });
+
+  it("treat the text color and its swatch link as one field", () => {
+    // 同色但連結不同（文件色票 Q5）也算覆寫，而且只回報一次「顏色」
+    expect(styleOverrides({ ...text, fillSwatchId: "s" }, body)).toEqual(["fill"]);
+    expect(styleOverrides({ ...text, fillSwatchId: "s" }, { ...body, fillSwatchId: "s" })).toEqual([]);
   });
 
   it("covers every text style field and nothing else", () => {
@@ -86,6 +92,18 @@ describe("applyTextStyle", () => {
 });
 
 describe("restyle", () => {
+  it("moves the text color and its swatch link together", () => {
+    // 文字同色但連到色票（覆寫）：樣式改色時兩者都不跟，不會變成「新顏色 + 舊連結」
+    const text = { ...createTextElement("body", { x: 0, y: 0 }), fillSwatchId: "s" };
+    expect(restyle(text, body, { ...body, fill: "#1e3a8a" })).toBe(text);
+    // 跟著樣式的文字：顏色與連結一起換
+    const plain = createTextElement("body", { x: 0, y: 0 });
+    expect(restyle(plain, body, { ...body, fill: "#be123c", fillSwatchId: "brand" })).toMatchObject({
+      fill: "#be123c",
+      fillSwatchId: "brand",
+    });
+  });
+
   const changed: TextStyleDef = { ...body, fontSize: 10.5, fill: "#1e3a8a" };
 
   it("updates the fields that followed the style, keeps the overridden ones", () => {
@@ -104,7 +122,7 @@ describe("restyle", () => {
   });
 
   it("follows shadow changes by value", () => {
-    const shadow = { color: "#00000080", offsetX: 2, offsetY: 2 };
+    const shadow = { color: "#00000080", swatchId: null, offsetX: 2, offsetY: 2 };
     const before = { ...body, shadow };
     const text = { ...createTextElement("body", { x: 0, y: 0 }), shadow: { ...shadow } };
     expect(restyle(text, before, { ...before, shadow: null }).shadow).toBeNull();

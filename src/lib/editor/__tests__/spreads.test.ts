@@ -3,7 +3,7 @@ import { DEFAULT_MARGINS, createShapeElement } from "../element-factory";
 import { canvasSheets, canvasSlotAt, pageAcrossSpine, pageSide, spilloverInto, spreadBounds, spreadIndexOf, spreadOf, spreadsOf } from "../spreads";
 import type { CanvasElement, EditorDocument, Page } from "../types";
 
-const page = (id: string, width = 600, height = 800): Page => ({ id, name: id, width, height, background: "#ffffff", elements: [], masterId: null });
+const page = (id: string, width = 600, height = 800): Page => ({ id, name: id, width, height, background: "#ffffff", backgroundSwatchId: null, elements: [], masterId: null });
 const ids = (spread: { slots: readonly { page: Page }[] }) => spread.slots.map((slot) => slot.page.id);
 
 describe("pageSide / spreadIndexOf", () => {
@@ -46,8 +46,9 @@ describe("canvasSheets", () => {
     name: "測試",
     margins: DEFAULT_MARGINS,
     textStyles: [],
+    swatches: [],
     pageNumberRules: [],
-    masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", elements: [], parentId: null }],
+    masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], parentId: null }],
     pages,
   };
   const slots = (sheets: { slots: readonly { sheet: { id: string }; x: number; pageIndex: number }[] }) =>

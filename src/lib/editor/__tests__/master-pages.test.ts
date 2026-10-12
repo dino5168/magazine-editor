@@ -14,7 +14,7 @@ import {
 } from "../master-pages";
 import type { CanvasElement, EditorDocument, MasterPage, Page } from "../types";
 
-const SIZE = { width: 600, height: 800, background: "#ffffff" };
+const SIZE = { width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null };
 const master = (id: string, parentId: string | null = null, elements: CanvasElement[] = []): MasterPage => ({
   ...SIZE,
   id,
@@ -27,6 +27,7 @@ const doc = (masters: MasterPage[], pages: Page[] = [page("p1")]): EditorDocumen
   name: "測試",
   margins: DEFAULT_MARGINS,
   textStyles: [],
+  swatches: [],
   pageNumberRules: [],
   masters,
   pages,

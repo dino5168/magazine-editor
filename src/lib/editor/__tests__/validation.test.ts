@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { MAX_UPLOAD_BYTES, clampFontSize, isElementColor, isHexColor, validateImageFile, validateName } from "../validation";
+import {
+  MAX_UPLOAD_BYTES,
+  SWATCH_NAME_MAX_LENGTH,
+  clampFontSize,
+  isElementColor,
+  isHexColor,
+  isStroke,
+  isSwatch,
+  isSwatchColor,
+  isSwatchLink,
+  isSwatchList,
+  isTextShadow,
+  validateImageFile,
+  validateName,
+} from "../validation";
 import { createImageElement, describeElement, createTextElement } from "../element-factory";
 import { formatPageSize, mmToPt, ptToMm } from "../units";
 
@@ -26,6 +40,52 @@ describe("validateName", () => {
     expect(validateName("😀".repeat(3), 3).data).toBe("😀😀😀");
     expect(validateName("😀".repeat(4), 3).error).toBeInstanceOf(Error);
     expect(validateName("\t", 3).error).toBeInstanceOf(Error);
+  });
+});
+
+describe("swatches", () => {
+  const swatch = { id: "s1", name: "品牌紅", color: "#be123c" };
+
+  it("accepts lowercase opaque colors only", () => {
+    expect(isSwatchColor("#be123c")).toBe(true);
+    for (const bad of ["#BE123C", "#be123c80", "#fff", "red", ""]) expect(isSwatchColor(bad), bad).toBe(false);
+  });
+
+  it("checks one swatch: id, trimmed name of limited length, color", () => {
+    expect(isSwatch(swatch)).toBe(true);
+    expect(isSwatch({ ...swatch, name: "字".repeat(SWATCH_NAME_MAX_LENGTH) })).toBe(true);
+    for (const bad of [
+      { ...swatch, id: "" },
+      { ...swatch, id: "x".repeat(65) },
+      { ...swatch, name: " 品牌紅" },
+      { ...swatch, name: "" },
+      { ...swatch, name: "字".repeat(SWATCH_NAME_MAX_LENGTH + 1) },
+      { ...swatch, color: "#BE123C" },
+      { id: "s1", name: "品牌紅" },
+      null,
+    ]) {
+      expect(isSwatch(bad), JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it("requires unique ids and names in a list", () => {
+    const other = { id: "s2", name: "墨色", color: "#171717" };
+    expect(isSwatchList([])).toBe(true);
+    expect(isSwatchList([swatch, other])).toBe(true);
+    expect(isSwatchList([swatch, { ...other, id: "s1" }])).toBe(false);
+    expect(isSwatchList([swatch, { ...other, name: "品牌紅" }])).toBe(false);
+    expect(isSwatchList("x")).toBe(false);
+  });
+
+  it("checks the shape of swatch links next to colors", () => {
+    expect(isSwatchLink(null)).toBe(true);
+    expect(isSwatchLink("s1")).toBe(true);
+    for (const bad of [undefined, "", "x".repeat(65), 1]) expect(isSwatchLink(bad), String(bad)).toBe(false);
+    // 邊框與陰影都必須帶連結欄位（null = 沒連）
+    expect(isStroke({ color: "#000000", swatchId: "s1", width: 1, dash: "solid" })).toBe(true);
+    expect(isStroke({ color: "#000000", width: 1, dash: "solid" })).toBe(false);
+    expect(isTextShadow({ color: "#00000080", swatchId: null, offsetX: 1, offsetY: 1 })).toBe(true);
+    expect(isTextShadow({ color: "#00000080", offsetX: 1, offsetY: 1 })).toBe(false);
   });
 });
 

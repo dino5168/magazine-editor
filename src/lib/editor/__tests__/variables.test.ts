@@ -5,14 +5,15 @@ import { createLabel } from "../shape-label";
 import type { EditorDocument, Page } from "../types";
 import { resolveElementsVariables, resolveElementVariables, resolveVariables, variableValues } from "../variables";
 
-const page = (id: string): Page => ({ id, name: `第 ${id} 頁`, width: 600, height: 800, background: "#ffffff", elements: [], masterId: null });
+const page = (id: string): Page => ({ id, name: `第 ${id} 頁`, width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], masterId: null });
 const document: EditorDocument = {
   name: "十月號",
   margins: DEFAULT_MARGINS,
   textStyles: [],
+  swatches: [],
   // 第 3 頁起從 1 起算
   pageNumberRules: [{ ...createPageNumberRule("body", 3, 99), start: 1 }],
-  masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", elements: [], parentId: null }],
+  masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], parentId: null }],
   pages: [page("a"), page("b"), page("c"), page("d")],
 };
 

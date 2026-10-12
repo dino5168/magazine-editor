@@ -24,14 +24,18 @@ import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadii } from "@/lib/editor/corner-radius";
+import { withAlpha } from "@/lib/editor/palette";
 import { createLabel } from "@/lib/editor/shape-label";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
+import { swatchNameError, swatchUsage, type ColorSlot } from "@/lib/editor/swatches";
 import type {
   CanvasElement,
   ElementPatch,
   PageId,
   ShapeElement,
+  Stroke,
   StyledText,
+  Swatch,
   TextElement,
   TextStyle,
   TextStyleDef,
@@ -39,7 +43,7 @@ import type {
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, validateName, type Result } from "@/lib/editor/validation";
 import type { Library, LibraryItem } from "@/lib/library/types";
 import { getElement } from "./queries";
-import type { ToolArgs, TextStyleInput } from "./tool-definitions";
+import type { ColorInput, PageColorInput, ToolArgs, TextStyleInput } from "./tool-definitions";
 
 /** Width of text added without one (pt); the body text preset. */
 export const DEFAULT_TEXT_WIDTH = 280;
@@ -77,15 +81,16 @@ function pickStyle(args: TextStyleInput): TextStyleInput {
 }
 
 /**
- * Turns tool style arguments into text style fields.
+ * Turns tool style arguments into text style fields; colors given as `{ swatch }` link to it.
  *
  * Args:
+ *   state: Editor state (for the swatches).
  *   style: Validated style arguments.
  *
  * Returns:
- *   Only the fields that were given.
+ *   Only the fields that were given, or an error when a swatch is unknown.
  */
-export function textStyleFields(style: TextStyleInput): Partial<TextStyle> {
+export function textStyleFields(state: EditorState, style: TextStyleInput): Result<Partial<TextStyle>> {
   const fields: { -readonly [K in keyof TextStyle]?: TextStyle[K] } = {};
   if (style.fontSize !== undefined) fields.fontSize = style.fontSize;
   if (style.font !== undefined) {
@@ -97,11 +102,61 @@ export function textStyleFields(style: TextStyleInput): Partial<TextStyle> {
   if (style.underline !== undefined) fields.underline = style.underline;
   if (style.strikethrough !== undefined) fields.strikethrough = style.strikethrough;
   if (style.align !== undefined) fields.align = style.align;
-  if (style.textColor !== undefined) fields.fill = style.textColor;
-  if (style.shadow !== undefined) fields.shadow = style.shadow;
+  if (style.textColor !== undefined) {
+    const color = resolveColor(state, style.textColor);
+    if (color.error) return color;
+    fields.fill = color.data.color;
+    fields.fillSwatchId = color.data.swatchId;
+  }
+  if (style.shadow !== undefined) {
+    const color = style.shadow && resolveColor(state, style.shadow.color);
+    if (color?.error) return color;
+    fields.shadow = style.shadow && { ...style.shadow, ...color!.data };
+  }
   if (style.lineHeight !== undefined) fields.lineHeight = style.lineHeight;
   if (style.letterSpacing !== undefined) fields.letterSpacing = style.letterSpacing;
-  return fields;
+  return ok(fields);
+}
+
+/**
+ * A swatch by id, or by name (trimmed, exact).
+ *
+ * Args:
+ *   state: Editor state.
+ *   ref: Id or name from the AI.
+ *
+ * Returns:
+ *   The swatch, or an error pointing to `list_swatches`.
+ */
+export function findSwatch(state: EditorState, ref: string): Result<Swatch> {
+  const { swatches } = state.history.present;
+  const swatch = swatches.find((s) => s.id === ref) ?? swatches.find((s) => s.name === ref.trim());
+  return swatch ? ok(swatch) : fail(`找不到色票「${ref}」，請先用 list_swatches 取得名稱或 id`);
+}
+
+/** A color argument as the color and swatch link to store: hex = not linked; `{ swatch, opacity }` = linked. */
+function resolveColor(state: EditorState, input: ColorInput | PageColorInput): Result<ColorSlot> {
+  if (typeof input === "string") return ok({ color: input, swatchId: null });
+  const swatch = findSwatch(state, input.swatch);
+  if (swatch.error) return swatch;
+  const opacity = "opacity" in input ? (input.opacity ?? 1) : 1;
+  return ok({ color: withAlpha(swatch.data.color, opacity), swatchId: swatch.data.id });
+}
+
+type StrokeInput = ToolArgs<"add_shape">["stroke"];
+
+/** A stroke argument with its color resolved (undefined = not given, null = no stroke). */
+function resolveStroke(state: EditorState, stroke: StrokeInput): Result<Stroke | null | undefined> {
+  if (!stroke) return ok(stroke);
+  const color = resolveColor(state, stroke.color);
+  return color.error ? color : ok({ ...stroke, ...color.data });
+}
+
+/** A fill argument as `fill` / `fillSwatchId` fields (none when not given). */
+function resolveFill(state: EditorState, fill: ColorInput | undefined): Result<Pick<ShapeElement, "fill" | "fillSwatchId"> | object> {
+  if (fill === undefined) return ok({});
+  const color = resolveColor(state, fill);
+  return color.error ? color : ok({ fill: color.data.color, fillSwatchId: color.data.swatchId });
 }
 
 function hasKeys(value: object): boolean {
@@ -150,6 +205,8 @@ export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"
   if (sheet.error) return sheet;
   const link = styleLink(state, args.style);
   if (link.error) return link;
+  const fields = textStyleFields(state, pickStyle(args));
+  if (fields.error) return fields;
   // 先取樣式的值，再套這次給的欄位（和樣式不同 = 覆寫）
   const element: TextElement = {
     ...createTextElement("body", { x: 0, y: 0 }),
@@ -160,7 +217,7 @@ export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"
     width: args.width ?? DEFAULT_TEXT_WIDTH,
     align: "left",
     ...link.data,
-    ...textStyleFields(pickStyle(args)),
+    ...fields.data,
   };
   return addElement(apply, element, sheet.data);
 }
@@ -232,6 +289,12 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
   }
   const link = styleLink(state, args.style);
   if (link.error) return link;
+  const fields = textStyleFields(state, style);
+  if (fields.error) return fields;
+  const fill = resolveFill(state, args.fill);
+  if (fill.error) return fill;
+  const stroke = resolveStroke(state, args.stroke);
+  if (stroke.error) return stroke;
   const shape = createShapeInBox(args.shape, {
     minX: args.x,
     minY: args.y,
@@ -241,15 +304,15 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
   const element: ShapeElement = {
     ...shape,
     rotation: args.rotation ?? 0,
-    ...(args.fill !== undefined && { fill: args.fill }),
-    ...(args.stroke !== undefined && { stroke: args.stroke }),
+    ...fill.data,
+    ...(stroke.data !== undefined && { stroke: stroke.data }),
     label:
       args.text === undefined
         ? null
         : {
             ...createLabel(args.text),
             ...link.data,
-            ...textStyleFields(style),
+            ...fields.data,
             ...(args.verticalAlign !== undefined && { verticalAlign: args.verticalAlign }),
           },
   };
@@ -266,7 +329,7 @@ const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
 const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片" };
 
 /** Builds the patch of `update_element`, or explains which argument does not fit the element. */
-function elementPatch(element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
+function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
   const { id: _id, x, y, rotation, ...rest } = args;
   const given = Object.keys(rest).filter((key) => rest[key as keyof typeof rest] !== undefined);
   const rejected = given.filter((key) => !UPDATABLE[element.type].includes(key));
@@ -280,7 +343,9 @@ function elementPatch(element: CanvasElement, args: ToolArgs<"update_element">):
     ...(rotation !== undefined && { rotation }),
     ...(args.width !== undefined && { width: args.width }),
   };
-  const style = textStyleFields(pickStyle(args));
+  const fields = textStyleFields(state, pickStyle(args));
+  if (fields.error) return fields;
+  const style = fields.data;
   switch (element.type) {
     case "text":
       return ok({ ...position, ...(args.text !== undefined && { text: args.text }), ...style });
@@ -289,11 +354,15 @@ function elementPatch(element: CanvasElement, args: ToolArgs<"update_element">):
     case "shape": {
       const width = args.width ?? element.width;
       const height = args.height ?? element.height;
+      const fill = resolveFill(state, args.fill);
+      if (fill.error) return fill;
+      const stroke = resolveStroke(state, args.stroke);
+      if (stroke.error) return stroke;
       const patch: { -readonly [K in keyof ShapeElement]?: ShapeElement[K] } = {
         ...position,
         ...(args.height !== undefined && { height: args.height }),
-        ...(args.fill !== undefined && { fill: args.fill }),
-        ...(args.stroke !== undefined && { stroke: args.stroke }),
+        ...fill.data,
+        ...(stroke.data !== undefined && { stroke: stroke.data }),
       };
       if (args.cornerRadius !== undefined) {
         if (element.geometry.kind !== "rect") return fail("只有矩形可以設定 cornerRadius");
@@ -323,7 +392,7 @@ export function updateElement(state: EditorState, apply: ApplyAction, args: Tool
   const found = getElement(state, args.id);
   if (found.error) return found;
   const { element, sheet } = found.data;
-  const patch = elementPatch(element, args);
+  const patch = elementPatch(state, element, args);
   if (patch.error) return patch;
   if (!hasKeys(patch.data)) return fail("沒有要修改的欄位");
   const next = apply({ type: "element/update", id: element.id, patch: patch.data, pageId: sheet.id });
@@ -375,7 +444,9 @@ export function addMaster(state: EditorState, apply: ApplyAction, args: ToolArgs
   if (error) return fail(error);
   // 尺寸和目前的頁面一樣（頁面設定一次改所有頁面與主頁）
   const size = pages.find((page) => page.id === state.activePageId) ?? editing ?? pages[0];
-  const master = createMasterPage(name.trim(), size, args.background ?? "#ffffff", parentId);
+  const background = resolveColor(state, args.background ?? "#ffffff");
+  if (background.error) return background;
+  const master = createMasterPage(name.trim(), size, background.data.color, parentId, background.data.swatchId);
   if (!apply({ type: "master/add", master })) return fail("App 沒有新增主頁");
   return ok({ id: master.id, name: master.name, parentId, activePageId: master.id });
 }
@@ -411,8 +482,10 @@ export function renamePage(state: EditorState, apply: ApplyAction, args: ToolArg
 export function setPageBackground(state: EditorState, apply: ApplyAction, args: ToolArgs<"set_page_background">) {
   const target = targetSheet(state, args.pageId);
   if (target.error) return target;
-  const next = apply({ type: "page/setBackground", id: args.pageId, color: args.color });
-  return ok({ pageId: args.pageId, changed: next !== null });
+  const color = resolveColor(state, args.color);
+  if (color.error) return color;
+  const next = apply({ type: "page/setBackground", id: args.pageId, ...color.data });
+  return ok({ pageId: args.pageId, ...color.data, changed: next !== null });
 }
 
 /** Tool `rename_document`. */
@@ -434,9 +507,11 @@ export function stepHistory(apply: ApplyAction, direction: "undo" | "redo") {
 export function addTextStyle(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_text_style">) {
   const error = textStyleNameError(args.name, state.history.present.textStyles, null);
   if (error) return fail(error);
+  const fields = textStyleFields(state, pickStyle(args));
+  if (fields.error) return fields;
   const style: TextStyleDef = {
     ...pickTextStyle(builtInTextStyle("body")),
-    ...textStyleFields(pickStyle(args)),
+    ...fields.data,
     id: createId(),
     name: args.name.trim(),
   };
@@ -449,7 +524,9 @@ export function updateTextStyle(state: EditorState, apply: ApplyAction, args: To
   const found = findTextStyle(state, args.style);
   if (found.error) return found;
   const style = found.data;
-  const fields = textStyleFields(pickStyle(args));
+  const resolved = textStyleFields(state, pickStyle(args));
+  if (resolved.error) return resolved;
+  const fields = resolved.data;
   if (!hasKeys(fields) && args.name === undefined) return fail("沒有要修改的欄位");
   if (args.name !== undefined) {
     const error = textStyleNameError(args.name, state.history.present.textStyles, style.id);
@@ -489,4 +566,42 @@ export function applyTextStyle(state: EditorState, apply: ApplyAction, args: Too
   const styleId = style?.data.id ?? null;
   const next = apply({ type: "element/applyTextStyle", ids: applicable, styleId, pageId });
   return ok({ style: styleId, applied: applicable.length, skipped, changed: next !== null });
+}
+
+/** Tool `add_swatch`. */
+export function addSwatch(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_swatch">) {
+  const error = swatchNameError(args.name, state.history.present.swatches, null);
+  if (error) return fail(error);
+  const swatch: Swatch = { id: createId(), name: args.name.trim(), color: args.color.toLowerCase() };
+  if (!apply({ type: "swatch/add", swatch })) return fail("App 沒有接受這個色票（參數不合法）");
+  return ok(swatch);
+}
+
+/** Tool `update_swatch`: every color linked to it follows. */
+export function updateSwatch(state: EditorState, apply: ApplyAction, args: ToolArgs<"update_swatch">) {
+  const found = findSwatch(state, args.swatch);
+  if (found.error) return found;
+  const swatch = found.data;
+  if (args.name === undefined && args.color === undefined) return fail("沒有要修改的欄位");
+  if (args.name !== undefined) {
+    const error = swatchNameError(args.name, state.history.present.swatches, swatch.id);
+    if (error) return fail(error);
+  }
+  const color = args.color?.toLowerCase();
+  const next = apply({ type: "swatch/update", id: swatch.id, name: args.name, color });
+  const linkedColors = swatchUsage(state.history.present).get(swatch.id) ?? 0;
+  return ok({ id: swatch.id, name: args.name?.trim() ?? swatch.name, color: color ?? swatch.color, changed: next !== null, linkedColors });
+}
+
+/** Tool `delete_swatch`: uses move to `replaceWith`, or keep their color unlinked. */
+export function deleteSwatch(state: EditorState, apply: ApplyAction, args: ToolArgs<"delete_swatch">) {
+  const found = findSwatch(state, args.swatch);
+  if (found.error) return found;
+  const replacement = args.replaceWith == null ? null : findSwatch(state, args.replaceWith);
+  if (replacement?.error) return replacement;
+  if (replacement?.data.id === found.data.id) return fail("replaceWith 不能是要刪除的同一個色票");
+  const affectedColors = swatchUsage(state.history.present).get(found.data.id) ?? 0;
+  const replaceWith = replacement?.data.id ?? null;
+  if (!apply({ type: "swatch/delete", id: found.data.id, replaceWith })) return fail("App 沒有刪除這個色票");
+  return ok({ deleted: found.data.id, name: found.data.name, replaceWith, affectedColors });
 }

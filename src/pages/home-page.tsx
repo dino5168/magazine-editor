@@ -13,6 +13,7 @@ import { BottomToolbar } from "@/components/editor/bottom-toolbar";
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { MasterEditBanner } from "@/components/editor/master-edit-banner";
 import { CanvasDropProvider } from "@/components/editor/canvas-drop";
+import { ManageSwatchesProvider } from "@/components/editor/document-swatches";
 import { PageDialogsProvider } from "@/components/editor/page-dialogs";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
@@ -102,6 +103,8 @@ function EditorLayout() {
 
   // 設定 → 文件 / 偏好設定：同時最多開一個設定對話框
   const [openSettings, setOpenSettings] = useState<SettingsPageId | null>(null);
+  // 調色板的「管理色票...」
+  const openSwatches = useCallback(() => setOpenSettings("swatches"), []);
   const { openLibrary } = useLibraryDialog();
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
@@ -149,6 +152,7 @@ function EditorLayout() {
   return (
     // 選單列與頁籤列橫跨全寬；中間是三欄：左停靠區｜系統控制列 + 畫布｜右停靠區
     // grid-cols 必須是 minmax(0,1fr)：隱含的 auto 欄會被頁籤列的內容撐寬（頁面多時整個畫面變寬、頁籤無法捲動）
+    <ManageSwatchesProvider onManage={openSwatches}>
     <div className="grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
       <AppMenubar handlers={menuHandlers} isChecked={isChecked} />
       {/* relative：空白側的放置區疊在這一列的左右邊緣 */}
@@ -196,6 +200,7 @@ function EditorLayout() {
         );
       })}
     </div>
+    </ManageSwatchesProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -30,6 +30,7 @@
           "strikethrough": false,
           "shadow": null,
           "fill": "#171717",
+          "fillSwatchId": null,
           "stroke": null
         }
       },
@@ -47,9 +48,10 @@
           "italic": true,
           "underline": true,
           "strikethrough": false,
-          "shadow": { "color": "#be123c", "offsetX": 1, "offsetY": 1 },
+          "shadow": { "color": "#be123c", "swatchId": "swatch-brand", "offsetX": 1, "offsetY": 1 },
           "fill": "#4f46e580",
-          "stroke": { "color": "#be123c", "width": 0.5, "dash": "dashed" }
+          "fillSwatchId": "swatch-indigo",
+          "stroke": { "color": "#be123c", "swatchId": "swatch-brand", "width": 0.5, "dash": "dashed" }
         }
       }
     ],
@@ -67,7 +69,8 @@
         "lineHeight": 1.2,
         "letterSpacing": 0,
         "align": "distributed",
-        "fill": "#171717"
+        "fill": "#171717",
+        "fillSwatchId": null
       },
       {
         "id": "text-style-body",
@@ -82,7 +85,8 @@
         "lineHeight": 1.5,
         "letterSpacing": 0,
         "align": "center",
-        "fill": "#171717"
+        "fill": "#171717",
+        "fillSwatchId": "swatch-text"
       },
       {
         "id": "style-footer",
@@ -93,12 +97,21 @@
         "italic": false,
         "underline": false,
         "strikethrough": false,
-        "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
+        "shadow": { "color": "#00000040", "swatchId": null, "offsetX": 0.5, "offsetY": 0.5 },
         "lineHeight": 1.2,
         "letterSpacing": 50,
         "align": "right",
-        "fill": "#525252"
+        "fill": "#525252",
+        "fillSwatchId": "swatch-gray"
       }
+    ],
+    "swatches": [
+      { "id": "swatch-text", "name": "文字", "color": "#171717" },
+      { "id": "swatch-white", "name": "白", "color": "#ffffff" },
+      { "id": "swatch-brand", "name": "品牌紅", "color": "#be123c" },
+      { "id": "swatch-indigo", "name": "靛藍", "color": "#4f46e5" },
+      { "id": "swatch-paper", "name": "米黃", "color": "#fef3c7" },
+      { "id": "swatch-gray", "name": "頁尾灰", "color": "#525252" }
     ],
     "masters": [
       {
@@ -107,6 +120,7 @@
         "width": 595.2755905511812,
         "height": 841.8897637795276,
         "background": "#ffffff",
+        "backgroundSwatchId": null,
         "parentId": null,
         "elements": [
           {
@@ -119,6 +133,7 @@
             "height": 24,
             "geometry": { "kind": "rect", "cornerRadius": 0 },
             "fill": "#4f46e5",
+            "fillSwatchId": "swatch-indigo",
             "stroke": null,
             "label": null
           }
@@ -130,6 +145,7 @@
         "width": 595.2755905511812,
         "height": 841.8897637795276,
         "background": "#fef3c7",
+        "backgroundSwatchId": "swatch-paper",
         "parentId": "master-a",
         "elements": [
           {
@@ -146,11 +162,12 @@
             "italic": false,
             "underline": false,
             "strikethrough": false,
-            "shadow": { "color": "#00000040", "offsetX": 0.5, "offsetY": 0.5 },
+            "shadow": { "color": "#00000040", "swatchId": null, "offsetX": 0.5, "offsetY": 0.5 },
             "lineHeight": 1.2,
             "letterSpacing": 50,
             "align": "right",
             "fill": "#525252",
+            "fillSwatchId": "swatch-gray",
             "styleId": "style-footer"
           },
           {
@@ -173,6 +190,7 @@
         "width": 595.2755905511812,
         "height": 841.8897637795276,
         "background": "#ffffff",
+        "backgroundSwatchId": "swatch-white",
         "masterId": "master-b",
         "elements": [
           {
@@ -189,11 +207,12 @@
             "italic": true,
             "underline": true,
             "strikethrough": true,
-            "shadow": { "color": "#00000080", "offsetX": 2, "offsetY": -1.5 },
+            "shadow": { "color": "#00000080", "swatchId": null, "offsetX": 2, "offsetY": -1.5 },
             "lineHeight": 1.4,
             "letterSpacing": -20,
             "align": "center",
             "fill": "#171717",
+            "fillSwatchId": null,
             "styleId": null
           },
           {
@@ -206,6 +225,7 @@
             "height": 130,
             "geometry": { "kind": "rect", "cornerRadius": [12, 12, 0, 4] },
             "fill": "#e0e7ffcc",
+            "fillSwatchId": null,
             "stroke": null,
             "label": null
           },
@@ -219,7 +239,8 @@
             "height": 80,
             "geometry": { "kind": "ellipse" },
             "fill": "#fda4af",
-            "stroke": { "color": "#be123c", "width": 2, "dash": "dashed" },
+            "fillSwatchId": null,
+            "stroke": { "color": "#be123c", "swatchId": "swatch-brand", "width": 2, "dash": "dashed" },
             "label": {
               "text": "圖形內文字",
               "fontSize": 14,
@@ -234,6 +255,7 @@
               "align": "center",
               "verticalAlign": "middle",
               "fill": "#171717",
+              "fillSwatchId": "swatch-text",
               "styleId": "text-style-body"
             }
           },
@@ -247,6 +269,7 @@
             "height": 105.00000000000003,
             "geometry": { "kind": "polygon", "sides": 3 },
             "fill": "#86efac",
+            "fillSwatchId": null,
             "stroke": null,
             "label": null
           },
@@ -260,6 +283,7 @@
             "height": 126.63118960624632,
             "geometry": { "kind": "star", "numPoints": 5, "innerRatio": 0.42857142857142855 },
             "fill": "#fcd34d",
+            "fillSwatchId": null,
             "stroke": null,
             "label": null
           },

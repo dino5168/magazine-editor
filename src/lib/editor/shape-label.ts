@@ -18,6 +18,7 @@ const DEFAULT_LABEL: Omit<ShapeLabel, "text"> = {
   align: "center",
   verticalAlign: "middle",
   fill: DEFAULT_TEXT_FILL,
+  fillSwatchId: null,
   styleId: null,
 };
 

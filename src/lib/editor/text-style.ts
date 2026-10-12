@@ -119,7 +119,7 @@ export function isLetterSpacing(value: unknown): value is number {
 export const DEFAULT_TEXT_FILL = "#171717";
 
 /** Shadow set when the shadow switch is turned on: 50% black, 2 pt right and down. */
-export const DEFAULT_TEXT_SHADOW: TextShadow = { color: "#00000080", offsetX: 2, offsetY: 2 };
+export const DEFAULT_TEXT_SHADOW: TextShadow = { color: "#00000080", swatchId: null, offsetX: 2, offsetY: 2 };
 
 /**
  * Konva `fontStyle` (also the style / weight part of the CSS `font` shorthand), e.g. "italic bold".

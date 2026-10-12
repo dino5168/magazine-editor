@@ -90,6 +90,7 @@ describe("selectionSpans", () => {
     height: 50,
     geometry: { kind: "rect", cornerRadius: 0 },
     fill: "#000000",
+    fillSwatchId: null,
     stroke: null,
     label: null,
   };

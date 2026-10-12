@@ -85,7 +85,7 @@ describe("konvaTextStyle", () => {
       fontSize: 10,
       ...PLAIN_TEXT_DECORATION,
       ...DEFAULT_TEXT_SPACING,
-      shadow: { color: "#ff000080", offsetX: 3, offsetY: -2 },
+      shadow: { color: "#ff000080", swatchId: null, offsetX: 3, offsetY: -2 },
     } as const;
     expect(konvaTextStyle(style)).toEqual({
       fontStyle: "bold",
@@ -110,11 +110,11 @@ describe("localShadowOffset", () => {
 
   it("rotates against the element so the shadow keeps pointing the same way on the page", () => {
     // 物件順時針轉 90°：頁面上的「往右」是物件座標的「往上」
-    const local = localShadowOffset({ color: "#000000", offsetX: 2, offsetY: 0 }, 90);
+    const local = localShadowOffset({ color: "#000000", swatchId: null, offsetX: 2, offsetY: 0 }, 90);
     expect(local.x).toBeCloseTo(0);
     expect(local.y).toBeCloseTo(-2);
     // 再用物件的旋轉轉回去，等於原本的頁面偏移
-    const back = localShadowOffset({ color: "#000000", offsetX: local.x, offsetY: local.y }, -90);
+    const back = localShadowOffset({ color: "#000000", swatchId: null, offsetX: local.x, offsetY: local.y }, -90);
     expect(back.x).toBeCloseTo(2);
     expect(back.y).toBeCloseTo(0);
   });
@@ -144,7 +144,7 @@ describe("text alignment", () => {
   });
 
   it("is checked with the rest of the text style", () => {
-    const style = { ...DEFAULT_TEXT_SPACING, ...PLAIN_TEXT_DECORATION, fontSize: 12, fontFamily: "x", fontStyle: "normal", fill: "#000000" };
+    const style = { ...DEFAULT_TEXT_SPACING, ...PLAIN_TEXT_DECORATION, fontSize: 12, fontFamily: "x", fontStyle: "normal", fill: "#000000", fillSwatchId: null };
     expect(isTextStyle({ ...style, align: "distributed" })).toBe(true);
     expect(isTextStyle({ ...style, align: "justify" })).toBe(false);
   });

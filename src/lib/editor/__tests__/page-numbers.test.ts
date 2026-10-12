@@ -24,7 +24,7 @@ import type { Margins, Page, PageNumberPosition, PageNumberRule } from "../types
 // 假的量測：每個字寬 = 字級的一半
 const measure: MeasureTextWidth = (text, style) => Array.from(text).length * style.fontSize * 0.5;
 
-const page = (id: string): Page => ({ id, name: id, width: 600, height: 800, background: "#ffffff", elements: [], masterId: null });
+const page = (id: string): Page => ({ id, name: id, width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], masterId: null });
 const margins: Margins = { top: 60, right: 50, bottom: 40, left: 30 };
 
 function ruleAt(position: PageNumberPosition, from = 1, to = 10): PageNumberRule {
@@ -129,10 +129,10 @@ describe("pageNumberShape", () => {
     const base = createPageNumberRule("r", 1, 1);
     const rule: PageNumberRule = {
       ...base,
-      style: { ...base.style, fontStyle: "bold", fill: "#ff0000", stroke: { color: "#0000ff", width: 1, dash: "solid" } },
+      style: { ...base.style, fontStyle: "bold", fill: "#ff0000", stroke: { color: "#0000ff", swatchId: null, width: 1, dash: "solid" } },
     };
     const shape = pageNumberShape(page("p"), 0, [rule], margins, measure)!;
-    expect(shape.stroke).toEqual({ color: "#0000ff", width: 1, dash: "solid" });
+    expect(shape.stroke).toEqual({ color: "#0000ff", swatchId: null, width: 1, dash: "solid" });
     expect(shape.label).toMatchObject({ fontStyle: "bold", fill: "#ff0000" });
   });
 });
@@ -166,12 +166,12 @@ describe("validation", () => {
     expect(isPageNumberRule({ ...rule, even: { ...rule.even, prefix: "a\nb" } })).toBe(false);
     expect(isPageNumberRule({ ...rule, even: { ...rule.even, suffix: "字".repeat(21) } })).toBe(false);
     expect(isPageNumberRule({ ...rule, style: { ...rule.style, fill: "red" } })).toBe(false);
-    expect(isPageNumberRule({ ...rule, style: { ...rule.style, stroke: { color: "#000000", width: 0, dash: "solid" } } })).toBe(false);
-    expect(isPageNumberRule({ ...rule, style: { ...rule.style, italic: true, shadow: { color: "#000000", offsetX: 1, offsetY: 1 } } })).toBe(
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, stroke: { color: "#000000", swatchId: null, width: 0, dash: "solid" } } })).toBe(false);
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, italic: true, shadow: { color: "#000000", swatchId: null, offsetX: 1, offsetY: 1 } } })).toBe(
       true,
     );
     expect(isPageNumberRule({ ...rule, style: { ...rule.style, underline: "no" as never } })).toBe(false);
-    expect(isPageNumberRule({ ...rule, style: { ...rule.style, shadow: { color: "#000000", offsetX: 99, offsetY: 0 } } })).toBe(false);
+    expect(isPageNumberRule({ ...rule, style: { ...rule.style, shadow: { color: "#000000", swatchId: null, offsetX: 99, offsetY: 0 } } })).toBe(false);
   });
 
   it("rejects overlapping ranges and duplicate ids", () => {

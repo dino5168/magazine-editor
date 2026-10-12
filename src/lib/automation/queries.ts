@@ -7,7 +7,8 @@ import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/
 import { findFontOption } from "@/lib/editor/fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
-import type { CanvasElement, PageId, Sheet, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
+import { swatchUsage } from "@/lib/editor/swatches";
+import type { CanvasElement, PageId, Sheet, Swatch, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import { visibleItems } from "@/lib/library/library-selectors";
 import { folderPath } from "@/lib/library/library-tree";
@@ -27,6 +28,7 @@ export interface DocumentSummary {
   readonly margins: { readonly top: number; readonly right: number; readonly bottom: number; readonly left: number };
   readonly pageNumberRules: number;
   readonly textStyles: number;
+  readonly swatches: number;
   readonly unsavedChanges: boolean;
   /** What the user is looking at: a page, or a master page being edited. */
   readonly activeSheet: SheetRef;
@@ -47,6 +49,8 @@ export interface PageSummary {
   readonly width: number;
   readonly height: number;
   readonly background: string;
+  /** Name of the swatch the background follows. */
+  readonly backgroundSwatch?: string;
   readonly masterId: PageId | null;
   readonly elementCount: number;
 }
@@ -58,6 +62,7 @@ export interface MasterSummary {
   readonly width: number;
   readonly height: number;
   readonly background: string;
+  readonly backgroundSwatch?: string;
   readonly elementCount: number;
   /** Pages showing this master, directly or through a child master. */
   readonly usedByPages: number;
@@ -93,6 +98,8 @@ export interface TextStyleSummary {
   readonly strikethrough: boolean;
   readonly align: TextAlign;
   readonly textColor: string;
+  /** Name of the swatch the text color follows. */
+  readonly textColorSwatch?: string;
   readonly shadow: TextShadow | null;
   /** × font size. */
   readonly lineHeight: number;
@@ -194,6 +201,7 @@ export function getDocumentSummary(state: EditorState): DocumentSummary {
     margins: { top: round(top), right: round(right), bottom: round(bottom), left: round(left) },
     pageNumberRules: document.pageNumberRules.length,
     textStyles: document.textStyles.length,
+    swatches: document.swatches.length,
     unsavedChanges: selectIsDirty(state),
     activeSheet: sheetRef(state, selectActivePage(state)),
   };
@@ -210,6 +218,7 @@ export function getDocumentSummary(state: EditorState): DocumentSummary {
  */
 export function listPages(state: EditorState): { pages: PageSummary[]; masters: MasterSummary[] } {
   const document = state.history.present;
+  const swatch = swatchNameOf(document.swatches);
   return {
     pages: document.pages.map((page, index) => ({
       index: index + 1,
@@ -218,6 +227,7 @@ export function listPages(state: EditorState): { pages: PageSummary[]; masters: 
       width: round(page.width),
       height: round(page.height),
       background: page.background,
+      ...swatch("backgroundSwatch", page.backgroundSwatchId),
       masterId: page.masterId,
       elementCount: page.elements.length,
     })),
@@ -228,6 +238,7 @@ export function listPages(state: EditorState): { pages: PageSummary[]; masters: 
       width: round(master.width),
       height: round(master.height),
       background: master.background,
+      ...swatch("backgroundSwatch", master.backgroundSwatchId),
       elementCount: master.elements.length,
       usedByPages: pagesUsingMaster(document, master.id).length,
     })),
@@ -293,7 +304,16 @@ function linkedStyle(element: CanvasElement, names: ReadonlyMap<string, string>)
   return name === undefined ? {} : { textStyle: name };
 }
 
-function styleSummary(style: TextStyleDef, usedBy: number): TextStyleSummary {
+/** `{ [key]: swatch name }` for a linked color, nothing for an unlinked one. */
+function swatchNameOf(swatches: readonly Swatch[]) {
+  const names = new Map(swatches.map((swatch) => [swatch.id, swatch.name]));
+  return <K extends string>(key: K, id: string | null): Partial<Record<K, string>> => {
+    const name = id === null ? undefined : names.get(id);
+    return name === undefined ? {} : ({ [key]: name } as Record<K, string>);
+  };
+}
+
+function styleSummary(style: TextStyleDef, usedBy: number, swatch: ReturnType<typeof swatchNameOf>): TextStyleSummary {
   return {
     id: style.id,
     name: style.name,
@@ -305,6 +325,7 @@ function styleSummary(style: TextStyleDef, usedBy: number): TextStyleSummary {
     strikethrough: style.strikethrough,
     align: style.align,
     textColor: style.fill,
+    ...swatch("textColorSwatch", style.fillSwatchId),
     shadow: style.shadow,
     lineHeight: style.lineHeight,
     letterSpacing: style.letterSpacing,
@@ -324,7 +345,32 @@ function styleSummary(style: TextStyleDef, usedBy: number): TextStyleSummary {
 export function listTextStyles(state: EditorState): TextStyleSummary[] {
   const document = state.history.present;
   const usage = textStyleUsage(document);
-  return document.textStyles.map((style) => styleSummary(style, usage.get(style.id) ?? 0));
+  const swatch = swatchNameOf(document.swatches);
+  return document.textStyles.map((style) => styleSummary(style, usage.get(style.id) ?? 0, swatch));
+}
+
+export interface SwatchSummary {
+  readonly id: string;
+  readonly name: string;
+  /** `#rrggbb`. */
+  readonly color: string;
+  /** Color fields linked to it (elements, backgrounds, text styles, page numbers). */
+  readonly usedBy: number;
+}
+
+/**
+ * The document's swatches (tool `list_swatches`).
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   Every swatch in display order with how many colors link to it.
+ */
+export function listSwatches(state: EditorState): SwatchSummary[] {
+  const document = state.history.present;
+  const usage = swatchUsage(document);
+  return document.swatches.map(({ id, name, color }) => ({ id, name, color, usedBy: usage.get(id) ?? 0 }));
 }
 
 /** Folder path joined the way the trash shows it (`封面 / 人物`). */

@@ -505,6 +505,7 @@ fn rectangles_round_each_corner_like_the_pdf() {
     let stroked = page_with(&|shape| {
         shape.stroke = Some(crate::project::format::Stroke {
             color: "#000000".into(),
+            swatch_id: None,
             width: 2.0,
             dash: crate::project::format::StrokeDash::Dashed,
         });

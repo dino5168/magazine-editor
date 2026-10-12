@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -11,7 +11,7 @@
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
   - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步，2026-10-08 全部完成；桌面版人工驗證待做，見計畫各步驟）；操作畫面草圖 `00-需求分析/Html/material.html`。
-  - 設計優先順序（2026-10-12）：討論 `03-設計優先順序討論.md` → 結論 `03-系統設計優先順序建議.md`（樣式補強：文件色票（可自訂色）→ 物件樣式 → 可選的樣式繼承；網格：欄格線（每個主頁各自設定）→ 參考線 → 基線網格；之後範本、內容系統（富文字、字元樣式、串接溢排））。
+  - 設計優先順序（2026-10-12）：討論 `03-設計優先順序討論.md` → 結論 `03-系統設計優先順序建議.md`（樣式補強：文件色票（可自訂色，2026-10-12 完成）→ 物件樣式 → 可選的樣式繼承；網格：欄格線（每個主頁各自設定）→ 參考線 → 基線網格；之後範本、內容系統（富文字、字元樣式、串接溢排））。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
   - `types.html` 對應 `src/lib/editor/types.ts`：**修改 `types.ts` 時要同步更新**圖、說明卡，以及頁首的對應 commit。
@@ -80,6 +80,7 @@ src/
       page-setup-fields.tsx       # PageSetupFields：直橫 / 寬高 / 邊界 / 錯誤訊息（受控），頁面設定與新增文件共用
       grid-dialog.tsx             # 「格線與參考線」：格線（間距、吸附）/ 內容區對齊線 / 邊界參考線三區，各自的顯示開關與顏色・粗細・線型；即時預覽；恢復預設 / 設為預設 / 原廠設定（App 偏好）
       page-numbers-dialog.tsx     # 「頁碼管理」：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
+      swatches-dialog.tsx         # 「色票」：列表（把手排序、使用數、刪除）、新增、名稱 / hex / Tailwind 改色、刪除使用中的色票先問替換；草稿在 swatch-draft.ts，「確定」一次 swatch/applyEdits（見「文件色票」）
       mcp-dialog.tsx              # 「Claude Code 連線（MCP）」：允許連線開關（App 偏好，預設關）、目前狀態、Claude Code 端的設定說明
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
     dock/                         # 工具面板（Affinity 式頁籤群組停靠）的 UI
@@ -126,7 +127,8 @@ src/
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
       page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）、內容區對齊線（ContentGuides）與邊界參考線（MarginGuide），樣式來自偏好（guideLineAttrs）
-      color-picker.tsx            # 調色板：ColorPalette（Tailwind 色系 / 深淺 / 不透明度）與 ColorPicker（按鈕 + Popover）
+      color-picker.tsx            # 調色板：ColorPalette（文件色票區（在 DocumentSwatchesProvider 裡才有）+ Tailwind 色系 / 深淺 / 不透明度；onCommit(color, swatchId)）與 ColorPicker（按鈕 + 受控 Popover）
+      document-swatches.tsx       # DocumentSwatchesProvider（調色板顯示文件色票；manage={false} 不顯示「管理色票...」）、ManageSwatchesProvider（home-page 接到「色票...」對話框）、useDocumentSwatches
       style-controls.tsx          # 文字樣式（TextStyleFields：字體 / 字級 / 粗體・斜體・底線・刪除線 / 可選的對齊（ALIGN_BUTTONS，依 TEXT_ALIGNS）/ 顏色 / 陰影；按鈕分組 ButtonGroup，放不下時整組換行）與邊框（StrokeFields）控制項，屬性面板與頁碼管理共用；線條的顏色 / 粗細 / 樣式是 LineStyleFields（粗細欄位由 LineWidthField 設定），格線與參考線對話框也用它
       icon-button.tsx · inline-name-input.tsx   # 共用小元件
     ui/                           # shadcn 產生的元件（視為 vendor code）
@@ -195,6 +197,8 @@ src/
       units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
+      swatches.ts                 # 文件色票的純邏輯：內建色票（BUILT_IN_SWATCH_IDS / defaultSwatches）、名稱 / hex（swatchNameError、nextSwatchName、parseSwatchHex）、走過每個顏色欄位 mapColorSlots、swatchUsage、swatchColor（色票 RGB + 使用處透明度）、hasValidSwatchLinks、applySwatchEdits / updateSwatch / deleteSwatch
+      swatch-draft.ts             # 「色票」對話框的草稿（新增 / 改名改色 / 排序 / 刪除含連鎖替換、草稿使用數、名稱錯誤）
       image.ts                    # loadImageSize()
       ruler.ts                    # 尺規的純邏輯：rulerScale（依縮放選 1–2–5 主刻度與細分）、rulerTicks（可見刻度）、rulerOrigin（目前頁左上角的螢幕位置）、selectionSpans（選取範圍）
       page-navigation.ts          # 換頁的純邏輯：頁碼解析、上 / 下 / 第一 / 最後一頁、換頁按鍵與移動頁面的按鍵（Ctrl+Shift+PageUp / PageDown）
@@ -223,8 +227,8 @@ src-tauri/
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 .mcp.json                         # Claude Code 的專案 MCP 設定：server「magazine-editor」→ src-tauri/target/debug/magazine-mcp.exe
-tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v11：封面的圓角矩形四角不同 [12, 12, 0, 4]；「標題」樣式是首尾置中（沒有文字連到它）；封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
-tests/fixtures/default-text-styles.json  # 內建三個文字樣式：TS defaultTextStyles 與 Rust default_text_styles（舊檔升級時加上）都和它比對
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v12：六個色票，九種顏色欄位都有連結（頁面 / 主頁背景、主頁文字、圖形填色、邊框、圖形內文字、文字樣式、頁碼的文字 / 陰影 / 框線；頁碼文字是靛藍 50%）；封面的圓角矩形四角不同 [12, 12, 0, 4]；「標題」樣式是首尾置中（沒有文字連到它）；封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
+tests/fixtures/default-text-styles.json  # 內建三個文字樣式：TS defaultTextStyles 與 Rust default_text_styles（舊檔升級時加上）都和它比對；fillSwatchId 是 null（舊檔沒有色票，新文件的連結在 createBlankDocument 才加）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture（兩層資料夾、未分類、文字、音訊、來自已刪除資料夾的垃圾桶素材）
 ```
@@ -251,6 +255,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **模型不存 scale**。Transformer 縮放結束時由 `bakeTransform()` 把 scale 換算進 `width` / `height`，再把節點 scale 重設為 1。文字只調整 `width`（換行寬度），不改字級。
 - **文字樣式**（`TextStyle`，文字物件、圖形內文字、頁碼共用）：`fontStyle`（`normal` / `bold`，選字型檔）之外還有 `italic` / `underline` / `strikethrough`（boolean）與 `shadow: TextShadow | null`（v6 起；舊檔讀成全部關閉）。怎麼畫見「文字裝飾」。v9 起還有 `lineHeight`（行距倍數）/ `letterSpacing`（字距，字級的 1/1000），頁碼（`PageNumberStyle`）沒有這兩個欄位，見「行距與字距」。`align` 是 `TextAlign`（`left` / `center` / `right`，v10 起還有 `distributed` 首尾置中），見「首尾置中」。
 - **文字樣式（樣式表，v8 起）**：`EditorDocument.textStyles: TextStyleDef[]`（id、名稱都不重複）；文字物件與圖形內文字 extends `StyledText`（`TextStyle` + `styleId: string | null`）。**物件照存完整的實際值**，`styleId` 只記連到哪個樣式；覆寫不另外存（和樣式不同的欄位 = 覆寫）。所以畫布、量測、匯出（含 Rust）都不讀樣式表。見「文字樣式」。
+- **文件色票（v12 起）**：`EditorDocument.swatches: Swatch[]`（id、名稱不重複，`color` 是小寫 `#rrggbb`，不透明）；每個顏色欄位旁邊有連結欄位（`string | null`）：`TextStyle.fillSwatchId`（文字、圖形內文字、文字樣式、頁碼）、`TextShadow.swatchId`、`Stroke.swatchId`、`ShapeElement.fillSwatchId`、`Sheet.backgroundSwatchId`。和文字樣式一樣**照存實際值**（含使用處自己的透明度），畫布與匯出不讀色票表。見「文件色票」。
 - `stroke` / `label` / `geometry` / `shadow` 是物件，`element/update` 的 patch 會**整個取代**，修改時要展開原本的值（`{ stroke: { ...stroke, color } }`）。
 - `Page.elements` 的 index 0 是最底層。圖層面板反向顯示，最上層在最前。
 - 物件**可以超出頁面，而且不裁切**（使用者需求）：頁面 Group 不設 clip、拖曳不限制在頁面內（`dragBoundFunc` 只在開啟「吸附格線」時用來對齊格線，見「偏好設定」）；頁緣線畫在物件上方。匯出 PDF 時超出部分會被紙張邊界裁掉。
@@ -273,6 +278,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 主頁與多頁新增的 action（新 id 一律由呼叫端帶入）：`page/addMany { pages, index }`、`page/duplicate` / `master/duplicate { id, newId, elementIds }`、`page/setMaster { ids, masterId }`、`master/add { master }`、`master/setParent`（會循環或太深時 no-op）、`master/delete`（套用它的頁面與子主頁接到它的父主頁）。見「主頁與動態變數」。`element/moveToPage { moves, pageId, dx }`：拖過書背放下時，一筆復原裡改位置、換到對頁座標、搬到對頁最上層並切頁選取（見「單頁 / 雙頁」）。
 - `element/add` / `update` / `updateMany` / `delete` 可帶 `pageId`：改那一頁（或主頁）而不切換使用者正在看的頁面（MCP 用）；加到別頁時不改選取；未知的 `pageId` 是 no-op。不帶時照舊作用在目前頁。
 - 文字樣式：`textStyle/add { style, link? }`（`link` = 同一筆復原裡讓選取的文字連到新樣式）、`textStyle/update { id, style, name? }`（連到它的文字只改沒覆寫的欄位，頁面與主頁都走過）、`textStyle/rename`、`textStyle/delete`（文字外觀不變、取消連結）、`element/applyTextStyle { ids, styleId | null, pageId? }`（取樣式的值並清除覆寫；null = 只取消連結）。`element/add` / `update` 帶進來的 `styleId`（含 `label.styleId`）必須存在，否則 no-op（同 Rust `require_style`）。見「文字樣式」。
+- 文件色票：`swatch/add { swatch }`、`swatch/update { id, name?, color? }`（連到它的顏色換 RGB、保留透明度）、`swatch/delete { id, replaceWith }`（換成另一個色票或 `null` = 保留顏色、取消連結）、`swatch/applyEdits { swatches, deletions }`（「色票」對話框一次送出）。帶顏色進來的 action（`element/*`、`page/addMany`、`page/setBackground`（可選 `swatchId`）、`master/add`、`textStyle/*`、`document/setPageNumbering`）要過 `hasValidSwatchLinks`：連到的色票存在、**RGB 等於色票**，否則 no-op。`element/update` 只給 `fill` 沒給 `fillSwatchId` = 取消連結。見「文件色票」。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
 - 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面與主頁 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
@@ -317,18 +323,36 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 ### 調色板（`color-picker.tsx` + `lib/editor/palette.ts`）
 
-計畫與決定：`docs/01-Plans/imp-color-picker.md`。
+計畫與決定：`docs/01-Plans/imp-color-picker.md`；文件色票區：`docs/01-Plans-2026-10/17-文件色票-實作.md`。
 
-- 顏色**只能從 Tailwind v4 色票選**：經典 22 個色系 × 11 階深淺 + 黑、白，沒有自訂顏色輸入。不在色票裡的既有顏色（舊專案、示範內容）照常顯示與匯出，只是不會標示位置。
+- 調色板有兩區：上面是**文件色票**（見「文件色票」，只在 `DocumentSwatchesProvider` 裡顯示），下面是 **Tailwind v4 原色庫**（經典 22 個色系 × 11 階深淺 + 黑、白）。**調色板沒有 hex 輸入**：自訂顏色一律先在「設定 → 文件 → 色票...」建成有名字的色票（2026-10-12 起，取代 2026-09-30「只能從 Tailwind 選」）。不在 Tailwind 色票裡的顏色照常顯示與匯出，只是不會標示位置。
+- `onCommit(color, swatchId)`：點色票 = `swatchColor(目前顏色, 色票)`（色票 RGB + 目前的透明度）並連結；點 Tailwind / 黑白 = 取消連結（`null`）；拖不透明度 = 保留連結。連到色票時標題顯示色票名稱、只標示色票的格子。
 - `palette.ts` 的資料照抄 Tailwind 的 oklch，載入時用 `oklchToHex` 換成 hex；**模型只存 hex**，Rust 驗證與匯出不認識 oklch。超出 sRGB 的顏色以「保持明度與色相、降低彩度」處理，少數飽和色和 Tailwind 官方 hex 差幾個數值。
 - **顏色格式**：物件的 `fill` 是 `#rrggbb` 或 `#rrggbbaa`（完全不透明時一律寫 6 位，`withAlpha` 負責）；頁面背景只能是 `#rrggbb`。TS `isElementColor` / `isHexColor` 與 Rust `require_element_color` / `require_background_color` 規則必須一致。
-- `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + Popover（屬性面板的填色、邊框、文字顏色）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。
+- `ColorPalette` 是本體（背景面板直接內嵌，`allowAlpha={false}`）；`ColorPicker` 是按鈕 + 受控 Popover（屬性面板的填色、邊框、文字顏色）。Popover 內容是 `role="dialog"`，編輯器快捷鍵不會在裡面觸發。按「管理色票...」時先關 Popover（`onManageStart`），否則對話框關掉後調色板點不開。
+
+### 文件色票（`lib/editor/swatches.ts` / `swatch-draft.ts` + `document-swatches.tsx` / `settings/swatches-dialog.tsx`）
+
+計畫與決定：`docs/01-Plans-2026-10/17-文件色票-實作.md`（評估與 Q1–Q8：`docs/Plans-Color-System/Color-System.html`）。參考 InDesign 的色票。
+
+- **範圍**（使用者決定）：只做文件裡的具名 sRGB 顏色；PANTONE / 專色、CMYK、ICC、色票匯入匯出、群組、別名、跨專案色票庫、「色票」工具面板、即時預覽都不做。格線 / 參考線（App 偏好）不能連色票。
+- **模型**：見「文件模型」的文件色票。**色票不透明**（`#rrggbb`），透明度存在使用處：連到色票的欄位實際值 = 色票 RGB + 自己的透明度（`swatchColor`）。陣列順序 = 顯示順序；可以兩個色票同色、數量不設上限。名稱上限 `SWATCH_NAME_MAX_LENGTH`（50，`validation.ts` / `format.rs`）。
+- **規則與驗證**：檔案驗證（TS `isSwatchList` / Rust `validate_swatches`、`require_swatch`）只檢查格式與**引用存在**；reducer 另外要求連結的 RGB = 色票（`hasValidSwatchLinks`），所以連結的顏色永遠對得上。
+- **`mapColorSlots(document, update)` 是唯一走過所有顏色欄位的地方**：頁面與主頁的物件（文字 fill / shadow、圖形 fill / stroke / label fill / label shadow）、頁面與主頁背景、文字樣式的 fill / shadow、頁碼規則的 fill / shadow / stroke。`swatchUsage`、`applySwatchEdits`（改色 / 刪除）都建在它上面，**新增帶顏色的欄位時要在這裡補**（測試以 fixture 的連結數守著）。
+- **改色票 = 所有連結處一起變**（一筆復原，保留各自的透明度）；刪除時換成另一個色票或「不替換」（保留顏色、取消連結）。
+- **文字樣式**：`fill` 與 `fillSwatchId` 當成**一個欄位**比較（`sameStyleValue`）：同色但連結不同 = 「顏色」覆寫；`restyle` 兩者一起跟。改色票時樣式與連到它的文字一起變，不會多出覆寫。
+- **預設**：新文件（`createBlankDocument` / `createSampleDocument` 的 `newDocumentStyles`）帶「文字」`#171717` / 「黑」/ 「白」（固定 id `swatch-text` / `swatch-black` / `swatch-white`，`BUILT_IN_SWATCH_IDS`），內建三個文字樣式連到「文字」；頁面背景不連。**舊檔讀成沒有色票**；`defaultTextStyles()` 與 `default-text-styles.json` 不連（舊檔升級用）。文字面板與文字工具建立的文字照樣式連到色票，`createTextElement`（MCP 沒給樣式、素材庫文字檔）不連。
+- **UI**：
+  - 調色板的「文件色票」區（見「調色板」）：色票來自 `DocumentSwatchesProvider`（屬性面板、背景面板、頁碼管理與文字樣式對話框包著）；「格線與參考線」偏好對話框沒包，所以沒有這一區。文件沒有色票時顯示「這份文件還沒有色票。」。
+  - 「管理色票...」按鈕由 `ManageSwatchesProvider`（`home-page.tsx`）開「色票...」對話框。**頁碼管理、文字樣式對話框裡不顯示**（`manage={false}`）：它們有自己的草稿，在下面改色票會讓草稿顏色過期、「確定」時被 reducer 擋下。
+  - 「設定 → 文件 → 色票...」（`settings.swatches`）：所有修改都是草稿（`swatch-draft.ts`），「確定」一次 `swatch/applyEdits`、「取消」/ Esc 放棄。hex 輸入 Enter / 失焦才讀（`parseSwatchHex`：`#` 可省略、大小寫、3 位數展開，存小寫）；名稱重複或空白時停用「確定」；把手拖曳或 ↑ / ↓ 排序；刪除有人用的色票先問替換（草稿裡 A 換成 B、B 又被刪時 A 跟著改，草稿永遠能被 `applySwatchEdits` 接受）。使用數 = 文件裡的使用數 + 草稿換過來的。
+- **匯出、畫布、量測都不用改**：它們只讀實際的 hex。
 
 ### 設定對話框（`lib/preferences/settings-pages.ts` + `components/app/settings/`）
 
 計畫與決定：`docs/Plans/imp-偏好設定調整.html`。
 
-- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,；Claude Code 連線（MCP）...）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
+- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...、色票...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,；Claude Code 連線（MCP）...）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
 - **單一資料來源**是 `SETTINGS_PAGES`（id / label / group / 可選的 shortcut）與 `SETTINGS_GROUPS`（子選單順序與名稱）：指令 `settings.<id>`（`settingsCommandId`，同 `panelCommandId` 的做法）、子選單、`home-page.tsx` 的 handler 與對話框都由它推導；`SETTINGS_DIALOGS`（`components/app/settings/index.ts`）以 `satisfies Record<SettingsPageId, …>` 檢查完整性。
 - 頁面設定的直橫 / 寬高 / 邊界欄位是 `page-setup-fields.tsx` 的 `PageSetupFields`（受控，紙張下拉與「尺寸不一致」提示由呼叫端以 `paperPicker` / `sizeNote` 傳入），「新增文件」對話框也用它。`SettingsDialogFooter` 的 `applyLabel` 可以把「確定」換成別的字（新增文件是「建立」）。
 - **新增設定頁**：在 `SETTINGS_PAGES` 加一筆 → 寫一個 `({ open, onOpenChange }: SettingsDialogProps)` 對話框（外框用 `SettingsDialog`、頁尾用 `SettingsDialogFooter`）→ 登記到 `SETTINGS_DIALOGS`（漏了會編譯失敗）。要放到新的子選單就加一個 group。
@@ -431,7 +455,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 對話框（`TextStyleDialog`）：名稱 + `TextStyleFields` + 預覽，「確定」才寫入（編輯 = 一次 `textStyle/update` 含新名稱）。**`<form>` 只包名稱欄**：shadcn `Button` 沒有預設 `type="button"`，`NumberField` 的 −／＋ 放進表單時 Enter 會「按下」它而不是送出。
 - **字型**：套用 / 新增樣式的文字前先 `loadFontFamily`（`use-fonts-ready.ts`），畫布才不會用替代字型量換行。
 - **MCP**：見「MCP」的目前的工具。
-- 不做（之後另排）：字元樣式、樣式繼承（based on）、樣式群組、文件色票（另開任務檔）、從其他專案匯入樣式、頁碼連到樣式。
+- 不做（之後另排）：字元樣式、樣式繼承（based on）、樣式群組、從其他專案匯入樣式、頁碼連到樣式。
 
 ### 單頁 / 雙頁（跨頁）（`spreads.ts` + `canvas-sheet.tsx` + `pages-panel.tsx`）
 
@@ -607,7 +631,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 11；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍；v10 的 `align` 可以是 `distributed`（首尾置中），沒有新欄位，提升版本是讓舊版 App 明確說「檔案比較新」而不是解析失敗；v11 的矩形 `cornerRadius` 可以是四個數字（Rust `CornerRadius` untagged enum），四角一樣仍存數字）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 12；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍；v10 的 `align` 可以是 `distributed`（首尾置中），沒有新欄位，提升版本是讓舊版 App 明確說「檔案比較新」而不是解析失敗；v11 的矩形 `cornerRadius` 可以是四個數字（Rust `CornerRadius` untagged enum），四角一樣仍存數字；v12 加 `document.swatches` 與各顏色的連結欄位 `fillSwatchId` / `swatchId` / `backgroundSwatchId`，缺少時沒有色票、都不連結（serde 預設，不需要升級步驟，備份檔也一樣），驗證色票格式與引用存在）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
@@ -646,6 +670,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
     - 線寬上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、邊界上限 `MARGIN_MAX_PT`、陰影偏移上限 `TEXT_SHADOW_OFFSET_MAX`：`validation.ts` / `format.rs`。
     - 主頁鏈的深度上限 `MASTER_DEPTH_MAX`（8）與主頁引用的規則：`master-pages.ts` / `format.rs`。
     - 文字樣式：`TEXT_STYLE_NAME_MAX_LENGTH`（50）、名稱 / id 規則與引用（`style-sheet.ts` / `format.rs` 的 `validate_text_styles` / `require_style`）；內建三個樣式（`defaultTextStyles` / `default_text_styles`，共用 `tests/fixtures/default-text-styles.json`）。
+    - 文件色票：`SWATCH_NAME_MAX_LENGTH`（50）、色票顏色是小寫 `#rrggbb`、id / 名稱不重複、連結引用存在（`validation.ts` 的 `isSwatchList` / `isSwatchLink` / `format.rs` 的 `validate_swatches` / `require_swatch`）。
     - 素材庫：`LIBRARY_DEPTH_MAX`（8）、資料夾 / 素材名稱上限、`TEXT_EXCERPT_MAX_CHARS` 與驗證規則（`lib/library/types.ts`、`library-validation.ts` / `project/library.rs`，共用 `sample-library.json`）；`TEXT_ASSET_MAX_BYTES`（200 KB）、`AUDIO_ASSET_MAX_BYTES`（50 MB）（`types.ts` / `assets.rs`）。
     - 底線 / 刪除線的公式與模擬斜體的斜率只在 Rust（`render.rs`），對應的是 **Konva 與瀏覽器本身的行為**，不是前端常數：升級 Konva 時重查（見「文字裝飾」）。
     - 字級範圍 `FONT_SIZE_MIN` / `FONT_SIZE_MAX`（`validation.ts`）、`PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）：`format.rs` 的頁碼驗證（`validate_page_number_rules`）。
@@ -686,7 +711,8 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **工具是單一資料來源**：`lib/automation/tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、寫給 AI 看的中文說明、zod strict schema、`readOnly`）。`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作會編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 的 `toMatchFileSnapshot` 產生並比對，橋接程式 `include_str!` 內嵌（App 沒開時 Claude Code 仍看得到工具）。
   - **新增工具**：在 `TOOL_DEFINITIONS` 加一筆 → 在 `HANDLERS` 實作（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，寫測試，用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp`。
   - 參數驗證失敗回中文訊息（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex（和 `isElementColor` / `isHexColor` 同規則）才會出現在 JSON Schema；不用 ajv（`new Function` 會被 CSP 擋）。
-- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）。
+- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）；文件色票 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`（色票以名稱或 id 指定（`findSwatch`）；`delete_swatch` 的 `replaceWith` 省略 = 保留顏色、取消連結）。
+  - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）是 `hex | { swatch, opacity? }`（`colorInput`，JSON Schema 是 `anyOf`），背景是 `hex | { swatch }`（`pageColorInput`）：給 hex = 不連色票；給 `{ swatch }` = 色票顏色（`opacity` 換成 `#rrggbbaa`）+ 連結。查詢回報連結的色票名稱（`list_pages` 的 `backgroundSwatch`、`list_text_styles` 的 `textColorSwatch`）。
   - `run_command` 和點選單呼叫**同一個 handler**（`home-page.tsx` 的 `menuHandlers` 傳給 `McpBridge`）；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」且不執行（不會跳 toast）。會開對話框的指令只觸發，不等結果。
   - 編輯：**一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外：和 UI 一樣切到新頁）。`update_element` 依物件類型檢查欄位（文字沒有 height、文字顏色是 `textColor`、圖片只能改位置尺寸）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。
   - `ToolContext.apply`：先用純 reducer 算出結果（回報有沒有變更），再 dispatch 同一個 action，**並先把結果記在 ref**：「新增後立刻修改」的第二個呼叫可能比 React 重畫早到。

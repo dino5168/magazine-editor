@@ -89,8 +89,8 @@ export function addPagesIndex(form: AddPagesForm): number {
 
 /**
  * Builds the pages the dialog adds: named `Page-N` after the existing ones, sized like the page
- * they are inserted next to, with the master page's background as their own (backgrounds are not
- * inherited) or the neighbour page's when no master page is chosen.
+ * they are inserted next to, with the master page's background (and its swatch link) as their own
+ * (backgrounds are not inherited) or the neighbour page's when no master page is chosen.
  *
  * Args:
  *   document: Document.
@@ -102,8 +102,10 @@ export function addPagesIndex(form: AddPagesForm): number {
 export function buildAddedPages(document: EditorDocument, form: AddPagesForm): Page[] {
   const neighbour = document.pages[form.pageNumber - 1] ?? document.pages[0];
   const master = document.masters.find((candidate) => candidate.id === form.masterId);
-  const background = master?.background ?? neighbour.background;
-  return nextPageNames(document.pages, form.count).map((name) => createPage(name, neighbour, background, form.masterId));
+  const source = master ?? neighbour;
+  return nextPageNames(document.pages, form.count).map((name) =>
+    createPage(name, neighbour, source.background, form.masterId, source.backgroundSwatchId),
+  );
 }
 
 /**

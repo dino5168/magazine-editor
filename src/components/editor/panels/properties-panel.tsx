@@ -37,6 +37,7 @@ import { textBlockHeight } from "@/lib/editor/shape-label";
 import { resolveElementVariables, TEXT_VARIABLES, variableValues } from "@/lib/editor/variables";
 import { measureTextLayout } from "@/lib/export/text-layout";
 import { ColorPicker } from "../color-picker";
+import { DocumentSwatchesProvider } from "../document-swatches";
 import { IconButton } from "../icon-button";
 import { NumberField } from "../number-field";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
@@ -212,7 +213,12 @@ function StyleTab({ shape, update }: { readonly shape: ShapeElement; readonly up
       <GeometrySection shape={shape} update={update} />
       <Section title="填滿">
         <Row label="填色">
-          <ColorPicker value={shape.fill} label="填色" onCommit={(fill) => update({ fill })} />
+          <ColorPicker
+            value={shape.fill}
+            swatchId={shape.fillSwatchId}
+            label="填色"
+            onCommit={(fill, fillSwatchId) => update({ fill, fillSwatchId })}
+          />
         </Row>
       </Section>
       <StrokeSection shape={shape} update={update} />
@@ -538,5 +544,9 @@ export function PropertiesPanel() {
       </p>
     );
   }
-  return <SelectedProperties element={selected} />;
+  return (
+    <DocumentSwatchesProvider>
+      <SelectedProperties element={selected} />
+    </DocumentSwatchesProvider>
+  );
 }

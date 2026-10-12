@@ -21,6 +21,8 @@ export interface BaseElement {
 export interface TextShadow {
   /** `#rrggbb` or `#rrggbbaa`. */
   readonly color: string;
+  /** `Swatch.id` the color follows (its RGB; the alpha stays this shadow's own); null = not linked. */
+  readonly swatchId: string | null;
   /** pt, towards the page's right / bottom whatever the element's rotation. */
   readonly offsetX: number;
   readonly offsetY: number;
@@ -52,6 +54,8 @@ export interface TextStyle {
   readonly align: TextAlign;
   /** Text color. */
   readonly fill: string;
+  /** `Swatch.id` the text color follows (its RGB; the alpha stays the text's own); null = not linked. */
+  readonly fillSwatchId: string | null;
 }
 
 /**
@@ -79,6 +83,8 @@ export interface TextElement extends BaseElement, StyledText {
 export interface Stroke {
   /** `#rrggbb` or `#rrggbbaa`. */
   readonly color: string;
+  /** `Swatch.id` the color follows; null = not linked. */
+  readonly swatchId: string | null;
   /** Line width in pt. */
   readonly width: number;
   readonly dash: "solid" | "dashed" | "dotted";
@@ -118,6 +124,8 @@ export interface ShapeElement extends BaseElement {
   readonly height: number;
   readonly geometry: ShapeGeometry;
   readonly fill: string;
+  /** `Swatch.id` the fill follows; null = not linked. */
+  readonly fillSwatchId: string | null;
   /** null = no outline. */
   readonly stroke: Stroke | null;
   /** null = no text. */
@@ -152,6 +160,8 @@ export interface Sheet {
   readonly width: number;
   readonly height: number;
   readonly background: string;
+  /** `Swatch.id` the background follows; null = not linked. */
+  readonly backgroundSwatchId: string | null;
   /** Z-order: index 0 is the bottom-most element. */
   readonly elements: readonly CanvasElement[];
 }
@@ -219,6 +229,19 @@ export interface PageNumberRule {
   readonly style: PageNumberStyle;
 }
 
+/**
+ * A named document color（文件色票, v12）. Swatches are opaque; every use keeps its own copy of the
+ * color (with its own alpha) plus the swatch id, so drawing and export never read the swatch list.
+ */
+export interface Swatch {
+  /** Unique among the swatches. */
+  readonly id: string;
+  /** Trimmed, unique among the swatches. */
+  readonly name: string;
+  /** `#rrggbb`, lowercase. */
+  readonly color: string;
+}
+
 export interface EditorDocument {
   readonly name: string;
   /** Same for every page; drawn as guides on the canvas only, never exported. */
@@ -230,6 +253,8 @@ export interface EditorDocument {
   readonly pageNumberRules: readonly PageNumberRule[];
   /** Style sheet; ids and names unique (`style-sheet.ts`). */
   readonly textStyles: readonly TextStyleDef[];
+  /** Document colors in display order; ids and names unique. */
+  readonly swatches: readonly Swatch[];
   /** Kept apart from `pages`: page order, page numbers and export only ever see pages. */
   readonly masters: readonly MasterPage[];
   readonly pages: readonly Page[];

@@ -18,7 +18,7 @@ const master = (id: string, parentId: string | null = null, background = "#fffff
   width: 600,
   height: 800,
   background,
-  elements: [],
+  backgroundSwatchId: null, elements: [],
   parentId,
 });
 const page = (id: string, masterId: string | null = null): Page => ({
@@ -27,13 +27,14 @@ const page = (id: string, masterId: string | null = null): Page => ({
   width: 600,
   height: 800,
   background: "#f5f5f5",
-  elements: [],
+  backgroundSwatchId: null, elements: [],
   masterId,
 });
 const doc = (masters: MasterPage[], pages: Page[]): EditorDocument => ({
   name: "測試",
   margins: DEFAULT_MARGINS,
   textStyles: [],
+  swatches: [],
   pageNumberRules: [],
   masters,
   pages,

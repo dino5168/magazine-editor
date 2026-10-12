@@ -12,7 +12,7 @@ export interface DashPattern {
 }
 
 /** Stroke added when the outline is switched on in the property panel. */
-export const DEFAULT_STROKE: Stroke = { color: "#171717", width: 1, dash: "solid" };
+export const DEFAULT_STROKE: Stroke = { color: "#171717", swatchId: null, width: 1, dash: "solid" };
 
 /**
  * Returns the dash pattern of a stroke style. Same numbers as `dash_pattern` in Rust `render.rs`,

@@ -50,6 +50,7 @@ describe("usedFontFamilies", () => {
       name: "doc",
       margins: DEFAULT_MARGINS,
       textStyles: [],
+      swatches: [],
       pageNumberRules: [],
       masters: [],
       pages: [

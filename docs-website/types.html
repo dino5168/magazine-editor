@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-12
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-12
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -166,7 +166,7 @@
 
 <h2 id="diagram">型別關係圖</h2>
 <div class="figure-wrap">
-<svg class="diagram" viewBox="0 0 1160 1840" role="img" aria-labelledby="diagram-title">
+<svg class="diagram" viewBox="0 0 1160 2010" role="img" aria-labelledby="diagram-title">
   <title id="diagram-title">types.ts 型別關係圖</title>
   <defs>
     <marker id="dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
@@ -254,7 +254,7 @@
       <text class="field" x="355" y="94">name<tspan class="ft">: string</tspan></text>
       <text class="field" x="355" y="114">margins<tspan class="ft">: Margins</tspan></text>
       <text class="field" x="355" y="134">pageNumberRules<tspan class="ft">: 見下方</tspan></text>
-      <text class="field" x="355" y="154">textStyles<tspan class="ft">: TextStyleDef[]</tspan></text>
+      <text class="field" x="355" y="154">textStyles / swatches</text>
       <text class="field" x="355" y="174">masters<tspan class="ft">: 見下方</tspan></text>
       <text class="field" x="355" y="194">pages<tspan class="ft">: readonly Page[]</tspan></text>
   </a>
@@ -282,7 +282,7 @@
       <text class="field" x="610" y="94">masterId<tspan class="ft">: PageId | null</tspan></text>
       <text class="prose" x="610" y="120">Sheet 的欄位（見下方主頁區）：</text>
       <text class="field" x="610" y="140"><tspan class="ft">id · name · width · height</tspan></text>
-      <text class="field" x="610" y="160"><tspan class="ft">background</tspan></text>
+      <text class="field" x="610" y="160"><tspan class="ft">background · backgroundSwatchId</tspan></text>
       <text class="field" x="610" y="194">elements<tspan class="ft">: readonly CanvasElement[]</tspan></text>
   </a>
   <a href="#t-CanvasElement" class="node doc">
@@ -373,7 +373,7 @@
       <text class="field" x="310" y="624">width<tspan class="ft">: number</tspan></text>
       <text class="field" x="310" y="644">height<tspan class="ft">: number</tspan></text>
       <text class="field" x="310" y="664">geometry<tspan class="ft">: ShapeGeometry</tspan></text>
-      <text class="field" x="310" y="684">fill<tspan class="ft">: string</tspan></text>
+      <text class="field" x="310" y="684">fill / fillSwatchId<tspan class="ft">: 顏色 / 色票</tspan></text>
       <text class="field" x="310" y="704">stroke<tspan class="ft">: Stroke | null</tspan></text>
       <text class="field" x="310" y="724">label<tspan class="ft">: ShapeLabel | null</tspan></text>
   </a>
@@ -430,7 +430,7 @@
       <text class="field" x="25" y="954">shadow<tspan class="ft">: TextShadow | null</tspan></text>
       <text class="field" x="25" y="974">lineHeight / letterSpacing<tspan class="ft">: number</tspan></text>
       <text class="field" x="25" y="994">align<tspan class="ft">: TextAlign</tspan></text>
-      <text class="field" x="25" y="1014">fill<tspan class="ft">: string</tspan></text>
+      <text class="field" x="25" y="1014">fill / fillSwatchId<tspan class="ft">: 顏色 / 色票</tspan></text>
   </a>
   <!-- TextStyle 擁有 shadow（0 或 1 個） -->
   <polygon class="diamond" points="255,950 267,944 279,950 267,956"/>
@@ -444,7 +444,7 @@
     <rect class="frame" x="300" y="912" width="160" height="116" rx="6"/>
     <text class="st" x="380" y="929">«interface» · 硬陰影</text>
     <text class="nm" x="380" y="947">TextShadow</text>
-      <text class="field" x="310" y="976">color<tspan class="ft">: string</tspan></text>
+      <text class="field" x="310" y="976">color / swatchId</text>
       <text class="field" x="310" y="996">offsetX<tspan class="ft">: number</tspan></text>
       <text class="field" x="310" y="1016">offsetY<tspan class="ft">: number</tspan></text>
   </a>
@@ -468,7 +468,7 @@
     <rect class="frame" x="640" y="790" width="320" height="116" rx="6"/>
     <text class="st" x="800" y="807">«interface»</text>
     <text class="nm" x="800" y="825">Stroke</text>
-      <text class="field" x="650" y="854">color<tspan class="ft">: string</tspan></text>
+      <text class="field" x="650" y="854">color / swatchId<tspan class="ft">: 顏色 / 色票</tspan></text>
       <text class="field" x="650" y="874">width<tspan class="ft">: number</tspan></text>
       <text class="field" x="650" y="894">dash<tspan class="ft">: "solid"|"dashed"|"dotted"</tspan></text>
   </a>
@@ -549,7 +549,33 @@
   <text class="prose" x="580" y="1250">TextElement、ShapeLabel extends StyledText。</text>
   <text class="prose" x="580" y="1272">文字照存實際值；和樣式不同的欄位 = 覆寫。</text>
   <text class="prose" x="580" y="1294">改樣式時只改和舊樣式相同的欄位（restyle）。</text>
-  <g transform="translate(0 150)">
+  <!-- 文件色票：顏色旁的 …SwatchId → EditorDocument.swatches（0..*） -->
+  <rect class="group" x="15" y="1330" width="1130" height="160" rx="8"/>
+  <text class="glabel" x="30" y="1352">文件色票（v12）：EditorDocument.swatches　0..*；每個顏色旁的連結欄位指向其中一個（id、名稱都不重複）</text>
+  <path class="note" d="M30 1364 H268 L280 1376 V1480 H30 Z M268 1364 V1376 H280"/>
+  <text class="prose" x="42" y="1386">連結欄位（null = 沒連）：</text>
+  <text class="prose" x="42" y="1408">fillSwatchId：TextStyle、ShapeElement</text>
+  <text class="prose" x="42" y="1430">swatchId：Stroke、TextShadow</text>
+  <text class="prose" x="42" y="1452">backgroundSwatchId：Sheet</text>
+  <text class="prose" x="42" y="1474">（頁碼樣式、文字樣式也都有）</text>
+  <line class="edge dep" x1="280" y1="1420" x2="328" y2="1420" marker-end="url(#dep)"/>
+  <text class="elabel" x="304" y="1412" text-anchor="middle">id</text>
+  <a href="#t-Swatch" class="node doc">
+    <title>Swatch：點擊查看說明</title>
+    <rect class="body" x="330" y="1364" width="220" height="116" rx="6"/>
+    <path class="hdr" d="M330 1408 V1370 a6 6 0 0 1 6 -6 H544 a6 6 0 0 1 6 6 V1408 Z"/>
+    <line class="sep" x1="330" y1="1408" x2="550" y2="1408"/>
+    <rect class="frame" x="330" y="1364" width="220" height="116" rx="6"/>
+    <text class="st" x="440" y="1381">«interface» · 具名的不透明顏色</text>
+    <text class="nm" x="440" y="1399">Swatch</text>
+      <text class="field" x="340" y="1428">id<tspan class="ft">: string</tspan></text>
+      <text class="field" x="340" y="1448">name<tspan class="ft">: string</tspan></text>
+      <text class="field" x="340" y="1468">color<tspan class="ft">: #rrggbb</tspan></text>
+  </a>
+  <text class="prose" x="580" y="1400">使用處照存實際顏色（含自己的透明度）＋色票 id。</text>
+  <text class="prose" x="580" y="1422">色票不透明；透明度屬於使用處。</text>
+  <text class="prose" x="580" y="1444">畫布與匯出只讀實際顏色，不讀色票。</text>
+  <g transform="translate(0 320)">
   <!-- 頁碼設定：EditorDocument.pageNumberRules（0..*） -->
   <rect class="group" x="15" y="1180" width="1130" height="250" rx="8"/>
   <text class="glabel" x="30" y="1202">頁碼設定：EditorDocument.pageNumberRules　0..*（依 from 排序、範圍不重疊）</text>
@@ -588,7 +614,7 @@
       <text class="field" x="340" y="1298">fontFamily<tspan class="ft">: string</tspan></text>
       <text class="field" x="340" y="1318">fontStyle<tspan class="ft">: "normal"|"bold"</tspan></text>
       <text class="field" x="340" y="1338">italic … shadow<tspan class="ft">: 同 TextStyle</tspan></text>
-      <text class="field" x="340" y="1358">fill<tspan class="ft">: string</tspan></text>
+      <text class="field" x="340" y="1358">fill / fillSwatchId<tspan class="ft">: 顏色 / 色票</tspan></text>
       <text class="field" x="340" y="1378">stroke<tspan class="ft">: Stroke | null</tspan></text>
   </a>
   <a href="#t-PageNumberFace" class="node doc">
@@ -633,7 +659,7 @@
       <text class="field" x="40" y="1548">id<tspan class="ft">: PageId</tspan></text>
       <text class="field" x="40" y="1568">name<tspan class="ft">: string</tspan></text>
       <text class="field" x="40" y="1588">width / height<tspan class="ft">: number</tspan></text>
-      <text class="field" x="40" y="1608">background<tspan class="ft">: string</tspan></text>
+      <text class="field" x="40" y="1608">background / backgroundSwatchId</text>
       <text class="field" x="40" y="1628">elements<tspan class="ft">: readonly CanvasElement[]</tspan></text>
   </a>
   <a href="#t-MasterPage" class="node doc">
@@ -721,6 +747,7 @@
     <tr><td><code>margins</code></td><td><code>Margins</code></td><td>頁面邊界，所有頁面共用一組。只在畫布上畫成參考線，<strong>不會輸出</strong>到 PDF / EPUB。v4 之前的檔案沒有這個欄位，開啟時四邊都是 0（不畫參考線）</td></tr>
     <tr><td><code>pageNumberRules</code></td><td><code>readonly PageNumberRule[]</code></td><td>頁碼設定，一段一筆，依 <code>from</code> 排序、範圍不重疊。沒有被任何一段涵蓋的頁面不顯示頁碼。頁碼<strong>不是</strong>頁面上的物件：畫布與匯出時才由 <code>lib/editor/page-numbers.ts</code> 算出來。v5 之前的檔案沒有這個欄位，開啟時是空陣列</td></tr>
     <tr><td><code>textStyles</code></td><td><code>readonly <a href="#t-TextStyleDef">TextStyleDef</a>[]</code></td><td>樣式表（文字樣式），id 與名稱都不重複。新文件與 v8 之前的檔案是內建的「標題 / 副標題 / 內文」。匯出不讀它：連到樣式的文字自己存著實際值</td></tr>
+    <tr><td><code>swatches</code></td><td><code>readonly <a href="#t-Swatch">Swatch</a>[]</code></td><td>文件色票，陣列順序 = 顯示順序，id 與名稱都不重複。v12 之前的檔案讀成空陣列。匯出不讀它：連到色票的顏色欄位自己存著實際值</td></tr>
     <tr><td><code>masters</code></td><td><code>readonly MasterPage[]</code></td><td>主頁，和 <code>pages</code> 分開存：頁序、頁碼、匯出頁數都只看 <code>pages</code>。v7 之前的檔案沒有這個欄位，開啟時是空陣列</td></tr>
     <tr><td><code>pages</code></td><td><code>readonly Page[]</code></td><td>所有頁面，依頁籤順序排列。型別允許空陣列，但 reducer 的 <code>page/delete</code> 會擋住刪除最後一頁，所以實際上至少有 1 頁</td></tr>
   </table></div>
@@ -770,7 +797,7 @@
   <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定）與 <code>lineHeight</code> / <code>letterSpacing</code>（直書頁碼是每字一行，行距由程式決定），再加上框線。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
-    <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> / <code>fill</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
+    <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> / <code>fill</code> / <code>fillSwatchId</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
     <tr><td><code>stroke</code></td><td><code>Stroke | null</code></td><td>框線；<code>null</code> = 沒有框線</td></tr>
   </table></div>
 </section>
@@ -802,6 +829,7 @@
     <tr><td><code>name</code></td><td><code>string</code></td><td>頁籤或主頁清單上顯示的名稱</td></tr>
     <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>尺寸，單位 pt。A4 直式約為 595 × 842。「頁面設定」一次改所有頁面與主頁</td></tr>
     <tr><td><code>background</code></td><td><code>string</code></td><td>背景色，<code>#rrggbb</code> 格式（reducer 會驗證，不合法就忽略）。主頁的背景<strong>不會</strong>畫到頁面上，只當新增頁面時的預設值</td></tr>
+    <tr><td><code>backgroundSwatchId</code></td><td><code>string | null</code></td><td>背景連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連。v12 之前的檔案讀成 <code>null</code></td></tr>
     <tr><td><code>elements</code></td><td><code>readonly CanvasElement[]</code></td><td>上面的物件。<strong>陣列順序就是圖層順序</strong>：index 0 在最底層，最後一個在最上層</td></tr>
   </table></div>
   <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/editor-context.tsx</code> · <code>lib/editor/geometry.ts</code> · <code>lib/editor/master-pages.ts</code> · <code>lib/editor/page-numbers.ts</code></p>
@@ -870,6 +898,7 @@
     <tr><td><code>letterSpacing</code></td><td><code>number</code></td><td>字距：每個字後面多加的距離，單位是字級的 1/1000（‰，同 InDesign 的「追蹤」），−200–1000。畫布換算成 pt 交給 Konva</td></tr>
     <tr><td><code>align</code></td><td><code>TextAlign</code>：<code>"left" | "center" | "right" | "distributed"</code></td><td>水平對齊；<code>distributed</code> = 首尾置中（分散對齊）</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>文字顏色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code>（半透明）</td></tr>
+    <tr><td><code>fillSwatchId</code></td><td><code>string | null</code></td><td>文字顏色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連。也是樣式欄位：文字和樣式的連結不同就算覆寫</td></tr>
   </table></div>
   <p><code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> 是 2026-10-05 加的（<code>schemaVersion</code> 6），新文字的預設值是 <code>text-style.ts</code> 的 <code>PLAIN_TEXT_DECORATION</code>；v6 之前的檔案讀成全部關閉。</p>
   <p><code>lineHeight</code> / <code>letterSpacing</code> 是 2026-10-11 加的（<code>schemaVersion</code> 9），預設值是 <code>text-style.ts</code> 的 <code>DEFAULT_TEXT_SPACING</code>（1.2 / 0，就是以前固定的值；內建「內文」樣式的行距是 1.5）；v9 之前的檔案讀成 1.2 / 0。頁碼沒有這兩個欄位。</p>
@@ -884,6 +913,7 @@
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>color</code></td><td><code>string</code></td><td><code>#rrggbb</code> 或 <code>#rrggbbaa</code>；開啟陰影時預設 <code>#00000080</code>（黑色 50%）</td></tr>
+    <tr><td><code>swatchId</code></td><td><code>string | null</code></td><td>陰影色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連</td></tr>
     <tr><td><code>offsetX</code> / <code>offsetY</code></td><td><code>number</code></td><td>偏移（pt），正值往右 / 往下，各限 −50～50（<code>TEXT_SHADOW_OFFSET_MAX</code>，Rust 也檢查）；預設 2 / 2。方向以<strong>頁面</strong>為準，物件旋轉時陰影仍朝同一個方向</td></tr>
   </table></div>
 </section>
@@ -897,6 +927,7 @@
     <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>外框的寬、高（pt）。圖形畫在外框裡，所以每一種圖形都能自由拉伸</td></tr>
     <tr><td><code>geometry</code></td><td><code>ShapeGeometry</code></td><td>畫什麼圖形，以及該圖形自己的參數</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>填色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code></td></tr>
+    <tr><td><code>fillSwatchId</code></td><td><code>string | null</code></td><td>填色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連</td></tr>
     <tr><td><code>stroke</code></td><td><code>Stroke | null</code></td><td>邊框，<code>null</code> 表示沒有邊框</td></tr>
     <tr><td><code>label</code></td><td><code>ShapeLabel | null</code></td><td>圖形內文字，<code>null</code> 表示沒有文字</td></tr>
   </table></div>
@@ -933,6 +964,7 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>color</code></td><td><code>string</code></td><td><code>#rrggbb</code> 或 <code>#rrggbbaa</code></td></tr>
+    <tr><td><code>swatchId</code></td><td><code>string | null</code></td><td>邊框色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連</td></tr>
     <tr><td><code>width</code></td><td><code>number</code></td><td>線寬（pt），大於 0、最多 100</td></tr>
     <tr><td><code>dash</code></td><td><code>"solid" | "dashed" | "dotted"</code></td><td>虛線 = 線段 3 倍線寬 + 間隔 3 倍線寬；點線 = 圓點，間距 2 倍線寬（<code>stroke.ts</code> 的 <code>dashPattern</code>）</td></tr>
   </table></div>
@@ -961,6 +993,20 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
     <tr><td><code>name</code></td><td><code>string</code></td><td>去掉頭尾空白、1–50 字，樣式表內<strong>不重複</strong></td></tr>
   </table></div>
   <p class="uses">使用位置：<code>lib/editor/style-sheet.ts</code>（<code>defaultTextStyles</code>、<code>isTextStyleSheet</code>，規則和 Rust <code>validate_text_styles</code> 相同）· <code>lib/editor/element-factory.ts</code>（新文件帶內建樣式）</p>
+</section>
+
+<section class="card doc" id="t-Swatch">
+  <a class="back" href="#diagram">↑ 回到圖</a>
+  <h4><code>Swatch</code><span class="badge">interface</span></h4>
+  <p>文件色票（<code>EditorDocument.swatches</code>）裡的一個具名顏色，例如「品牌紅」。2026-10-12 加入（<code>schemaVersion</code> 12）。</p>
+  <div class="table-wrap"><table>
+    <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+    <tr><td><code>id</code></td><td><code>string</code></td><td>1–64 字元，色票之間不重複</td></tr>
+    <tr><td><code>name</code></td><td><code>string</code></td><td>去掉頭尾空白、1–50 字，色票之間<strong>不重複</strong></td></tr>
+    <tr><td><code>color</code></td><td><code>string</code></td><td><code>#rrggbb</code>，小寫，<strong>不透明</strong></td></tr>
+  </table></div>
+  <p><strong>使用處照存實際的顏色</strong>，旁邊的連結欄位（<code>fillSwatchId</code>、<code>swatchId</code>、<code>backgroundSwatchId</code>）只記住連到哪個色票：實際顏色的 RGB = 色票的顏色，透明度是使用處自己的（例如 <code>#4f46e580</code> = 「靛藍」的 50%）。所以畫布、量測與匯出都只讀顏色欄位，不用查色票；改色票時由 reducer 改寫所有連到它的地方。驗證（TS 與 Rust）只檢查連到的色票存在。</p>
+  <p class="uses">使用位置：<code>lib/editor/validation.ts</code>（<code>isSwatch</code>、<code>isSwatchList</code>、<code>isSwatchLink</code>，規則和 Rust <code>validate_swatches</code> / <code>require_swatch</code> 相同）</p>
 </section>
 
 <section class="card doc" id="t-ShapeLabel">  <a class="back" href="#diagram">↑ 回到圖</a>
