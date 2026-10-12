@@ -22,7 +22,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// numbers). Missing in older files and backups → 1.2 / 0, the values that used to be fixed.
 /// v10: `align` may be `distributed` (首尾置中). No new fields; older apps cannot read the value, so
 /// the version tells them the file is newer.
-pub const SCHEMA_VERSION: u32 = 10;
+/// v11: a rectangle's `cornerRadius` may be four numbers (top-left, top-right, bottom-right,
+/// bottom-left) when the corners differ. Older files and backups keep their single number.
+pub const SCHEMA_VERSION: u32 = 11;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -351,13 +353,33 @@ pub struct ShapeLabel {
     pub style_id: Option<String>,
 }
 
+/// A rectangle's corner radius (pt): one number for four equal corners (stored that way whenever
+/// they match), or four numbers in Konva's order (top-left, top-right, bottom-right, bottom-left,
+/// v11) when they differ. Same as `CornerRadius` in `src/lib/editor/types.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum CornerRadius {
+    Uniform(f64),
+    Corners([f64; 4]),
+}
+
+impl CornerRadius {
+    /// The four radii: top-left, top-right, bottom-right, bottom-left.
+    pub fn radii(self) -> [f64; 4] {
+        match self {
+            CornerRadius::Uniform(radius) => [radius; 4],
+            CornerRadius::Corners(radii) => radii,
+        }
+    }
+}
+
 /// What is drawn inside a shape's box.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum ShapeGeometry {
     Rect {
         #[serde(rename = "cornerRadius")]
-        corner_radius: f64,
+        corner_radius: CornerRadius,
     },
     Ellipse,
     /// Regular polygon stretched to fill the box.
@@ -763,7 +785,7 @@ fn validate_element(element: &Element, styles: &StyleIds) -> AppResult<()> {
 /// them (`project/shape.rs`), so older files keep opening.
 fn validate_geometry(geometry: &ShapeGeometry) -> AppResult<()> {
     let valid = match *geometry {
-        ShapeGeometry::Rect { corner_radius } => corner_radius >= 0.0,
+        ShapeGeometry::Rect { corner_radius } => corner_radius.radii().iter().all(|radius| radius.is_finite() && *radius >= 0.0),
         ShapeGeometry::Ellipse => true,
         ShapeGeometry::Polygon { sides } => sides <= MAX_VERTEX_COUNT,
         ShapeGeometry::Star { num_points, inner_ratio } => {
@@ -935,6 +957,11 @@ mod tests {
                             ShapeGeometry::Star { num_points: a, inner_ratio: ra },
                             ShapeGeometry::Star { num_points: b, inner_ratio: rb },
                         ) => assert!(a == b && close(*ra, *rb)),
+                        // v11 起 fixture 的圓角矩形四角不同（左上 12）；舊版只有一個數字
+                        (ShapeGeometry::Rect { corner_radius: a }, ShapeGeometry::Rect { corner_radius: b }) => {
+                            assert_eq!(*a, CornerRadius::Uniform(12.0));
+                            assert_eq!(b.radii()[0], 12.0);
+                        }
                         (a, b) => assert_eq!(a, b),
                     }
                 }
@@ -1212,6 +1239,29 @@ mod tests {
     }
 
     #[test]
+    fn reads_four_corner_radii_and_keeps_a_single_number() {
+        let project = parse_project(FIXTURE).unwrap();
+        let shape = |document: &Document, id: &str| {
+            document.pages[0]
+                .elements
+                .iter()
+                .find_map(|e| match e {
+                    Element::Shape(shape) if shape.base.id == id => Some(shape.geometry.clone()),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("expected the shape {id}"))
+        };
+        // fixture 的圓角矩形：四個角不同，存成陣列、照樣存回陣列
+        let rect = shape(&project.document, "el-rect");
+        assert_eq!(rect, ShapeGeometry::Rect { corner_radius: CornerRadius::Corners([12.0, 12.0, 0.0, 4.0]) });
+        assert_eq!(serde_json::to_value(&rect).unwrap()["cornerRadius"], serde_json::json!([12.0, 12.0, 0.0, 4.0]));
+        // 四角一樣的（v10 以前的檔案）讀成數字、存回數字
+        let uniform = ShapeGeometry::Rect { corner_radius: CornerRadius::Uniform(8.0) };
+        assert_eq!(serde_json::to_value(&uniform).unwrap()["cornerRadius"], serde_json::json!(8.0));
+        assert_eq!(CornerRadius::Uniform(8.0).radii(), [8.0; 4]);
+    }
+
+    #[test]
     fn geometry_must_be_drawable() {
         let with = |index: usize, geometry: Value| {
             let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
@@ -1221,6 +1271,10 @@ mod tests {
         use serde_json::json;
         assert!(with(1, json!({ "kind": "rect", "cornerRadius": 0 })).is_ok());
         assert!(with(1, json!({ "kind": "rect", "cornerRadius": -1 })).is_err());
+        // 四個角（v11）：四個非負數字才行
+        assert!(with(1, json!({ "kind": "rect", "cornerRadius": [0, 4, 8, 12] })).is_ok());
+        assert!(with(1, json!({ "kind": "rect", "cornerRadius": [0, 4, 8] })).is_err());
+        assert!(with(1, json!({ "kind": "rect", "cornerRadius": [0, 4, 8, -1] })).is_err());
         assert!(with(3, json!({ "kind": "polygon", "sides": 8 })).is_ok());
         // 繪製時會補到 3 邊，舊檔不因此打不開
         assert!(with(3, json!({ "kind": "polygon", "sides": 2 })).is_ok());

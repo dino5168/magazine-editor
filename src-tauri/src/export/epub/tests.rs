@@ -456,3 +456,41 @@ fn distributed_lines_use_the_editors_gaps_like_the_pdf() {
         ]
     );
 }
+
+#[test]
+fn rectangles_round_each_corner_like_the_pdf() {
+    let page_with = |edit: &dyn Fn(&mut crate::project::format::ShapeElement)| {
+        let mut document = fixture_document();
+        for element in &mut document.pages[0].elements {
+            if let Element::Shape(shape) = element {
+                if shape.base.id == "el-rect" {
+                    edit(shape);
+                }
+            }
+        }
+        let root = project_with_image();
+        let entries = unzip(&build_epub(root.path(), &request(document), &meta()).unwrap().bytes);
+        text_of(&entries, "OEBPS/pages/page-1.xhtml").to_owned()
+    };
+    // fixture 的圓角矩形：沒有邊框、四個角 [12, 12, 0, 4] → CSS 四個值（順序同 Konva）
+    let plain = page_with(&|_| {});
+    assert!(plain.contains("border-radius:12px 12px 0px 4px;"), "{plain}");
+    // 四個角一樣：照舊一個值
+    let uniform = page_with(&|shape| {
+        shape.geometry = crate::project::format::ShapeGeometry::Rect { corner_radius: crate::project::format::CornerRadius::Uniform(8.0) };
+    });
+    assert!(uniform.contains("border-radius:8px;"), "{uniform}");
+    // 有邊框、四角不同：SVG path，從 (左上, 0) 開始、只有圓角的角有曲線
+    let stroked = page_with(&|shape| {
+        shape.stroke = Some(crate::project::format::Stroke {
+            color: "#000000".into(),
+            width: 2.0,
+            dash: crate::project::format::StrokeDash::Dashed,
+        });
+    });
+    let d = stroked.split(r#"<path d=""#).nth(1).expect("an SVG path").split('"').next().unwrap().to_owned();
+    assert!(d.starts_with("M12 0 L"), "{d}");
+    assert_eq!(d.matches('C').count(), 3, "three rounded corners: {d}");
+    assert!(d.ends_with(" Z"), "{d}");
+    assert!(!stroked.contains(r#"<rect x="0" y="0" width="480""#), "no plain rect for differing corners");
+}

@@ -9,6 +9,7 @@ import {
   ArrowDown,
   ArrowUp,
   BringToFront,
+  Scan,
   SendToBack,
   StretchHorizontal,
   StretchVertical,
@@ -18,19 +19,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CORNER_NAMES, clampCornerRadii, cornerRadii, isUniformCornerRadius, withCornerRadius, type CornerIndex } from "@/lib/editor/corner-radius";
+import { cn } from "@/lib/utils";
 import { alignContentPatch, contentArea, fillContentDisabledReason, fillContentPatch, type ContentEdge, type FillAxis } from "@/lib/editor/content-align";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import { describeShape } from "@/lib/editor/element-factory";
 import {
-  clampCornerRadius,
   clampVertexCount,
   hasEditableHeight,
   innerRatioFromPercent,
   normalizeRotation,
   resizePatch,
 } from "@/lib/editor/properties";
-import type { CanvasElement, ElementPatch, ShapeElement, ShapeLabel, TextElement, TextStyle } from "@/lib/editor/types";
+import type { CanvasElement, CornerRadius, ElementPatch, ShapeElement, ShapeLabel, TextElement, TextStyle } from "@/lib/editor/types";
 import { textBlockHeight } from "@/lib/editor/shape-label";
 import { resolveElementVariables, TEXT_VARIABLES, variableValues } from "@/lib/editor/variables";
 import { measureTextLayout } from "@/lib/export/text-layout";
@@ -94,6 +96,61 @@ function StrokeSection({ shape, update }: { readonly shape: ShapeElement; readon
   );
 }
 
+// 2 × 2 欄位的順序 = 角在畫面上的位置：左上、右上 / 左下、右下（CornerRadii 的順序是左上、右上、右下、左下）
+const CORNER_GRID: readonly CornerIndex[] = [0, 1, 3, 2];
+
+/**
+ * Corner radius of a rectangle: one field (all four corners) with a toggle that expands it into
+ * four fields laid out where the corners are. Differing corners open expanded; collapsed, the
+ * field shows 「混合」 and a typed value sets all four.
+ */
+function CornerRadiusFields({ shape, radius, update }: { readonly shape: ShapeElement; readonly radius: CornerRadius; readonly update: Update }) {
+  const uniform = isUniformCornerRadius(radius);
+  const [expanded, setExpanded] = useState(!uniform);
+  const radii = cornerRadii(radius);
+  const setRadius = (cornerRadius: CornerRadius) => update({ geometry: { kind: "rect", cornerRadius } });
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        {expanded ? (
+          <span className="flex-1 text-xs text-muted-foreground">圓角（四個角分別設定）</span>
+        ) : (
+          <NumberField
+            key={radii.join(",")}
+            label="圓角"
+            unit="pt"
+            value={radii[0]}
+            mixed={!uniform}
+            onCommit={(value) => setRadius(clampCornerRadii(shape, value))}
+            className="flex-1"
+          />
+        )}
+        <IconButton
+          label={expanded ? "四個角一起設定" : "分別設定四個角"}
+          aria-pressed={expanded}
+          className={cn(expanded && "bg-muted")}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <Scan />
+        </IconButton>
+      </div>
+      {expanded && (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          {CORNER_GRID.map((corner) => (
+            <NumberField
+              key={`${corner}-${radii[corner]}`}
+              label={CORNER_NAMES[corner]}
+              unit="pt"
+              value={radii[corner]}
+              onCommit={(value) => setRadius(withCornerRadius(shape, radius, corner, value))}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 // 圖形自己的參數；橢圓沒有可調的參數
 function GeometrySection({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
   const { geometry } = shape;
@@ -102,14 +159,8 @@ function GeometrySection({ shape, update }: { readonly shape: ShapeElement; read
     case "rect":
       return (
         <Section title="形狀">
-          <NumberField
-            key={key("radius", geometry.cornerRadius)}
-            label="圓角"
-            unit="pt"
-            value={geometry.cornerRadius}
-            onCommit={(radius) => update({ geometry: { ...geometry, cornerRadius: clampCornerRadius(shape, radius) } })}
-            className="w-1/2 pr-1.5"
-          />
+          {/* key：「分別設定」是每個矩形各自的編輯狀態，切換物件時重新判斷 */}
+          <CornerRadiusFields key={shape.id} shape={shape} radius={geometry.cornerRadius} update={update} />
         </Section>
       );
     case "polygon":

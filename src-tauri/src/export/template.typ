@@ -109,7 +109,14 @@
   if el.kind == "text" {
     at-corner(el, draw-text(el))
   } else if el.kind == "rect" {
-    at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: pt(el.radius), fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
+    // 圓角順序和 Konva 相同：左上、右上、右下、左下（Rust 已把每個角限制在短邊的一半）
+    let radius = (
+      top-left: pt(el.radii.at(0)),
+      top-right: pt(el.radii.at(1)),
+      bottom-right: pt(el.radii.at(2)),
+      bottom-left: pt(el.radii.at(3)),
+    )
+    at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: radius, fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "image" {
     at-corner(el, image(el.src, width: pt(el.width), height: pt(el.height), fit: "stretch"))
   } else if el.kind == "ellipse" {

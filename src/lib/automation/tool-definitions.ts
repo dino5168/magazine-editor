@@ -102,6 +102,7 @@ const stroke = z
 
 const verticalAlign = z.enum(["top", "middle", "bottom"]).describe("圖形內文字的垂直對齊");
 
+const cornerRadiusValue = z.number().min(0).max(COORDINATE_LIMIT_PT);
 const styleRef = z.string().min(1).describe("文字樣式的名稱或 id（由 list_text_styles 取得）");
 const styleName = z.string().min(1).max(TEXT_STYLE_NAME_MAX_LENGTH * 2);
 
@@ -204,7 +205,10 @@ export const TOOL_DEFINITIONS = {
       text: z.string().max(TEXT_MAX_LENGTH).optional().describe("文字內容；圖形的空字串 = 移除圖形內文字"),
       fill: elementColor.optional().describe("圖形填色"),
       stroke: stroke.optional(),
-      cornerRadius: z.number().min(0).max(COORDINATE_LIMIT_PT).optional().describe("矩形圓角（pt），超過短邊一半時取一半"),
+      cornerRadius: z
+        .union([cornerRadiusValue, z.tuple([cornerRadiusValue, cornerRadiusValue, cornerRadiusValue, cornerRadiusValue])])
+        .optional()
+        .describe("矩形圓角（pt）：一個數字 = 四個角一樣；四個數字 = [左上, 右上, 右下, 左下] 分別設定。每個角超過短邊一半時取一半"),
       verticalAlign: verticalAlign.optional(),
       ...textStyleInput.shape,
     }),

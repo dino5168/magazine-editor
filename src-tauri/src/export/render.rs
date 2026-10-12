@@ -295,9 +295,64 @@ fn render_stroke(stroke: &Option<Stroke>) -> Option<RenderStroke> {
 pub struct RenderRect {
     pub width: f64,
     pub height: f64,
-    pub corner_radius: f64,
+    /// Top-left, top-right, bottom-right, bottom-left; each already limited to half the shorter
+    /// side, as Konva draws them (every format can use them as they are).
+    pub corner_radii: [f64; 4],
     pub fill: String,
     pub stroke: Option<RenderStroke>,
+}
+
+impl RenderRect {
+    /// The radius when all four corners are the same (they then draw as a plain rounded rectangle).
+    pub fn uniform_corner_radius(&self) -> Option<f64> {
+        let [first, ..] = self.corner_radii;
+        self.corner_radii.iter().all(|radius| *radius == first).then_some(first)
+    }
+}
+
+/// Cubic Bézier factor for a quarter circle.
+pub const KAPPA: f64 = 0.552_284_749_830_793_4;
+
+/// One segment of an outline path, in the shape's own coordinates (pt).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PathSegment {
+    Move(f64, f64),
+    Line(f64, f64),
+    /// Two control points, then the end point.
+    Cubic(f64, f64, f64, f64, f64, f64),
+}
+
+/// Rounded-rectangle outline in Konva's order: from (top-left radius, 0) to the right, clockwise
+/// (Konva 10.5.0 starts there with one radius or four). Dashes are laid out from the path's start,
+/// so PDF and EPUB draw bordered rectangles with this path and their dashes match the canvas.
+///
+/// Args:
+///   w, h: Size of the rectangle.
+///   radii: Top-left, top-right, bottom-right, bottom-left; each is limited to half the shorter
+///     side here too, as Konva does.
+pub fn rounded_rect_path(w: f64, h: f64, radii: [f64; 4]) -> Vec<PathSegment> {
+    let [tl, tr, br, bl] = radii.map(|radius| radius.clamp(0.0, w.min(h) / 2.0));
+    let mut path = vec![PathSegment::Move(tl, 0.0), PathSegment::Line(w - tr, 0.0)];
+    if tr > 0.0 {
+        let k = tr * KAPPA;
+        path.push(PathSegment::Cubic(w - tr + k, 0.0, w, tr - k, w, tr));
+    }
+    path.push(PathSegment::Line(w, h - br));
+    if br > 0.0 {
+        let k = br * KAPPA;
+        path.push(PathSegment::Cubic(w, h - br + k, w - br + k, h, w - br, h));
+    }
+    path.push(PathSegment::Line(bl, h));
+    if bl > 0.0 {
+        let k = bl * KAPPA;
+        path.push(PathSegment::Cubic(bl - k, h, 0.0, h - bl + k, 0.0, h - bl));
+    }
+    path.push(PathSegment::Line(0.0, tl));
+    if tl > 0.0 {
+        let k = tl * KAPPA;
+        path.push(PathSegment::Cubic(0.0, tl - k, tl - k, 0.0, tl, 0.0));
+    }
+    path
 }
 
 #[derive(Debug, Clone)]
@@ -356,7 +411,8 @@ fn shape_kind(shape: &ShapeElement) -> RenderKind {
         ShapeGeometry::Rect { corner_radius } => RenderKind::Rect(RenderRect {
             width,
             height,
-            corner_radius: *corner_radius,
+            // Konva 10.5.0 實測：每個角各自限制在短邊的一半（不是 CSS 的等比例縮小）
+            corner_radii: corner_radius.radii().map(|radius| radius.clamp(0.0, width.min(height) / 2.0)),
             fill: fill.clone(),
             stroke: stroke.clone(),
         }),

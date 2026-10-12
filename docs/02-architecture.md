@@ -73,6 +73,7 @@ flowchart TB
 | `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 500 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影與行距 / 字距怎麼轉成畫布的屬性(字距存字級的 1/1000,畫布換成 pt) | 之後再看 |
 | `src/lib/editor/text-distribute.ts`、`src/lib/editor/distributed-text.ts` | 約 200 | 分散對齊(首尾置中):每一行每個字的位置(純函式)與畫在 Konva 上的自訂繪製函式(`sceneFunc`);匯出量測也用同一份結果,PDF / EPUB 照著放 | 之後再看 |
 | `src/lib/editor/content-align.ts` | 約 100 | 屬性面板的「對齊內容區」:填滿內容區的寬 / 高、對齊內容區的邊或中線(只算出要改的位置與大小,一次寫入) | 之後再看 |
+| `src/lib/editor/corner-radius.ts` | 約 120 | 矩形的圓角:一個數字或四個角、四個一樣時存成一個數字、每個角限制在短邊的一半(屬性面板與 MCP 共用) | 之後再看 |
 | `src/lib/editor/style-sheet.ts`、`src/components/editor/panels/styles-panel.tsx`、`text-style-link.tsx`、`text-style-dialog.tsx` | 約 900 | 文字樣式(樣式表):文字連到樣式、覆寫怎麼判斷(和樣式不同的欄位)、改樣式時哪些文字跟著變;「樣式」面板、屬性面板的樣式區塊、編輯對話框。文字仍存完整的值,所以畫布與匯出不用查樣式表 | 之後再看 |
 | `src/lib/export/` | 約 150 | 匯出前用 Konva 量測每段文字的分行(與每行寬度、頁碼的寬度),並在匯出的副本上把主頁內容展開到每一頁、換掉變數、加上頁碼 | 之後再看 |
 | `src/components/app/app-sidebar.tsx` | 約 200 | 舊的側邊欄,**已不使用** | 跳過 |

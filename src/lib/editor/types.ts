@@ -90,12 +90,21 @@ export interface ShapeLabel extends StyledText {
   readonly verticalAlign: "top" | "middle" | "bottom";
 }
 
+/** Radii of a rectangle's four corners (pt), in Konva's order: top-left, top-right, bottom-right, bottom-left. */
+export type CornerRadii = readonly [number, number, number, number];
+
+/**
+ * A rectangle's corner radius: one number for four equal corners (stored that way whenever they
+ * match), or four numbers (`CornerRadii`, v11) when they differ.
+ */
+export type CornerRadius = number | CornerRadii;
+
 /**
  * What a shape draws inside its box. Adding a box shape = adding a member here.
  * Polygons and stars are stretched so their vertices touch every edge of the box.
  */
 export type ShapeGeometry =
-  | { readonly kind: "rect"; readonly cornerRadius: number }
+  | { readonly kind: "rect"; readonly cornerRadius: CornerRadius }
   | { readonly kind: "ellipse" }
   | { readonly kind: "polygon"; readonly sides: number }
   /** `innerRatio` = inner radius / outer radius. */

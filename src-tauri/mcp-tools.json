@@ -582,10 +582,42 @@
           "description": "邊框；null = 沒有邊框"
         },
         "cornerRadius": {
-          "description": "矩形圓角（pt），超過短邊一半時取一半",
-          "type": "number",
-          "minimum": 0,
-          "maximum": 10000
+          "description": "矩形圓角（pt）：一個數字 = 四個角一樣；四個數字 = [左上, 右上, 右下, 左下] 分別設定。每個角超過短邊一半時取一半",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10000
+                }
+              ],
+              "items": false,
+              "minItems": 4,
+              "maxItems": 4
+            }
+          ]
         },
         "verticalAlign": {
           "type": "string",

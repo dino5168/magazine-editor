@@ -63,6 +63,9 @@ describe("geometry fields", () => {
   it("accepts only geometry the exports can draw", () => {
     expect(isShapeGeometry({ kind: "rect", cornerRadius: 0 })).toBe(true);
     expect(isShapeGeometry({ kind: "rect", cornerRadius: -1 })).toBe(false);
+    expect(isShapeGeometry({ kind: "rect", cornerRadius: [0, 4, 8, 12] })).toBe(true);
+    expect(isShapeGeometry({ kind: "rect", cornerRadius: [0, 4, 8] })).toBe(false);
+    expect(isShapeGeometry({ kind: "rect", cornerRadius: [0, 4, 8, -1] })).toBe(false);
     expect(isShapeGeometry({ kind: "ellipse" })).toBe(true);
     expect(isShapeGeometry({ kind: "polygon", sides: 7 })).toBe(true);
     expect(isShapeGeometry({ kind: "polygon", sides: 2.5 })).toBe(false);

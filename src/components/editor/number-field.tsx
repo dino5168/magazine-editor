@@ -23,6 +23,11 @@ interface NumberFieldProps {
   /** Shows − / ＋ buttons on both sides of the input; each click commits once (one undo step). */
   readonly step?: NumberFieldStep;
   readonly className?: string;
+  /**
+   * The field stands for several values that differ (e.g. four corner radii): it starts empty with
+   * the placeholder 「混合」, and any number typed is committed (`value` is then ignored).
+   */
+  readonly mixed?: boolean;
 }
 
 /**
@@ -37,9 +42,10 @@ interface NumberFieldProps {
  * Returns:
  *   Labelled input.
  */
-export function NumberField({ label, value, unit, onCommit, step, className }: NumberFieldProps) {
+export function NumberField({ label, value, unit, onCommit, step, className, mixed = false }: NumberFieldProps) {
   const id = useId();
-  const [draft, setDraft] = useState(formatNumber(value));
+  const shown = mixed ? "" : formatNumber(value);
+  const [draft, setDraft] = useState(shown);
   // Esc 之後的 blur 不寫入：blur 執行時 state 還是舊的草稿，不能靠 setDraft 還原
   const cancelledRef = useRef(false);
 
@@ -50,11 +56,11 @@ export function NumberField({ label, value, unit, onCommit, step, className }: N
     }
     const next = parseNumberDraft(draft);
     if (next === null) {
-      setDraft(formatNumber(value));
+      setDraft(shown);
       return;
     }
-    // 只比較顯示到的位數：沒改內容就離開輸入框，不會因為四捨五入寫入一筆歷史
-    if (formatNumber(next) !== formatNumber(value)) onCommit(next);
+    // 只比較顯示到的位數：沒改內容就離開輸入框，不會因為四捨五入寫入一筆歷史（混合時任何數字都是改動）
+    if (mixed || formatNumber(next) !== formatNumber(value)) onCommit(next);
   };
 
   // 按鈕寫入的是目前的 value（不是輸入框裡還沒確定的草稿）：按下按鈕時輸入框先 blur，草稿已經寫入
@@ -78,6 +84,7 @@ export function NumberField({ label, value, unit, onCommit, step, className }: N
         id={id}
         inputMode="decimal"
         value={draft}
+        placeholder={mixed ? "混合" : undefined}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -85,7 +92,7 @@ export function NumberField({ label, value, unit, onCommit, step, className }: N
           if (event.key === "Enter") commit();
           if (event.key === "Escape") {
             cancelledRef.current = true;
-            setDraft(formatNumber(value));
+            setDraft(shown);
             event.currentTarget.blur();
           }
         }}

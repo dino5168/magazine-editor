@@ -5,8 +5,8 @@
 
 use super::fonts::typst_family;
 use super::render::{
-    build_render, DecorationKind, RenderDocument, RenderElement, RenderKind, RenderStroke, STROKE_MITER_LIMIT,
-    SYNTHETIC_ITALIC_SLANT,
+    build_render, rounded_rect_path, DecorationKind, PathSegment, RenderDocument, RenderElement, RenderKind, RenderStroke,
+    KAPPA, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use super::world::ExportWorld;
 use super::{ExportOutput, ExportRequest};
@@ -43,9 +43,6 @@ fn stroke_data(stroke: &Option<RenderStroke>) -> Value {
     }
 }
 
-/// Cubic Bézier factor for a quarter circle.
-const KAPPA: f64 = 0.552_284_749_830_793_4;
-
 /// One path segment for `template.typ`: `["m", x, y]`, `["l", x, y]` or `["c", x1, y1, x2, y2, x, y]`.
 fn seg(kind: &str, coords: &[f64]) -> Value {
     let mut items = vec![Value::from(kind)];
@@ -53,30 +50,19 @@ fn seg(kind: &str, coords: &[f64]) -> Value {
     Value::Array(items)
 }
 
-/// Rounded-rectangle outline in Konva's order: from (r, 0) to the right, clockwise.
+/// Rounded-rectangle outline (`render::rounded_rect_path`) as `template.typ` path segments.
 ///
 /// 虛線的位置由路徑起點與方向決定；Typst 內建的 rect 起點不同，有邊框時改畫這條路徑，
-/// 虛線才會和畫布、EPUB（SVG rect 的起點也是 (r, 0)）落在同樣的位置。
-fn rect_path(w: f64, h: f64, radius: f64) -> Vec<Value> {
-    let r = radius.clamp(0.0, w.min(h) / 2.0);
-    let k = r * KAPPA;
-    let mut path = vec![seg("m", &[r, 0.0]), seg("l", &[w - r, 0.0])];
-    if r > 0.0 {
-        path.push(seg("c", &[w - r + k, 0.0, w, r - k, w, r]));
-    }
-    path.push(seg("l", &[w, h - r]));
-    if r > 0.0 {
-        path.push(seg("c", &[w, h - r + k, w - r + k, h, w - r, h]));
-    }
-    path.push(seg("l", &[r, h]));
-    if r > 0.0 {
-        path.push(seg("c", &[r - k, h, 0.0, h - r + k, 0.0, h - r]));
-    }
-    path.push(seg("l", &[0.0, r]));
-    if r > 0.0 {
-        path.push(seg("c", &[0.0, r - k, r - k, 0.0, r, 0.0]));
-    }
-    path
+/// 虛線才會和畫布、EPUB 落在同樣的位置。
+fn rect_path(w: f64, h: f64, radii: [f64; 4]) -> Vec<Value> {
+    rounded_rect_path(w, h, radii)
+        .into_iter()
+        .map(|segment| match segment {
+            PathSegment::Move(x, y) => seg("m", &[x, y]),
+            PathSegment::Line(x, y) => seg("l", &[x, y]),
+            PathSegment::Cubic(x1, y1, x2, y2, x, y) => seg("c", &[x1, y1, x2, y2, x, y]),
+        })
+        .collect()
 }
 
 /// Ellipse outline in Konva's order: from the rightmost point, clockwise (y down).
@@ -97,7 +83,7 @@ fn element_data(element: &RenderElement) -> Value {
     match &element.kind {
         RenderKind::Rect(e) if e.stroke.is_some() => json!({
             "kind": "path", "x": x, "y": y, "rotation": rotation, "width": e.width, "height": e.height,
-            "fill": e.fill, "stroke": stroke_data(&e.stroke), "segments": rect_path(e.width, e.height, e.corner_radius),
+            "fill": e.fill, "stroke": stroke_data(&e.stroke), "segments": rect_path(e.width, e.height, e.corner_radii),
         }),
         RenderKind::Ellipse(e) if e.stroke.is_some() => json!({
             "kind": "path", "x": x, "y": y, "rotation": rotation, "width": e.width, "height": e.height,
@@ -121,7 +107,7 @@ fn element_data(element: &RenderElement) -> Value {
         }),
         RenderKind::Rect(e) => json!({
             "kind": "rect", "x": x, "y": y, "rotation": rotation,
-            "width": e.width, "height": e.height, "radius": e.corner_radius, "fill": e.fill,
+            "width": e.width, "height": e.height, "radii": e.corner_radii, "fill": e.fill,
             "stroke": stroke_data(&e.stroke),
         }),
         RenderKind::Ellipse(e) => json!({
@@ -180,7 +166,7 @@ mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, fonts, project_with_image, request};
     use crate::export::TextLayout;
-    use crate::project::format::{Element, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow};
+    use crate::project::format::{CornerRadius, Element, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow};
 
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();
@@ -280,7 +266,7 @@ mod tests {
         let Element::Shape(rect) = &mut page.elements[0] else { unreachable!() };
         (rect.base.x, rect.base.y, rect.base.rotation) = (100.0, 100.0, 0.0);
         (rect.width, rect.height) = (200.0, 100.0);
-        rect.geometry = ShapeGeometry::Rect { corner_radius: 0.0 };
+        rect.geometry = ShapeGeometry::Rect { corner_radius: CornerRadius::Uniform(0.0) };
         rect.fill = fill.into();
         document
     }
@@ -334,6 +320,24 @@ mod tests {
     const WHITE: [u8; 3] = [255, 255, 255];
 
     #[test]
+    fn each_corner_is_rounded_on_its_own() {
+        // 200 × 100 的紅色矩形在 (100, 100)；只有左上（40）與右下（20）是圓角
+        let corners = |stroke: Option<Stroke>| {
+            let mut document = single_rect("#ff0000");
+            let Element::Shape(rect) = &mut document.pages[0].elements[0] else { unreachable!() };
+            rect.geometry = ShapeGeometry::Rect { corner_radius: CornerRadius::Corners([40.0, 0.0, 20.0, 0.0]) };
+            rect.stroke = stroke;
+            let raster = render_request(&request(document));
+            // 每個角往內 3 pt 的點：圓角處是頁面的白色，直角處是填色
+            [(103, 103), (296, 103), (296, 196), (103, 196)].map(|(x, y)| rgb_at(&raster, x, y) == WHITE)
+        };
+        // 沒有邊框（Typst rect 的 radius 字典）與有邊框（自己畫的路徑）都一樣
+        assert_eq!(corners(None), [true, false, true, false]);
+        let stroke = Stroke { color: "#0000ff".into(), width: 1.0, dash: StrokeDash::Solid };
+        assert_eq!(corners(Some(stroke)), [true, false, true, false]);
+    }
+
+    #[test]
     fn stroke_is_centred_on_the_edge_like_the_canvas() {
         // 矩形左緣在 x = 100，10 pt 的邊線從 95 到 105
         let pixmap = render_page(stroked_rect(10.0, StrokeDash::Solid));
@@ -352,12 +356,18 @@ mod tests {
 
     #[test]
     fn outline_paths_start_where_konva_starts_and_close() {
-        let rect = rect_path(100.0, 40.0, 30.0);
+        let rect = rect_path(100.0, 40.0, [30.0; 4]);
         // 圓角超過短邊一半時限制為 20（和 Konva、SVG 一樣）
         assert_eq!(rect[0], json!(["m", 20.0, 0.0]));
         assert_eq!(rect[1], json!(["l", 80.0, 0.0]), "goes right first");
         assert_eq!(end(rect.last().unwrap()), (20.0, 0.0));
-        assert_eq!(rect_path(10.0, 10.0, 0.0).len(), 5, "no curves without a corner radius");
+        assert_eq!(rect_path(10.0, 10.0, [0.0; 4]).len(), 5, "no curves without a corner radius");
+        // 四個角不同：從 (左上, 0) 開始，只有圓角的角有曲線，每個角各自限制在短邊一半（40 → 20）
+        let corners = rect_path(100.0, 40.0, [40.0, 0.0, 10.0, 0.0]);
+        assert_eq!(corners[0], json!(["m", 20.0, 0.0]));
+        assert_eq!(corners[1], json!(["l", 100.0, 0.0]), "a square top-right corner has no curve");
+        assert_eq!(corners.iter().filter(|s| s[0] == "c").count(), 2);
+        assert_eq!(end(corners.last().unwrap()), (20.0, 0.0));
 
         let ellipse = ellipse_path(100.0, 40.0);
         assert_eq!(ellipse[0], json!(["m", 100.0, 20.0]), "rightmost point");

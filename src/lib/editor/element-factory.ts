@@ -1,3 +1,4 @@
+import { clampCornerRadii, hasRoundedCorner } from "./corner-radius";
 import { DEFAULT_FONT_OPTION } from "./fonts";
 import { estimateTextHeight } from "./geometry";
 import type { PageSetup } from "./page-setup";
@@ -249,8 +250,8 @@ export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
   const { geometry } = SHAPE_PRESETS[kind];
   switch (geometry.kind) {
     case "rect": {
-      const shortSide = Math.min(box.maxX - box.minX, box.maxY - box.minY);
-      return createShape({ kind: "rect", cornerRadius: Math.min(geometry.cornerRadius, shortSide / 2) }, box);
+      const size = { width: box.maxX - box.minX, height: box.maxY - box.minY };
+      return createShape({ kind: "rect", cornerRadius: clampCornerRadii(size, geometry.cornerRadius) }, box);
     }
     case "ellipse":
       return createShape(geometry, box);
@@ -448,7 +449,7 @@ export function describeShape(shape: ShapeElement): string {
   const { geometry } = shape;
   switch (geometry.kind) {
     case "rect":
-      return geometry.cornerRadius > 0 ? "圓角矩形" : "矩形";
+      return hasRoundedCorner(geometry.cornerRadius) ? "圓角矩形" : "矩形";
     case "ellipse":
       return shape.width === shape.height ? "圓形" : "橢圓";
     case "polygon":

@@ -23,7 +23,7 @@ import {
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
-import { clampCornerRadius } from "@/lib/editor/properties";
+import { clampCornerRadii } from "@/lib/editor/corner-radius";
 import { createLabel } from "@/lib/editor/shape-label";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
 import type {
@@ -297,7 +297,7 @@ function elementPatch(element: CanvasElement, args: ToolArgs<"update_element">):
       };
       if (args.cornerRadius !== undefined) {
         if (element.geometry.kind !== "rect") return fail("只有矩形可以設定 cornerRadius");
-        patch.geometry = { kind: "rect", cornerRadius: clampCornerRadius({ width, height }, args.cornerRadius) };
+        patch.geometry = { kind: "rect", cornerRadius: clampCornerRadii({ width, height }, args.cornerRadius) };
       }
       const labelChanges = hasKeys(style) || args.verticalAlign !== undefined;
       if (args.text === "") {

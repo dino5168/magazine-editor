@@ -6,8 +6,8 @@
 use super::{EpubImages, LANGUAGE};
 use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{
-    DecorationLine, RenderElement, RenderKind, RenderPage, RenderStroke, RenderText, STROKE_MITER_LIMIT,
-    SYNTHETIC_ITALIC_SLANT,
+    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderPage, RenderRect, RenderStroke,
+    RenderText, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use crate::project::format::Align;
 use std::fmt::Write;
@@ -226,20 +226,53 @@ fn decoration_bar(out: &mut String, line: &DecorationLine, thickness: f64, color
     );
 }
 
+/// CSS `border-radius` of a rectangle: one value when the corners match, otherwise four in CSS
+/// order (top-left, top-right, bottom-right, bottom-left, the same as Konva).
+fn css_corner_radius(rect: &RenderRect) -> String {
+    match rect.uniform_corner_radius() {
+        Some(radius) => format!("{}px", num(radius)),
+        None => rect.corner_radii.map(|radius| format!("{}px", num(radius))).join(" "),
+    }
+}
+
+/// SVG path data (`d`) of an outline.
+fn svg_path_data(path: &[PathSegment]) -> String {
+    let parts: Vec<String> = path
+        .iter()
+        .map(|segment| match *segment {
+            PathSegment::Move(x, y) => format!("M{} {}", num(x), num(y)),
+            PathSegment::Line(x, y) => format!("L{} {}", num(x), num(y)),
+            PathSegment::Cubic(x1, y1, x2, y2, x, y) => {
+                format!("C{} {} {} {} {} {}", num(x1), num(y1), num(x2), num(y2), num(x), num(y))
+            }
+        })
+        .collect();
+    parts.join(" ") + " Z"
+}
+
 fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages) {
     let (x, y) = (element.x, element.y);
     match &element.kind {
         RenderKind::Text(t) => text(out, element, t),
         RenderKind::Rect(r) if r.stroke.is_some() => {
-            // 和 Konva 一樣，圓角不超過短邊的一半（SVG 也會自動限制，這裡寫明以免依賴閱讀器）
-            let radius = num(r.corner_radius.min(r.width.min(r.height) / 2.0));
-            let shape = format!(
-                r#"<rect x="0" y="0" width="{}" height="{}" rx="{radius}" ry="{radius}" {}{}/>"#,
-                num(r.width),
-                num(r.height),
-                svg_fill(&r.fill),
-                svg_stroke(&r.stroke),
-            );
+            // 圓角已由 render model 限制在短邊的一半（和 Konva 相同）。四個角一樣用 <rect rx>（起點同樣是 (r, 0)）；
+            // 不同時 SVG rect 做不到，改畫和 PDF 同一條路徑（起點與方向相同，虛線位置才一樣）
+            let shape = match r.uniform_corner_radius() {
+                Some(radius) => format!(
+                    r#"<rect x="0" y="0" width="{}" height="{}" rx="{radius}" ry="{radius}" {}{}/>"#,
+                    num(r.width),
+                    num(r.height),
+                    svg_fill(&r.fill),
+                    svg_stroke(&r.stroke),
+                    radius = num(radius),
+                ),
+                None => format!(
+                    r#"<path d="{}" {}{}/>"#,
+                    svg_path_data(&rounded_rect_path(r.width, r.height, r.corner_radii)),
+                    svg_fill(&r.fill),
+                    svg_stroke(&r.stroke),
+                ),
+            };
             svg_box(out, element, r.width, r.height, &shape);
         }
         RenderKind::Ellipse(e) if e.stroke.is_some() => {
@@ -254,12 +287,13 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &EpubImages
         }
         RenderKind::Rect(r) => {
             let mut style = format!(
-                "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{}px;background:{}",
+                "left:{}px;top:{}px;width:{}px;height:{}px;border-radius:{};background:{}",
                 num(x),
                 num(y),
                 num(r.width),
                 num(r.height),
-                num(r.corner_radius),
+                // CSS 遇到兩角相加超過一邊會等比例縮小全部；render model 已把每個角限制在短邊一半，不會走到
+                css_corner_radius(r),
                 css_color(&r.fill),
             );
             rotate(&mut style, element.rotation);

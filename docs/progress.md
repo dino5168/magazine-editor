@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-12(物件屬性對齊內容區,全部步驟完成)
+最後更新:2026-10-12(圓角四角分開,全部步驟完成)
 
 ---
 
 ## 目前階段
+
+- **屬性 → 樣式 → 圓角四角分開(2026-10-12,七個步驟全部完成,尚未 commit;桌面版人工驗證待做:四角輸入、存檔重開 v11、匯出外觀;**v11 存檔後舊版 App 無法開啟**)**:任務檔 `docs/01-Plans-2026-10/15-屬性-樣式-圓角.md`(不 commit),計畫 `docs/01-Plans-2026-10/15-屬性-樣式-圓角-實作.md`(要 commit)。使用者確認:一個「圓角」欄位 + 切換鈕展開成照角位置排的 2 × 2 四欄位(四角不同時收起顯示「混合」);`cornerRadius` 四角一樣存數字、不同才存 `[左上, 右上, 右下, 左下]`(檔案格式 v11);MCP 一起做。畫布 Konva 本來就收陣列;PDF 有邊框 `rect_path` 改四半徑、無邊框 Typst radius 字典;EPUB CSS 四值 / SVG path。共七個步驟。步驟 1 完成(Konva 實測:順序 [左上, 右上, 右下, 左下]、每角各自夾到短邊一半(不是 CSS 的等比例)、路徑起點與單一半徑相同);步驟 2 完成(`lib/editor/corner-radius.ts`:四值展開、正規化、每角限制、改一角、驗證;`types.ts` 的 `CornerRadii` / `CornerRadius`;7 個測試,vitest 600);步驟 3 完成(TS `cornerRadius: CornerRadius`、`isCornerRadius` 移到 `validation.ts`;Rust `CornerRadius` untagged enum、`SCHEMA_VERSION` 11、`RenderRect.corner_radii` 每角夾到短邊一半;fixture 封面矩形 `[12, 12, 0, 4]`;畫布已畫四角,面板暫時顯示左上、PDF / EPUB 暫用最大角;cargo 153、vitest 600);步驟 4 完成(屬性面板 `CornerRadiusFields`:一個欄位 + `Scan` 切換鈕、2 × 2 照角的位置、四角不同時收起顯示「混合」;`NumberField` 加 `mixed`;無頭 Edge 11 項);步驟 5 完成(PDF:`render.rs` 共用的 `rounded_rect_path`(四半徑、起點同 Konva)、有邊框用它、無邊框 Typst `radius` 字典;疊圖 6 個矩形 0 個明顯不同像素;cargo 154);步驟 6 完成(EPUB:無邊框 CSS `border-radius` 四值、有邊框且四角不同用 SVG `<path>`(和 PDF 同一條 `rounded_rect_path`);疊圖 6 個矩形 0 個明顯不同像素;cargo 155);步驟 7 完成(MCP `update_element` 的 `cornerRadius` 收四個數字並實測;`CLAUDE.md`、`docs/01`、`docs/02`)。**要 commit 的範圍**:程式碼與測試(含 `template.typ`)、`tests/fixtures/sample.magproj`、`src-tauri/mcp-tools.json`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `15-屬性-樣式-圓角-實作.md`;任務檔不 commit。之後另排:畫布上拖曳圓角控制點、常用組合按鈕。
 
 - **物件屬性增加填滿寬度 / 高度與對齊內容區(2026-10-12,三個步驟全部完成,commit `0812d36`(已推送);桌面版人工驗證待做:屬性面板的填滿、對齊、復原)**:任務檔 `docs/01-Plans-2026-10/14-物件屬性增加填滿寬度、高度.md`(不 commit),計畫 `docs/01-Plans-2026-10/14-物件屬性增加填滿寬度、高度-實作.md`(要 commit)。屬性面板「調整」分頁新增「對齊內容區」區塊:填滿寬度 / 高度(一次性動作、一筆復原;旋轉先歸零;照限制寬高比;文字只有寬度)+ 靠左 / 水平置中 / 靠右 / 靠上 / 垂直置中 / 靠下(只移動;旋轉的物件用旋轉後的外框;文字高度用 Konva 量測)。內容區沿用 `contentGuides().area`、大小沿用 `resizePatch`;不改檔案格式與 Rust。共三個步驟。步驟 1 完成(`geometry.ts` 抽出 `rotatedBoxBounds`;新檔 `lib/editor/content-align.ts`:`contentArea` / `fillContentPatch` / `alignContentPatch` / `fillContentDisabledReason`,12 個測試,vitest 593);步驟 2 完成(`properties-panel.tsx` 的 `ContentAlignSection`:填滿兩個按鈕 + 六個對齊 icon,文字高度用 `measureTextLayout`(變數先換成顯示值);無頭 Edge 20 項含雙頁右頁與編輯主頁);步驟 3 完成(`CLAUDE.md`、`docs/01`、`docs/02`)。**要 commit 的範圍**:`content-align.ts` 與測試、`geometry.ts`、`properties-panel.tsx`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `14-物件屬性增加填滿寬度、高度-實作.md`;任務檔不 commit。之後另排:填滿到頁面(出血)、多選一起填滿 / 對齊。
 

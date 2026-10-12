@@ -256,6 +256,16 @@ describe("update_element", () => {
     expect(rect).toMatchObject({ stroke: null, fill: "#ffffff" });
   });
 
+  it("sets four corner radii in Konva order, each clamped; four equal ones collapse to a number", () => {
+    const session = toolSession(createInitialState(fixture));
+    session.ok("update_element", { id: "el-rect", cornerRadius: [10, 0, 9999, 4] });
+    expect(elementOf(session, "el-rect").geometry).toEqual({ kind: "rect", cornerRadius: [10, 0, 130 / 2, 4] });
+    session.ok("update_element", { id: "el-rect", cornerRadius: [6, 6, 6, 6] });
+    expect(elementOf(session, "el-rect").geometry).toEqual({ kind: "rect", cornerRadius: 6 });
+    expect(session.error("update_element", { id: "el-rect", cornerRadius: [1, 2, 3] })).toContain("cornerRadius");
+    expect(session.error("update_element", { id: "el-rect", cornerRadius: [1, 2, 3, -4] })).toContain("cornerRadius");
+  });
+
   it("edits elements on master pages without switching to them", () => {
     const session = toolSession(createInitialState(fixture));
     expect(session.ok("update_element", { id: "el-master-footer", text: "頁尾" }).pageId).toBe("master-b");

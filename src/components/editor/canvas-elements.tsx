@@ -3,6 +3,7 @@ import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
 import useImage from "use-image";
+import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
@@ -168,7 +169,8 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
   const stroke = konvaStroke(shape.stroke);
   switch (geometry.kind) {
     case "rect":
-      return <Rect width={width} height={height} cornerRadius={geometry.cornerRadius} fill={fill} {...stroke} />;
+      // Konva 收一個數字或 [左上, 右上, 右下, 左下]，每個角各自限制在短邊的一半
+      return <Rect width={width} height={height} cornerRadius={konvaCornerRadius(geometry.cornerRadius)} fill={fill} {...stroke} />;
     case "ellipse":
       return <Ellipse x={width / 2} y={height / 2} radiusX={width / 2} radiusY={height / 2} fill={fill} {...stroke} />;
     case "polygon":

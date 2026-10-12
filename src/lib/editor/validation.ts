@@ -1,4 +1,4 @@
-import type { Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow, TextStyle } from "./types";
+import type { CornerRadius, Margins, ShapeGeometry, ShapeLabel, Size, Stroke, TextShadow, TextStyle } from "./types";
 import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
 
@@ -142,9 +142,24 @@ export function isElementColor(value: string): boolean {
 }
 
 /**
+ * Whether a value is a valid corner radius: a finite number ≥ 0, or four of them (same rule as
+ * Rust `validate_geometry`).
+ *
+ * Args:
+ *   value: Candidate value from a patch or a file.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isCornerRadius(value: unknown): value is CornerRadius {
+  const valid = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= 0;
+  return valid(value) || (Array.isArray(value) && value.length === 4 && value.every(valid));
+}
+
+/**
  * Checks whether a value is drawable shape geometry. Same rules as Rust `validate_geometry`:
- * corner radius ≥ 0, star inner ratio in (0, 1], at most MAX_VERTEX_COUNT sides / points
- * (fewer than 3 are raised when drawing, so they are not rejected).
+ * corner radius ≥ 0 (one number or four), star inner ratio in (0, 1], at most MAX_VERTEX_COUNT
+ * sides / points (fewer than 3 are raised when drawing, so they are not rejected).
  *
  * Args:
  *   value: Candidate geometry (e.g. from a patch).
@@ -158,7 +173,7 @@ export function isShapeGeometry(value: unknown): value is ShapeGeometry {
   const count = (n: unknown) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_VERTEX_COUNT;
   switch (g.kind) {
     case "rect":
-      return typeof g.cornerRadius === "number" && Number.isFinite(g.cornerRadius) && g.cornerRadius >= 0;
+      return isCornerRadius(g.cornerRadius);
     case "ellipse":
       return true;
     case "polygon":
