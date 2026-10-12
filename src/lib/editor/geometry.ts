@@ -55,8 +55,23 @@ function localBounds(element: CanvasElement): Bounds {
  *   Bounding box in pt.
  */
 export function getElementBounds(element: CanvasElement): Bounds {
-  const box = localBounds(element);
-  const radians = (element.rotation * Math.PI) / 180;
+  return rotatedBoxBounds(element, localBounds(element), element.rotation);
+}
+
+/**
+ * Computes the axis-aligned bounding box of a box in the element's own coordinates, rotated
+ * clockwise around the element's origin.
+ *
+ * Args:
+ *   origin: The element's position (its outline's top-left corner before rotation).
+ *   box: Box in the element's own coordinates (e.g. `{ 0, 0, width, height }`).
+ *   rotation: Rotation in degrees, clockwise.
+ *
+ * Returns:
+ *   Bounding box in page coordinates.
+ */
+export function rotatedBoxBounds(origin: Point, box: Bounds, rotation: number): Bounds {
+  const radians = (rotation * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   const corners: readonly Point[] = [
@@ -65,8 +80,8 @@ export function getElementBounds(element: CanvasElement): Bounds {
     { x: box.maxX, y: box.maxY },
     { x: box.minX, y: box.maxY },
   ];
-  const xs = corners.map((c) => c.x * cos - c.y * sin + element.x);
-  const ys = corners.map((c) => c.x * sin + c.y * cos + element.y);
+  const xs = corners.map((c) => c.x * cos - c.y * sin + origin.x);
+  const ys = corners.map((c) => c.x * sin + c.y * cos + origin.y);
   return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
 }
 

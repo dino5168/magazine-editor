@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -177,7 +177,7 @@ src/
       selection-actions.ts        # 整組選取的刪除 / 複製 / 方向鍵移動 action（快捷鍵與底部動作列共用）
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
-      geometry.ts                 # 物件外框（含旋轉）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT、格線吸附 / 抽稀、邊界框
+      geometry.ts                 # 物件外框（含旋轉；rotatedBoxBounds：任一外框旋轉後的外接框）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT、格線吸附 / 抽稀、邊界框
       page-setup.ts               # 紙張 preset（不分直橫比對、presetIdsInGroup 分組）、直式 / 橫式、頁面設定的錯誤檢查（頁面設定對話框用）
       page-numbers.ts             # 頁碼：規則 → 虛擬圖形（pageNumberShape / withPageNumbers）、驗證（isPageNumberRules，和 Rust 同規則）、對話框的說明與錯誤訊息
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
@@ -188,6 +188,7 @@ src/
       text-distribute.ts          # 首尾置中的純邏輯：splitGraphemes（Intl.Segmenter）、distributeLine / distributeText（每個字的 x、行寬、間距；單字置中、去行尾空白）
       distributed-text.ts         # 首尾置中在 Konva 上：drawDistributedText（自訂 sceneFunc）、distributedTextLines（textArr 每行 → distributeText，measureTextLayout 也用）、firstBaseline、konvaAlignAttrs（{ align, sceneFunc }）
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
+      content-align.ts            # 對齊內容區：contentArea（= contentGuides().area）、fillContentPatch（填滿寬 / 高，旋轉歸零、照限制寬高比）、alignContentPatch（旋轉後外框對齊邊 / 中線）、fillContentDisabledReason
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
@@ -559,6 +560,9 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 分頁依物件類型：圖形 = 樣式 / 文字 / 調整，文字 = 文字 / 調整，圖片 = 調整。名稱與分頁列固定在面板頂端（sticky）。
   - 數字欄位用 `NumberField`：Enter / 失焦才寫入，一次編輯 = 一筆復原。
   - 「限制寬高比」是面板的編輯選項，不存進文件。
+  - **對齊內容區**（「調整」分頁，「圖層順序」與「大小」之間，計畫 `docs/01-Plans-2026-10/14-物件屬性增加填滿寬度、高度-實作.md`）：**一次性的動作**（一個 `element/update` = 一筆復原，不存進文件；改邊界後不會跟著變），邏輯在 `lib/editor/content-align.ts`。內容區 = 物件所在 sheet（頁面或主頁）的邊界以內，邊界全 0 時整頁。
+    - 填滿寬度 / 高度：位置與大小設成內容區的；**旋轉不是 0 時同一筆 patch 先歸零**（使用者決定）；照「限制寬高比」（另一邊等比例、位置不動，可能超出內容區）；文字只有填滿寬度（行寬）；內容區小於最小物件尺寸時停用。
+    - 靠左 / 水平置中 / 靠右 / 靠上 / 垂直置中 / 靠下：只移動，**用旋轉後的外框**（旋轉不變）；文字的高度用 `measureTextLayout` 的行數（變數先換成畫布上的值），不用 `estimateTextHeight`（粗估）。已經對齊時不 dispatch。
 - **面板的單一資料來源**是 `lib/dock/panels.ts` 的 `PANEL_DEFINITIONS`；`PANELS`（內容）、`PANEL_ICONS`（icon）以 `satisfies Record<PanelId, …>` 檢查完整性，選單指令自動產生。**新增面板**：在 `PANEL_DEFINITIONS` 加一筆 → 補 `PANELS` 與 `PANEL_ICONS`（漏了會編譯失敗）。
 - `DockLayout`（左右各一個由上到下的 `DockGroup[]` + 兩側寬度；`DockGroup` = `panels`（頁籤順序）/ `active` / `collapsed`）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。規則：一個面板在整個版面最多出現一次；群組不會是空的（最後一個頁籤關掉 = 群組消失）；`active` 一定在 `panels` 裡。
   - `togglePanel`（選單勾選）：打開 = 加到預設那一側**第一組**的最後並顯示（那側沒有群組就新建一組）；已打開（含背景頁籤）= 關閉。選單的勾選 = 在某個群組裡，不是「看得到」。

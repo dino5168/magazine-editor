@@ -1,8 +1,24 @@
-import { useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, BringToFront, SendToBack, Trash } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  ArrowDown,
+  ArrowUp,
+  BringToFront,
+  SendToBack,
+  StretchHorizontal,
+  StretchVertical,
+  Trash,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { alignContentPatch, contentArea, fillContentDisabledReason, fillContentPatch, type ContentEdge, type FillAxis } from "@/lib/editor/content-align";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import { describeShape } from "@/lib/editor/element-factory";
@@ -15,8 +31,11 @@ import {
   resizePatch,
 } from "@/lib/editor/properties";
 import type { CanvasElement, ElementPatch, ShapeElement, ShapeLabel, TextElement, TextStyle } from "@/lib/editor/types";
-import { TEXT_VARIABLES } from "@/lib/editor/variables";
+import { textBlockHeight } from "@/lib/editor/shape-label";
+import { resolveElementVariables, TEXT_VARIABLES, variableValues } from "@/lib/editor/variables";
+import { measureTextLayout } from "@/lib/export/text-layout";
 import { ColorPicker } from "../color-picker";
+import { IconButton } from "../icon-button";
 import { NumberField } from "../number-field";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
@@ -242,6 +261,70 @@ function ShapeTextTab({ shape, update }: { readonly shape: ShapeElement; readonl
   );
 }
 
+const ALIGN_EDGES: readonly { readonly edge: ContentEdge; readonly label: string; readonly icon: LucideIcon }[] = [
+  { edge: "left", label: "靠左對齊內容區", icon: AlignStartVertical },
+  { edge: "centerX", label: "水平置中於內容區", icon: AlignCenterVertical },
+  { edge: "right", label: "靠右對齊內容區", icon: AlignEndVertical },
+  { edge: "top", label: "靠上對齊內容區", icon: AlignStartHorizontal },
+  { edge: "centerY", label: "垂直置中於內容區", icon: AlignCenterHorizontal },
+  { edge: "bottom", label: "靠下對齊內容區", icon: AlignEndHorizontal },
+];
+
+/**
+ * 「對齊內容區」: fill the content area's width / height, or move to its edges / centre lines.
+ * One click = one `element/update` (one undo step); nothing is stored in the document.
+ */
+function ContentAlignSection({ element, keepRatio, update }: { readonly element: CanvasElement; readonly keepRatio: boolean; readonly update: Update }) {
+  const state = useEditorState();
+  const sheet = selectActivePage(state);
+  const document = state.history.present;
+  const area = contentArea(sheet, document.margins);
+  const variables = useMemo(() => variableValues(document, sheet.id), [document, sheet.id]);
+  // 文字的高度用和畫布相同的 Konva 量測（畫布顯示的是換過變數的文字）；estimateTextHeight 只是粗估
+  const height = useMemo(() => {
+    if (element.type !== "text") return element.height;
+    const shown = variables ? (resolveElementVariables(element, variables) as TextElement) : element;
+    return textBlockHeight(measureTextLayout(shown).lines.length, element.fontSize, element.lineHeight);
+  }, [element, variables]);
+  const apply = (patch: ElementPatch | null) => {
+    if (patch) update(patch);
+  };
+  const axes: readonly FillAxis[] = element.type === "text" ? ["width"] : ["width", "height"];
+  const reasons = axes.map((axis) => fillContentDisabledReason(element, area, axis)).filter((reason) => reason !== null);
+
+  return (
+    <Section title="對齊內容區">
+      <div className="grid grid-cols-2 gap-1.5">
+        {axes.map((axis) => (
+          <Button
+            key={axis}
+            variant="outline"
+            size="sm"
+            disabled={fillContentDisabledReason(element, area, axis) !== null}
+            onClick={() => apply(fillContentPatch(element, area, axis, keepRatio))}
+          >
+            {axis === "width" ? <StretchHorizontal /> : <StretchVertical />}
+            {axis === "width" ? "填滿寬度" : "填滿高度"}
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-center gap-0.5">
+        {ALIGN_EDGES.map(({ edge, label, icon: Icon }) => (
+          <IconButton key={edge} label={label} onClick={() => apply(alignContentPatch(element, area, edge, height))}>
+            <Icon />
+          </IconButton>
+        ))}
+      </div>
+      {element.rotation !== 0 && <p className="text-xs text-muted-foreground">填滿時會把旋轉歸零；對齊照旋轉後的外框。</p>}
+      {[...new Set(reasons)].map((reason) => (
+        <p key={reason} className="text-xs text-muted-foreground">
+          無法填滿：{reason}。
+        </p>
+      ))}
+    </Section>
+  );
+}
+
 function ArrangeTab({ element, update }: { readonly element: CanvasElement; readonly update: Update }) {
   const dispatch = useEditorDispatch();
   const elements = selectActivePage(useEditorState()).elements;
@@ -276,6 +359,7 @@ function ArrangeTab({ element, update }: { readonly element: CanvasElement; read
           </Button>
         </div>
       </Section>
+      <ContentAlignSection element={element} keepRatio={keepRatio} update={update} />
       <Section title="大小">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           <NumberField
