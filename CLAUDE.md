@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -27,7 +27,7 @@
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
 | 自動化 / MCP | `zod` 4（MCP 工具參數的 schema 與驗證，只用在 `src/lib/automation`）· Rust `rmcp` **`=3.5.1`**（官方 MCP SDK，只用在橋接程式 `magazine-mcp.exe`）· `tokio`（named pipe） |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
-| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版） |
+| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版）· `roxmltree`（匯入時確認 SVG）· `comemo`（匯出前用 typst 的 SVG 解析檢查，版本跟 typst） |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
@@ -514,7 +514,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 一般瀏覽器分頁（`npm run dev`）會自己攔下 Ctrl+Shift+PageUp / PageDown（移動瀏覽器分頁），網頁收不到；桌面版沒有這個問題。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
   - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
-- 匯入的圖片只接受 PNG / JPEG / WebP / GIF、單檔 ≤ 20 MB，而且必須能實際解碼；桌面版會複製進專案（見「檔案系統」與「素材管理」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
+- 匯入的圖片只接受 PNG / JPEG / WebP / GIF / SVG、單檔 ≤ 20 MB，而且必須能實際解碼（SVG 見「素材管理」的 SVG）；桌面版會複製進專案（見「檔案系統」與「素材管理」）。瀏覽器模式才使用 `blob:` URL，而且不 revoke（undo 可能讓刪除的圖片回來）。
 - `tauri.conf.json` 設定 `dragDropEnabled: false`：Tauri 預設會攔截檔案拖放，HTML5 drop 事件在 Windows 上收不到，「素材」面板與素材管理視窗從檔案總管拖檔案進來需要這個設定。**不可移除**。
 - 桌面版啟動時開啟上次的專案，沒有就建立空白 A4 的未命名專案；瀏覽器模式（`npm run dev`）沒有檔案存取，只載入 `createSampleDocument()` 的示範內容，檔案指令會提示「僅在桌面版可用」。
 
@@ -588,7 +588,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **`library.json`**（Rust `project/library.rs` 是權威定義，TS `lib/library/types.ts` 手寫對應，共用 fixture `tests/fixtures/sample-library.json`）：`libraryVersion` 1、`folders`（陣列順序 = 同層順序）、`items`（`kind` tag；`folderId: null` = 未分類；`trashed` 記住刪除時間與原資料夾，可指向已刪除的資料夾）。規則：id 不重複、名稱存去頭尾空白、同層不同名、不循環、最多 8 層、`src` 在對應種類的資料夾（`assets/images` / `texts` / `audio`）、**同一個 `src` 只能一筆**（同檔只留一筆）。比 App 新的 `libraryVersion` 拒絕開啟專案（重建會丟資料）；主檔與 `.bak` 都壞時改名 `library.json.damaged`、由專案圖片重建並提示。
 - **立即寫入、不進復原、不算未存檔**：`LibraryProvider`（`home-page.tsx`：`EditorProvider` → `LibraryProvider` → `ProjectProvider`）每次變更就 `library_write`；一次一個寫入，寫入中的變更合併成下一次。`library_write` 帶 `projectId`，不是目前專案就拒絕；**換專案（開啟 / 新增）、另存（Rust 從磁碟複製素材庫）、關閉視窗前都要 `flush()`**（`use-project-commands.ts`、`use-close-guard.ts`）。代價：選「不儲存」關閉時頁面回到上次存檔，素材庫的整理保留。瀏覽器模式（`npm run dev`）只存在記憶體，src 是 blob URL（同檔不去重）。
 - **和專案檔的關係**：`EditorState.assets` 已移除；`project.magproj` 的 `assets` 在存檔 / 備份時由素材庫算出（`projectAssets`：**所有圖片，含垃圾桶**——舊版 App 的開檔清理只看這份清單）。舊專案第一次開啟時由 `assets` 建立素材庫（全部未分類）。
-- **匯入**（`use-library-import.ts` → `library_import`，raw body，種類放在 header `x-asset-kind` / `x-asset-extension`）：依副檔名分流，前端先擋明顯不合格的檔案，內容由 Rust 檢查（圖片與音訊看檔頭；文字必須 UTF-8、去 BOM、不含 NUL、≤ 200 KB；音訊 ≤ 50 MB）。在某個資料夾裡匯入就放進該資料夾，其他情況進未分類；同檔已在素材庫 → 不新增（在垃圾桶就還原到這次的資料夾）並提示。「相片」面板的內建相片放到頁面時也加入未分類。
+- **匯入**（`use-library-import.ts` → `library_import`，raw body，種類放在 header `x-asset-kind` / `x-asset-extension`）：依副檔名分流，前端先擋明顯不合格的檔案，內容由 Rust 檢查（圖片與音訊看檔頭，SVG 見下面；文字必須 UTF-8、去 BOM、不含 NUL、≤ 200 KB；音訊 ≤ 50 MB）。在某個資料夾裡匯入就放進該資料夾，其他情況進未分類；同檔已在素材庫 → 不新增（在垃圾桶就還原到這次的資料夾）並提示。「相片」面板的內建相片放到頁面時也加入未分類。
 - **管理視窗**（「檔案 → 素材管理...」或面板的按鈕，`LibraryDialogProvider` / `useLibraryDialog().openLibrary(view?)`）：左欄全部 / 未分類 / 垃圾桶＋資料夾樹（數量含子資料夾），中欄 `masonryLayout` 瀑布流（左到右、新的在前、名稱搜尋），右欄資訊。Delete = 移到垃圾桶（垃圾桶裡 = 永久刪除，先確認）；在輸入框按 Esc 不關閉視窗。
   - **視窗處理的按鍵要 `stopPropagation`**：卡片在處理中就被移除時，編輯器快捷鍵的 `closest('[role="dialog"]')` 判斷不出它在視窗裡，會刪掉畫布上選取的物件。確認框關閉時焦點放回視窗（`onCloseAutoFocus`），否則焦點落在 `<body>`。
 - **拖曳**（`use-library-drag.ts`，`startPointerDrag` + `DragGhost`，規則在純函式 `libraryDropResult`）：素材 → 資料夾（列的哪一段都算放進去）/ 未分類 / 垃圾桶；從垃圾桶拖出來 = 還原到那裡；資料夾 → 前 / 中 / 後 / 「資料夾」標題（最上層最後），不能進自己的子孫。拖已選取的卡片 = 整組，**開始拖曳時才改選取**（Ctrl+點選不受影響）。視窗有 `transform`（置中），拖曳標籤要 portal 到 `document.body`。
@@ -596,6 +596,11 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **放到頁面**（`usePlaceLibraryItem`）：圖片 → 圖片物件；文字檔 → 一個靠左的內文文字物件（`createTextFromFile`，內容原樣、`.md` 符號保留、`\r\n` → `\n`；全文由 `library_read_text` 讀，因為 CSP 不讓前端 fetch asset URL）。一次 = 一筆復原。
 - **「素材」面板**（`panels/library-panel.tsx`，**面板 id 仍是 `upload`**，舊的停靠版面紀錄不失效）：資料夾選單、匯入、點一下放到頁面中央、**拖到畫布放在放下的位置**（`CanvasDropProvider`：畫布登記「視窗座標 → 那一頁與頁面座標」，沿用建立工具的 `pageAt`，雙頁時放在哪頁建在哪頁；放在畫布外或工具列上 = 取消）。放下的位置不吸附格線。
 - **縮圖**（`project/thumbnails.rs` + `lib/library/thumbnails.ts`）：卡片用原圖時，24 MP 照片捲動會卡（量測見計畫步驟 12）。`assets/thumbs/<原圖 hash>.jpg`（有透明像素時 `.png`），長邊 480 px、套用 EXIF 方向；路徑由原圖推導，**不寫進 `library.json`**。卡片接近畫面才 `library_thumbnail`（`spawn_blocking`），前端最多同時 2 個、同一張只要一次，換專案清快取；等待時只顯示底色、不先載原圖；做不出來或讀不到就用原圖。原圖 ≤ 480 px 與 SVG 直接用原圖；瀏覽器模式不用縮圖。畫布上的物件仍用原圖。開發版有最佳化圖片解碼套件（`Cargo.toml` 的 `[profile.dev.package.*]`），否則一張 24 MP 要約 8 秒。
+- **SVG**（計畫與實測：`docs/01-Plans-2026-10/16-素材可以支援 SVG-實作.md`）：和其他圖片一樣是 `kind: "image"`、存在 `assets/images/<hash>.svg`，檔案格式不用改（內建相片本來就是 SVG）。
+  - **原檔照存**（使用者決定，不清除 script）：App 與 EPUB 都只用 `<img>` 顯示，`<img>` 裡的 SVG 不執行 script、不載入外部資源；Typst 讀連結的圖片也受 `ExportWorld` 沙箱限制。Rust `assets.rs` 的 `is_svg` 用 roxmltree 解析（允許 DTD），根元素必須是 SVG namespace 的 `<svg>`（沒有 namespace 的瀏覽器不顯示）。
+  - **大小**：寬、高都不是絕對長度（沒寫、`%`、`auto`）時，瀏覽器的 natural size 高度固定 150 px，所以匯入時改用 viewBox 的寬高（`image.ts` 的 `svgViewBoxSize` / `svgIntrinsicSize`）；其他情況照瀏覽器（mm 等單位以 96 dpi 換成 px，App 把 px 當 pt）。
+  - 縮圖不做（直接用原圖）；畫布 `drawImage` 依畫出的大小重新繪製，縮放時仍是向量；素材卡片顯示「SVG」標籤（`kindBadge`）。
+  - 不支援 `.svgz`。SVG 裡的文字：畫布用系統字型，PDF 只有內嵌字型（退回預設黑體，見「匯出 PDF」），**字可能不同**（已知限制，建議在繪圖軟體先把文字轉外框）。
 - `editor-canvas.tsx` 裡的 `document` 是編輯中的文件；在那裡用 DOM API 要寫 `window.document`。
 - 不做（之後另排）：跨專案的系統素材庫、標籤 / 智慧型資料夾 / 依顏色搜尋、一個素材在多個資料夾、音訊試聽與放到頁面、Markdown 格式保留。
 
@@ -657,6 +662,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **兩步 command**：`export_pdf_choose_path`（開儲存對話框，路徑存進 `ExportState.pending`，只回傳檔名）→ `export_pdf`（取出路徑、排版、寫檔）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的 PDF（成功 toast 的「開啟」按鈕）。
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
+- **SVG 圖片**：Typst 本身會畫 SVG（usvg），但一張讀不了的 SVG（壞 XML、寬高 0、連到絕對路徑或 `assets/images/` 以外的圖片）會讓**整份**排版失敗。所以 `pdf.rs` 的 `drop_undrawable_svgs` 在排版前用 Typst 的 `SvgImage::with_fonts_images`（模板 `image()` 用的同一個函式、同一個 `ExportWorld`；所以要直接依賴 `comemo`，版本跟 typst）逐張檢查，失敗的同樣算進 `skippedImages`。SVG 文字的字型沒內嵌時 Typst 退回「圖片所在位置的字型」，模板沒有預設字型就一個字都不畫：圖片包在 `text(font: data.svgFonts)` 裡（`SVG_FALLBACK_FONTS` = 預設黑體）。EPUB 收錄成 `image/svg+xml`（`image_type` 沿用匯入的 `detect_extension`）。已知限制：SVG 連到另一個 `assets/images/` 檔案時 PDF 會畫、畫布不畫（檔名是 hash，實際碰不到）。
 - 座標定義與 Konva 相同（pt、原點左上、y 向下、順時針旋轉）。render model 的每個元素都以外框左上角定位，旋轉也繞這一點。
 - 多邊形與星形由 `project/shape.rs` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
 - **邊框的虛線位置由路徑起點決定**：Typst 內建 `rect` / `ellipse` 的起點和 Konva 不同。所以有邊框的矩形與橢圓在 PDF 裡改畫成 `kind: "path"`（矩形是 `render.rs` 的 `rounded_rect_path`（四個角各自的半徑）經 `pdf.rs` 的 `rect_path` 轉成模板的路徑，橢圓是 `ellipse_path`；起點與方向和 Konva、SVG 相同），沒有邊框的照舊（矩形的四個圓角用 Typst `radius` 字典）。

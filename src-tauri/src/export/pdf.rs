@@ -8,16 +8,25 @@ use super::render::{
     build_render, rounded_rect_path, DecorationKind, PathSegment, RenderDocument, RenderElement, RenderKind, RenderStroke,
     KAPPA, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
-use super::world::ExportWorld;
+use super::world::{file_id, ExportWorld};
 use super::{ExportOutput, ExportRequest};
 use crate::error::{AppError, AppResult};
 use crate::project::format::Align;
+use comemo::Track;
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::Path;
 use typst::diag::Warned;
 use typst::text::Font;
+use typst::visualize::SvgImage;
+use typst::World;
 use typst_layout::PagedDocument;
 use typst_pdf::PdfOptions;
+
+/// Typst family names that text inside an SVG falls back to when its own font is not bundled (the
+/// app's default 黑體). Without them Typst draws no text at all; the canvas uses the system font, so
+/// the glyphs may still differ.
+const SVG_FALLBACK_FONTS: [&str; 2] = ["Geist", "Noto Sans TC"];
 
 fn align_name(align: Align) -> &'static str {
     match align {
@@ -136,7 +145,49 @@ fn to_data(document: &RenderDocument) -> Value {
             json!({ "width": page.width, "height": page.height, "background": page.background, "elements": elements })
         })
         .collect();
-    json!({ "title": document.title, "pages": pages })
+    json!({ "title": document.title, "svgFonts": SVG_FALLBACK_FONTS, "pages": pages })
+}
+
+/// Whether Typst can draw an SVG: decoded the way `image()` in the template does it (same
+/// function, fonts and sandboxed world), so linked images outside `assets/images/` count as errors.
+fn svg_is_drawable(world: &ExportWorld, src: &str) -> bool {
+    let id = file_id(src);
+    let Ok(data) = world.file(id) else {
+        return false;
+    };
+    let world: &dyn World = world;
+    SvgImage::with_fonts_images(data, world.track(), &SVG_FALLBACK_FONTS, Some(id)).is_ok()
+}
+
+/// Removes the SVG images Typst cannot draw (broken XML, zero size, links to absolute paths or
+/// files outside the project...). One of them would fail the whole export; like a missing image
+/// file, it is skipped instead.
+///
+/// # Returns
+/// How many image elements were removed.
+fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Font]) -> usize {
+    let is_svg = |element: &RenderElement| matches!(&element.kind, RenderKind::Image(image) if image.src.ends_with(".svg"));
+    if !document.pages.iter().flat_map(|page| &page.elements).any(is_svg) {
+        return 0;
+    }
+    // 只讀 assets/images，data.json 用不到
+    let world = ExportWorld::new(root, Vec::new(), fonts.to_vec());
+    let mut drawable: HashMap<String, bool> = HashMap::new();
+    let mut skipped = 0;
+    for page in &mut document.pages {
+        page.elements.retain(|element| {
+            let RenderKind::Image(image) = &element.kind else {
+                return true;
+            };
+            if !is_svg(element) {
+                return true;
+            }
+            let keep = *drawable.entry(image.src.clone()).or_insert_with(|| svg_is_drawable(&world, &image.src));
+            skipped += usize::from(!keep);
+            keep
+        });
+    }
+    skipped
 }
 
 /// Renders the document to PDF bytes.
@@ -144,7 +195,8 @@ fn to_data(document: &RenderDocument) -> Value {
 /// # Errors
 /// `AppError::InvalidProject` for invalid content, `AppError::Export` when Typst fails.
 pub fn render_pdf(root: &Path, request: &ExportRequest, fonts: Vec<Font>) -> AppResult<ExportOutput> {
-    let (document, skipped_images) = build_render(root, request)?;
+    let (mut document, missing_images) = build_render(root, request)?;
+    let skipped_images = missing_images + drop_undrawable_svgs(root, &mut document, &fonts);
     let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document))?, fonts);
     let compiled = compile(&world)?;
     let pdf = typst_pdf::pdf(&compiled, &PdfOptions::default()).map_err(|errors| diagnostics(&errors))?;
@@ -218,6 +270,84 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let output = render_pdf(root.path(), &request(fixture_document()), fonts()).unwrap();
         assert_eq!(output.skipped_images, 1);
+    }
+
+    const SVG_NS: &str = r#"xmlns="http://www.w3.org/2000/svg""#;
+
+    /// A white page with one 200 × 100 pt image element per SVG (stacked downwards from (50, 50)),
+    /// the SVG files written into a project folder.
+    fn svg_page(svgs: &[String]) -> (tempfile::TempDir, ExportRequest) {
+        let root = project_with_image();
+        let mut document = fixture_document();
+        let page = &mut document.pages[0];
+        page.background = "#ffffff".into();
+        page.elements.retain(|e| matches!(e, Element::Image(_)));
+        let template = page.elements.pop().unwrap();
+        for (index, svg) in svgs.iter().enumerate() {
+            let src = format!("assets/images/svg-{index}.svg");
+            std::fs::write(root.path().join(&src), svg).unwrap();
+            let mut element = template.clone();
+            let Element::Image(image) = &mut element else { unreachable!() };
+            image.src = src;
+            (image.base.x, image.base.y, image.width, image.height) = (50.0, 50.0 + 120.0 * index as f64, 200.0, 100.0);
+            page.elements.push(element);
+        }
+        (root, request(document))
+    }
+
+    #[test]
+    fn svg_images_typst_cannot_draw_are_skipped_not_fatal() {
+        let good = format!(r#"<svg {SVG_NS} width="2" height="1"><rect width="2" height="1" fill="red"/></svg>"#);
+        let svgs = [
+            good.clone(),
+            // 實測（計畫 16 步驟 1）每一個都會讓整份 Typst 排版失敗
+            format!(r#"<svg {SVG_NS} width="0" height="0"><rect width="1" height="1"/></svg>"#),
+            format!(r#"<svg {SVG_NS} width="2" height="1"><image href="file:///C:/Windows/a.jpg" width="2" height="1"/></svg>"#),
+            format!(r#"<svg {SVG_NS} width="2" height="1"><image href="../../secret.png" width="2" height="1"/></svg>"#),
+            format!(r#"<svg {SVG_NS} width="2" height="1"><rect"#),
+            // 同一張壞圖用兩次：兩個物件都略過
+            format!(r#"<svg {SVG_NS} width="0" height="0"><rect width="1" height="1"/></svg>"#),
+        ];
+        let (root, req) = svg_page(&svgs);
+        let output = render_pdf(root.path(), &req, fonts()).unwrap();
+        assert_eq!(output.skipped_images, 5);
+        // 能畫的那張照常畫出來
+        let (mut document, _) = build_render(root.path(), &req).unwrap();
+        assert_eq!(drop_undrawable_svgs(root.path(), &mut document, &fonts()), 5);
+        assert_eq!(document.pages[0].elements.len(), 1);
+    }
+
+    #[test]
+    fn bundled_sample_photos_are_svg_typst_can_draw() {
+        // 「相片」面板的內建相片：放到頁面時經 library_import 存進專案，匯出時不能被略過
+        let photos = ["abstract", "city", "desert", "forest", "mountain", "ocean"].map(|name| {
+            std::fs::read_to_string(format!("{}/../src/assets/photos/photo-{name}.svg", env!("CARGO_MANIFEST_DIR"))).unwrap()
+        });
+        for photo in &photos {
+            assert_eq!(crate::project::assets::detect_extension(photo.as_bytes()), Some("svg"));
+        }
+        let (root, req) = svg_page(&photos);
+        assert_eq!(render_pdf(root.path(), &req, fonts()).unwrap().skipped_images, 0);
+    }
+
+    #[test]
+    fn svg_images_are_drawn_and_their_text_falls_back_to_the_default_font() {
+        let svgs = [
+            format!(r#"<svg {SVG_NS} viewBox="0 0 2 1"><rect width="2" height="1" fill="red"/></svg>"#),
+            // Arial 沒有內嵌：沒有退回字型時 Typst 一個字都不畫
+            format!(r#"<svg {SVG_NS} width="200" height="100"><text x="10" y="70" font-family="Arial" font-size="60">Ab 中</text></svg>"#),
+        ];
+        let (root, req) = svg_page(&svgs);
+        let compiled = compiled_pages(root.path(), &req);
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() });
+        let at = |x: u32, y: u32| pixmap.pixel(x, y).map(|p| (p.red(), p.green(), p.blue())).unwrap();
+        // 第一張填滿 200 × 100 的外框
+        assert_eq!(at(60, 60), (255, 0, 0));
+        assert_eq!(at(240, 140), (255, 0, 0));
+        // 第二張的文字有畫出來（黑色像素）
+        let dark = (170..270).flat_map(|y| (50..250).map(move |x| (x, y))).filter(|&(x, y)| at(x, y).0 < 100).count();
+        assert!(dark > 300, "text pixels: {dark}");
     }
 
     #[test]

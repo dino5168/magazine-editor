@@ -118,7 +118,8 @@
     )
     at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: radius, fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "image" {
-    at-corner(el, image(el.src, width: pt(el.width), height: pt(el.height), fit: "stretch"))
+    // SVG 裡的文字用了沒內嵌的字型時退回 data.svgFonts（App 的預設黑體）；沒有這層什麼字都不畫
+    at-corner(el, text(font: data.svgFonts, image(el.src, width: pt(el.width), height: pt(el.height), fit: "stretch")))
   } else if el.kind == "ellipse" {
     at-corner(el, ellipse(width: pt(el.width), height: pt(el.height), fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "polygon" {

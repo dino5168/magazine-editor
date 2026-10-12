@@ -41,9 +41,12 @@ image = { version = "0.25.10", default-features = false, features = ["jpeg", "pn
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "macros", "rt"] }
 # 官方 MCP Rust SDK，只有橋接程式 magazine-mcp.exe 用。API 每個大版本都變，鎖定 `=`（比照 typst）
 rmcp = { version = "=3.5.1", default-features = false, features = ["server", "transport-io"] }
+# 匯入 SVG 時確認根元素是 <svg>（原本只在 dev-dependencies，EPUB 測試用它讀 XHTML）
+roxmltree = "0.21"
+# 匯出前用 typst 自己的 SVG 解析檢查每張 SVG（typst 的 API 要求 comemo 的 Tracked world）；版本和 typst 0.15.1 用的相同
+comemo = "0.5.1"
 
 [dev-dependencies]
-roxmltree = "0.21"
 tempfile = "3"
 ttf-parser = "0.25"
 typst-render = "=0.15.1"

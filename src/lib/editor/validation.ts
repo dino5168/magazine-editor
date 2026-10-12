@@ -4,7 +4,7 @@ import { mmToPt } from "./units";
 
 export type Result<T> = { data: T; error: null } | { data: null; error: Error };
 
-export const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+export const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"] as const;
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export const DOCUMENT_NAME_MAX_LENGTH = 100;
@@ -55,7 +55,7 @@ export interface FileLike {
  */
 export function validateImageFile<T extends FileLike>(file: T): Result<T> {
   if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
-    return { data: null, error: new Error(`「${file.name}」不是支援的圖片格式（PNG、JPEG、WebP、GIF）`) };
+    return { data: null, error: new Error(`「${file.name}」不是支援的圖片格式（PNG、JPEG、WebP、GIF、SVG）`) };
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     return { data: null, error: new Error(`「${file.name}」超過 20 MB 上限`) };

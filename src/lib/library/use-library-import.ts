@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { createId } from "@/lib/editor/element-factory";
-import { loadImageSize } from "@/lib/editor/image";
+import { loadImageSize, svgIntrinsicSize } from "@/lib/editor/image";
 import type { Size } from "@/lib/editor/types";
 import { validateImageFile } from "@/lib/editor/validation";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
@@ -63,9 +63,11 @@ async function prepare(file: File, accept: readonly LibraryItemKind[]): Promise<
         toast.error(`「${file.name}」${size.error.message}`);
         return null;
       }
+      // 只有 viewBox 的 SVG：瀏覽器給的高度固定是 150，改用 viewBox 的大小
+      const svgSize = extension === "svg" ? svgIntrinsicSize(await file.text()) : null;
       const src = await store(bytes, kind, extension, blobUrl);
       if (isDesktop) URL.revokeObjectURL(blobUrl);
-      return src === null ? null : { kind, name, bytes: file.size, src, size: size.data };
+      return src === null ? null : { kind, name, bytes: file.size, src, size: svgSize ?? size.data };
     }
     case "text": {
       // 精確的檢查（UTF-8、BOM、NUL）在 Rust；這裡先擋掉明顯太大的檔案，免得整份讀進來

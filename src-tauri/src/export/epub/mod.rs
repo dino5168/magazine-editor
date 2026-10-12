@@ -21,6 +21,7 @@ use super::fonts::{bundled_family, BundledFont, BUNDLED_FONTS};
 use super::render::{build_render, RenderDocument, RenderKind};
 use super::{ExportOutput, ExportRequest};
 use crate::error::AppResult;
+use crate::project::assets::detect_extension;
 use package::{ManifestItem, Metadata};
 use std::collections::HashMap;
 use std::path::Path;
@@ -54,19 +55,22 @@ impl EpubImages {
     }
 }
 
-/// Detects the image formats EPUB reading systems display, from the file's first bytes.
+/// Detects the image formats EPUB reading systems display (the same check as importing).
+///
+/// # Returns
+/// The media type and file extension, or `None` for other content.
 fn image_type(data: &[u8]) -> Option<(&'static str, &'static str)> {
-    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        Some(("image/png", "png"))
-    } else if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        Some(("image/jpeg", "jpg"))
-    } else if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
-        Some(("image/gif", "gif"))
-    } else if data.len() >= 12 && &data[0..4] == b"RIFF" && &data[8..12] == b"WEBP" {
-        Some(("image/webp", "webp"))
-    } else {
-        None
-    }
+    let extension = detect_extension(data)?;
+    let media_type = match extension {
+        "png" => "image/png",
+        "jpg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        // EPUB 3 的核心媒體類型；頁面用 <img> 引用，和畫布一樣不執行 script、不載入外部資源
+        "svg" => "image/svg+xml",
+        _ => return None,
+    };
+    Some((media_type, extension))
 }
 
 /// Reads every image the document draws.

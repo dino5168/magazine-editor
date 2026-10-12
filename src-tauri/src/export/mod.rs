@@ -51,6 +51,7 @@ pub struct ExportOutput {
     /// The exported file.
     pub bytes: Vec<u8>,
     pub pages: usize,
-    /// Images skipped because their file no longer exists in the project.
+    /// Images skipped because their file no longer exists in the project, or the format cannot
+    /// draw it (an SVG Typst cannot read, a file EPUB cannot show).
     pub skipped_images: usize,
 }

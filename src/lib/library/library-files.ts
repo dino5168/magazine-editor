@@ -6,6 +6,7 @@ const KIND_OF_EXTENSION: Readonly<Record<string, LibraryItemKind>> = {
   jpeg: "image",
   webp: "image",
   gif: "image",
+  svg: "image",
   txt: "text",
   md: "text",
   mp3: "audio",

@@ -41,7 +41,7 @@ export interface RecoveryEntry {
 /** Result of `export_pdf` (`ExportResult` in Rust). */
 export interface ExportResult {
   readonly pages: number;
-  /** Images left out because their file no longer exists in the project. */
+  /** Images left out because their file no longer exists in the project, or the format cannot draw it. */
   readonly skippedImages: number;
 }
 

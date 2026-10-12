@@ -142,7 +142,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       action: { label: "開啟", onClick: () => void projectApi.openLastExport() },
     });
     if (exported.data.skippedImages > 0) {
-      toast.warning(`有 ${exported.data.skippedImages} 張圖片在專案資料夾中找不到，已略過`);
+      toast.warning(`有 ${exported.data.skippedImages} 張圖片找不到檔案或無法輸出（例如 SVG 連結了外部檔案），已略過`);
     }
     return true;
   }, [getSnapshot]);

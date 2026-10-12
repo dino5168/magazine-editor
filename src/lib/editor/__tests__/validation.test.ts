@@ -7,10 +7,12 @@ describe("validateImageFile", () => {
   it("accepts supported images within the size limit", () => {
     const file = { name: "a.png", type: "image/png", size: 1024 };
     expect(validateImageFile(file)).toEqual({ data: file, error: null });
+    const svg = { name: "logo.svg", type: "image/svg+xml", size: 1024 };
+    expect(validateImageFile(svg)).toEqual({ data: svg, error: null });
   });
 
   it("rejects unsupported types and oversized files", () => {
-    expect(validateImageFile({ name: "a.svg", type: "image/svg+xml", size: 10 }).error).toBeInstanceOf(Error);
+    expect(validateImageFile({ name: "a.svgz", type: "image/svg+xml-compressed", size: 10 }).error).toBeInstanceOf(Error);
     expect(validateImageFile({ name: "a.pdf", type: "application/pdf", size: 10 }).error).toBeInstanceOf(Error);
     expect(validateImageFile({ name: "big.jpg", type: "image/jpeg", size: MAX_UPLOAD_BYTES + 1 }).error).toBeInstanceOf(
       Error,

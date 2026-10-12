@@ -36,6 +36,8 @@ describe("masonryLayout", () => {
 describe("library files", () => {
   it("routes files by extension", () => {
     expect(kindOfFile("Photo.JPEG")).toBe("image");
+    expect(kindOfFile("Logo.SVG")).toBe("image");
+    expect(kindOfFile("logo.svgz")).toBeNull();
     expect(kindOfFile("創刊詞.md")).toBe("text");
     expect(kindOfFile("訪談.m4a")).toBe("audio");
     expect(kindOfFile("影片.mp4")).toBeNull();

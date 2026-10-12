@@ -22,7 +22,8 @@ pub fn load_fonts() -> Vec<Font> {
     BUNDLED_FONTS.iter().flat_map(|font| Font::iter(Bytes::new(font.data))).collect()
 }
 
-fn file_id(path: &str) -> FileId {
+/// The id Typst uses for a project path such as `assets/images/<file>`.
+pub(super) fn file_id(path: &str) -> FileId {
     // 內部固定的路徑一定合法
     let vpath = VirtualPath::new(path).expect("valid internal virtual path");
     RootedPath::new(VirtualRoot::Project, vpath).intern()

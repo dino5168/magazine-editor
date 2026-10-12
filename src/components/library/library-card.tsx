@@ -17,11 +17,11 @@ export function cardAspect(item: LibraryItem): number {
   }
 }
 
-/** Format badge for files that are not images, e.g. `MD`, `MP3`. */
+/** Format badge for files that are not raster images, e.g. `MD`, `MP3`, `SVG` (vector images). */
 export function kindBadge(item: LibraryItem): string | null {
-  if (item.kind === "image") return null;
   // 桌面版的 src 是 assets/texts/<hash>.md；瀏覽器模式是沒有副檔名的 blob URL，改看名稱
   const extension = fileExtension(item.src.startsWith("assets/") ? item.src : item.name);
+  if (item.kind === "image") return extension === "svg" ? "SVG" : null;
   return extension ? extension.toUpperCase() : null;
 }
 

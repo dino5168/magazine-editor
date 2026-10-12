@@ -27,13 +27,35 @@ pub enum AssetKind<'a> {
 }
 /// Hex characters of the SHA-256 digest used as the file name (128 bits is ample for dedupe).
 const HASH_HEX_LEN: usize = 32;
-const SVG_SNIFF_BYTES: usize = 4096;
+const SVG_NAMESPACE: &str = "http://www.w3.org/2000/svg";
 
-/// Detects the image format from magic bytes; the file name / MIME from the WebView is not trusted.
+/// Whether the bytes are an SVG document: UTF-8 XML (a BOM is allowed) whose root element is `<svg>`
+/// in the SVG namespace (without it, browsers do not display the file as an image).
 ///
-/// SVG is accepted because the bundled sample photos are SVG. It is only ever rendered through
-/// `<img>` / canvas, where scripts inside the SVG do not run.
-fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
+/// The file is stored as is: it is only ever shown through `<img>` / canvas (and `<img>` in EPUB),
+/// where scripts inside the SVG do not run and external resources are not loaded.
+fn is_svg(bytes: &[u8]) -> bool {
+    let Ok(text) = std::str::from_utf8(bytes.strip_prefix(UTF8_BOM).unwrap_or(bytes)) else {
+        return false;
+    };
+    // 不是 XML 的檔案不必整份解析
+    if !text.trim_start().starts_with('<') {
+        return false;
+    }
+    // 舊版 Illustrator 等會輸出 <!DOCTYPE svg …>；roxmltree 對實體展開有上限
+    let options = roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() };
+    roxmltree::Document::parse_with_options(text, options).is_ok_and(|document| {
+        let root = document.root_element();
+        root.tag_name().name() == "svg" && root.tag_name().namespace() == Some(SVG_NAMESPACE)
+    })
+}
+
+/// Detects the image format from magic bytes (SVG: by parsing it); the file name / MIME from the
+/// WebView is not trusted.
+///
+/// # Returns
+/// The extension the file is stored with (`png`, `jpg`, `gif`, `webp`, `svg`), or `None`.
+pub(crate) fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return Some("png");
     }
@@ -46,12 +68,7 @@ fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
     if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
         return Some("webp");
     }
-    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(SVG_SNIFF_BYTES)]);
-    let head = head.trim_start_matches('\u{feff}').trim_start();
-    if head.starts_with('<') && head.contains("<svg") {
-        return Some("svg");
-    }
-    None
+    is_svg(bytes).then_some("svg")
 }
 
 /// Detects the audio format from magic bytes.
@@ -179,11 +196,43 @@ mod tests {
         assert_eq!(detect_extension(b"\xFF\xD8\xFF\xE0rest"), Some("jpg"));
         assert_eq!(detect_extension(b"GIF89a...."), Some("gif"));
         assert_eq!(detect_extension(b"RIFF\0\0\0\0WEBPVP8 "), Some("webp"));
-        assert_eq!(detect_extension(b"\xEF\xBB\xBF  <?xml version=\"1.0\"?>\n<svg xmlns=\"\">"), Some("svg"));
-        assert_eq!(detect_extension(b"<svg viewBox=\"0 0 1 1\"/>"), Some("svg"));
         assert_eq!(detect_extension(b"MZ\x90\0 executable"), None);
         assert_eq!(detect_extension(b"<html><body>"), None);
         assert_eq!(detect_extension(b""), None);
+    }
+
+    #[test]
+    fn detects_svg_by_its_root_element() {
+        let svg = |s: &str| detect_extension(s.as_bytes());
+        // BOM、XML 宣告、DOCTYPE、註解、（沒有宣告時的）前置空白都可以
+        assert_eq!(
+            detect_extension(b"\xEF\xBB\xBF<?xml version=\"1.0\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\"/>"),
+            Some("svg")
+        );
+        assert_eq!(svg("\n  <svg xmlns=\"http://www.w3.org/2000/svg\"/>"), Some("svg"));
+        assert_eq!(
+            svg(r#"<?xml version="1.0"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generator: Adobe Illustrator -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>"#),
+            Some("svg")
+        );
+        assert_eq!(svg(r#"<svg:svg xmlns:svg="http://www.w3.org/2000/svg"/>"#), Some("svg"));
+        // 含 script 的照樣接受（只會經由 <img> 顯示，不會執行）
+        assert_eq!(svg(r#"<svg xmlns="http://www.w3.org/2000/svg"><script>x()</script></svg>"#), Some("svg"));
+        for (label, bad) in [
+            ("no namespace (browsers do not display it)", r#"<svg viewBox="0 0 1 1"/>"#),
+            ("html containing svg", r#"<html><body><svg xmlns="http://www.w3.org/2000/svg"/></body></html>"#),
+            ("svg only in a comment", r#"<!-- <svg> --><html/>"#),
+            ("broken xml", r#"<svg xmlns="http://www.w3.org/2000/svg"><rect"#),
+            // XML 宣告前面不能有東西（瀏覽器也不顯示）
+            ("space before the declaration", "  <?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\"/>"),
+            ("not xml", "svg"),
+        ] {
+            assert_eq!(svg(bad), None, "{label}");
+        }
+        // 不是 UTF-8（UTF-16）
+        assert_eq!(detect_extension(b"\xFF\xFE<\0s\0v\0g\0"), None);
     }
 
     #[test]

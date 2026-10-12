@@ -267,6 +267,27 @@ fn images_that_are_not_displayable_are_skipped() {
 }
 
 #[test]
+fn svg_images_are_included() {
+    let root = project_with_image();
+    let mut document = fixture_document();
+    let src = "assets/images/5vg5vg5vg5vg5vg5vg5vg5vg5vg5vg5v.svg";
+    std::fs::write(root.path().join(src), r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 1"><rect width="2" height="1"/></svg>"#)
+        .unwrap();
+    let Some(Element::Image(image)) = document.pages[0].elements.iter_mut().find(|e| matches!(e, Element::Image(_))) else {
+        panic!("fixture has an image");
+    };
+    image.src = src.into();
+    let output = build_epub(root.path(), &request(document), &meta()).unwrap();
+    assert_eq!(output.skipped_images, 0);
+    let entries = unzip(&output.bytes);
+    assert!(entries.iter().any(|(name, _)| name == "OEBPS/images/image-1.svg"));
+    let opf = parse(text_of(&entries, "OEBPS/content.opf"));
+    let item = opf.descendants().find(|n| n.attribute("href") == Some("images/image-1.svg")).expect("svg in the manifest");
+    assert_eq!(item.attribute("media-type"), Some("image/svg+xml"));
+    assert!(text_of(&entries, "OEBPS/pages/page-1.xhtml").contains(r#"<img"#));
+}
+
+#[test]
 fn embeds_only_used_font_families() {
     let fonts_in = |family: &str| {
         let mut document = fixture_document();
