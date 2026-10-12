@@ -30,3 +30,8 @@ dist-ssr
 
 # Local task notes (contain local absolute paths; repo is public)
 0-Task/
+
+# Build leftovers from `tsc -b` (vite.config.js would shadow vite.config.ts)
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
