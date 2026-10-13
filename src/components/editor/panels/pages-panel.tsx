@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { BookOpen, ChevronDown, Copy, EllipsisVertical, File as FileIcon, FilePlus, Trash, type LucideIcon } from "lucide-react";
 import {
   AlertDialog,
@@ -37,7 +37,7 @@ import type { EditorAction } from "@/lib/editor/editor-reducer";
 import { createId } from "@/lib/editor/element-factory";
 import { usedFontFamilies } from "@/lib/editor/fonts";
 import { canSetParent, masterContent, pagesUsingMaster } from "@/lib/editor/master-pages";
-import type { CanvasElement, EditorDocument, MasterPage, PageId, Sheet } from "@/lib/editor/types";
+import type { CanvasElement, EditorDocument, MasterPage, Page, PageId, Sheet } from "@/lib/editor/types";
 import { pageSide } from "@/lib/editor/spreads";
 import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { resolveElementsVariables, variableValues } from "@/lib/editor/variables";
@@ -112,11 +112,24 @@ export function PagesPanel() {
   const activePage = pages.find((page) => page.id === state.activePageId) ?? null;
   const activeMaster = masters.find((master) => master.id === state.activePageId) ?? null;
 
-
-  const rename = (id: PageId, name: string) => {
-    dispatch({ type: "page/rename", id, name });
-    setRenamingId(null);
-  };
+  // 方塊是 memo：動作要是穩定的參考，否則每次改文件（例如在某一頁加物件）所有方塊都會重畫，
+  // 長文件（200 頁）每次修改都要重畫幾百個 Radix 選單
+  const actions = useMemo<TileActions>(
+    () => ({
+      select: (id) => dispatch({ type: "page/select", id }),
+      startRename: setRenamingId,
+      rename: (id, name) => {
+        dispatch({ type: "page/rename", id, name });
+        setRenamingId(null);
+      },
+      cancelRename: () => setRenamingId(null),
+      duplicate: (kind, sheet) => dispatch(duplicateAction(kind, sheet)),
+      requestDelete: (kind, id) => setPendingDelete({ kind, id }),
+      setMaster: (id, masterId) => dispatch({ type: "page/setMaster", ids: [id], masterId }),
+      setParent: (id, parentId) => dispatch({ type: "master/setParent", id, parentId }),
+    }),
+    [dispatch],
+  );
 
   const nameOf = (id: PageId | null) => masters.find((master) => master.id === id)?.name ?? null;
 
@@ -172,27 +185,17 @@ export function PagesPanel() {
             {masters.map((master) => (
               <SheetTile
                 key={master.id}
+                kind="master"
                 sheet={master}
+                masters={masters}
                 inherited={inheritedOf(master.parentId)}
                 elements={master.elements}
                 fontsReady={fontsReady}
                 active={master.id === state.activePageId}
                 caption={nameOf(master.parentId) ? `以 ${nameOf(master.parentId)} 為基礎` : null}
                 renaming={renamingId === master.id}
-                onSelect={() => dispatch({ type: "page/select", id: master.id })}
-                onStartRename={() => setRenamingId(master.id)}
-                onRename={(name) => rename(master.id, name)}
-                onCancelRename={() => setRenamingId(null)}
-                menu={
-                  <MasterMenuItems
-                    master={master}
-                    masters={masters}
-                    onRename={() => setRenamingId(master.id)}
-                    onDuplicate={() => dispatch(duplicateAction("master", master))}
-                    onDelete={() => setPendingDelete({ kind: "master", id: master.id })}
-                    onSetParent={(parentId) => dispatch({ type: "master/setParent", id: master.id, parentId })}
-                  />
-                }
+                canDelete
+                actions={actions}
               />
             ))}
           </TileGrid>
@@ -237,8 +240,10 @@ export function PagesPanel() {
           {pages.map((page, index) => (
             <SheetTile
               key={page.id}
+              kind="page"
               align={spread ? (pageSide(index) === "left" ? "end" : "start") : "center"}
               sheet={page}
+              masters={masters}
               inherited={shownByPage.get(page.id)?.inherited ?? NO_ELEMENTS}
               elements={shownByPage.get(page.id)?.elements ?? page.elements}
               fontsReady={fontsReady}
@@ -246,42 +251,8 @@ export function PagesPanel() {
               number={index + 1}
               badge={nameOf(page.masterId)}
               renaming={renamingId === page.id}
-              onSelect={() => dispatch({ type: "page/select", id: page.id })}
-              onStartRename={() => setRenamingId(page.id)}
-              onRename={(name) => rename(page.id, name)}
-              onCancelRename={() => setRenamingId(null)}
-              menu={
-                <>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>套用主頁</DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={page.masterId ?? NONE}
-                        onValueChange={(value) =>
-                          dispatch({ type: "page/setMaster", ids: [page.id], masterId: value === NONE ? null : value })
-                        }
-                      >
-                        <DropdownMenuRadioItem value={NONE}>無</DropdownMenuRadioItem>
-                        {masters.map((master) => (
-                          <DropdownMenuRadioItem key={master.id} value={master.id}>
-                            {master.name}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setRenamingId(page.id)}>重新命名</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => dispatch(duplicateAction("page", page))}>複製頁面</DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={pages.length <= 1}
-                    onSelect={() => setPendingDelete({ kind: "page", id: page.id })}
-                  >
-                    刪除頁面
-                  </DropdownMenuItem>
-                </>
-              }
+              canDelete={pages.length > 1}
+              actions={actions}
             />
           ))}
         </TileGrid>
@@ -407,31 +378,48 @@ function TileGrid({ children, spread = false }: { readonly children: ReactNode; 
   );
 }
 
-interface SheetTileProps {
-  readonly sheet: Sheet;
+/** What the tiles do, by sheet id; one stable object for all tiles so their memo holds. */
+interface TileActions {
+  readonly select: (id: PageId) => void;
+  readonly startRename: (id: PageId) => void;
+  readonly rename: (id: PageId, name: string) => void;
+  readonly cancelRename: () => void;
+  readonly duplicate: (kind: "page" | "master", sheet: Sheet) => void;
+  readonly requestDelete: (kind: "page" | "master", id: PageId) => void;
+  readonly setMaster: (pageId: PageId, masterId: PageId | null) => void;
+  readonly setParent: (masterId: PageId, parentId: PageId | null) => void;
+}
+
+type SheetTileProps = {
   readonly inherited: readonly CanvasElement[];
   readonly elements: readonly CanvasElement[];
   readonly fontsReady: boolean;
   readonly active: boolean;
-  /** Page number (pages only). */
-  readonly number?: number;
   /** Name of the master page a page uses, shown on the thumbnail. */
   readonly badge?: string | null;
   /** Second line under the name (master pages: what they are based on). */
   readonly caption?: string | null;
   readonly renaming: boolean;
-  readonly onSelect: () => void;
-  readonly onStartRename: () => void;
-  readonly onRename: (name: string) => void;
-  readonly onCancelRename: () => void;
-  /** Items of the `⋮` / right-click menu. */
-  readonly menu: ReactNode;
+  /** Master pages, for the menu (pages: 套用主頁; master pages: 以…為基礎). */
+  readonly masters: readonly MasterPage[];
+  /** Whether the menu's delete item is enabled (the last page cannot be deleted). */
+  readonly canDelete: boolean;
+  readonly actions: TileActions;
   /** Horizontal placement in its grid cell: spreads put the left page at the end and the right page at the start. */
   readonly align?: "start" | "center" | "end";
-}
+} & (
+  | { readonly kind: "page"; readonly sheet: Page; /** Page number. */ readonly number: number }
+  | { readonly kind: "master"; readonly sheet: MasterPage; readonly number?: undefined }
+);
 
-function SheetTile(props: SheetTileProps) {
-  const { sheet, active, number, badge, caption, renaming, menu, align = "center" } = props;
+/**
+ * One thumbnail with its name and `⋮` / right-click menu.
+ *
+ * Memoised: every prop is a primitive, a document object (same reference while unchanged) or the
+ * shared `actions`, so an edit re-renders only the tiles whose sheet (or number, name…) changed.
+ */
+const SheetTile = memo(function SheetTile(props: SheetTileProps) {
+  const { sheet, active, number, badge, caption, renaming, actions, align = "center" } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <li
@@ -448,7 +436,7 @@ function SheetTile(props: SheetTileProps) {
           type="button"
           aria-current={active ? "page" : undefined}
           aria-label={number === undefined ? `編輯主頁 ${sheet.name}` : `第 ${number} 頁 ${sheet.name}`}
-          onClick={props.onSelect}
+          onClick={() => actions.select(sheet.id)}
           className={cn(
             "relative rounded-sm outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-ring/60",
             active ? "ring-2 ring-primary" : "ring-1 ring-border hover:ring-muted-foreground/50",
@@ -479,7 +467,11 @@ function SheetTile(props: SheetTileProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-40">
-            {menu}
+            {props.kind === "page" ? (
+              <PageMenuItems page={props.sheet} masters={props.masters} canDelete={props.canDelete} actions={actions} />
+            ) : (
+              <MasterMenuItems master={props.sheet} masters={props.masters} actions={actions} />
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -489,13 +481,13 @@ function SheetTile(props: SheetTileProps) {
           maxLength={PAGE_NAME_MAX_LENGTH}
           label={number === undefined ? "主頁名稱" : "頁面名稱"}
           className="h-6 w-full text-xs"
-          onCommit={props.onRename}
-          onCancel={props.onCancelRename}
+          onCommit={(name) => actions.rename(sheet.id, name)}
+          onCancel={actions.cancelRename}
         />
       ) : (
         <span
           title="雙擊可重新命名"
-          onDoubleClick={props.onStartRename}
+          onDoubleClick={() => actions.startRename(sheet.id)}
           className={cn("max-w-full truncate text-xs", active ? "font-medium" : "text-muted-foreground")}
         >
           {number !== undefined && <span className="mr-1 tabular-nums">{number}</span>}
@@ -505,18 +497,51 @@ function SheetTile(props: SheetTileProps) {
       {caption && <span className="-mt-1 max-w-full truncate text-[11px] text-muted-foreground">{caption}</span>}
     </li>
   );
+});
+
+interface PageMenuItemsProps {
+  readonly page: Page;
+  readonly masters: readonly MasterPage[];
+  readonly canDelete: boolean;
+  readonly actions: TileActions;
+}
+
+function PageMenuItems({ page, masters, canDelete, actions }: PageMenuItemsProps) {
+  return (
+    <>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>套用主頁</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuRadioGroup
+            value={page.masterId ?? NONE}
+            onValueChange={(value) => actions.setMaster(page.id, value === NONE ? null : value)}
+          >
+            <DropdownMenuRadioItem value={NONE}>無</DropdownMenuRadioItem>
+            {masters.map((master) => (
+              <DropdownMenuRadioItem key={master.id} value={master.id}>
+                {master.name}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={() => actions.startRename(page.id)}>重新命名</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => actions.duplicate("page", page)}>複製頁面</DropdownMenuItem>
+      <DropdownMenuItem variant="destructive" disabled={!canDelete} onSelect={() => actions.requestDelete("page", page.id)}>
+        刪除頁面
+      </DropdownMenuItem>
+    </>
+  );
 }
 
 interface MasterMenuItemsProps {
   readonly master: MasterPage;
   readonly masters: readonly MasterPage[];
-  readonly onRename: () => void;
-  readonly onDuplicate: () => void;
-  readonly onDelete: () => void;
-  readonly onSetParent: (parentId: PageId | null) => void;
+  readonly actions: TileActions;
 }
 
-function MasterMenuItems({ master, masters, onRename, onDuplicate, onDelete, onSetParent }: MasterMenuItemsProps) {
+function MasterMenuItems({ master, masters, actions }: MasterMenuItemsProps) {
   return (
     <>
       <DropdownMenuSub>
@@ -524,7 +549,7 @@ function MasterMenuItems({ master, masters, onRename, onDuplicate, onDelete, onS
         <DropdownMenuSubContent>
           <DropdownMenuRadioGroup
             value={master.parentId ?? NONE}
-            onValueChange={(value) => onSetParent(value === NONE ? null : value)}
+            onValueChange={(value) => actions.setParent(master.id, value === NONE ? null : value)}
           >
             <DropdownMenuRadioItem value={NONE}>無（最上層）</DropdownMenuRadioItem>
             {/* 自己、自己的子孫（會形成循環）與太深的組合不能選 */}
@@ -543,9 +568,9 @@ function MasterMenuItems({ master, masters, onRename, onDuplicate, onDelete, onS
         </DropdownMenuSubContent>
       </DropdownMenuSub>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onSelect={onRename}>重新命名</DropdownMenuItem>
-      <DropdownMenuItem onSelect={onDuplicate}>複製主頁</DropdownMenuItem>
-      <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+      <DropdownMenuItem onSelect={() => actions.startRename(master.id)}>重新命名</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => actions.duplicate("master", master)}>複製主頁</DropdownMenuItem>
+      <DropdownMenuItem variant="destructive" onSelect={() => actions.requestDelete("master", master.id)}>
         刪除主頁
       </DropdownMenuItem>
     </>

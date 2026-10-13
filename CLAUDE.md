@@ -12,6 +12,7 @@
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
   - 素材管理（2026-10-08）：需求 `01-素材管理需求分析.md` → 報告 `01-素材管理可行性分析.md`（可行；每個專案各自的素材庫、`library.json` 立即寫入、大型管理視窗＋精簡面板）。實作計畫 `docs/01-Plans-2026-10/04-素材管理-實作.md`（13 步，2026-10-08 全部完成；桌面版人工驗證待做，見計畫各步驟）；操作畫面草圖 `00-需求分析/Html/material.html`。
   - 設計優先順序（2026-10-12）：討論 `03-設計優先順序討論.md` → 結論 `03-系統設計優先順序建議.md`（樣式補強：文件色票（可自訂色，2026-10-12 完成）→ 物件樣式 → 可選的樣式繼承；網格：欄格線（每個主頁各自設定）→ 參考線 → 基線網格；之後範本、內容系統（富文字、字元樣式、串接溢排））。
+  - 系統極限測試（2026-10-13）：需求 `06-系統極限測試.md` → 報告 `06-系統極限測試-報告.md`（MCP 產出 200 頁；開發版 React 的 `performance.measure` 越用越慢、「頁面」面板方塊全部重畫（已修正）；release build 200 頁 672 次呼叫 7.9 秒、每次約 8 ms 不變慢、物件全部保留）。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
   - 頁面必須自給自足：CSS 內嵌、手寫 inline SVG，不引用 CDN 或外部資源，用 `file://` 可以離線開啟。
   - `types.html` 對應 `src/lib/editor/types.ts`：**修改 `types.ts` 時要同步更新**圖、說明卡，以及頁首的對應 commit。
@@ -519,6 +520,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - **拖曳**（`use-section-resize.ts`）：只有兩區都展開時可拖「頁面」標題列（按在按鈕上不算）；走 `startPointerDrag`（`cursor: "row-resize"`）；拖曳中**直接改兩個內容區的 `style.flex`**（不 render、縮圖不重畫），放開才寫回、Esc 改回原值；雙擊還原 0.35（`MASTERS_RATIO_DEFAULT`）；標題列上緣的 `role="separator"` 可用 ↑ / ↓ 每次 16 px；兩區內容各至少 80 px（`PAGES_SECTION_MIN_PX`，`resizeMastersRatio`）。
   - **記憶**：`PagesPanelLayout`（`mastersCollapsed` / `pagesCollapsed` / `mastersRatio`，存比例不存 px）是 App 偏好，localStorage `magazine-editor.pagesPanel.v1`，讀取過 `parsePagesPanelLayout`；不進復原歷史、不存進專案。
   - **縮圖**（`sheet-thumbnail.tsx`）：小 Konva Stage 畫 `StaticElement`，**捲進畫面才建立**（`IntersectionObserver`），`memo` 只在 sheet / 內容參考改變時重畫；主頁內容由 `masterContent` 依主頁快取、頁面的變數依文件快取，參考才穩定。縮圖不畫頁碼。
+  - **頁面方塊**（`SheetTile`）也是 `memo`：props 只有原始值、文件物件與共用的 `TileActions`（以 id 為參數、`useMemo([dispatch])`），選單內容在方塊裡依 `kind` 組出來。**不要再傳每個方塊各自的 inline handler 或 JSX**：改一頁就會讓幾百個方塊（各帶 Radix 選單）全部重畫（200 頁壓力測試，見 `docs/00-需求分析/06-系統極限測試-報告.md`）。
 - **對話框**（`page-dialogs.tsx`，`PageDialogsProvider` 包在 `home-page.tsx` 的 `EditorLayout` 外，`usePageDialogs()` 開啟；外框沿用 `SettingsDialog`）：
   - 新增頁面（頁籤列「+」= 加在最後；「插入頁面...」與面板 = 目前頁之後）：主頁、頁數 1–100（`ADD_PAGES_MAX`）、之前 / 之後、第幾頁 → 一次 `page/addMany`（一筆復原）。預設主頁 = 正在編輯的主頁 → 目前頁的主頁 → 第一個主頁。新頁面背景用主頁的背景。名稱照 `nextPageNames`（建立順序編號，不跟位置）。
   - 新增主頁：名稱（`nextMasterName`：Master A、B…）、以…為基礎（編輯某主頁時預設以它為基礎）→ `master/add`，切過去編輯。
