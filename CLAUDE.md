@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -128,7 +128,7 @@ src/
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 11 個面板；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單、匯入、點一下放到中央、拖到畫布）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；draw 目前是佔位
+      panels/*.tsx                # 10 個面板（「相片」2026-10-14 移除，內建相片在素材面板的「內建範例」）；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單（含「內建範例」）、匯入、點一下放到中央、拖到畫布；素材與內建範例共用拖曳流程 `Placeable`）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；draw 目前是佔位
       sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
@@ -161,6 +161,7 @@ src/
       thumbnails.ts               # requestThumbnail（最多同時 2 個、同一張一次）、resetThumbnailCache、usesThumbnail
       library-context.tsx         # LibraryProvider：狀態、立即寫入佇列、load / flush / getLibrary / hasPendingWrites
       use-library-import.ts       # importFiles(files, folderId, accept?)、importBundled（內建相片也進未分類）
+      bundled-photos.ts           # BUNDLED_PHOTOS：內建範例相片（src/assets/photos/ 的 6 張 SVG），素材面板「內建範例」用；不在 library.json，放到頁面時才 importBundled
       __tests__/
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
@@ -170,7 +171,7 @@ src/
       __tests__/
     preferences/                  # App 偏好（不含 UI）：preferences.ts（型別、預設、parsePreferences）、preferences-storage.ts（localStorage）、preferences-context.tsx（PreferencesProvider，含不存檔的預覽值）、settings-pages.ts（設定頁清單 SETTINGS_PAGES / SETTINGS_GROUPS）、view-toggles.ts（視圖開關 VIEW_TOGGLES：尺規 / 格線 / 內容區對齊線 / 邊界參考線 / 吸附格線的讀寫與快捷鍵，選單與 TopBar 共用）
     dock/                         # 工具面板版面（不含 UI）
-      panels.ts                   # PANEL_DEFINITIONS（id / label / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導
+      panels.ts                   # PANEL_DEFINITIONS（id / label / category / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導；PANEL_CATEGORIES（加入內容 / 屬性與樣式 / 頁面與圖層，順序 = 選單順序 = 新群組的上下順序）、panelsIn、getPanelCategory
       pages-panel-layout.ts       # 「頁面」面板兩區的收合與高度比例（純函式、最小高度、parse、localStorage 讀寫）
       dock-layout.ts              # DockLayout / DockGroup 型別與純函式（開關 / 切換頁籤 / 拖放（併入、另成一組）/ 收合 / 寬度）、parseDockLayout / parseDockWidths
       dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
@@ -219,7 +220,7 @@ src/
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
-  assets/photos/*.svg             # 相片面板的佔位範例圖（可以直接換成真實照片）
+  assets/photos/*.svg             # 素材面板「內建範例」的佔位範例圖（換成真實照片時同時改 lib/library/bundled-photos.ts）
 src-tauri/
   src/lib.rs                      # Builder：single-instance（最先註冊）、setup DB / ProjectState、清除上次的未命名專案、註冊 commands、視窗 Destroyed 時刪除目前專案的備份
   src/error.rs                    # AppError / AppResult（所有 command 共用）
@@ -582,7 +583,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - `視圖`：放畫面上的輔助顯示（存這台電腦、不影響輸出）：尺規、分隔線、格線、內容區對齊線、邊界參考線、吸附格線，都是 `view.<id>` 勾選項目，由 `VIEW_TOGGLES` 產生（見「偏好設定與頁面設定」的快速切換）。勾選項目也會顯示快捷鍵（`MenubarShortcut`，勾選記號在左側不重疊）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定` 只有文件 ▸、偏好設定 ▸、外觀 ▸。
-- `工具面板`（主選單，2026-10-09 起；之前是「設定 → 工具面板 ▸」）：11 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），最下方是 `panel.resetLayout`「重設版面」。
+- `工具面板`（主選單，2026-10-09 起；之前是「設定 → 工具面板 ▸」）：10 個 `panel.<id>` 勾選項目由 `PANEL_DEFINITIONS` 自動產生（`panelCommandId`），**依 `PANEL_CATEGORIES` 分三類、類別之間是分隔線**（加入內容：範本 文字 元素 素材 背景 繪圖 ─ 屬性與樣式：屬性 樣式 ─ 頁面與圖層：頁面 圖層；2026-10-14 使用者決定，不加類別標題），最下方是 `panel.resetLayout`「重設版面」。`PANEL_DEFINITIONS` 必須依類別連續排列（測試守著）。
 
 | 快捷鍵 | 指令 |
 |--------|------|
@@ -597,7 +598,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 原本參考 Krita 的 Docker（計畫：`docs/01-Plans/imp-tool-bar.md`）；2026-10-09 改成 **Affinity 式的頁籤群組**（計畫與決定：`docs/01-Plans-2026-10/06-畫面調整-工具面板停靠區-實作.md`）。
 
 - **三欄版面**：`左停靠區 ｜ 中欄（系統控制列 + 畫布） ｜ 右停靠區`；選單列與頁籤列橫跨全寬。某一側沒有面板時整欄不顯示。
-- **頁籤群組**：一側由上到下是幾個**群組**，每組頂端一排頁籤、一次顯示一個面板。預設：左 `[範本 文字 相片 元素 素材 背景]` / `[頁面]`，右 `[屬性]` / `[圖層]`（「繪圖」是佔位、「樣式」從選單打開，都不在預設）。
+- **頁籤群組**：一側由上到下是幾個**群組**，每組頂端一排頁籤、一次顯示一個面板。預設（第一次啟動與「重設版面」共用 `DEFAULT_DOCK_LAYOUT`）：左 `[頁面]`、右 `[屬性]`（2026-10-14 使用者決定；計畫 `docs/02-Plans-操作/02-工具面板-重構-實作.md`）；其他面板從「工具面板」選單打開，依類別放進群組（見下面的 `togglePanel`）。有版面記錄的使用者不受影響，按「重設版面」才變。
   - 點頁籤切換；頁籤上的 ✕ 關閉（目前頁籤一直顯示，其他頁籤滑過才浮在右端，不佔寬度）；頁籤列左端的箭頭收合整組（只剩頁籤列）。展開的群組平分高度。
   - **背景頁籤不掛載**（`DockArea` 只 render `PANELS[group.active]`，以面板 id 為 key）：看不到的面板不訂閱編輯器狀態、不多做 re-render。代價是面板自己的暫時狀態（屬性面板的子分頁、捲動位置、「限制寬高比」）切走再回來會重置。
   - 頁籤列放不下時橫向捲動（捲軸隱藏）：滾輪直向轉橫向；目前頁籤一直捲在看得到的地方（`DockPanelGroup` 的 effect 自己算 `scrollLeft`，不用 `scrollIntoView`）；拖曳靠近邊緣自動捲動。
@@ -613,7 +614,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
     - 靠左 / 水平置中 / 靠右 / 靠上 / 垂直置中 / 靠下：只移動，**用旋轉後的外框**（旋轉不變）；文字的高度用 `measureTextLayout` 的行數（變數先換成畫布上的值），不用 `estimateTextHeight`（粗估）。已經對齊時不 dispatch。
 - **面板的單一資料來源**是 `lib/dock/panels.ts` 的 `PANEL_DEFINITIONS`；`PANELS`（內容）、`PANEL_ICONS`（icon）以 `satisfies Record<PanelId, …>` 檢查完整性，選單指令自動產生。**新增面板**：在 `PANEL_DEFINITIONS` 加一筆 → 補 `PANELS` 與 `PANEL_ICONS`（漏了會編譯失敗）。
 - `DockLayout`（左右各一個由上到下的 `DockGroup[]` + 兩側寬度；`DockGroup` = `panels`（頁籤順序）/ `active` / `collapsed`）是 App 偏好：**不進復原歷史、不存進專案檔**；所有變更都走 `dock-layout.ts` 的純函式（沒變化時回傳同一個參考）。規則：一個面板在整個版面最多出現一次；群組不會是空的（最後一個頁籤關掉 = 群組消失）；`active` 一定在 `panels` 裡。
-  - `togglePanel`（選單勾選）：打開 = 加到預設那一側**第一組**的最後並顯示（那側沒有群組就新建一組）；已打開（含背景頁籤）= 關閉。選單的勾選 = 在某個群組裡，不是「看得到」。
+  - `togglePanel`（選單勾選）：打開 = 預設側**第一個含同類別面板的群組**，加在最後並顯示；沒有 → 另開一組，插在第一個「含後面類別面板」的群組之前（`PANEL_CATEGORIES` 的順序，所以內容面板在頁面上面、圖層在屬性下面；使用者拖成混合類別的群組也照這規則判斷）；已打開（含背景頁籤）= 關閉。選單的勾選 = 在某個群組裡，不是「看得到」。
   - `closePanel`：關掉目前頁籤時顯示下一個（最後一個就顯示前一個）。`activatePanel`、`toggleCollapsed`（以組裡任一面板指定那一組）。
   - `dropPanel(layout, id, target)`：`DropTarget` 有兩種——`{ kind: "tab", group, slot }` 插進某組的頁籤列（併入 / 同列換位置）、`{ kind: "group", slot }` 在群組之間另成一組；slot 都**含被拖的那一個**（拖曳時看到的樣子）。放下的面板成為那組的目前頁籤；併入收合的組時保持收合。`dropMovesPanel` 判斷位置有沒有變（原位放下只是切換頁籤，不畫提示）。
 - **size control bar**（`DockSplitter`）：停靠區寬度 200–560px（`DOCK_WIDTH`），畫布欄至少 `CANVAS_MIN_WIDTH`（480px）。拖曳期間只改 `DockArea` 的 local state，**放開才寫回** `DockLayout`（和畫布「dragend 才 dispatch」同一原則）。畫布尺寸由 `EditorCanvas` 的 `ResizeObserver` 自動跟上。
@@ -634,7 +635,8 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **`library.json`**（Rust `project/library.rs` 是權威定義，TS `lib/library/types.ts` 手寫對應，共用 fixture `tests/fixtures/sample-library.json`）：`libraryVersion` 1、`folders`（陣列順序 = 同層順序）、`items`（`kind` tag；`folderId: null` = 未分類；`trashed` 記住刪除時間與原資料夾，可指向已刪除的資料夾）。規則：id 不重複、名稱存去頭尾空白、同層不同名、不循環、最多 8 層、`src` 在對應種類的資料夾（`assets/images` / `texts` / `audio`）、**同一個 `src` 只能一筆**（同檔只留一筆）。比 App 新的 `libraryVersion` 拒絕開啟專案（重建會丟資料）；主檔與 `.bak` 都壞時改名 `library.json.damaged`、由專案圖片重建並提示。
 - **立即寫入、不進復原、不算未存檔**：`LibraryProvider`（`home-page.tsx`：`EditorProvider` → `LibraryProvider` → `ProjectProvider`）每次變更就 `library_write`；一次一個寫入，寫入中的變更合併成下一次。`library_write` 帶 `projectId`，不是目前專案就拒絕；**換專案（開啟 / 新增）、另存（Rust 從磁碟複製素材庫）、關閉視窗前都要 `flush()`**（`use-project-commands.ts`、`use-close-guard.ts`）。代價：選「不儲存」關閉時頁面回到上次存檔，素材庫的整理保留。瀏覽器模式（`npm run dev`）只存在記憶體，src 是 blob URL（同檔不去重）。
 - **和專案檔的關係**：`EditorState.assets` 已移除；`project.magproj` 的 `assets` 在存檔 / 備份時由素材庫算出（`projectAssets`：**所有圖片，含垃圾桶**——舊版 App 的開檔清理只看這份清單）。舊專案第一次開啟時由 `assets` 建立素材庫（全部未分類）。
-- **匯入**（`use-library-import.ts` → `library_import`，raw body，種類放在 header `x-asset-kind` / `x-asset-extension`）：依副檔名分流，前端先擋明顯不合格的檔案，內容由 Rust 檢查（圖片與音訊看檔頭，SVG 見下面；文字必須 UTF-8、去 BOM、不含 NUL、≤ 200 KB；音訊 ≤ 50 MB）。在某個資料夾裡匯入就放進該資料夾，其他情況進未分類；同檔已在素材庫 → 不新增（在垃圾桶就還原到這次的資料夾）並提示。「相片」面板的內建相片放到頁面時也加入未分類。
+- **匯入**（`use-library-import.ts` → `library_import`，raw body，種類放在 header `x-asset-kind` / `x-asset-extension`）：依副檔名分流，前端先擋明顯不合格的檔案，內容由 Rust 檢查（圖片與音訊看檔頭，SVG 見下面；文字必須 UTF-8、去 BOM、不含 NUL、≤ 200 KB；音訊 ≤ 50 MB）。在某個資料夾裡匯入就放進該資料夾，其他情況進未分類；同檔已在素材庫 → 不新增（在垃圾桶就還原到這次的資料夾）並提示。
+- **內建範例**（2026-10-14 取代「相片」面板，使用者決定）：素材面板的下拉多一個固定項目「內建範例（6）」（面板自己的 `PanelView = LibraryView | { type: "samples" }`，**`LibraryView` 與管理視窗不動**），列出 `BUNDLED_PHOTOS`，不顯示匯入區。**不寫進 `library.json`**：點一下 / 拖到畫布時才 `importBundled`（複製進專案、加入未分類、同檔不重複），再從素材庫找到那筆交給 `usePlaceLibraryItem`，和一般素材同一條路。舊的停靠版面裡的 `photos` 由 `parseDockLayout` 丟掉。
 - **管理視窗**（「檔案 → 素材管理...」或面板的按鈕，`LibraryDialogProvider` / `useLibraryDialog().openLibrary(view?)`）：左欄全部 / 未分類 / 垃圾桶＋資料夾樹（數量含子資料夾），中欄 `masonryLayout` 瀑布流（左到右、新的在前、名稱搜尋），右欄資訊。Delete = 移到垃圾桶（垃圾桶裡 = 永久刪除，先確認）；在輸入框按 Esc 不關閉視窗。
   - **視窗處理的按鍵要 `stopPropagation`**：卡片在處理中就被移除時，編輯器快捷鍵的 `closest('[role="dialog"]')` 判斷不出它在視窗裡，會刪掉畫布上選取的物件。確認框關閉時焦點放回視窗（`onCloseAutoFocus`），否則焦點落在 `<body>`。
 - **拖曳**（`use-library-drag.ts`，`startPointerDrag` + `DragGhost`，規則在純函式 `libraryDropResult`）：素材 → 資料夾（列的哪一段都算放進去）/ 未分類 / 垃圾桶；從垃圾桶拖出來 = 還原到那裡；資料夾 → 前 / 中 / 後 / 「資料夾」標題（最上層最後），不能進自己的子孫。拖已選取的卡片 = 整組，**開始拖曳時才改選取**（Ctrl+點選不受影響）。視窗有 `transform`（置中），拖曳標籤要 portal 到 `document.body`。

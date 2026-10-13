@@ -5,7 +5,6 @@ import { ElementsPanel } from "./elements-panel";
 import { LayersPanel } from "./layers-panel";
 import { LibraryPanel } from "./library-panel";
 import { PagesPanel } from "./pages-panel";
-import { PhotosPanel } from "./photos-panel";
 import { DrawPanel } from "./placeholder-panels";
 import { PropertiesPanel } from "./properties-panel";
 import { StylesPanel } from "./styles-panel";
@@ -16,7 +15,6 @@ import { TextPanel } from "./text-panel";
 export const PANELS = {
   templates: TemplatesPanel,
   text: TextPanel,
-  photos: PhotosPanel,
   elements: ElementsPanel,
   draw: DrawPanel,
   // id 沿用 upload，使用者記住的停靠版面不會失效

@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn bundled_sample_photos_are_svg_typst_can_draw() {
-        // 「相片」面板的內建相片：放到頁面時經 library_import 存進專案，匯出時不能被略過
+        // 「素材」面板「內建範例」的相片（src/lib/library/bundled-photos.ts）：放到頁面時經 library_import 存進專案，匯出時不能被略過
         let photos = ["abstract", "city", "desert", "forest", "mountain", "ocean"].map(|name| {
             std::fs::read_to_string(format!("{}/../src/assets/photos/photo-{name}.svg", env!("CARGO_MANIFEST_DIR"))).unwrap()
         });

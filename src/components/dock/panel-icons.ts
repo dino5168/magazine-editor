@@ -1,6 +1,5 @@
 import {
   Files,
-  Image,
   Images,
   LayoutTemplate,
   Layers,
@@ -18,7 +17,6 @@ import type { PanelId } from "@/lib/dock/panels";
 export const PANEL_ICONS = {
   templates: LayoutTemplate,
   text: Type,
-  photos: Image,
   elements: Shapes,
   draw: Pencil,
   upload: Images,

@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-14(畫布物件的右鍵選單)
+最後更新:2026-10-14(工具面板重構)
 
 ---
 
 ## 目前階段
+
+- **工具面板重構(2026-10-14,五個步驟全部完成,尚未 commit;桌面版人工驗證待做,見「待辦 → 使用者」)**:任務檔 `docs/02-Plans-操作/02-工具面板-重構.md`,計畫 `docs/02-Plans-操作/02-工具面板-重構-實作.md`。使用者確認:預設與重設版面都只有左 [頁面]、右 [屬性];從選單打開的面板和同類別放一組,沒有就依類別順序另開一組;選單分三類(加入內容 ─ 屬性與樣式 ─ 頁面與圖層)只用分隔線;「相片」面板併入素材面板的「內建範例」(用到時才複製進專案、加入未分類);「繪圖」佔位照舊。步驟 1 `PANEL_CATEGORIES` 與選單分隔線;步驟 2 `DEFAULT_DOCK_LAYOUT` 與 `togglePanel` 依類別;步驟 3 `lib/library/bundled-photos.ts`、素材面板「內建範例」(拖曳共用 `Placeable`);步驟 4 刪「相片」面板(`photos-panel.tsx`)、舊版面裡的 `photos` 由 `parseDockLayout` 丟掉(新測試)、`mcp-tools.json` 重產(`run_command` 少 `panel.photos`)、橋接程式已重編(**要在 Claude Code `/mcp` 重新連線**);步驟 5 文件(`CLAUDE.md`、`docs/01`/`02`)。vitest 661、`npm run build`、`cargo test bundled_sample_photos` 通過;無頭 Edge 共 21 項。**要 commit 的範圍**:`lib/dock/panels.ts`、`dock-layout.ts` 與測試、`lib/menu/menu-structure.ts` 與測試、`lib/library/bundled-photos.ts`(新)、`components/editor/panels/library-panel.tsx`、`panels/index.ts`、`components/dock/panel-icons.ts`、刪除 `panels/photos-panel.tsx`、`src-tauri/mcp-tools.json`、`src-tauri/src/export/pdf.rs`(註解)、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `02-工具面板-重構-實作.md`;任務檔是否 commit 待使用者決定。之後另排:左側只有頁面時的「＋」打開面板、選單的類別標題、管理視窗顯示內建範例、`upload` → `library` id 改名。
 
 - **畫布物件的右鍵選單(2026-10-14,四個步驟全部完成,commit `52439d8`(已推送);桌面版人工驗證待做,見「待辦 → 使用者」)**:任務檔 `docs/02-Plans-操作/01-繪圖物件ContextMenu.md`,計畫 `docs/02-Plans-操作/01-繪圖物件ContextMenu-實作.md`。右鍵物件 = 先選取再開選單,內容是屬性面板「調整」分頁的圖層順序(4)與對齊內容區(填滿 2 + 對齊 6),一層攤平。使用者確認:圖形 / 文字 / 圖片都要;只做單選(多選時說明 + 停用);填滿照面板預設的寬高比(圖片保持);選單攤平;所有工具下都開。步驟 1 抽出共用(`lib/editor/layer-order.ts` 的 `canReorder` + 4 個測試、`components/editor/element-arrange.ts`;屬性面板與底部 `⋮` 改用,畫面不變);步驟 2 shadcn `context-menu` + `element-context-menu.tsx`(只包 Stage、有選取才開、`modal={false}`、關閉後焦點留在 body);步驟 3 無頭 Edge 51 項全過(含雙頁對頁、跨書背複本、編輯主頁、主頁內容、旋轉、多選、文字編輯框),程式未修改;步驟 4 文件(`CLAUDE.md` 新增「右鍵選單」一節、`docs/01`/`02`)。vitest 657、`npm run build` 通過。**要 commit 的範圍**:`layer-order.ts` 與測試、`editor-reducer.ts`、`element-arrange.ts`、`element-context-menu.tsx`、`components/ui/context-menu.tsx`、`editor-canvas.tsx`、`properties-panel.tsx`、`bottom-toolbar.tsx`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `01-繪圖物件ContextMenu-實作.md`;任務檔 `01-繪圖物件ContextMenu.md` 不 commit(使用者決定)。之後另排:多選的對齊 / 圖層順序、剪下 / 複製 / 刪除項目、上移 / 下移快捷鍵、圖層面板右鍵。
 
@@ -321,6 +323,12 @@
 
 ### 使用者
 
+- [ ] 在 Claude Code 執行 `/mcp` 重新連線 magazine-editor(橋接程式 2026-10-14 已重編,`run_command` 不再有 `panel.photos`);`list_commands` 確認沒有 `panel.photos`。舊的 `src-tauri/target/debug/magazine-mcp.old-*.exe` 斷線後可以刪掉
+- [ ] 在 `npm run tauri dev` 手動驗證**工具面板重構**(Claude 只用瀏覽器模式驗證過):
+  - 你目前的版面:「相片」頁籤不見了,其他面板照舊、寬度不變
+  - 「工具面板」選單:三類 + 分隔線,沒有「相片」;「重設版面」後只剩左「頁面」、右「屬性」
+  - 從選單打開文字 / 元素 / 素材 → 在「頁面」上面同一組;打開圖層 → 在「屬性」下面;打開樣式 → 併進「屬性」那組
+  - 「素材」面板選「內建範例」:點一下放到頁面中央、拖到頁面上;用過的相片出現在「未分類」;**存檔重開後圖片還在**(已複製進專案的 `assets/images/`);匯出 PDF 圖片正常
 - [ ] 在 `npm run tauri dev` 手動驗證**畫布右鍵選單**(Claude 只用無頭 Edge 的合成事件驗證過):
   - 右鍵沒選取的物件:先選取、選單開在游標旁,沒有 WebView2 自己的右鍵選單(「上一頁 / 重新整理 / 檢查」那個)
   - 右鍵空白處、頁面背景、主頁內容、頁碼:什麼選單都不出現

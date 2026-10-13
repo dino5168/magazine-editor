@@ -10,7 +10,7 @@ import {
   viewCommandId,
   type CommandId,
 } from "../commands";
-import { PANEL_IDS } from "@/lib/dock/panels";
+import { getPanelCategory, PANEL_CATEGORIES, PANEL_IDS, panelsIn, type PanelId } from "@/lib/dock/panels";
 import { SETTINGS_PAGES } from "@/lib/preferences/settings-pages";
 import { VIEW_TOGGLES } from "@/lib/preferences/view-toggles";
 import { MENUS, collectCommands, findMenuByMnemonic } from "../menu-structure";
@@ -53,15 +53,29 @@ describe("menu structure", () => {
     expect(MENUS.map((menu) => menu.label)).toEqual(["檔案", "設定", "視圖", "工具面板"]);
   });
 
-  it("lists every tool panel as a checkbox in the 工具面板 menu, then 重設版面", () => {
+  it("lists the tool panels by category (separators between categories), then 重設版面", () => {
     const panels = MENUS.find((menu) => menu.id === "panels")!;
+    const checkbox = (id: PanelId) => ({ kind: "checkbox", command: panelCommandId(id) });
+    const separator = { kind: "separator" };
 
     expect(panels.items).toEqual([
-      ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) })),
-      { kind: "separator" },
+      ...(["templates", "text", "elements", "upload", "background", "draw"] as const).map(checkbox),
+      separator,
+      ...(["properties", "styles"] as const).map(checkbox),
+      separator,
+      ...(["pages", "layers"] as const).map(checkbox),
+      separator,
       { kind: "item", command: "panel.resetLayout" },
     ]);
     expect(getCommandTitle(panelCommandId("layers"))).toBe("工具面板：圖層");
+  });
+
+  it("keeps the panel definitions grouped by category in category order", () => {
+    const order = PANEL_CATEGORIES.map((category) => category.id);
+    const categories = PANEL_IDS.map(getPanelCategory);
+    // 定義順序 = 選單順序：類別依 PANEL_CATEGORIES 排、同類別連續
+    expect(categories).toEqual([...categories].sort((a, b) => order.indexOf(a) - order.indexOf(b)));
+    expect(order.flatMap((id) => panelsIn(id))).toEqual(PANEL_IDS);
   });
 
   it("keeps 設定 to 文件 ▸, 偏好設定 ▸ and 外觀 ▸ (工具面板 moved to the menu bar)", () => {

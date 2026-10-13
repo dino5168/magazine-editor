@@ -1,4 +1,4 @@
-import { getPanelDefaultSide, isPanelId, type PanelId } from "./panels";
+import { getPanelCategory, getPanelDefaultSide, isPanelId, PANEL_CATEGORIES, type PanelId } from "./panels";
 
 export type DockSide = "left" | "right";
 
@@ -63,13 +63,18 @@ function group(panels: readonly PanelId[], active: PanelId = panels[0]): DockGro
   return { panels, active, collapsed: false };
 }
 
-// 左側：上面一組放內容類面板（頁籤一開始就看得到），下面是頁面（同 Affinity 的 Pages 位置）；
-// 右側：屬性與圖層各一組，可以同時看到。「繪圖」還是佔位，不放進預設
+// 預設（第一次啟動與「重設版面」）只有左側「頁面」、右側「屬性」（使用者決定，2026-10-14）；
+// 其他面板從「工具面板」選單打開，依類別放進對應的群組（togglePanel）
 export const DEFAULT_DOCK_LAYOUT: DockLayout = {
-  left: [group(["templates", "text", "photos", "elements", "upload", "background"]), group(["pages"])],
-  right: [group(["properties"]), group(["layers"])],
+  left: [group(["pages"])],
+  right: [group(["properties"])],
   width: { left: DOCK_WIDTH.default, right: DOCK_WIDTH.default },
 };
+
+function categoryRank(id: PanelId): number {
+  const category = getPanelCategory(id);
+  return PANEL_CATEGORIES.findIndex((candidate) => candidate.id === category);
+}
 
 /**
  * Finds where a panel is docked.
@@ -136,8 +141,12 @@ export function closePanel(layout: DockLayout, id: PanelId): DockLayout {
 }
 
 /**
- * Opens a closed panel as the shown tab at the end of the first group on its default side
- * (a new group when that side is empty), or closes it when it is open (menu checkbox).
+ * Opens a closed panel (menu checkbox) or closes it when it is open.
+ *
+ * On its default side, an opened panel joins the first group that holds a panel of the same category
+ * (as the shown tab at the end); without one it gets a new group, placed before the first group that
+ * holds a panel of a later category (`PANEL_CATEGORIES` order), so content panels open above 頁面 and
+ * 圖層 below 屬性.
  *
  * Args:
  *   layout: Dock layout.
@@ -149,9 +158,13 @@ export function closePanel(layout: DockLayout, id: PanelId): DockLayout {
 export function togglePanel(layout: DockLayout, id: PanelId): DockLayout {
   if (isPanelVisible(layout, id)) return closePanel(layout, id);
   const side = getPanelDefaultSide(id);
-  const first = layout[side][0];
-  if (!first) return { ...layout, [side]: [group([id])] };
-  return replaceGroup(layout, side, 0, { ...first, panels: [...first.panels, id], active: id });
+  const groups = layout[side];
+  const rank = categoryRank(id);
+  const same = groups.findIndex((g) => g.panels.some((panel) => categoryRank(panel) === rank));
+  if (same >= 0) return replaceGroup(layout, side, same, { ...groups[same], panels: [...groups[same].panels, id], active: id });
+  const before = groups.findIndex((g) => g.panels.some((panel) => categoryRank(panel) > rank));
+  const at = before === -1 ? groups.length : before;
+  return { ...layout, [side]: [...groups.slice(0, at), group([id]), ...groups.slice(at)] };
 }
 
 /**

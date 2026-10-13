@@ -1,4 +1,4 @@
-import { PANEL_IDS } from "@/lib/dock/panels";
+import { PANEL_CATEGORIES, panelsIn } from "@/lib/dock/panels";
 import { SETTINGS_GROUPS, settingsPagesIn } from "@/lib/preferences/settings-pages";
 import { panelCommandId, settingsCommandId, viewCommandId, type CommandId } from "./commands";
 import type { KeyboardEventLike } from "./shortcut";
@@ -102,9 +102,12 @@ export const MENUS = [
     id: "panels",
     label: "工具面板",
     mnemonic: { code: "KeyP", letter: "P" },
-    // 每個面板一個勾選項目（由面板定義產生），版面存在這台電腦的偏好
+    // 每個面板一個勾選項目（由面板定義產生），依類別分組、類別之間是分隔線；版面存在這台電腦的偏好
     items: [
-      ...PANEL_IDS.map((id) => ({ kind: "checkbox", command: panelCommandId(id) }) as const),
+      ...PANEL_CATEGORIES.flatMap((category, index) => [
+        ...(index > 0 ? [separator] : []),
+        ...panelsIn(category.id).map((id) => ({ kind: "checkbox", command: panelCommandId(id) }) as const),
+      ]),
       separator,
       { kind: "item", command: "panel.resetLayout" },
     ],
