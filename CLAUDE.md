@@ -52,6 +52,7 @@ npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（�
 # MCP：橋接程式（`tauri dev` 只編主程式，改了 Rust 或工具清單後要自己編）與工具清單
 cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp
 npx vitest run mcp-tools -u      # 改了 src/lib/automation/tool-definitions.ts 後更新 src-tauri/mcp-tools.json
+cd tools; uv run pytest          # 開發用腳本（壓力測試、範本）的測試；用法見 tools/README.md
 
 # 匯出 PDF 的疊圖比對：把每頁算成 PNG（2 px/pt）放到 <dir>，用來對照畫布
 $env:EXPORT_PREVIEW_DIR = "<dir>"
@@ -229,6 +230,7 @@ src-tauri/
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 .mcp.json                         # Claude Code 的專案 MCP 設定：server「magazine-editor」→ src-tauri/target/debug/magazine-mcp.exe
+tools/                            # 開發用腳本（uv 專案，見 tools/README.md）：mcp_client.py（MCP stdio 用戶端）、stress/（200 頁壓力測試）、profiling/（WebView CPU profile）、school_template/（用 MCP 建立範本）；不屬於 App、不打包
 tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v12：六個色票，九種顏色欄位都有連結（頁面 / 主頁背景、主頁文字、圖形填色、邊框、圖形內文字、文字樣式、頁碼的文字 / 陰影 / 框線；頁碼文字是靛藍 50%）；封面的圓角矩形四角不同 [12, 12, 0, 4]；「標題」樣式是首尾置中（沒有文字連到它）；封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/default-text-styles.json  # 內建三個文字樣式：TS defaultTextStyles 與 Rust default_text_styles（舊檔升級時加上）都和它比對；fillSwatchId 是 null（舊檔沒有色票，新文件的連結在 createBlankDocument 才加）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
