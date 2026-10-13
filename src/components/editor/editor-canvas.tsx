@@ -36,6 +36,7 @@ import { useCanvasDrop } from "./canvas-drop";
 import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { CanvasRuler, moveRulerMarker, RULER_SIZE_PX, RulerCorner } from "./canvas-ruler";
 import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
+import { ElementContextMenu } from "./element-context-menu";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
 import { useCanvasMarquee } from "./use-canvas-marquee";
@@ -133,8 +134,10 @@ export function EditorCanvas() {
   const spreadShown = sheets.slots.length > 1;
   const pageIndex = sheets.slots.find((slot) => slot.sheet.id === page.id)?.pageIndex ?? -1;
   const dragContext = { spreadShown, pages: document.pages, pageIndex, elements: page.elements, snapSpacing };
-  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, ...dragContext });
-  latest.current = { layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, ...dragContext };
+  // 右鍵選單在 contextmenu 事件時讀選取數（右鍵的 mousedown 已經改好選取並重畫）
+  const selectionSize = state.selectedIds.length;
+  const latest = useRef({ layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, selectionSize, ...dragContext });
+  latest.current = { layout, zoom, scroll, viewport, scrollTarget, activeX, sheets, selectionSize, ...dragContext };
   // 螢幕像素 → 目前頁的頁面座標（框選以目前頁為準：對頁的背景按下時是切頁，不會開始框選）
   const toPagePt = (screen: Point): Point => {
     const current = latest.current;
@@ -513,65 +516,70 @@ export function EditorCanvas() {
           {/* Stage 只有視窗大小並黏在可視範圍，捲動時改變 Layer 位移，避免建立超大 canvas */}
           <div className="sticky top-0 left-0 overflow-hidden" style={{ width: viewport.width, height: viewport.height }}>
             {fontsReady && viewport.width > 0 && (
-              <Stage
-                width={viewport.width}
-                height={viewport.height}
-                onMouseDown={handleStageMouseDown}
-                onTouchStart={handleStageMouseDown}
-              >
-                <Layer
-                  x={origin.x}
-                  y={origin.y}
-                  scaleX={zoom}
-                  scaleY={zoom}
-                  // 拖曳物件中：目前頁暫時不在書背處裁切，跨過書背時仍看得到整個物件
-                  onDragStart={() => setInteracting(true)}
-                  onDragEnd={() => setInteracting(false)}
-                >
-                  {drawOrder.map((slot) => (
-                    <CanvasSheet
-                      key={slot.sheet.id}
-                      sheet={slot.sheet}
-                      x={slot.x}
-                      pageIndex={slot.pageIndex}
-                      zoom={zoom}
-                      editingId={editingId}
-                      handlers={elementHandlers}
-                      active={slot.sheet.id === page.id}
-                      onActivate={(elementId) => {
-                        // page/select 會清空選取，之後才選對頁上被按的物件（兩個 action 依序套用）
-                        dispatch({ type: "page/select", id: slot.sheet.id });
-                        if (elementId) dispatch({ type: "selection/set", id: elementId });
-                      }}
-                      highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
-                      clipAtSpine={sheets.slots.length > 1 && !(interacting && slot.sheet.id === page.id)}
-                      onPickElsewhere={pickElement}
-                    />
-                  ))}
-                  {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
-                  {/* Transformer 在所有頁面之上；它掛的節點在各頁的 Group 裡，Konva 會換算位移 */}
-                  <Transformer
-                    ref={transformerRef}
-                    enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
-                    rotateEnabled={!multiSelected}
-                    keepRatio={transformerOptions.keepRatio}
-                    flipEnabled={false}
-                    // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
-                    ignoreStroke
-                    rotateAnchorOffset={24}
-                    anchorSize={8}
-                    anchorCornerRadius={2}
-                    borderStroke="#6366f1"
-                    anchorStroke="#6366f1"
-                    boundBoxFunc={(oldBox, newBox) =>
-                      Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
-                    }
-                    anchorDragBoundFunc={snapAnchor}
-                    onTransformStart={() => setInteracting(true)}
-                    onTransformEnd={() => setInteracting(false)}
-                  />
-                </Layer>
-              </Stage>
+              // 右鍵選單只包 Stage：文字編輯框是兄弟元素，在裡面右鍵仍是瀏覽器的剪下 / 複製 / 貼上
+              <ElementContextMenu canOpen={() => latest.current.selectionSize > 0}>
+                <div>
+                  <Stage
+                    width={viewport.width}
+                    height={viewport.height}
+                    onMouseDown={handleStageMouseDown}
+                    onTouchStart={handleStageMouseDown}
+                  >
+                    <Layer
+                      x={origin.x}
+                      y={origin.y}
+                      scaleX={zoom}
+                      scaleY={zoom}
+                      // 拖曳物件中：目前頁暫時不在書背處裁切，跨過書背時仍看得到整個物件
+                      onDragStart={() => setInteracting(true)}
+                      onDragEnd={() => setInteracting(false)}
+                    >
+                      {drawOrder.map((slot) => (
+                        <CanvasSheet
+                          key={slot.sheet.id}
+                          sheet={slot.sheet}
+                          x={slot.x}
+                          pageIndex={slot.pageIndex}
+                          zoom={zoom}
+                          editingId={editingId}
+                          handlers={elementHandlers}
+                          active={slot.sheet.id === page.id}
+                          onActivate={(elementId) => {
+                            // page/select 會清空選取，之後才選對頁上被按的物件（兩個 action 依序套用）
+                            dispatch({ type: "page/select", id: slot.sheet.id });
+                            if (elementId) dispatch({ type: "selection/set", id: elementId });
+                          }}
+                          highlighted={sheets.slots.length > 1 && slot.sheet.id === page.id}
+                          clipAtSpine={sheets.slots.length > 1 && !(interacting && slot.sheet.id === page.id)}
+                          onPickElsewhere={pickElement}
+                        />
+                      ))}
+                      {preferences.pageView === "spread" && <SpreadSpine sheets={sheets} zoom={zoom} />}
+                      {/* Transformer 在所有頁面之上；它掛的節點在各頁的 Group 裡，Konva 會換算位移 */}
+                      <Transformer
+                        ref={transformerRef}
+                        enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
+                        rotateEnabled={!multiSelected}
+                        keepRatio={transformerOptions.keepRatio}
+                        flipEnabled={false}
+                        // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
+                        ignoreStroke
+                        rotateAnchorOffset={24}
+                        anchorSize={8}
+                        anchorCornerRadius={2}
+                        borderStroke="#6366f1"
+                        anchorStroke="#6366f1"
+                        boundBoxFunc={(oldBox, newBox) =>
+                          Math.abs(newBox.width) < 4 || Math.abs(newBox.height) < 4 ? oldBox : newBox
+                        }
+                        anchorDragBoundFunc={snapAnchor}
+                        onTransformStart={() => setInteracting(true)}
+                        onTransformEnd={() => setInteracting(false)}
+                      />
+                    </Layer>
+                  </Stage>
+                </div>
+              </ElementContextMenu>
             )}
             <div
               ref={create.previewRef}

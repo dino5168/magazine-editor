@@ -1,4 +1,5 @@
 import { createPage, createSampleDocument, nextPageNames, type ShapeKind } from "./element-factory";
+import type { ReorderDirection } from "./layer-order";
 import { canSetParent, copyElements, deleteMaster, findSheet, isMasterId } from "./master-pages";
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
 import { isPageOrder } from "./page-order";
@@ -123,7 +124,7 @@ export type EditorAction =
       readonly dx: number;
     }
   /** up / down: one layer; top / bottom: to the front / back of the page. */
-  | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: "up" | "down" | "top" | "bottom" }
+  | { readonly type: "element/reorder"; readonly id: ElementId; readonly direction: ReorderDirection }
   | { readonly type: "element/duplicate"; readonly copies: readonly ElementCopy[] }
   /** `after` 省略時加在最後（「+」按鈕），有值時插在該頁後面（「插入頁面」） */
   | { readonly type: "page/add"; readonly after?: PageId }

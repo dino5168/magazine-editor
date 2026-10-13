@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
   ChevronUp,
   Copy,
   EllipsisVertical,
@@ -26,9 +24,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement, selectSelectedElements } from "@/lib/editor/editor-reducer";
 import { type ShapeKind } from "@/lib/editor/element-factory";
+import { canReorder } from "@/lib/editor/layer-order";
 import { deleteSelection, duplicateSelection } from "@/lib/editor/selection-actions";
 import { getToolKeyLabel, getToolLabel, type ToolId } from "@/lib/editor/tools";
 import { cn } from "@/lib/utils";
+import { REORDER_ITEM_BY_DIRECTION } from "./element-arrange";
 import { IconButton } from "./icon-button";
 import { SHAPE_OPTIONS, SHAPE_OPTION_BY_KIND } from "./shape-options";
 
@@ -83,7 +83,6 @@ function ActionBar() {
   const selection = selectSelectedElements(state);
   const selected = selectSelectedElement(state);
   const elements = selectActivePage(state).elements;
-  const index = selected ? elements.findIndex((element) => element.id === selected.id) : -1;
 
   return (
     <div className="flex items-center gap-0.5 rounded-t-lg border border-b-0 bg-muted/90 px-1 pt-1 pb-0.5 backdrop-blur-sm">
@@ -119,24 +118,19 @@ function ActionBar() {
         label="更多"
         size="icon-sm"
         disabled={!selected}
-        menu={
-          <>
+        menu={(["up", "down"] as const).map((direction) => {
+          const { label, icon: Icon } = REORDER_ITEM_BY_DIRECTION[direction];
+          return (
             <DropdownMenuItem
-              disabled={index >= elements.length - 1}
-              onSelect={() => selected && dispatch({ type: "element/reorder", id: selected.id, direction: "up" })}
+              key={direction}
+              disabled={!selected || !canReorder(elements, selected.id, direction)}
+              onSelect={() => selected && dispatch({ type: "element/reorder", id: selected.id, direction })}
             >
-              <ArrowUp />
-              上移一層
+              <Icon />
+              {label}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={index <= 0}
-              onSelect={() => selected && dispatch({ type: "element/reorder", id: selected.id, direction: "down" })}
-            >
-              <ArrowDown />
-              下移一層
-            </DropdownMenuItem>
-          </>
-        }
+          );
+        })}
       >
         <EllipsisVertical />
       </MenuIconButton>

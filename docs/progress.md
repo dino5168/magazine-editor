@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-13(「頁面」面板方塊 memo,200 頁壓力測試;桌面版人工確認完成)
+最後更新:2026-10-14(畫布物件的右鍵選單)
 
 ---
 
 ## 目前階段
+
+- **畫布物件的右鍵選單(2026-10-14,四個步驟全部完成,尚未 commit;桌面版人工驗證待做,見「待辦 → 使用者」)**:任務檔 `docs/02-Plans-操作/01-繪圖物件ContextMenu.md`,計畫 `docs/02-Plans-操作/01-繪圖物件ContextMenu-實作.md`。右鍵物件 = 先選取再開選單,內容是屬性面板「調整」分頁的圖層順序(4)與對齊內容區(填滿 2 + 對齊 6),一層攤平。使用者確認:圖形 / 文字 / 圖片都要;只做單選(多選時說明 + 停用);填滿照面板預設的寬高比(圖片保持);選單攤平;所有工具下都開。步驟 1 抽出共用(`lib/editor/layer-order.ts` 的 `canReorder` + 4 個測試、`components/editor/element-arrange.ts`;屬性面板與底部 `⋮` 改用,畫面不變);步驟 2 shadcn `context-menu` + `element-context-menu.tsx`(只包 Stage、有選取才開、`modal={false}`、關閉後焦點留在 body);步驟 3 無頭 Edge 51 項全過(含雙頁對頁、跨書背複本、編輯主頁、主頁內容、旋轉、多選、文字編輯框),程式未修改;步驟 4 文件(`CLAUDE.md` 新增「右鍵選單」一節、`docs/01`/`02`)。vitest 657、`npm run build` 通過。**要 commit 的範圍**:`layer-order.ts` 與測試、`editor-reducer.ts`、`element-arrange.ts`、`element-context-menu.tsx`、`components/ui/context-menu.tsx`、`editor-canvas.tsx`、`properties-panel.tsx`、`bottom-toolbar.tsx`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、計畫 `01-繪圖物件ContextMenu-實作.md`;任務檔是否 commit 待使用者決定。之後另排:多選的對齊 / 圖層順序、剪下 / 複製 / 刪除項目、上移 / 下移快捷鍵、圖層面板右鍵。
 
 - **「頁面」面板方塊 memo(2026-10-13,commit `c11c8f2`(已推送))**:200 頁 MCP 壓力測試發現每次修改文件都重畫所有頁面方塊(各帶 Radix 選單);`pages-panel.tsx` 的 `SheetTile` 改 `memo` + 共用穩定的 `TileActions`,開發版每次 MCP 呼叫 154 → 45 ms(204 頁)。另發現開發版 React 的 `performance.measure` 越用越慢(只影響 `tauri dev`)。報告與數據:`docs/00-需求分析/06-系統極限測試-報告.md`。release build 重跑 200 頁:672 次呼叫 7.9 秒全部成功、每次約 8 ms 不變慢、物件 667 / 667 全部保留。桌面版人工確認(2026-10-13,完成):頁面面板的選單(套用主頁 / 以…為基礎 / 改名 / 複製 / 刪除)照常。報告、任務檔 `05`/`06`/`07`、`story-*.txt`、`Story-Test.png` 與 `tools/` 已在 `c64fe9a`、`d4ebf8c`、`49ff7de` commit。
 - **文件色票(2026-10-12,八個步驟全部完成,commit `50b957e`(已推送);`magazine-mcp.exe` 待重編並在 Claude Code 實測色票工具;桌面版人工驗證見「待辦 → 使用者」;**v12 存檔後舊版 App 無法開啟**)**:步驟 1 型別與檔案格式 v12、2 純邏輯 `swatches.ts`、3 reducer、4 調色板「文件色票」區、5「設定 → 文件 → 色票...」對話框、6 新文件預設色票、7 MCP 色票工具、8 文件(`CLAUDE.md` 改寫「調色板」並新增「文件色票」、`docs/01`/`02`、`03-系統設計優先順序建議.md` 進度紀錄、`Color-System.html` 狀態)。**要 commit 的範圍**:程式碼與測試(含新檔 `swatches.ts`、`swatch-draft.ts`、`document-swatches.tsx`、`swatches-dialog.tsx` 與三個測試檔)、`src-tauri/src/project/format.rs`、`export/`(`pdf.rs`、`render.rs`、`epub/tests.rs` 補欄位)、`tests/fixtures/`、`src-tauri/mcp-tools.json`、`docs-website/types.html`、`CLAUDE.md`、`docs/01`/`02`/`progress.md`、`docs/00-需求分析/03-系統設計優先順序建議.md`、`docs/Plans-Color-System/`、計畫 `17-文件色票-實作.md`;根目錄 `README.md` 的修改與 `tsconfig*.tsbuildinfo`、`vite.config.js` / `.d.ts`(誤用 `tsc -b` 的產物)不在範圍內。原本的說明:規劃 `docs/Plans-Color-System/01-色票系統規劃.md` → 評估 `Color-System.html`(PANTONE / ICC / Token 引擎這一輪不做,沿用文字樣式的「存實際值 + 連結 id」模式,匯出端不用改)→ 計畫 `docs/01-Plans-2026-10/17-文件色票-實作.md`(8 步)。使用者確認:只做文件色票(sRGB);Tailwind 保留為原色庫;色票不透明、透明度在使用處;自訂 hex 只在「設定 → 文件 → 色票...」對話框;同色不同連結算覆寫;刪除使用中的色票先問替換;新文件帶「文字 / 黑 / 白」且內建文字樣式連到「文字」;第一版不做即時預覽。取代 2026-09-30「只能從 Tailwind 選」的決定(步驟 8 改 `CLAUDE.md`)。
@@ -319,6 +321,13 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**畫布右鍵選單**(Claude 只用無頭 Edge 的合成事件驗證過):
+  - 右鍵沒選取的物件:先選取、選單開在游標旁,沒有 WebView2 自己的右鍵選單(「上一頁 / 重新整理 / 檢查」那個)
+  - 右鍵空白處、頁面背景、主頁內容、頁碼:什麼選單都不出現
+  - 圖層順序 / 填滿 / 對齊各點幾個,結果和屬性面板相同,Ctrl+Z 各一次復原
+  - 選單開著時右鍵另一個物件:換成選它、選單重開;按 Esc 或點別處關閉後,空白鍵平移、Delete 照常
+  - 雙頁:右鍵對頁的物件與跨過書背的部分;雙擊文字編輯時,文字框裡右鍵是剪下 / 複製 / 貼上
+  - 觸控板的雙指點按(右鍵)也一樣
 - [ ] **重編 MCP 橋接程式並實測色票工具**:關掉 Claude Code 後執行 `cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp`(重編前 Claude Code 看到的是舊的工具清單),再到 Claude Code 試 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`,以及 `add_text` 的 `textColor: { swatch: "文字", opacity: 0.5 }`
 - [ ] 在 `npm run tauri dev` 手動驗證**文件色票**(Claude 只用瀏覽器模式驗證過):
   - 「檔案 → 新增」的新文件:調色板有「文字 / 黑 / 白」;文字面板加的文字連到「文字」

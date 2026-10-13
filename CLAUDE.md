@@ -3,10 +3,11 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
+  - `docs/02-Plans-操作/`：操作類的任務檔與實作計畫（2026-10-14 起；`01-繪圖物件ContextMenu-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
@@ -105,6 +106,8 @@ src/
       panel-icons.ts              # PANEL_ICONS：PanelId → icon（satisfies Record）
     editor/
       editor-canvas.tsx           # Stage、捲動工作區、zoom/fit、Transformer、選取、文字編輯 overlay；Layer 是跨頁座標（canvasSheets）；外層 grid 放尺規
+      element-context-menu.tsx    # ElementContextMenu：畫布物件的右鍵選單（包住 Stage；有選取才開、modal={false}；單選 12 項、多選停用，見「右鍵選單」）
+      element-arrange.ts          # 「圖層順序」「對齊內容區」的項目（REORDER_ITEMS / FILL_ITEMS / ALIGN_EDGES）、defaultKeepRatio、useContentAlign（文字高度用 Konva 量測）；屬性面板、底部 ⋮、右鍵選單共用
       canvas-drop.tsx             # CanvasDropProvider / useCanvasDrop：畫布登記「視窗座標 → 那一頁與頁面座標」（沿用 pageAt），素材面板拖到畫布時用
       canvas-ruler.tsx            # 尺規：CanvasRuler（2D canvas 刻度 + 選取範圍色帶 + 滑鼠標示線）、RulerCorner（角落 mm）、moveRulerMarker（直接改 DOM）
       canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、對頁跨過書背的複本、物件、頁碼、參考線、頁緣）；雙頁時書背側裁切；對頁畫成靜態、按下切頁；SpreadSpine 書背線
@@ -195,6 +198,7 @@ src/
       distributed-text.ts         # 首尾置中在 Konva 上：drawDistributedText（自訂 sceneFunc）、distributedTextLines（textArr 每行 → distributeText，measureTextLayout 也用）、firstBaseline、konvaAlignAttrs（{ align, sceneFunc }）
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       corner-radius.ts            # 矩形圓角（一個數字或 [左上, 右上, 右下, 左下]）：cornerRadii、normalizeCornerRadius（四個一樣 → 數字）、clampCornerRadii / withCornerRadius（每角限制在短邊一半）、hasRoundedCorner、konvaCornerRadius、CORNER_NAMES；驗證 isCornerRadius 在 validation.ts
+      layer-order.ts              # 圖層順序：REORDER_DIRECTIONS / ReorderDirection（element/reorder 的方向）、canReorder（停用判斷，和 reducer 一致，測試守著）
       content-align.ts            # 對齊內容區：contentArea（= contentGuides().area）、fillContentPatch（填滿寬 / 高，旋轉歸零、照限制寬高比）、alignContentPatch（旋轉後外框對齊邊 / 中線）、fillContentDisabledReason
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
       units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
@@ -312,6 +316,18 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 多選只能移動：Transformer 的 `enabledAnchors=[]`、`rotateEnabled=false`；屬性面板顯示「已選取 N 個物件」。
 - Delete / Ctrl+D / 方向鍵 / Esc 與底部動作列的刪除、複製作用在整組，action 由 `lib/editor/selection-actions.ts` 產生（快捷鍵與動作列共用）。
 - **框選**：Stage 的 mousedown 按在空白處 / 頁面背景時開始（手形、建立工具在 capture 階段攔下，不會到這裡）；被選取框**完全包住**的物件才選（`geometry.ts` 的 `elementsInBox`，含旋轉）；Ctrl 框選 = 加入；Esc 取消；不到 4px 是點擊。pointermove / pointerup 在**按下的當下**註冊到 `window`，不要改成 effect：快速點一下時 pointerup 可能比 effect 先到。
+
+### 右鍵選單（`element-context-menu.tsx` + `element-arrange.ts` + `lib/editor/layer-order.ts`）
+
+計畫與決定：`docs/02-Plans-操作/01-繪圖物件ContextMenu-實作.md`。
+
+- **內容**＝屬性面板「調整」分頁的「圖層順序」與「對齊內容區」，一層攤平：圖層順序 4 ─ 填滿寬度 / 高度 ─ 六個對齊（使用者決定）。文字沒有「填滿高度」。項目、icon、停用條件與 patch 都來自 `element-arrange.ts`（屬性面板、底部 `⋮`、右鍵選單三處共用，**不要在其中一處另寫**）；停用判斷 `canReorder` 和 reducer 一致（測試守著）。結果與復原同屬性面板（`element/reorder` / `element/update`，各一筆）。
+- **觸發**：shadcn `ContextMenu`（`components/ui/context-menu.tsx`），`ContextMenuTrigger asChild` 包 Stage 外層的 `<div>`，**只包 Stage**：文字編輯框是兄弟元素，在裡面右鍵仍是瀏覽器的剪下 / 複製 / 貼上。
+- **開不開**：Konva 的 `mousedown` 不分按鍵，右鍵按下時已經選取物件（點已選取的不改整組；空白 / 頁面背景 / 主頁內容 / 頁碼清空選取；對頁物件與跨書背的複本先切頁再選），`contextmenu` 在放開後才來。所以只問 `canOpen`（`latest.current.selectionSize > 0`，用 ref 讀最新值）；不開時 `preventDefault()`，瀏覽器選單也不出現。不自己做命中判斷。手形 / 建立工具只攔左鍵與中鍵，右鍵照樣選取並開選單。
+- **`modal={false}`**：modal 選單在 body 設 `pointer-events: none`，選單開著時右鍵另一個物件到不了 Konva、選不到它。
+- `onCloseAutoFocus` 取消預設：焦點留在 body（空白鍵平移只在焦點在 body 時生效）。選單內是 `role="menu"`，編輯器快捷鍵不觸發。
+- **單選**才有作用；多選時顯示「已選取 N 個物件」＋ 12 項停用。填滿用 `defaultKeepRatio`（圖片保持比例；選單沒有「限制寬高比」開關，面板的開關是面板自己的暫時狀態）。
+- 不做（之後另排）：多選的對齊 / 圖層順序、剪下 / 複製 / 刪除等項目、上移 / 下移快捷鍵、鍵盤開選單（Shift+F10）、圖層面板的右鍵。
 
 ### 底部工具列與畫布工具（`bottom-toolbar.tsx` + `lib/editor/tools.ts`）
 

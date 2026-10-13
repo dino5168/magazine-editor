@@ -73,6 +73,7 @@ flowchart TB
 | `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 500 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影與行距 / 字距怎麼轉成畫布的屬性(字距存字級的 1/1000,畫布換成 pt) | 之後再看 |
 | `src/lib/editor/text-distribute.ts`、`src/lib/editor/distributed-text.ts` | 約 200 | 分散對齊(首尾置中):每一行每個字的位置(純函式)與畫在 Konva 上的自訂繪製函式(`sceneFunc`);匯出量測也用同一份結果,PDF / EPUB 照著放 | 之後再看 |
 | `src/lib/editor/content-align.ts` | 約 100 | 屬性面板的「對齊內容區」:填滿內容區的寬 / 高、對齊內容區的邊或中線(只算出要改的位置與大小,一次寫入) | 之後再看 |
+| `src/lib/editor/layer-order.ts`、`src/components/editor/element-arrange.ts`、`element-context-menu.tsx` | 約 300 | 「圖層順序」「對齊內容區」的共用定義(項目文字、icon、什麼時候停用、量文字高度後算出要改的位置):屬性面板「調整」分頁、底部工具列的 `⋮` 與畫布的右鍵選單三處共用,結果一樣。右鍵選單靠「右鍵按下時 Konva 已經選取物件」,放開時有選取才開 | 之後再看 |
 | `src/lib/editor/corner-radius.ts` | 約 120 | 矩形的圓角:一個數字或四個角、四個一樣時存成一個數字、每個角限制在短邊的一半(屬性面板與 MCP 共用) | 之後再看 |
 | `src/lib/editor/style-sheet.ts`、`src/components/editor/panels/styles-panel.tsx`、`text-style-link.tsx`、`text-style-dialog.tsx` | 約 900 | 文字樣式(樣式表):文字連到樣式、覆寫怎麼判斷(和樣式不同的欄位)、改樣式時哪些文字跟著變;「樣式」面板、屬性面板的樣式區塊、編輯對話框。文字仍存完整的值,所以畫布與匯出不用查樣式表 | 之後再看 |
 | `src/lib/editor/swatches.ts`、`swatch-draft.ts`、`src/components/editor/document-swatches.tsx`、`src/components/app/settings/swatches-dialog.tsx` | 約 900 | 文件色票:具名的不透明顏色,文字、填色、邊框、陰影、背景、頁碼、文字樣式可以連到它;改色票時所有連結處一起變(保留各自的透明度)。`mapColorSlots` 是唯一走過所有顏色欄位的函式。和文字樣式同一個模式:仍存完整的顏色,畫布與匯出不用查色票表 | 之後再看 |
