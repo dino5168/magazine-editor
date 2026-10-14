@@ -2,8 +2,8 @@
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #3f3f46; }
 /* 下方留給工具列 */
 #stage { position: absolute; inset: 16px 16px 72px 16px; }
-/* page-flip 要量得到翻頁區的寬高，才會把頁面縮到放得進畫面 */
-#book { width: 100%; height: 100%; }
+/* 寬高與位置由 viewer.js 的 layoutBook 設成剛好是書的大小、置中（page-flip 的硬頁假設書在翻頁區左上角） */
+#book { position: absolute; }
 /* .fb-page 的 style 由 page-flip 每次繪製時改寫，所以縮放放在裡面一層 */
 .fb-page { background: #ffffff; overflow: hidden; }
 .fb-scale { transform-origin: 0 0; transform: scale(var(--s, 1)); }

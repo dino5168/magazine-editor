@@ -13,12 +13,40 @@
   var pages = Array.prototype.slice.call(book.querySelectorAll(":scope > .fb-page"));
   var pageCount = pages.length;
 
+  // ---- 書的大小 ----
+  // #book 必須剛好是書的大小：page-flip 畫硬頁（封面 / 最後一頁）時用 top: 0、往左翻的那面用
+  // translate3d(0, …)，flipNext / flipPrev 的起點也是翻頁區座標，都假設書在翻頁區的左上角。
+  // 翻頁區比書大時封面會離開書背、橫式書翻封面時會先往上跳。所以由這裡算好書的大小並置中。
+
+  // page-flip 在翻頁區寬度 < 2 × minWidth 時改單頁；翻頁區 = 書之後，這裡用同一個門檻決定
+  var MIN_PAGE_WIDTH = 300;
+  var stage = document.getElementById("stage");
+
+  function layoutBook() {
+    var stageWidth = stage.clientWidth;
+    var stageHeight = stage.clientHeight;
+    var spreadScale = Math.min(stageWidth / (2 * width), stageHeight / height);
+    // 多 1 px：offsetWidth 會取整數，剛好在門檻上時兩邊的判斷才不會不同
+    var spread = 2 * width * spreadScale >= 2 * MIN_PAGE_WIDTH + 1;
+    var scale = spread ? spreadScale : Math.min(stageWidth / width, stageHeight / height);
+    // 取整數：page-flip 讀 offsetWidth / offsetHeight（整數）算頁面大小
+    var bookWidth = Math.max(1, Math.floor((spread ? 2 : 1) * width * scale));
+    var bookHeight = Math.max(1, Math.floor(height * scale));
+    book.style.width = bookWidth + "px";
+    book.style.height = bookHeight + "px";
+    book.style.left = Math.floor((stageWidth - bookWidth) / 2) + "px";
+    book.style.top = Math.floor((stageHeight - bookHeight) / 2) + "px";
+  }
+  layoutBook();
+  // 在建立 PageFlip 之前註冊：它自己也聽 resize，事件依註冊順序執行，它才會讀到新的大小
+  window.addEventListener("resize", layoutBook);
+
   var flip = new St.PageFlip(book, {
     width: width,
     height: height,
     size: "stretch",
-    // 翻頁區不到 2 × 300 px 寬時改成單頁
-    minWidth: 300,
+    // 翻頁區（= 書）不到 2 × 300 px 寬時改成單頁，門檻和 layoutBook 相同
+    minWidth: MIN_PAGE_WIDTH,
     maxWidth: 4000,
     minHeight: 300,
     maxHeight: 4000,
@@ -28,6 +56,13 @@
     mobileScrollSupport: false,
   });
   flip.loadFromHTML(pages);
+  // loadFromHTML 會在 #book 寫上 min-width / min-height（minWidth、minHeight 設定）與 width: 100%
+  // （autoSize），蓋掉 layoutBook 的大小，而且書不能小於 300 px。拿掉之後重新排版，讓 page-flip 重算
+  book.style.minWidth = "0";
+  book.style.minHeight = "0";
+  book.style.maxWidth = "none";
+  layoutBook();
+  flip.update();
 
   // ---- 縮放 ----
 
@@ -796,6 +831,46 @@
     }
     event.preventDefault();
   }
+
+  // ---- 滾輪翻頁 ----
+  // 只在翻頁區（#stage）：工具列、縮圖列、目錄面板、放大檢視是另外的層，它們的滾輪照常。
+  // 往下 / 觸控板往左滑 = 下一頁（兩者的 delta 都是正的），取比較大的那一軸。
+  // 一次手勢只翻一頁：累積到門檻才翻；翻過之後這次手勢用掉了，之後的事件（含觸控板的慣性）
+  // 都忽略，直到停止捲動一段時間；翻頁動畫中也忽略。
+
+  var WHEEL_THRESHOLD = 60; // px（滑鼠滾輪一格約 100）
+  var WHEEL_IDLE_MS = 200; // 停這麼久才算一次手勢結束
+  // deltaMode 是「行」時（Firefox 的滑鼠滾輪一格 3 行）換成 px：一格約 120，和其他瀏覽器的一格相近
+  var LINE_HEIGHT_PX = 40;
+  var wheelSum = 0;
+  var wheelUsed = false;
+  var wheelTimer = 0;
+
+  stage.addEventListener(
+    "wheel",
+    function (event) {
+      // Ctrl + 滾輪交給瀏覽器縮放整頁
+      if (event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(function () {
+        wheelSum = 0;
+        wheelUsed = false;
+      }, WHEEL_IDLE_MS);
+      if (wheelUsed || flip.getState() !== "read") return;
+      var delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+      // deltaMode：0 = px、1 = 行、2 = 頁
+      if (event.deltaMode === 1) delta *= LINE_HEIGHT_PX;
+      else if (event.deltaMode === 2) delta *= stage.clientHeight;
+      wheelSum += delta;
+      if (Math.abs(wheelSum) < WHEEL_THRESHOLD) return;
+      wheelUsed = true;
+      if (wheelSum > 0) flip.flipNext();
+      else flip.flipPrev();
+      wheelSum = 0;
+    },
+    { passive: false }
+  );
 
   // ---- 鍵盤 ----
 
