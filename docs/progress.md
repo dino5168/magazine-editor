@@ -10,7 +10,7 @@
 
 ## 目前階段
 
-- **換程式的圖示(2026-10-14,四個步驟全部完成,使用者選 A 翻開的雜誌;桌面版確認待做)**:任務檔 `docs/04-Plans-畫面顯示/01-換程式的圖示.md`,計畫 `01-換程式的圖示-實作.md`。把 Tauri 預設圖示換掉。使用者決定:來源用 SVG、三個不同概念(A 翻開的雜誌 / B 雜誌封面 / C 排版版面,靛藍色系)、網頁 favicon 一起換並刪掉 `public/tauri.svg`、`vite.svg`。候選在 `docs/04-Plans-畫面顯示/icons/`(`preview.html` 比較 16–128 px)。來源 `src-tauri/app-icon.svg` → `npx tauri icon` 產生 `src-tauri/icons/`(刪掉多出的 android / ios / 64x64,檔名和原本相同,`tauri.conf.json` 不變;ICO 含 16–256 px);favicon `public/app-icon.svg`。cargo check、build 通過。
+- **換程式的圖示(2026-10-14,四個步驟全部完成,使用者選 A 翻開的雜誌;commit `b27cc1d`(已推送);桌面版確認待做)**:任務檔 `docs/04-Plans-畫面顯示/01-換程式的圖示.md`,計畫 `01-換程式的圖示-實作.md`。把 Tauri 預設圖示換掉。使用者決定:來源用 SVG、三個不同概念(A 翻開的雜誌 / B 雜誌封面 / C 排版版面,靛藍色系)、網頁 favicon 一起換並刪掉 `public/tauri.svg`、`vite.svg`。候選在 `docs/04-Plans-畫面顯示/icons/`(`preview.html` 比較 16–128 px)。來源 `src-tauri/app-icon.svg` → `npx tauri icon` 產生 `src-tauri/icons/`(刪掉多出的 android / ios / 64x64,檔名和原本相同,`tauri.conf.json` 不變;ICO 含 16–256 px);favicon `public/app-icon.svg`。cargo check、build 通過。
 
 - **匯出翻頁電子書修正 01(2026-10-14,三個步驟全部完成;步驟 1 完成(`viewer.js` 的 `layoutBook`:`#book` 剛好是書的大小並置中,另外清掉 page-flip 寫在 `#book` 上的 min-width / min-height / width: 100%;兩本參考書的直式封面貼著書背、橫式封面不上移,舊測試全過);步驟 2 完成(滾輪翻頁:只在翻頁區、往下 / 觸控板往左滑 = 下一頁、一次手勢只翻一頁、Ctrl+滾輪不攔;無頭 Edge 18 項);步驟 3 完成(`CLAUDE.md`、`docs/01`);commit `73ce5b4`(已推送);桌面版驗證 2026-10-14 使用者完成(重新匯出兩本書:滾輪翻頁、直式封面貼著書背、橫式封面不上移))**:任務檔 `docs/03-Plans-匯出檔案/02-匯出HTML5-翻頁電子書-修正01.md`,計畫 `02-匯出HTML5-翻頁電子書-修正01-實作.md`。滾輪翻頁、A4 直式翻封面時和書背有間隔、A4 橫式翻封面時先上移。原因:page-flip 的硬頁(封面 / 最後一頁)與 `flipNext` 假設書在翻頁區左上角,我們的 `#book` 佔滿畫面、書置中時有空位;修法是 `#book` 剛好是書的大小(不改 vendor 的 page-flip)。使用者確認:滾輪往下 = 下一頁、觸控板左右滑也翻;只在書上作用。三個步驟(版面 → 滾輪 → 文件)。
 
