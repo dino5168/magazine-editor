@@ -281,12 +281,13 @@ fn bundled_page_flip_is_the_recorded_release() {
 /// Writes the book to `<EXPORT_PREVIEW_DIR>/flipbook/` for opening in a browser (not part of the
 /// normal run).
 ///
-/// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] [FLIPBOOK_PAGES=<n>] cargo test flipbook_preview -- --ignored`
+/// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] [EXPORT_PROJECT_DIR=<project>] [FLIPBOOK_PAGES=<n>] cargo test flipbook_preview -- --ignored`
 #[test]
 #[ignore]
 fn flipbook_preview() {
     let dir = std::env::var("EXPORT_PREVIEW_DIR").expect("set EXPORT_PREVIEW_DIR");
-    let root = project_with_image();
+    // 暫存資料夾要活到最後（_temp）
+    let (_temp, root) = crate::export::test_support::preview_root();
     let req = match std::env::var("EXPORT_REQUEST_JSON") {
         Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
         Err(_) => {
@@ -308,7 +309,7 @@ fn flipbook_preview() {
             request(document)
         }
     };
-    let output = build_flipbook(root.path(), &req).unwrap();
+    let output = build_flipbook(&root, &req).unwrap();
     let book = std::path::Path::new(&dir).join("flipbook");
     let _ = std::fs::remove_dir_all(&book);
     for (name, data) in &output.files {
@@ -316,4 +317,17 @@ fn flipbook_preview() {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, data).unwrap();
     }
+}
+
+#[test]
+fn project_fonts_ship_with_the_book() {
+    use crate::export::test_support::{document_with_project_font, write_project_fonts};
+    let root = project_with_image();
+    let document = document_with_project_font("font-book", false);
+    write_project_fonts(root.path(), &document);
+    let output = build_flipbook(root.path(), &request(document)).unwrap();
+    let css = file(&output, "styles/page.css");
+    assert!(css.contains(r#"font-family: "project-font-font-book"; font-weight: 400; font-style: normal; src: url("../fonts/project-font-1.ttf"); ascent-override: 95.2%;"#), "{css}");
+    assert_eq!(output.files.iter().filter(|(name, _)| name.starts_with("fonts/project-font-")).count(), 1);
+    assert!(file(&output, "index.html").contains("font-family:'project-font-font-book','Noto Sans TC',sans-serif"));
 }

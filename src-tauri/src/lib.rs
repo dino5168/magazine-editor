@@ -44,6 +44,7 @@ pub fn run() {
             commands::project::project_save_as_dialog,
             commands::library::library_write,
             commands::library::library_import,
+            commands::fonts::font_import,
             commands::library::library_read_text,
             commands::library::library_thumbnail,
             commands::recovery::recovery_list,

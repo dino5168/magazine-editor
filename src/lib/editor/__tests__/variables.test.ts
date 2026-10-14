@@ -10,7 +10,7 @@ const document: EditorDocument = {
   name: "十月號",
   margins: DEFAULT_MARGINS,
   textStyles: [],
-  swatches: [],
+  swatches: [], fonts: [],
   // 第 3 頁起從 1 起算
   pageNumberRules: [{ ...createPageNumberRule("body", 3, 99), start: 1 }],
   masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], parentId: null }],

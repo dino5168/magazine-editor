@@ -242,6 +242,41 @@ export interface Swatch {
   readonly color: string;
 }
 
+/** `OS/2.fsType` embedding permission of a font file (restricted / bitmap-only fonts are refused). */
+export type FontEmbedding = "installable" | "editable" | "previewAndPrint";
+
+/** One imported font file and what was read from it at import (Rust `FontFile`). */
+export interface FontFile {
+  /** `assets/fonts/<hash>.ttf|otf`. */
+  readonly src: string;
+  /** Family and style names inside the file (display only). */
+  readonly fileFamily: string;
+  readonly fileStyle: string;
+  /** `OS/2` weight class (display only). */
+  readonly weight: number;
+  readonly embedding: FontEmbedding;
+  /** Metrics the canvas (Windows engines) uses, in em; written as `ascent-override` / `descent-override`. */
+  readonly ascent: number;
+  readonly descent: number;
+  /** First-baseline shift (em, positive = down) in engines that ignore the overrides (Apple). */
+  readonly appleBaselineShift: number;
+}
+
+/**
+ * A font imported into the project（專案字型, v13）. Its CSS / Typst family is
+ * `project-font-<id>`, whatever the files call themselves; texts store that family in `fontFamily`.
+ */
+export interface ProjectFont {
+  /** Unique; letters, digits, `-` and `_` only (it becomes part of a CSS family name). */
+  readonly id: string;
+  /** Shown in the font menu; trimmed, unique among the project fonts. */
+  readonly name: string;
+  readonly generic: "serif" | "sans-serif";
+  readonly regular: FontFile;
+  /** Face drawn for `fontStyle: "bold"` (any weight); null → bold draws the regular file. */
+  readonly bold: FontFile | null;
+}
+
 export interface EditorDocument {
   readonly name: string;
   /** Same for every page; drawn as guides on the canvas only, never exported. */
@@ -255,6 +290,8 @@ export interface EditorDocument {
   readonly textStyles: readonly TextStyleDef[];
   /** Document colors in display order; ids and names unique. */
   readonly swatches: readonly Swatch[];
+  /** Project fonts in menu order; ids and names unique. */
+  readonly fonts: readonly ProjectFont[];
   /** Kept apart from `pages`: page order, page numbers and export only ever see pages. */
   readonly masters: readonly MasterPage[];
   readonly pages: readonly Page[];

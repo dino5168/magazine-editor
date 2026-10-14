@@ -1,4 +1,5 @@
 import { invoke, isTauri, type InvokeArgs, type InvokeOptions } from "@tauri-apps/api/core";
+import type { FontFile } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import type { ExportRequest } from "@/lib/export/export-request";
 import type { Library, LibraryItemKind } from "@/lib/library/types";
@@ -65,6 +66,11 @@ export const projectApi = {
   importLibraryAsset: (bytes: Uint8Array, kind: LibraryItemKind, extension: string) =>
     call<string>("library_import", bytes, { headers: { "x-asset-kind": kind, "x-asset-extension": extension } }),
   readLibraryText: (src: string) => call<string>("library_read_text", { src }),
+  /**
+   * Checks a TTF / OTF file and stores it in `assets/fonts/` (raw body, like `importLibraryAsset`);
+   * resolves to what `ProjectFont.regular` / `bold` stores. Unusable files fail with `invalidInput`.
+   */
+  importFont: (bytes: Uint8Array) => call<FontFile>("font_import", bytes),
   /** Path of an image's thumbnail (made on demand), or null to show the original. */
   libraryThumbnail: (src: string) => call<string | null>("library_thumbnail", { src }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),

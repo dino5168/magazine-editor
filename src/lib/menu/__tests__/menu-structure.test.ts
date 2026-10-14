@@ -100,6 +100,7 @@ describe("menu structure", () => {
         { kind: "item", command: "settings.pageSetup" },
         { kind: "item", command: "settings.pageNumbers" },
         { kind: "item", command: "settings.swatches" },
+        { kind: "item", command: "settings.fonts" },
       ],
     });
     expect(preferences).toEqual({

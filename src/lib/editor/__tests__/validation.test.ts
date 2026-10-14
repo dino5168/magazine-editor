@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  FONT_FILE_NAME_MAX_LENGTH,
+  FONT_METRIC_MAX,
+  FONT_NAME_MAX_LENGTH,
   MAX_UPLOAD_BYTES,
   SWATCH_NAME_MAX_LENGTH,
   clampFontSize,
   isElementColor,
+  isFontFile,
   isHexColor,
+  isProjectFont,
+  isProjectFontList,
   isStroke,
   isSwatch,
   isSwatchColor,
@@ -40,6 +46,66 @@ describe("validateName", () => {
     expect(validateName("😀".repeat(3), 3).data).toBe("😀😀😀");
     expect(validateName("😀".repeat(4), 3).error).toBeInstanceOf(Error);
     expect(validateName("\t", 3).error).toBeInstanceOf(Error);
+  });
+});
+
+describe("project fonts", () => {
+  const file = {
+    src: "assets/fonts/0a1b2c3d.otf",
+    fileFamily: "Display Sans",
+    fileStyle: "Regular",
+    weight: 400,
+    embedding: "installable",
+    ascent: 1.16,
+    descent: 0.288,
+    appleBaselineShift: -0.05,
+  };
+  const font = { id: "font-a_1", name: "標題黑體", generic: "sans-serif", regular: file, bold: null };
+
+  it("checks one font file (same rules as Rust validate_font_file)", () => {
+    expect(isFontFile(file)).toBe(true);
+    expect(isFontFile({ ...file, src: "assets/fonts/a.ttf", embedding: "previewAndPrint" })).toBe(true);
+    for (const bad of [
+      { ...file, src: "assets/images/a.otf" },
+      { ...file, src: "assets/fonts/../a.otf" },
+      { ...file, src: "assets/fonts/.a.otf" },
+      { ...file, src: "assets/fonts/a.woff2" },
+      { ...file, src: "assets/fonts/a.OTF" },
+      { ...file, embedding: "restricted" },
+      { ...file, weight: 0 },
+      { ...file, weight: 400.5 },
+      { ...file, ascent: -1 },
+      { ...file, descent: FONT_METRIC_MAX + 1 },
+      { ...file, appleBaselineShift: Number.NaN },
+      { ...file, fileFamily: "x".repeat(FONT_FILE_NAME_MAX_LENGTH + 1) },
+    ]) {
+      expect(isFontFile(bad), JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it("checks one font: id characters, trimmed name, generic family, files", () => {
+    expect(isProjectFont(font)).toBe(true);
+    expect(isProjectFont({ ...font, bold: { ...file, weight: 500 }, generic: "serif" })).toBe(true);
+    expect(isProjectFont({ ...font, name: "字".repeat(FONT_NAME_MAX_LENGTH) })).toBe(true);
+    for (const bad of [
+      { ...font, id: "" },
+      { ...font, id: 'a"b' },
+      { ...font, id: "a b" },
+      { ...font, name: " 標題" },
+      { ...font, name: "字".repeat(FONT_NAME_MAX_LENGTH + 1) },
+      { ...font, generic: "monospace" },
+      { ...font, bold: undefined },
+      { ...font, regular: { ...file, weight: 0 } },
+    ]) {
+      expect(isProjectFont(bad), JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it("requires unique ids and names in a list", () => {
+    expect(isProjectFontList([])).toBe(true);
+    expect(isProjectFontList([font, { ...font, id: "font-b", name: "內文明體" }])).toBe(true);
+    expect(isProjectFontList([font, { ...font, name: "內文明體" }])).toBe(false);
+    expect(isProjectFontList([font, { ...font, id: "font-b" }])).toBe(false);
   });
 });
 

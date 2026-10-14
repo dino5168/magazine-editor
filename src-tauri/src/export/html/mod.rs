@@ -5,18 +5,20 @@
 //!
 //! ```text
 //! styles/page.css           @font-face + page rules
-//! fonts/<file>              bundled fonts of the families the document uses
+//! fonts/<file>              bundled and project fonts of the families the document uses
 //! images/image-<n>.<ext>    project images, renamed
 //! ```
 
 pub mod css;
 pub mod markup;
 
-use super::fonts::{bundled_family, BundledFont, BUNDLED_FONTS};
+use super::document_fonts::ProjectFace;
+use super::fonts::{bundled_family, BUNDLED_FONTS};
 use super::render::{RenderDocument, RenderKind};
 use crate::project::assets::detect_extension;
 use std::collections::HashMap;
 use std::path::Path;
+use typst::foundations::Bytes;
 
 /// Language of the publication and of every page. The document model has no language yet; this is
 /// the single place to replace once it does (see `docs/01-Plans/Imp-Plan-ExportEpub.md` §8).
@@ -111,14 +113,63 @@ pub fn collect_images(root: &Path, document: &RenderDocument) -> (PageImages, us
     (images, skipped)
 }
 
-/// Bundled font files for every family some text element uses (both weights, since any element
-/// may switch to bold), in `BUNDLED_FONTS` order.
-pub fn used_fonts(document: &RenderDocument) -> Vec<&'static BundledFont> {
+/// One embedded font face: a bundled font or a face of a project font.
+pub struct EmbeddedFont {
+    /// CSS family (`@font-face` name).
+    pub family: String,
+    pub bold: bool,
+    /// File name under `fonts/`; a project font without a bold file has both faces in one file.
+    pub file: String,
+    pub data: Bytes,
+    /// Canvas metrics (em) written as `ascent-override` / `descent-override`: project fonts only
+    /// (the bundled files already agree in every engine, see `baseline_matches_css_line_box`).
+    pub overrides: Option<(f64, f64)>,
+}
+
+/// Font faces for every family some text element uses (both weights, since any element may switch
+/// to bold): bundled fonts in `BUNDLED_FONTS` order, then the project faces (`document_fonts::load`).
+///
+/// Project files get generated names (`project-font-<n>.<ext>`), like images: a crafted project may
+/// use file names that are not safe in a CSS `url()`.
+pub fn used_fonts(document: &RenderDocument, project: &[ProjectFace]) -> Vec<EmbeddedFont> {
     let mut families: Vec<&str> = Vec::new();
     for element in document.pages.iter().flat_map(|page| &page.elements) {
         if let RenderKind::Text(text) = &element.kind {
             families.extend(text.fonts.iter().filter_map(|font| bundled_family(font)));
         }
     }
-    BUNDLED_FONTS.iter().filter(|font| families.contains(&font.family)).collect()
+    let bundled = BUNDLED_FONTS.iter().filter(|font| families.contains(&font.family)).map(|font| EmbeddedFont {
+        family: font.family.to_owned(),
+        bold: font.bold,
+        file: font.file.to_owned(),
+        data: Bytes::new(font.data),
+        overrides: None,
+    });
+    let mut names: Vec<&str> = Vec::new();
+    let project = project.iter().map(|face| {
+        let n = names.iter().position(|src| *src == face.src).unwrap_or_else(|| {
+            names.push(&face.src);
+            names.len() - 1
+        });
+        let extension = if face.src.ends_with(".otf") { "otf" } else { "ttf" };
+        EmbeddedFont {
+            family: face.family.clone(),
+            bold: face.bold,
+            file: format!("project-font-{}.{extension}", n + 1),
+            data: face.data.clone(),
+            overrides: Some((face.ascent, face.descent)),
+        }
+    });
+    bundled.chain(project).collect()
+}
+
+/// Each embedded file once (two faces of a project font may share one), in first-use order.
+pub fn font_files(fonts: &[EmbeddedFont]) -> Vec<&EmbeddedFont> {
+    let mut files: Vec<&EmbeddedFont> = Vec::new();
+    for font in fonts {
+        if !files.iter().any(|file| file.file == font.file) {
+            files.push(font);
+        }
+    }
+    files
 }

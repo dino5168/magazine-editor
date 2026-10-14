@@ -74,14 +74,17 @@ const coordinate = z.number().min(-COORDINATE_LIMIT_PT).max(COORDINATE_LIMIT_PT)
 const length = z.number().min(MIN_ELEMENT_SIZE_PT).max(COORDINATE_LIMIT_PT);
 const rotation = z.number().min(-360).max(360).describe("旋轉角度（度，順時針，繞外框左上角）");
 
-/** Font names a tool accepts (the property panel's 字體 menu); mapped to CSS families in `edits.ts`. */
+/** Built-in font names (the property panel's 字體 menu); project fonts are resolved in `edits.ts`. */
 export const FONT_NAMES = FONT_OPTIONS.map((option) => option.label) as [string, ...string[]];
 
 export const SHAPE_KINDS = ["rect", "roundedRect", "ellipse", "triangle", "star"] as const satisfies readonly ShapeKind[];
 
 const textStyleShape = {
   fontSize: z.number().min(FONT_SIZE_MIN).max(FONT_SIZE_MAX).describe("字級（pt）"),
-  font: z.enum(FONT_NAMES).describe("字體"),
+  font: z
+    .string()
+    .min(1)
+    .describe(`字型：內建的 ${FONT_NAMES.join(" / ")}，或專案字型的名稱或 id（由 list_fonts 取得）`),
   bold: z.boolean(),
   italic: z.boolean(),
   underline: z.boolean(),
@@ -131,7 +134,7 @@ const STYLE_LINK_HELP =
   "style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。";
 
 const STYLE_HELP =
-  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
+  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱 / id，見 list_fonts）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
 
 const COLOR_HELP =
   "顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。";
@@ -316,6 +319,13 @@ export const TOOL_DEFINITIONS = {
       style: styleRef.nullable().describe("文字樣式的名稱或 id；null = 取消連結"),
     }),
     readOnly: false,
+  },
+  list_fonts: {
+    title: "字型清單",
+    description:
+      "列出可用的字型：內建字型（黑體 / 明體 / 楷體 / 圓體）與使用者匯入這份文件的專案字型（id、名稱、缺字時用的內建字型種類、有沒有粗體檔、授權、使用數）。文字樣式參數 font 給名稱或 id 就用那套字型。專案字型只能由使用者在 App 的「設定 → 文件 → 字型...」匯入；沒有粗體檔的字型，bold 看起來和一般相同。",
+    input: z.strictObject({}),
+    readOnly: true,
   },
   list_swatches: {
     title: "色票清單",

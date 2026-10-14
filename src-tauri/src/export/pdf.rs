@@ -3,6 +3,7 @@
 //! Typst only positions and renders. Line breaks already come from the editor (see
 //! [`super::render`]), so the PDF wraps exactly like the canvas.
 
+use super::document_fonts;
 use super::fonts::typst_family;
 use super::render::{
     build_render, rounded_rect_path, DecorationKind, PathSegment, RenderDocument, RenderElement, RenderKind, RenderStroke,
@@ -171,7 +172,7 @@ fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Fon
         return 0;
     }
     // 只讀 assets/images，data.json 用不到
-    let world = ExportWorld::new(root, Vec::new(), fonts.to_vec());
+    let world = ExportWorld::new(root, Vec::new(), fonts.to_vec(), &[]);
     let mut drawable: HashMap<String, bool> = HashMap::new();
     let mut skipped = 0;
     for page in &mut document.pages {
@@ -197,7 +198,8 @@ fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Fon
 pub fn render_pdf(root: &Path, request: &ExportRequest, fonts: Vec<Font>) -> AppResult<ExportOutput> {
     let (mut document, missing_images) = build_render(root, request)?;
     let skipped_images = missing_images + drop_undrawable_svgs(root, &mut document, &fonts);
-    let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document))?, fonts);
+    let project_fonts = document_fonts::load(root, &request.document.fonts, &document);
+    let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document))?, fonts, &project_fonts);
     let compiled = compile(&world)?;
     let pdf = typst_pdf::pdf(&compiled, &PdfOptions::default()).map_err(|errors| diagnostics(&errors))?;
     Ok(ExportOutput { bytes: pdf, pages: compiled.pages().len(), skipped_images })
@@ -222,8 +224,66 @@ mod tests {
 
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();
-        let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document)).unwrap(), fonts());
+        let project = document_fonts::load(root, &request.document.fonts, &document);
+        let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document)).unwrap(), fonts(), &project);
         compile(&world).unwrap()
+    }
+
+    /// Each run of text on the page and the font file it uses: the family inside the file and its weight.
+    fn text_runs(frame: &typst::layout::Frame, out: &mut Vec<(String, String, u16)>) {
+        for (_, item) in frame.items() {
+            match item {
+                typst::layout::FrameItem::Group(group) => text_runs(&group.frame, out),
+                typst::layout::FrameItem::Text(text) => {
+                    let info = text.font.font().info();
+                    out.push((text.text.to_string(), info.family.clone(), info.variant.weight.to_number()));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn runs_of(root: &Path, document: crate::project::format::Document) -> Vec<(String, String, u16)> {
+        let compiled = compiled_pages(root, &request(document));
+        let mut runs = Vec::new();
+        text_runs(&compiled.pages()[0].frame, &mut runs);
+        runs
+    }
+
+    /// The first text is "Ab 中" in a project font (`document_with_project_font`); with letter spacing
+    /// every character is its own run.
+    fn font_of(runs: &[(String, String, u16)], needle: &str) -> (String, u16) {
+        let (_, family, weight) = runs.iter().find(|(text, _, _)| text.contains(needle)).unwrap_or_else(|| panic!("{needle} in {runs:?}"));
+        (family.clone(), *weight)
+    }
+
+    #[test]
+    fn project_fonts_draw_with_their_own_files() {
+        use crate::export::test_support::{document_with_project_font, write_project_fonts};
+        let run = |id: &str, bold: bool| {
+            let root = project_with_image();
+            let document = document_with_project_font(id, bold);
+            write_project_fonts(root.path(), &document);
+            runs_of(root.path(), document)
+        };
+        // 「標題黑體」的檔案是 Noto Serif TC（故意和名稱不同）：英文、中文都用它，粗體用它的粗體檔
+        let display = run("font-display", false);
+        assert_eq!(font_of(&display, "A"), ("Noto Serif TC".to_owned(), 400));
+        assert_eq!(font_of(&display, "中"), ("Noto Serif TC".to_owned(), 400));
+        assert_eq!(font_of(&run("font-display", true), "A"), ("Noto Serif TC".to_owned(), 700));
+        // 「書名明體」= Geist、沒有粗體檔：粗體也用一般檔（不模擬加粗）；Geist 沒有中文，接後面的內建黑體
+        let book = run("font-book", true);
+        assert_eq!(font_of(&book, "A"), ("Geist".to_owned(), 400));
+        assert_eq!(font_of(&book, "中"), ("Noto Sans TC".to_owned(), 700));
+    }
+
+    #[test]
+    fn a_missing_project_font_file_falls_back_instead_of_failing() {
+        use crate::export::test_support::document_with_project_font;
+        let root = project_with_image();
+        let document = document_with_project_font("font-book", false);
+        assert!(render_pdf(root.path(), &request(document.clone()), fonts()).is_ok());
+        assert_eq!(font_of(&runs_of(root.path(), document), "A"), ("Noto Sans TC".to_owned(), 400));
     }
 
     #[test]
@@ -674,17 +734,18 @@ mod tests {
 
     /// Writes PNG previews (2 px/pt) for visual comparison with the canvas. Renders the fixture, or
     /// an `ExportRequest` captured from the editor when `EXPORT_REQUEST_JSON` is set:
-    /// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] cargo test export_preview -- --ignored`
+    /// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] [EXPORT_PROJECT_DIR=<project>] cargo test export_preview -- --ignored`
     #[test]
     #[ignore]
     fn export_preview() {
         let dir = std::env::var("EXPORT_PREVIEW_DIR").expect("set EXPORT_PREVIEW_DIR");
-        let root = project_with_image();
+        // 暫存資料夾要活到最後（_temp）
+        let (_temp, root) = crate::export::test_support::preview_root();
         let req = match std::env::var("EXPORT_REQUEST_JSON") {
             Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
             Err(_) => request(fixture_document()),
         };
-        let compiled = compiled_pages(root.path(), &req);
+        let compiled = compiled_pages(&root, &req);
         for (index, page) in compiled.pages().iter().enumerate() {
             let pixmap =
                 typst_render::render(page, &typst_render::RenderOptions { pixel_per_pt: 2.0.into(), ..Default::default() });

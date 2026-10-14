@@ -4,6 +4,7 @@
 //! operates on the project held in `ProjectState`.
 
 pub mod assets;
+pub mod fonts;
 pub mod format;
 pub mod io;
 pub mod library;

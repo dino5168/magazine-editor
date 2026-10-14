@@ -7,7 +7,7 @@
 //! OEBPS/content.opf             metadata / manifest / spine
 //! OEBPS/nav.xhtml               table of contents (page names), not in the spine
 //! OEBPS/styles/page.css         reset + @font-face
-//! OEBPS/fonts/<file>            bundled fonts of the families the document uses
+//! OEBPS/fonts/<file>            bundled and project fonts of the families the document uses
 //! OEBPS/images/image-<n>.<ext>  project images, renamed
 //! OEBPS/pages/page-<n>.xhtml    one per page, in reading order
 //! ```
@@ -21,7 +21,8 @@ mod xhtml;
 mod zip;
 
 use super::html::markup::has_svg;
-use super::html::{collect_images, non_empty_or, used_fonts, UNTITLED_DOCUMENT};
+use super::document_fonts;
+use super::html::{collect_images, font_files, non_empty_or, used_fonts, UNTITLED_DOCUMENT};
 use super::render::build_render;
 use super::{ExportOutput, ExportRequest};
 use crate::error::AppResult;
@@ -72,7 +73,7 @@ impl EpubMeta {
 pub fn build_epub(root: &Path, request: &ExportRequest, meta: &EpubMeta) -> AppResult<ExportOutput> {
     let (document, skipped_missing) = build_render(root, request)?;
     let (images, skipped_unreadable) = collect_images(root, &document);
-    let fonts = used_fonts(&document);
+    let fonts = used_fonts(&document, &document_fonts::load(root, &request.document.fonts, &document));
     let title = non_empty_or(&document.title, || UNTITLED_DOCUMENT.to_owned());
 
     let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
@@ -92,16 +93,16 @@ pub fn build_epub(root: &Path, request: &ExportRequest, meta: &EpubMeta) -> AppR
         },
         css::stylesheet(&fonts).into_bytes(),
     );
-    for (n, font) in fonts.iter().enumerate() {
+    for (n, font) in font_files(&fonts).into_iter().enumerate() {
         add(
             ManifestItem {
                 id: format!("font-{}", n + 1),
                 href: format!("fonts/{}", font.file),
-                media_type: font_media_type(font.file),
+                media_type: font_media_type(&font.file),
                 properties: None,
                 in_spine: false,
             },
-            font.data.to_vec(),
+            font.data.as_slice().to_vec(),
         );
     }
     for (n, image) in images.iter().enumerate() {

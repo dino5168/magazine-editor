@@ -14,6 +14,7 @@ describe("resolveAssetUrl", () => {
   });
 
   it("uses forward slashes for POSIX roots", () => {
+    expect(resolveAssetUrl("assets/fonts/a.otf", "D:\\p", convert)).toBe("asset://D:\\p\\assets\\fonts\\a.otf");
     expect(resolveAssetUrl("assets/images/a.png", "/home/u/mag", convert)).toBe(
       "asset:///home/u/mag/assets/images/a.png",
     );

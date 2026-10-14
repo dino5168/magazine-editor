@@ -26,6 +26,7 @@ import type { PageNumberFace, PageNumberPosition, PageNumberRule, PageNumberStyl
 import { clamp } from "@/lib/editor/validation";
 import { usePreferences, useSetPreferences } from "@/lib/preferences/preferences-context";
 import { DocumentSwatchesProvider } from "@/components/editor/document-swatches";
+import { ManageFontsProvider } from "@/components/editor/manage-fonts";
 import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "./settings-dialog";
 
 /**
@@ -42,9 +43,12 @@ import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "
 export function PageNumbersDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <SettingsDialog open={open} onOpenChange={onOpenChange} className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
-      <DocumentSwatchesProvider manage={false}>
-        <PageNumbersForm onDone={() => onOpenChange(false)} />
-      </DocumentSwatchesProvider>
+      {/* 有自己的草稿：不提供「管理色票...」「管理字型...」 */}
+      <ManageFontsProvider>
+        <DocumentSwatchesProvider manage={false}>
+          <PageNumbersForm onDone={() => onOpenChange(false)} />
+        </DocumentSwatchesProvider>
+      </ManageFontsProvider>
     </SettingsDialog>
   );
 }

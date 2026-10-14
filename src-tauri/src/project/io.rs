@@ -278,6 +278,28 @@ mod tests {
     }
 
     #[test]
+    fn remove_orphan_assets_keeps_project_font_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = parse_project(FIXTURE).unwrap();
+        let fonts = dir.path().join(format::FONT_ASSET_DIR);
+        fs::create_dir_all(&fonts).unwrap();
+        let used: Vec<_> = project
+            .document
+            .fonts
+            .iter()
+            .flat_map(|font| std::iter::once(&font.regular).chain(&font.bold))
+            .map(|file| dir.path().join(&file.src))
+            .collect();
+        for path in &used {
+            fs::write(path, b"x").unwrap();
+        }
+        fs::write(fonts.join("orphan.otf"), b"x").unwrap();
+        assert_eq!(remove_orphan_assets(dir.path(), &project, &Library::default()).unwrap(), 1);
+        assert!(used.iter().all(|path| path.exists()));
+        assert!(!fonts.join("orphan.otf").exists());
+    }
+
+    #[test]
     fn copy_assets_copies_and_skips_missing() {
         let from = tempfile::tempdir().unwrap();
         let to = tempfile::tempdir().unwrap();

@@ -404,10 +404,11 @@ export function nextPageNames(pages: readonly Page[], count: number): string[] {
  * Returns:
  *   Fields for a new `EditorDocument`.
  */
-function newDocumentStyles(): Pick<EditorDocument, "textStyles" | "swatches"> {
+function newDocumentStyles(): Pick<EditorDocument, "textStyles" | "swatches" | "fonts"> {
   return {
     textStyles: defaultTextStyles().map((style) => ({ ...style, fillSwatchId: BUILT_IN_SWATCH_IDS.text })),
     swatches: defaultSwatches(),
+    fonts: [],
   };
 }
 

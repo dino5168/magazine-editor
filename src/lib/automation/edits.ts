@@ -20,7 +20,7 @@ import {
   createShapeInBox,
   createTextElement,
 } from "@/lib/editor/element-factory";
-import { FONT_OPTIONS } from "@/lib/editor/fonts";
+import { FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadii } from "@/lib/editor/corner-radius";
@@ -94,8 +94,9 @@ export function textStyleFields(state: EditorState, style: TextStyleInput): Resu
   const fields: { -readonly [K in keyof TextStyle]?: TextStyle[K] } = {};
   if (style.fontSize !== undefined) fields.fontSize = style.fontSize;
   if (style.font !== undefined) {
-    // zod 已限定為 FONT_OPTIONS 的名稱
-    fields.fontFamily = FONT_OPTIONS.find((option) => option.label === style.font)!.family;
+    const font = findFont(state, style.font);
+    if (font.error) return font;
+    fields.fontFamily = font.data;
   }
   if (style.bold !== undefined) fields.fontStyle = style.bold ? "bold" : "normal";
   if (style.italic !== undefined) fields.italic = style.italic;
@@ -116,6 +117,25 @@ export function textStyleFields(state: EditorState, style: TextStyleInput): Resu
   if (style.lineHeight !== undefined) fields.lineHeight = style.lineHeight;
   if (style.letterSpacing !== undefined) fields.letterSpacing = style.letterSpacing;
   return ok(fields);
+}
+
+/**
+ * The CSS family of a font named by the AI: a built-in font by its menu name, or a project font by
+ * id or name (trimmed, exact).
+ *
+ * Args:
+ *   state: Editor state (for the project fonts).
+ *   ref: Name or id.
+ *
+ * Returns:
+ *   The family texts store, or an error pointing to `list_fonts`.
+ */
+export function findFont(state: EditorState, ref: string): Result<string> {
+  const builtIn = FONT_OPTIONS.find((option) => option.label === ref.trim());
+  if (builtIn) return ok(builtIn.family);
+  const { fonts } = state.history.present;
+  const font = fonts.find((f) => f.id === ref) ?? fonts.find((f) => f.name === ref.trim());
+  return font ? ok(projectFontOption(font).family) : fail(`找不到字型「${ref}」，請先用 list_fonts 取得名稱或 id`);
 }
 
 /**

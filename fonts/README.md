@@ -53,3 +53,16 @@ python fonts/patch_font.py <原始>/GenSenRounded2TW-B.otf   fonts/GenSenRounded
 - 換字型或升級版本時，**所有引用點要一起改**（`index.css`、`BUNDLED_FONTS`、`FONT_OPTIONS`），並重新確認既有專案的版面（字寬改變會讓文字位移）。
 - 字族名稱必須和 `FONT_OPTIONS`（`family` 與 `faces`）、`@font-face` 的 `font-family`、Rust `BUNDLED_FONTS` 的 `family` 一致。
 - **`FONT_OPTIONS` 的 `family` 字串一旦發布就不要改**：它會存進專案檔，改了之後舊專案的文字會變成「其他字型」。
+
+## 專案字型（使用者匯入）
+
+這裡的字型是**內建字型**：跟著程式發行，每個專案都能用，要改程式才能增減（上面的「新增一套字型」）。2026-10-14 起另有**專案字型**：使用者在「設定 → 文件 → 字型...」把自己有授權的 TTF / OTF 匯入專案，存在專案資料夾的 `assets/fonts/`，只有那個專案能用（計畫 `docs/05-Plans-字型/01-專案字型-實作.md`，CLAUDE.md「專案字型」）。
+
+| | 內建字型（`fonts/`） | 專案字型（`assets/fonts/`） |
+|---|---|---|
+| 加入方式 | 改程式（`index.css`、`FONT_OPTIONS`、`BUNDLED_FONTS`） | 使用者在 App 裡匯入 |
+| 字族名稱 | 檔案裡的名稱（Typst 讀不同時用 `typst_family` 對應） | 程式決定：`project-font-<id>`，不管檔案叫什麼 |
+| 粗體 | 一定有（霞鶩文楷用 Medium） | 可選；沒有時粗體也用一般檔（不模擬加粗） |
+| 基線一致 | 用 `patch_font.py` 把 `hhea` 改成和 Windows 度量相同 | **不改檔**：`@font-face` 寫 `ascent-override` / `descent-override`；Safari / Apple Books 不支援 override，`hhea` 不同的字型在 Apple 裝置的 EPUB / 翻頁書會偏（已知限制，匯入後在對話框提示） |
+| 授權 | 都是 SIL OFL，`fsType` 0 | 匯入時讀 `fsType`：禁止嵌入 / 只能嵌入點陣圖拒絕，其他提醒；責任在使用者 |
+| 可變字型、字型集合 | 不放（見「規則」） | 匯入時拒絕 |

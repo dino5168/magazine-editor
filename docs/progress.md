@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-14(匯出 HTML5 翻頁電子書)
+最後更新:2026-10-14(專案字型)
 
 ---
 
 ## 目前階段
+
+- **專案字型(2026-10-14,八個步驟全部完成;桌面版驗證 2026-10-14 使用者完成)**:沒有任務檔(來自討論「加入更多字型」,使用者選方案 C)。計畫 `docs/05-Plans-字型/01-專案字型-實作.md`(每一步的實測、決定與結果都在那裡)。使用者把有授權的 TTF / OTF 匯入專案(`assets/fonts/`,檔案格式 v13 `document.fonts`),「設定 → 文件 → 字型...」對話框管理(草稿、確定一次套用),字型選單分內建 / 專案兩區;畫布、PDF、EPUB、翻頁書用同一個檔案。使用者決定:一般必要、粗體可選;`fsType` 禁止嵌入 / 只能點陣圖拒絕、其他提醒;畫布用 asset URL 載入(CSP `font-src` 加 asset);Apple 裝置基線偏移列為已知限制、匯入時提示;MCP 有 `list_fonts` 與用名稱選用,不能匯入。做法:家族名稱一律 `project-font-<id>`(Typst FontBook 與 `FontFace` 都照這個名稱登記,不改字型檔)、沒有粗體檔時一般檔也登記成 700(不登記時 Chromium 會模擬加粗)、`@font-face` 寫畫布的 ascent / descent override。驗證:cargo 195、vitest 687、build 通過;headless Edge UI 測試約 30 項、疊圖比對(Calibri)PDF / 翻頁書和畫布每行 ≤ 0.5 pt。橋接程式已重編(**要在 Claude Code `/mcp` 重新連線**)。**要 commit 的範圍**:`src-tauri/`(`Cargo.toml`、`tauri.conf.json`、`mcp-tools.json`、`src/commands/{mod,fonts}.rs`、`src/lib.rs`、`src/project/{assets,fonts,format,io,mod}.rs`、`src/export/`(`document_fonts.rs` 新、`world.rs`、`pdf.rs`、`mod.rs`、`test_support.rs`、`html/`、`epub/`、`flipbook/`))、`src/`(`lib/editor/`:`types.ts`、`validation.ts`、`fonts.ts`、`use-fonts-ready.ts`、`project-fonts.ts` 新、`font-draft.ts` 新、`editor-reducer.ts`、`element-factory.ts` 與測試;`lib/project/`、`lib/automation/`、`lib/preferences/settings-pages.ts`、`lib/menu/__tests__`、`lib/export/__tests__`;`components/`:`settings/fonts-dialog.tsx` 新、`editor/manage-fonts.tsx` 新與其他修改;`pages/home-page.tsx`)、`tests/fixtures/sample.magproj`、`fonts/README.md`、`CLAUDE.md`、`docs-website/types.html`、`docs/progress.md`、計畫 `docs/05-Plans-字型/01-專案字型-實作.md`;根目錄 `README.md` 與 `docs/00-需求分析/` 的修改不在範圍內。
 
 - **換程式的圖示(2026-10-14,四個步驟全部完成,使用者選 A 翻開的雜誌;commit `b27cc1d`(已推送);桌面版第一次確認圖示沒換:exe 沒重新編譯(圖示編譯時內嵌,cargo 沒發現變更),已 `cargo clean -p magazine-editor` 重編;桌面版驗證 2026-10-14 使用者完成(新圖示))**:任務檔 `docs/04-Plans-畫面顯示/01-換程式的圖示.md`,計畫 `01-換程式的圖示-實作.md`。把 Tauri 預設圖示換掉。使用者決定:來源用 SVG、三個不同概念(A 翻開的雜誌 / B 雜誌封面 / C 排版版面,靛藍色系)、網頁 favicon 一起換並刪掉 `public/tauri.svg`、`vite.svg`。候選在 `docs/04-Plans-畫面顯示/icons/`(`preview.html` 比較 16–128 px)。來源 `src-tauri/app-icon.svg` → `npx tauri icon` 產生 `src-tauri/icons/`(刪掉多出的 android / ios / 64x64,檔名和原本相同,`tauri.conf.json` 不變;ICO 含 16–256 px);favicon `public/app-icon.svg`。cargo check、build 通過。
 
@@ -329,6 +331,7 @@
 
 ### 使用者
 
+- [x] ~~在 `npm run tauri dev` 手動驗證**專案字型**:「設定 → 文件 → 字型...」匯入 .ttf / .otf(也試可變字型、.ttc、禁止嵌入的字型會被拒絕)、指定粗體檔、文字選用後畫布顯示、存檔關閉再開(`assets/fonts/`)、刪除使用中的字型換成別套、匯出 PDF / 翻頁書;Claude Code `/mcp` 重新連線後 `list_fonts`~~(2026-10-14 使用者完成;`list_fonts` 列出匯入的三套:ㄅ源泉注音圓體、Magneto、Broadway)
 - [x] ~~在 `npm run tauri dev` 確認**新的程式圖示**~~(2026-10-14 使用者完成,重編之後)(視窗左上角、工作列、`src-tauri/target/debug/magazine-editor.exe` 在檔案總管的圖示;工作列還是舊的就重開 App 或清 Windows 圖示快取)
 - [ ] 在 Claude Code 執行 `/mcp` 重新連線 magazine-editor(橋接程式 2026-10-14 已重編兩次,`run_command` 不再有 `panel.photos`、多了 `file.exportFlipbook`);`list_commands` 確認。舊的 `src-tauri/target/debug/magazine-mcp.old-*.exe` 斷線後可以刪掉
 - [x] ~~在 `npm run tauri dev` 手動驗證**匯出翻頁電子書**~~(2026-10-14 使用者完成:匯出 PDF 照常、翻頁書的存檔對話框與資料夾、「開啟」、有內容的資料夾拒絕、圖片、全螢幕)

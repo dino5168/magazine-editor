@@ -434,17 +434,18 @@ fn letter_spacing_places_lines_like_the_pdf() {
 /// Writes `preview.epub` for opening in a reading system or running epubcheck (not part of the
 /// normal run; the export command is wired up in a later stage).
 ///
-/// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] cargo test epub_preview -- --ignored`
+/// `EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] [EXPORT_PROJECT_DIR=<project>] cargo test epub_preview -- --ignored`
 #[test]
 #[ignore]
 fn epub_preview() {
     let dir = std::env::var("EXPORT_PREVIEW_DIR").expect("set EXPORT_PREVIEW_DIR");
-    let root = project_with_image();
+    // 暫存資料夾要活到最後（_temp）
+    let (_temp, root) = crate::export::test_support::preview_root();
     let req = match std::env::var("EXPORT_REQUEST_JSON") {
         Ok(path) => serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap(),
         Err(_) => request(fixture_document()),
     };
-    let output = render_epub(root.path(), &req).unwrap();
+    let output = render_epub(&root, &req).unwrap();
     std::fs::write(std::path::Path::new(&dir).join("preview.epub"), output.bytes).unwrap();
 }
 
@@ -517,4 +518,52 @@ fn rectangles_round_each_corner_like_the_pdf() {
     assert_eq!(d.matches('C').count(), 3, "three rounded corners: {d}");
     assert!(d.ends_with(" Z"), "{d}");
     assert!(!stroked.contains(r#"<rect x="0" y="0" width="480""#), "no plain rect for differing corners");
+}
+
+#[test]
+fn embeds_project_fonts_with_the_canvas_metrics() {
+    use crate::export::test_support::{document_with_project_font, write_project_fonts};
+    let export = |id: &str| {
+        let root = project_with_image();
+        let document = document_with_project_font(id, false);
+        write_project_fonts(root.path(), &document);
+        unzip(&build_epub(root.path(), &request(document), &meta()).unwrap().bytes)
+    };
+
+    // 「書名明體」沒有粗體檔：兩個 @font-face 指到同一個檔案，檔案只放一份
+    let entries = export("font-book");
+    let css = text_of(&entries, "OEBPS/styles/page.css");
+    let faces: Vec<&str> = css.lines().filter(|line| line.contains(r#""project-font-font-book""#)).collect();
+    assert_eq!(faces.len(), 2, "{css}");
+    for face in &faces {
+        assert!(face.contains(r#"src: url("../fonts/project-font-1.ttf")"#), "{face}");
+        // fixture：ascent 0.952、descent 0.269
+        assert!(face.contains("ascent-override: 95.2%; descent-override: 26.9%; line-gap-override: 0%;"), "{face}");
+    }
+    assert!(faces[0].contains("font-weight: 400") && faces[1].contains("font-weight: 700"));
+    let project_files: Vec<_> = entries.iter().filter(|(name, _)| name.starts_with("OEBPS/fonts/project-font-")).collect();
+    assert_eq!(project_files.len(), 1);
+    assert_eq!(project_files[0].1, BUNDLED_FONTS.iter().find(|f| f.file == "Geist-Regular.ttf").unwrap().data);
+    // 內建字型沒有 override；後備的 Noto Sans TC 也收錄
+    assert!(css.lines().filter(|line| line.contains(r#""Noto Sans TC""#)).all(|line| !line.contains("override")));
+    let opf = text_of(&entries, "OEBPS/content.opf");
+    assert!(opf.contains(r#"href="fonts/project-font-1.ttf" media-type="font/ttf""#), "{opf}");
+    let page = text_of(&entries, "OEBPS/pages/page-1.xhtml");
+    assert!(page.contains("font-family:'project-font-font-book','Noto Sans TC',sans-serif"), "{page}");
+
+    // 「標題黑體」有粗體檔：一般與粗體各一個檔
+    let entries = export("font-display");
+    let names: Vec<&str> = entries.iter().map(|(name, _)| name.as_str()).filter(|name| name.contains("project-font-")).collect();
+    assert_eq!(names, ["OEBPS/fonts/project-font-1.otf", "OEBPS/fonts/project-font-2.otf"]);
+}
+
+#[test]
+fn project_fonts_nobody_uses_are_not_embedded() {
+    use crate::export::test_support::write_project_fonts;
+    let root = project_with_image();
+    let document = fixture_document();
+    write_project_fonts(root.path(), &document);
+    let entries = unzip(&build_epub(root.path(), &request(document), &meta()).unwrap().bytes);
+    assert!(!entries.iter().any(|(name, _)| name.contains("project-font-")));
+    assert!(!text_of(&entries, "OEBPS/styles/page.css").contains("project-font-"));
 }

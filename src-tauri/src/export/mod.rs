@@ -5,6 +5,7 @@
 //! Konva) so that every output wraps exactly like the canvas. Each format then draws that model —
 //! [`pdf`] hands it to the embedded Typst compiler, [`epub`] writes fixed-layout XHTML pages.
 
+pub mod document_fonts;
 pub mod epub;
 pub mod flipbook;
 pub mod fonts;

@@ -96,7 +96,7 @@ describe("add_text", () => {
     const before = session.state;
     expect(session.error("add_text", { text: "", x: 0, y: 0 })).toContain("參數 text");
     expect(session.error("add_text", { text: "x", x: 0, y: 0, fontSize: 9999 })).toContain("參數 fontSize");
-    expect(session.error("add_text", { text: "x", x: 0, y: 0, font: "Comic Sans" })).toContain("參數 font");
+    expect(session.error("add_text", { text: "x", x: 0, y: 0, font: "Comic Sans" })).toContain("找不到字型「Comic Sans」");
     expect(session.error("add_text", { text: "x", x: 0, y: 0, textColor: "red" })).toContain("#rrggbb");
     expect(session.error("add_text", { text: "x", x: 1e9, y: 0 })).toContain("參數 x");
     expect(session.error("add_text", { text: "x", x: 0, y: 0, pageId: "nope" })).toContain("list_pages");
@@ -467,5 +467,31 @@ describe("text styles", () => {
     expect(elementOf(s, "el-text")).toMatchObject({ styleId: null, fontSize: 32 });
     expect(s.error("apply_text_style", { ids: ["el-image"], style: "標題" })).toContain("沒有文字");
     expect(s.error("apply_text_style", { ids: ["el-text", "el-master-footer"], style: "標題" })).toContain("同一頁");
+  });
+});
+
+describe("project fonts", () => {
+  // fixture：「標題黑體」(font-display，有粗體檔、黑體類)、「書名明體」(font-book，沒有粗體檔、明體類、只能預覽列印)
+  const session = () => toolSession(createInitialState(fixture));
+
+  it("list_fonts lists the built-in fonts, then the project fonts", () => {
+    const fonts = session().ok("list_fonts", {});
+    expect(fonts.map((font: { name: string }) => font.name)).toEqual([...FONT_OPTIONS.map((option) => option.label), "標題黑體", "書名明體"]);
+    expect(fonts[4]).toEqual({ id: "font-display", name: "標題黑體", kind: "project", fallback: "黑體", hasBold: true, embedding: "installable", usedBy: 0 });
+    expect(fonts[5]).toMatchObject({ id: "font-book", fallback: "明體", hasBold: false, embedding: "previewAndPrint" });
+    expect(fonts[0]).toMatchObject({ name: "黑體", kind: "builtIn" });
+    expect(fonts[0].usedBy).toBeGreaterThan(0);
+  });
+
+  it("font takes a project font by name or id, and the usage follows", () => {
+    const s = session();
+    const { id } = s.ok("add_text", { text: "Hi", x: 0, y: 0, font: "書名明體" });
+    expect(elementOf(s, id).fontFamily).toBe('"project-font-font-book", "Noto Serif TC", serif');
+    s.ok("update_element", { id, font: "font-display" });
+    expect(elementOf(s, id).fontFamily).toBe('"project-font-font-display", "Noto Sans TC", sans-serif');
+    expect(s.ok("list_fonts", {}).find((font: { name: string }) => font.name === "標題黑體").usedBy).toBe(1);
+    // 文字樣式也可以用專案字型，list_text_styles 回報它的名稱
+    s.ok("update_text_style", { style: "內文", font: "書名明體" });
+    expect(s.ok("list_text_styles", {}).find((style: { name: string }) => style.name === "內文").font).toBe("書名明體");
   });
 });

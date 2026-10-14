@@ -9,7 +9,7 @@
 //! viewer/viewer.js            starts page-flip, scales the pages, toolbar
 //! viewer/viewer.css
 //! styles/page.css             @font-face + page rules (shared with EPUB)
-//! fonts/<file>                bundled fonts of the families the document uses
+//! fonts/<file>                bundled and project fonts of the families the document uses
 //! images/image-<n>.<ext>      project images, renamed
 //! ```
 //!
@@ -17,7 +17,8 @@
 //! of local files, and the book must open with a double click.
 
 use super::html::markup::{escape, num, page_div};
-use super::html::{collect_images, css, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
+use super::document_fonts;
+use super::html::{collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
 use super::render::{build_render, RenderPage};
 use super::ExportRequest;
 use crate::error::{AppError, AppResult};
@@ -84,7 +85,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
     };
     let (book_width, book_height) = (first.width, first.height);
     let (images, skipped_unreadable) = collect_images(root, &document);
-    let fonts = used_fonts(&document);
+    let fonts = used_fonts(&document, &document_fonts::load(root, &request.document.fonts, &document));
     let title = non_empty_or(&document.title, || UNTITLED_DOCUMENT.to_owned());
 
     let mut pages = String::new();
@@ -139,7 +140,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
         // 整份文件的規則（html、body）在 viewer.css，這裡只有字型與 .page 裡的規則
         ("styles/page.css".into(), (css::font_faces(&fonts) + css::PAGE_RULES).into_bytes()),
     ];
-    files.extend(fonts.iter().map(|font| (format!("fonts/{}", font.file), font.data.to_vec())));
+    files.extend(font_files(&fonts).into_iter().map(|font| (format!("fonts/{}", font.file), font.data.as_slice().to_vec())));
     files.extend(images.iter().map(|image| (image.href.clone(), image.data.clone())));
 
     Ok(FlipbookOutput { files, pages: document.pages.len(), skipped_images: skipped_missing + skipped_unreadable })

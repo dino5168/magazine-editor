@@ -46,7 +46,7 @@ describe("canvasSheets", () => {
     name: "測試",
     margins: DEFAULT_MARGINS,
     textStyles: [],
-    swatches: [],
+    swatches: [], fonts: [],
     pageNumberRules: [],
     masters: [{ id: "M", name: "Master A", width: 600, height: 800, background: "#ffffff", backgroundSwatchId: null, elements: [], parentId: null }],
     pages,

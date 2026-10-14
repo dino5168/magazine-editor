@@ -87,7 +87,7 @@ export function PagesPanel() {
   const spread = usePreferences().pageView === "spread";
   const document = state.history.present;
   const { masters, pages } = document;
-  const fontsReady = useFontsReady(useMemo(() => usedFontFamilies(document), [document]));
+  const fontsReady = useFontsReady(useMemo(() => usedFontFamilies(document), [document]), document.fonts);
   // 每個主頁顯示的內容（含父主頁）；主頁沒變時陣列參考不變，縮圖就不會重畫
   const contentOf = useMemo(() => new Map(masters.map((master) => [master.id, masterContent(masters, master.id)])), [masters]);
   const inheritedOf = (masterId: PageId | null) => (masterId === null ? NO_ELEMENTS : (contentOf.get(masterId) ?? NO_ELEMENTS));

@@ -28,7 +28,10 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// (texts, shape labels, text styles, page numbers, shapes), `swatchId` (strokes, text shadows),
 /// `backgroundSwatchId` (pages, master pages). Uses keep their own color, so the exporters never
 /// read the swatches. Missing in older files and backups → no swatches, nothing linked.
-pub const SCHEMA_VERSION: u32 = 12;
+/// v13: `document.fonts` (project fonts: TTF / OTF files in `assets/fonts/`). Texts still store a
+/// CSS `fontFamily`; a project font's family is `project-font-<id>`. Missing in older files and
+/// backups → none.
+pub const SCHEMA_VERSION: u32 = 13;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -64,11 +67,20 @@ pub const TEXT_STYLE_NAME_MAX_LENGTH: usize = 50;
 /// Longest swatch name (characters, after trimming); same as `SWATCH_NAME_MAX_LENGTH` in
 /// `src/lib/editor/validation.ts`.
 pub const SWATCH_NAME_MAX_LENGTH: usize = 50;
+/// Longest project font name (characters, after trimming); same as `FONT_NAME_MAX_LENGTH` in
+/// `src/lib/editor/validation.ts`.
+pub const FONT_NAME_MAX_LENGTH: usize = 50;
+/// Longest name read from a font file (display only); same as `FONT_FILE_NAME_MAX_LENGTH`.
+pub const FONT_FILE_NAME_MAX_LENGTH: usize = 200;
+/// Largest ascent / descent / Apple baseline shift (em); same as `FONT_METRIC_MAX`.
+pub const FONT_METRIC_MAX: f64 = 4.0;
 pub const ASSET_DIR: &str = "assets/images";
 /// Text assets (`.txt` / `.md`) of the asset library.
 pub const TEXT_ASSET_DIR: &str = "assets/texts";
 /// Audio assets of the asset library (not placeable on pages).
 pub const AUDIO_ASSET_DIR: &str = "assets/audio";
+/// Project font files (`document.fonts`).
+pub const FONT_ASSET_DIR: &str = "assets/fonts";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -103,6 +115,9 @@ pub struct Document {
     /// Missing in files before v12 → none.
     #[serde(default)]
     pub swatches: Vec<Swatch>,
+    /// Project fonts, in menu order. Missing in files before v13 → none.
+    #[serde(default)]
+    pub fonts: Vec<ProjectFont>,
     /// Content shared by the pages that use it. The frontend draws it into each page before
     /// exporting, so the exporters never read it. Missing in older files → none.
     #[serde(default)]
@@ -117,6 +132,63 @@ pub struct Swatch {
     pub name: String,
     /// `#rrggbb`, lowercase.
     pub color: String,
+}
+
+/// A font the user imported into the project (TS `ProjectFont`). Its CSS / Typst family is
+/// `project-font-<id>` (`project_font_family`), whatever the files call themselves.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ProjectFont {
+    /// Letters, digits, `-` and `_` only: it becomes part of a CSS family name.
+    pub id: String,
+    /// Shown in the font menu; trimmed, unique among the project fonts.
+    pub name: String,
+    /// Fallback after the font (and the built-in Chinese font of the same kind).
+    pub generic: GenericFamily,
+    pub regular: FontFile,
+    /// The face drawn for `fontStyle: "bold"`; any weight. `None` → bold draws the regular file.
+    pub bold: Option<FontFile>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum GenericFamily {
+    Serif,
+    SansSerif,
+}
+
+/// One imported font file and what was read from it at import.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FontFile {
+    /// `assets/fonts/<hash>.ttf|otf`.
+    pub src: String,
+    /// Family and style names inside the file (display only).
+    pub file_family: String,
+    pub file_style: String,
+    /// `OS/2` weight class (display only).
+    pub weight: u16,
+    pub embedding: FontEmbedding,
+    /// The metrics Windows engines (and so the canvas) use, in em: `OS/2` typo when
+    /// USE_TYPO_METRICS is set, win otherwise. Written as `ascent-override` / `descent-override`.
+    pub ascent: f64,
+    pub descent: f64,
+    /// How far engines that ignore the overrides and read `hhea` (Apple) move the first baseline, in
+    /// em (positive = down). 0 when both agree.
+    pub apple_baseline_shift: f64,
+}
+
+/// `OS/2.fsType` embedding permission. Restricted and bitmap-only fonts are refused at import.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FontEmbedding {
+    Installable,
+    Editable,
+    PreviewAndPrint,
+}
+
+/// The CSS / Typst family name of a project font.
+pub fn project_font_family(id: &str) -> String {
+    format!("project-font-{id}")
 }
 
 /// Where a page number sits on the page.
@@ -611,6 +683,7 @@ pub fn validate_content(document: &Document, assets: &[AssetInfo]) -> AppResult<
         return Err(AppError::invalid_project("document has no pages"));
     }
     validate_margins(&document.margins)?;
+    validate_fonts(&document.fonts)?;
     let swatches = validate_swatches(&document.swatches)?;
     validate_page_number_rules(&document.page_number_rules, &swatches)?;
     let refs = Refs { styles: validate_text_styles(&document.text_styles, &swatches)?, swatches };
@@ -678,6 +751,55 @@ fn validate_swatches(swatches: &[Swatch]) -> AppResult<SwatchIds<'_>> {
         }
     }
     Ok(ids)
+}
+
+/// Same rules as TS `isProjectFontList`: ids 1–64 of `[A-Za-z0-9_-]`, names trimmed, non-empty, at
+/// most FONT_NAME_MAX_LENGTH characters, ids and names unique; every file valid (`validate_font_file`).
+fn validate_fonts(fonts: &[ProjectFont]) -> AppResult<()> {
+    let mut names = std::collections::HashSet::new();
+    let mut ids = std::collections::HashSet::new();
+    for font in fonts {
+        let invalid = |what: &str| AppError::invalid_project(format!("font {}: {what}", font.id));
+        require_id(&font.id)?;
+        if !font.id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') {
+            return Err(invalid("id has characters other than letters, digits, - and _"));
+        }
+        let name = font.name.as_str();
+        if name.is_empty() || name.trim() != name || name.chars().count() > FONT_NAME_MAX_LENGTH {
+            return Err(invalid("name is empty, untrimmed or too long"));
+        }
+        if !ids.insert(font.id.as_str()) || !names.insert(name) {
+            return Err(invalid("duplicate id or name"));
+        }
+        validate_font_file(&font.regular).map_err(|what| invalid(what))?;
+        if let Some(bold) = &font.bold {
+            validate_font_file(bold).map_err(|what| invalid(what))?;
+        }
+    }
+    Ok(())
+}
+
+/// Same rules as TS `isFontFile`.
+fn validate_font_file(file: &FontFile) -> Result<(), &'static str> {
+    if validate_asset_path_in(&file.src, FONT_ASSET_DIR).is_err() || !has_font_extension(&file.src) {
+        return Err("file is not a .ttf / .otf in assets/fonts");
+    }
+    if file.file_family.chars().count() > FONT_FILE_NAME_MAX_LENGTH || file.file_style.chars().count() > FONT_FILE_NAME_MAX_LENGTH {
+        return Err("name read from the file is too long");
+    }
+    if !(1..=1000).contains(&file.weight) {
+        return Err("weight out of range");
+    }
+    let in_range = |value: f64, min: f64| value.is_finite() && value >= min && value <= FONT_METRIC_MAX;
+    if !in_range(file.ascent, 0.0) || !in_range(file.descent, 0.0) || !in_range(file.apple_baseline_shift.abs(), 0.0) {
+        return Err("metrics out of range");
+    }
+    Ok(())
+}
+
+/// Font files keep the extension they were imported with: `.ttf` or `.otf`, lowercase.
+fn has_font_extension(src: &str) -> bool {
+    src.ends_with(".ttf") || src.ends_with(".otf")
 }
 
 /// Same rule as TS `isSwatchColor`: `#rrggbb` in lowercase.
@@ -939,8 +1061,8 @@ pub fn validate_asset_path(src: &str) -> AppResult<()> {
     validate_asset_path_in(src, ASSET_DIR)
 }
 
-/// Every asset directory: page images and the asset library's text and audio files.
-pub const ASSET_DIRS: [&str; 3] = [ASSET_DIR, TEXT_ASSET_DIR, AUDIO_ASSET_DIR];
+/// Every asset directory: page images, the asset library's text and audio files, project fonts.
+pub const ASSET_DIRS: [&str; 4] = [ASSET_DIR, TEXT_ASSET_DIR, AUDIO_ASSET_DIR, FONT_ASSET_DIR];
 
 /// Accepts a plain file in any of `ASSET_DIRS`.
 ///
@@ -974,7 +1096,8 @@ pub fn validate_asset_path_in(src: &str, dir: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// Returns every asset path referenced by the document or listed in the asset panel.
+/// Returns every asset path referenced by the document (images on pages and master pages, project
+/// font files) or listed in the asset panel.
 pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) -> impl Iterator<Item = &'a str> {
     // 主頁上的圖片也算：否則開檔清理會刪掉只用在主頁上的圖片
     let sheets = document.pages.iter().map(|page| &page.elements).chain(document.masters.iter().map(|master| &master.elements));
@@ -984,7 +1107,8 @@ pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) ->
             _ => None,
         })
     });
-    from_elements.chain(assets.iter().map(|asset| asset.src.as_str()))
+    let fonts = document.fonts.iter().flat_map(|font| std::iter::once(&font.regular).chain(&font.bold)).map(|file| file.src.as_str());
+    from_elements.chain(fonts).chain(assets.iter().map(|asset| asset.src.as_str()))
 }
 
 #[cfg(test)]
@@ -1447,10 +1571,64 @@ mod tests {
     fn referenced_assets_includes_elements_and_asset_list() {
         let project = parse_project(FIXTURE).unwrap();
         let refs: Vec<_> = referenced_assets(&project.document, &project.assets).collect();
-        assert!(refs.iter().all(|src| src.starts_with("assets/images/")));
+        assert!(refs.iter().all(|src| src.starts_with("assets/images/") || src.starts_with("assets/fonts/")));
         assert!(refs.len() >= 2);
         // 只用在主頁上的圖片也要算進去，開檔清理才不會刪掉它
         assert!(refs.contains(&"assets/images/fedcba9876543210fedcba9876543210.png"));
+        // 專案字型的一般與粗體檔（沒有粗體的那套只有一個檔）
+        let fonts: Vec<_> = refs.iter().filter(|src| src.starts_with("assets/fonts/")).collect();
+        assert_eq!(fonts.len(), 3);
+    }
+
+    #[test]
+    fn reads_project_fonts_and_defaults_them_in_older_files() {
+        let document = parse_project(FIXTURE).unwrap().document;
+        assert_eq!(document.fonts.len(), 2);
+        let [display, book] = &document.fonts[..] else { panic!("two fonts") };
+        assert_eq!((display.generic, display.bold.as_ref().map(|bold| bold.weight)), (GenericFamily::SansSerif, Some(500)));
+        assert_eq!((book.generic, book.bold.is_none(), book.regular.embedding), (GenericFamily::Serif, true, FontEmbedding::PreviewAndPrint));
+        assert_eq!(project_font_family(&book.id), "project-font-font-book");
+
+        // v12 檔案沒有字型清單
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(12);
+        value["document"].as_object_mut().unwrap().remove("fonts");
+        assert!(parse_project(&value.to_string()).unwrap().document.fonts.is_empty());
+        assert!(parse_project(FIXTURE_V2).unwrap().document.fonts.is_empty());
+    }
+
+    #[test]
+    fn rejects_invalid_project_fonts() {
+        use serde_json::json;
+        let with = |edit: &dyn Fn(&mut Value)| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            edit(&mut value["document"]["fonts"]);
+            parse_project(&value.to_string())
+        };
+        assert!(with(&|f| f[0]["name"] = json!("字".repeat(FONT_NAME_MAX_LENGTH))).is_ok());
+        assert!(with(&|f| f[1]["regular"]["appleBaselineShift"] = json!(-0.2)).is_ok());
+        let cases: [(&str, &dyn Fn(&mut Value)); 17] = [
+            ("duplicate id", &|f| f[1]["id"] = f[0]["id"].clone()),
+            ("duplicate name", &|f| f[1]["name"] = f[0]["name"].clone()),
+            ("empty id", &|f| f[0]["id"] = json!("")),
+            ("id with a quote", &|f| f[0]["id"] = json!("a\"b")),
+            ("id with a space", &|f| f[0]["id"] = json!("a b")),
+            ("untrimmed name", &|f| f[0]["name"] = json!(" 標題")),
+            ("empty name", &|f| f[0]["name"] = json!("")),
+            ("long name", &|f| f[0]["name"] = json!("字".repeat(FONT_NAME_MAX_LENGTH + 1))),
+            ("unknown generic", &|f| f[0]["generic"] = json!("monospace")),
+            ("file outside assets/fonts", &|f| f[0]["regular"]["src"] = json!("assets/images/a.otf")),
+            ("path traversal", &|f| f[0]["bold"]["src"] = json!("assets/fonts/../a.otf")),
+            ("woff file", &|f| f[0]["regular"]["src"] = json!("assets/fonts/a.woff2")),
+            ("restricted embedding", &|f| f[0]["regular"]["embedding"] = json!("restricted")),
+            ("weight 0", &|f| f[0]["regular"]["weight"] = json!(0)),
+            ("negative ascent", &|f| f[0]["regular"]["ascent"] = json!(-1)),
+            ("huge descent", &|f| f[0]["bold"]["descent"] = json!(FONT_METRIC_MAX + 1.0)),
+            ("long file family", &|f| f[0]["regular"]["fileFamily"] = json!("x".repeat(FONT_FILE_NAME_MAX_LENGTH + 1))),
+        ];
+        for (what, edit) in cases {
+            assert!(matches!(with(edit), Err(AppError::InvalidProject(_))), "{what}");
+        }
     }
 
     #[test]

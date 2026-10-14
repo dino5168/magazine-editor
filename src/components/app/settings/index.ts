@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { SettingsPageId } from "@/lib/preferences/settings-pages";
+import { FontsDialog } from "./fonts-dialog";
 import { GridDialog } from "./grid-dialog";
 import { McpDialog } from "./mcp-dialog";
 import { PageNumbersDialog } from "./page-numbers-dialog";
@@ -12,6 +13,7 @@ export const SETTINGS_DIALOGS = {
   pageSetup: PageSetupDialog,
   pageNumbers: PageNumbersDialog,
   swatches: SwatchesDialog,
+  fonts: FontsDialog,
   grid: GridDialog,
   mcp: McpDialog,
 } satisfies Record<SettingsPageId, ComponentType<SettingsDialogProps>>;

@@ -10,8 +10,17 @@ import { isMasterGraphValid, masterChain } from "@/lib/editor/master-pages";
 import { createPageNumberRule, isPageNumberRules } from "@/lib/editor/page-numbers";
 import { isTextStyleSheet, styleOverrides } from "@/lib/editor/style-sheet";
 import { DEFAULT_TEXT_SHADOW } from "@/lib/editor/text-style";
-import { isSwatchList, isTextShadow } from "@/lib/editor/validation";
-import type { CanvasElement, ElementType, GeometryKind, ShapeElement, ShapeLabel, Stroke } from "@/lib/editor/types";
+import { isProjectFontList, isSwatchList, isTextShadow } from "@/lib/editor/validation";
+import type {
+  CanvasElement,
+  ElementType,
+  FontFile,
+  GeometryKind,
+  ProjectFont,
+  ShapeElement,
+  ShapeLabel,
+  Stroke,
+} from "@/lib/editor/types";
 import type { ProjectContent } from "../project-types";
 // 與 src-tauri 的 cargo test 共用同一份 fixture；兩邊欄位名稱不一致時，其中一邊的測試會失敗
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
@@ -127,6 +136,26 @@ describe("project file fixture", () => {
     const label = shapes.find((shape) => shape.label !== null)!.label!;
     expect(styleOverrides(label, byId.get(label.styleId!)!)).toEqual(["fontSize"]);
     expect(elements.find((element) => element.type === "text")).toMatchObject({ styleId: null });
+  });
+
+  it("stores project fonts with the TypeScript field names and rules", () => {
+    const { fonts } = fixture.document;
+    expect(isProjectFontList(fonts)).toBe(true);
+    const file: { readonly [K in keyof FontFile]: true } = {
+      src: true,
+      fileFamily: true,
+      fileStyle: true,
+      weight: true,
+      embedding: true,
+      ascent: true,
+      descent: true,
+      appleBaselineShift: true,
+    };
+    const font: { readonly [K in keyof ProjectFont]: true } = { id: true, name: true, generic: true, regular: true, bold: true };
+    expect(fonts.map((f) => sortedKeys(f))).toEqual([sortedKeys(font), sortedKeys(font)]);
+    expect(sortedKeys(fonts[0].bold!)).toEqual(sortedKeys(file));
+    // 一套有粗體檔、一套沒有
+    expect(fonts.map((f) => f.bold === null)).toEqual([false, true]);
   });
 
   it("stores swatches and links every kind of color to them", () => {

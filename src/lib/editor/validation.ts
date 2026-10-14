@@ -1,4 +1,17 @@
-import type { CornerRadius, Margins, ShapeGeometry, ShapeLabel, Size, Stroke, Swatch, TextShadow, TextStyle } from "./types";
+import type {
+  CornerRadius,
+  FontEmbedding,
+  FontFile,
+  Margins,
+  ProjectFont,
+  ShapeGeometry,
+  ShapeLabel,
+  Size,
+  Stroke,
+  Swatch,
+  TextShadow,
+  TextStyle,
+} from "./types";
 import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
 
@@ -368,6 +381,87 @@ export function isSwatchList(value: unknown): value is readonly Swatch[] {
   if (!Array.isArray(value) || !value.every(isSwatch)) return false;
   const swatches = value as readonly Swatch[];
   return new Set(swatches.map((s) => s.id)).size === swatches.length && new Set(swatches.map((s) => s.name)).size === swatches.length;
+}
+
+/** Longest project font name (code points, after trimming); same as `FONT_NAME_MAX_LENGTH` in Rust `format.rs`. */
+export const FONT_NAME_MAX_LENGTH = 50;
+/** Longest name read from a font file; same as `FONT_FILE_NAME_MAX_LENGTH` in Rust `format.rs`. */
+export const FONT_FILE_NAME_MAX_LENGTH = 200;
+/** Largest ascent / descent / Apple baseline shift (em); same as `FONT_METRIC_MAX` in Rust `format.rs`. */
+export const FONT_METRIC_MAX = 4;
+
+const FONT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const FONT_SRC_PATTERN = /^assets\/fonts\/[^/\\:\0.][^/\\:\0]*\.(ttf|otf)$/;
+const FONT_EMBEDDINGS: readonly FontEmbedding[] = ["installable", "editable", "previewAndPrint"];
+
+/**
+ * Checks one project font file (same rules as Rust `validate_font_file`).
+ *
+ * Args:
+ *   value: Candidate file.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isFontFile(value: unknown): value is FontFile {
+  if (typeof value !== "object" || value === null) return false;
+  const { src, fileFamily, fileStyle, weight, embedding, ascent, descent, appleBaselineShift } = value as Record<string, unknown>;
+  const fileName = (name: unknown) => typeof name === "string" && [...name].length <= FONT_FILE_NAME_MAX_LENGTH;
+  const metric = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= FONT_METRIC_MAX;
+  return (
+    typeof src === "string" &&
+    FONT_SRC_PATTERN.test(src) &&
+    fileName(fileFamily) &&
+    fileName(fileStyle) &&
+    Number.isInteger(weight) &&
+    (weight as number) >= 1 &&
+    (weight as number) <= 1000 &&
+    FONT_EMBEDDINGS.includes(embedding as FontEmbedding) &&
+    metric(ascent) &&
+    metric(descent) &&
+    typeof appleBaselineShift === "number" &&
+    metric(Math.abs(appleBaselineShift))
+  );
+}
+
+/**
+ * Checks one project font: id, trimmed non-empty name of at most FONT_NAME_MAX_LENGTH characters,
+ * generic family, regular file and optional bold file.
+ *
+ * Args:
+ *   value: Candidate font.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isProjectFont(value: unknown): value is ProjectFont {
+  if (typeof value !== "object" || value === null) return false;
+  const { id, name, generic, regular, bold } = value as Record<string, unknown>;
+  return (
+    typeof id === "string" &&
+    FONT_ID_PATTERN.test(id) &&
+    typeof name === "string" &&
+    validateName(name, FONT_NAME_MAX_LENGTH).data === name &&
+    (generic === "serif" || generic === "sans-serif") &&
+    isFontFile(regular) &&
+    (bold === null || isFontFile(bold))
+  );
+}
+
+/**
+ * Checks a whole project font list: every entry valid, ids and names unique (same rules as Rust
+ * `validate_fonts`).
+ *
+ * Args:
+ *   value: Candidate list.
+ *
+ * Returns:
+ *   True when it can be stored as `EditorDocument.fonts`.
+ */
+export function isProjectFontList(value: unknown): value is readonly ProjectFont[] {
+  if (!Array.isArray(value) || !value.every(isProjectFont)) return false;
+  const fonts = value as readonly ProjectFont[];
+  return new Set(fonts.map((f) => f.id)).size === fonts.length && new Set(fonts.map((f) => f.name)).size === fonts.length;
 }
 
 /**

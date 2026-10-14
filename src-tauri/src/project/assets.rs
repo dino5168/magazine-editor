@@ -111,7 +111,7 @@ fn text_content(bytes: &[u8]) -> AppResult<&str> {
 }
 
 /// Writes `bytes` to `<root>/<dir>/<hash>.<extension>` unless the file already exists.
-fn store(root: &Path, dir: &str, bytes: &[u8], extension: &str) -> AppResult<String> {
+pub(super) fn store(root: &Path, dir: &str, bytes: &[u8], extension: &str) -> AppResult<String> {
     // GenericArray 的 LowerHex 支援 precision：輸出摘要的前 HASH_HEX_LEN 個 hex 字元
     let file_name = format!("{:.*x}.{extension}", HASH_HEX_LEN, Sha256::digest(bytes));
     let folder = root.join(dir);

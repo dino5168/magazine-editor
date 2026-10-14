@@ -82,7 +82,7 @@ export function EditorCanvas() {
   // 畫布（和匯出 PDF 的量測）要等文件用到的字型都載入才畫，換行寬度才正確；
   // 開啟用到其他字型的專案時，載入期間畫布會短暫消失
   const usedFamilies = useMemo(() => usedFontFamilies(state.history.present), [state.history.present]);
-  const fontsReady = useFontsReady(usedFamilies);
+  const fontsReady = useFontsReady(usedFamilies, state.history.present.fonts);
   // 畫布上要畫的頁面：每頁放在 Layer 座標的 x 位移處（單頁模式只有目前頁，位移 0）。
   // Layer 座標＝「跨頁座標」；頁面自己的座標（物件、吸附）都在各頁的 Group 裡
   const document = state.history.present;

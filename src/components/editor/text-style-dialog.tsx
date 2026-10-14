@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SettingsDialog, SettingsDialogFooter } from "@/components/app/settings/settings-dialog";
 import { DocumentSwatchesProvider } from "./document-swatches";
+import { ManageFontsProvider } from "./manage-fonts";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { createId } from "@/lib/editor/element-factory";
 import { textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
@@ -54,10 +55,13 @@ function previewStyle(style: TextStyle): CSSProperties {
 export function TextStyleDialog({ target, onClose }: TextStyleDialogProps) {
   return (
     <SettingsDialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
+      {/* 有自己的草稿：不提供「管理色票...」「管理字型...」 */}
       {target && (
-        <DocumentSwatchesProvider manage={false}>
-          <TextStyleForm target={target} onDone={onClose} />
-        </DocumentSwatchesProvider>
+        <ManageFontsProvider>
+          <DocumentSwatchesProvider manage={false}>
+            <TextStyleForm target={target} onDone={onClose} />
+          </DocumentSwatchesProvider>
+        </ManageFontsProvider>
       )}
     </SettingsDialog>
   );

@@ -18,7 +18,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [],
       pages: [
@@ -48,7 +48,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [],
       pages: [{ ...page, elements: [shape, labelled, empty] }],
@@ -73,7 +73,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [{ ...rule, even: { ...rule.even, prefix: "第 ", suffix: " 頁" } }],
       masters: [],
       pages: [first, { ...second, elements: [createShapeElement("rect", { x: 50, y: 50 })] }],
@@ -103,7 +103,7 @@ describe("buildExportRequest", () => {
       name: "十月號",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [
         { id: "A", name: "Master A", ...size, background: "#ffffff", backgroundSwatchId: null, parentId: null, elements: [band] },
@@ -140,7 +140,7 @@ describe("buildExportRequest", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [{ id: "M", name: "Master A", ...size, background: "#ffffff", backgroundSwatchId: null, parentId: null, elements: [band] }],
       pages: [
@@ -170,7 +170,7 @@ describe("buildExportRequest", () => {
 
   it("returns the same document when there are no masters, variables or page numbers", () => {
     const page = { ...createPage("P", { width: 595, height: 842 }, "#ffffff"), elements: [createTextElement("body", { x: 0, y: 0 })] };
-    const source: EditorDocument = { name: "測試", margins: DEFAULT_MARGINS, textStyles: [], swatches: [], pageNumberRules: [], masters: [], pages: [page] };
+    const source: EditorDocument = { name: "測試", margins: DEFAULT_MARGINS, textStyles: [], swatches: [], fonts: [], pageNumberRules: [], masters: [], pages: [page] };
     const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
     expect(request.document).toBe(source);
   });

@@ -1,8 +1,10 @@
 //! Fixtures shared by the export tests (`render` and `pdf` both build from the same project).
 
+use super::fonts::BUNDLED_FONTS;
 use super::world;
 use super::ExportRequest;
-use crate::project::format::{parse_project, Document, ASSET_DIR};
+use crate::project::format::{parse_project, Document, Element, ASSET_DIR};
+use std::path::Path;
 use std::collections::HashMap;
 use typst::text::Font;
 
@@ -36,4 +38,49 @@ pub fn project_with_image() -> tempfile::TempDir {
 
 pub fn fonts() -> Vec<Font> {
     world::load_fonts()
+}
+
+fn bundled(file: &str) -> &'static [u8] {
+    BUNDLED_FONTS.iter().find(|font| font.file == file).unwrap().data
+}
+
+/// Writes real files for the fixture's two project fonts:「標題黑體」(`font-display`) = Noto Serif TC
+/// Regular with Bold as its bold file,「書名明體」(`font-book`, no bold file) = Geist Regular. The files
+/// differ from what the names suggest on purpose: the output must use exactly these files.
+pub fn write_project_fonts(root: &Path, document: &Document) {
+    let data = |id: &str, bold: bool| match (id, bold) {
+        ("font-display", false) => bundled("NotoSerifTC-Regular.otf"),
+        ("font-display", true) => bundled("NotoSerifTC-Bold.otf"),
+        _ => bundled("Geist-Regular.ttf"),
+    };
+    for font in &document.fonts {
+        for (file, bold) in std::iter::once((&font.regular, false)).chain(font.bold.as_ref().map(|bold| (bold, true))) {
+            let path = root.join(&file.src);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, data(&font.id, bold)).unwrap();
+        }
+    }
+}
+
+/// The fixture with its first text element in a project font (`"project-font-<id>", <fallback>`).
+pub fn document_with_project_font(id: &str, bold: bool) -> Document {
+    let mut document = fixture_document();
+    let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+    text.font_family = format!(r#""project-font-{id}", "Noto Sans TC", sans-serif"#);
+    // 英文用專案字型的檔案；中文看那個檔案有沒有，沒有就用後面的內建黑體
+    text.text = "Ab 中".to_owned();
+    text.font_style = if bold { crate::project::format::FontStyle::Bold } else { crate::project::format::FontStyle::Normal };
+    document
+}
+/// The project folder of the preview tests: `EXPORT_PROJECT_DIR` when set (a real project, so
+/// its images and project fonts are read), otherwise a temporary one holding the fixture's image.
+pub fn preview_root() -> (Option<tempfile::TempDir>, std::path::PathBuf) {
+    match std::env::var("EXPORT_PROJECT_DIR") {
+        Ok(dir) => (None, std::path::PathBuf::from(dir)),
+        Err(_) => {
+            let root = project_with_image();
+            let path = root.path().to_path_buf();
+            (Some(root), path)
+        }
+    }
 }

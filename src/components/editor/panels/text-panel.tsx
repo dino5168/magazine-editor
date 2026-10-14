@@ -23,11 +23,11 @@ function buttonFontSize(style: TextStyleDef): number {
 export function TextPanel() {
   const page = useActivePage();
   const dispatch = useEditorDispatch();
-  const { textStyles } = useEditorState().history.present;
+  const { textStyles, fonts } = useEditorState().history.present;
 
   const add = (style: TextStyleDef): void => {
     // 先載入樣式的字型，畫布才不會用替代字型量換行
-    void loadFontFamily(style.fontFamily).then(() =>
+    void loadFontFamily(style.fontFamily, fonts).then(() =>
       dispatch({ type: "element/add", element: createStyledText(style, pageCenter(page)) }),
     );
   };

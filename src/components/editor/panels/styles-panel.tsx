@@ -29,14 +29,14 @@ import {
   textStyleNameError,
   textStyleUsage,
 } from "@/lib/editor/style-sheet";
-import type { TextStyleDef } from "@/lib/editor/types";
+import type { ProjectFont, TextStyleDef } from "@/lib/editor/types";
 import { loadFontFamily } from "@/lib/editor/use-fonts-ready";
 import { IconButton } from "../icon-button";
 import { InlineNameInput } from "../inline-name-input";
 import { TextStyleDialog, type TextStyleDialogTarget } from "../text-style-dialog";
 
-function summary(style: TextStyleDef, used: number): string {
-  const font = findFontOption(style.fontFamily)?.label ?? "其他字型";
+function summary(style: TextStyleDef, used: number, fonts: readonly ProjectFont[]): string {
+  const font = findFontOption(style.fontFamily, fonts)?.label ?? "其他字型";
   return `${style.fontSize} pt · ${font}${style.fontStyle === "bold" ? " 粗" : ""} · ${used > 0 ? `${used} 段文字` : "未使用"}`;
 }
 
@@ -67,7 +67,7 @@ export function StylesPanel() {
       return;
     }
     const ids = targets.map((element) => element.id);
-    void loadFontFamily(style.fontFamily).then(() =>
+    void loadFontFamily(style.fontFamily, state.history.present.fonts).then(() =>
       dispatch({ type: "element/applyTextStyle", ids, styleId: style.id }),
     );
   };
@@ -146,7 +146,7 @@ export function StylesPanel() {
                       >
                         {style.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">{summary(style, used)}</span>
+                      <span className="text-xs text-muted-foreground">{summary(style, used, state.history.present.fonts)}</span>
                     </button>
                   )}
                   <IconButton label="編輯" size="icon-xs" onClick={() => setDialog({ kind: "edit", style })}>

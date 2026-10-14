@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
@@ -13,10 +13,20 @@ import {
   Underline,
   type LucideIcon,
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { findFontOption, FONT_OPTIONS } from "@/lib/editor/fonts";
+import { useEditorState } from "@/lib/editor/editor-context";
+import { findFontOption, FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { loadFontOption } from "@/lib/editor/use-fonts-ready";
 import { DEFAULT_STROKE, dashPattern } from "@/lib/editor/stroke";
 import {
@@ -30,7 +40,7 @@ import {
   clampLineHeight,
   type TextSpacing,
 } from "@/lib/editor/text-style";
-import type { ShapeLabel, Stroke, TextAlign, TextShadow, TextStyle } from "@/lib/editor/types";
+import type { ProjectFont, ShapeLabel, Stroke, TextAlign, TextShadow, TextStyle } from "@/lib/editor/types";
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -42,6 +52,7 @@ import {
 } from "@/lib/editor/validation";
 import { ColorPicker } from "./color-picker";
 import { IconButton } from "./icon-button";
+import { useManageFonts } from "./manage-fonts";
 import { NumberField } from "./number-field";
 
 // 文字樣式與邊框的編輯控制項：屬性面板與「頁碼管理」對話框共用
@@ -91,24 +102,34 @@ const DECORATION_TOGGLES: readonly {
   { key: "strikethrough", label: "刪除線", icon: Strikethrough },
 ];
 
-/** 文件裡的字型不在 FONT_OPTIONS（舊專案、手改的檔案）時，下拉選單顯示的值 */
+/** 文件裡的字型不在選單裡（舊專案、手改的檔案、刪掉的專案字型）時，下拉選單顯示的值 */
 const OTHER_FONT = "other";
+/** 「管理字型...」項目的值：選了它只開對話框，不改字型 */
+const MANAGE_FONTS = "__manage__";
 
 /**
- * Font menu: the bundled fonts, each label drawn in its own font.
+ * Font menu: the bundled fonts, then the project fonts (each label drawn in its own font once it
+ * is loaded), then「管理字型...」where a handler is provided (`ManageFontsProvider`).
  *
  * The font is loaded before the change is written, so the canvas never measures the new text with
  * a fallback font (and does not blank out while it loads).
  */
 export function FontFamilySelect({ value, onChange }: { readonly value: string; readonly onChange: (family: string) => void }) {
-  const current = findFontOption(value);
+  const fonts = useEditorState().history.present.fonts;
+  const onManage = useManageFonts();
+  const projectOptions = useMemo(() => fonts.map(projectFontOption), [fonts]);
+  const current = findFontOption(value, fonts);
   return (
     <div className="flex items-center gap-1.5">
       <span className="w-8 shrink-0 text-xs text-muted-foreground">字體</span>
       <Select
         value={current?.id ?? OTHER_FONT}
         onValueChange={(id) => {
-          const option = FONT_OPTIONS.find((candidate) => candidate.id === id);
+          if (id === MANAGE_FONTS) {
+            onManage?.();
+            return;
+          }
+          const option = [...FONT_OPTIONS, ...projectOptions].find((candidate) => candidate.id === id);
           if (option) void loadFontOption(option).then(() => onChange(option.family));
         }}
       >
@@ -116,20 +137,54 @@ export function FontFamilySelect({ value, onChange }: { readonly value: string; 
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {FONT_OPTIONS.map((option) => (
-            <SelectItem key={option.id} value={option.id} style={{ fontFamily: option.family }}>
-              {option.label}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            {projectOptions.length > 0 && <SelectLabel>內建</SelectLabel>}
+            {FONT_OPTIONS.map((option) => (
+              <SelectItem key={option.id} value={option.id} style={{ fontFamily: option.family }}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+          {projectOptions.length > 0 && (
+            <SelectGroup>
+              <SelectLabel>專案字型</SelectLabel>
+              {projectOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id} style={{ fontFamily: option.family }}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          )}
           {!current && (
             <SelectItem value={OTHER_FONT} disabled>
               其他字型
             </SelectItem>
           )}
+          {onManage && (
+            <>
+              <SelectSeparator />
+              <SelectItem value={MANAGE_FONTS}>管理字型...</SelectItem>
+            </>
+          )}
         </SelectContent>
       </Select>
     </div>
   );
+}
+
+/**
+ * Whether bold draws the same file as regular: a project font without a bold file.
+ *
+ * Args:
+ *   family: CSS font-family of the text.
+ *   fonts: The document's project fonts.
+ *
+ * Returns:
+ *   True when the bold button would change nothing visible.
+ */
+function boldLooksRegular(family: string, fonts: readonly ProjectFont[]): boolean {
+  const project = findFontOption(family, fonts)?.project;
+  return project !== undefined && project.bold === null;
 }
 
 /** 字級的 − / ＋：每按一下 1 pt */
@@ -165,6 +220,8 @@ const LETTER_SPACING_STEP = { size: 10, min: LETTER_SPACING_MIN, max: LETTER_SPA
  *   The controls, without a surrounding section.
  */
 export function TextStyleFields({ id, style, onChange, align, verticalAlign, spacing }: TextStyleFieldsProps) {
+  const fonts = useEditorState().history.present.fonts;
+  const noBoldFace = boldLooksRegular(style.fontFamily, fonts);
   return (
     <>
       <FontFamilySelect value={style.fontFamily} onChange={(fontFamily) => onChange({ fontFamily })} />
@@ -200,7 +257,7 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign, spa
       <div className="flex flex-wrap items-center gap-1">
         <ButtonGroup>
           <IconButton
-            label="粗體"
+            label={noBoldFace ? "粗體（這套字型沒有粗體，看起來和一般相同）" : "粗體"}
             aria-pressed={style.fontStyle === "bold"}
             className={cn(style.fontStyle === "bold" && "bg-muted")}
             onClick={() => onChange({ fontStyle: style.fontStyle === "bold" ? "normal" : "bold" })}

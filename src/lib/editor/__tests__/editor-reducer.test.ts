@@ -30,7 +30,7 @@ function blankState(): EditorState {
     name: "測試文件",
     margins: DEFAULT_MARGINS,
     textStyles: [],
-    swatches: [],
+    swatches: [], fonts: [],
     pageNumberRules: [],
     masters: [],
     pages: [createPage("Page-1", { width: 595, height: 842 }, "#ffffff")],
@@ -746,7 +746,7 @@ describe("editorReducer / moving across the spine", () => {
       name: "測試",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [],
       pages: [page("p1"), { ...page("p2"), elements: [a, b, c] }, { ...page("p3"), elements: [target] }],
@@ -944,7 +944,7 @@ describe("editorReducer / project", () => {
       name: "另一個專案",
       margins: DEFAULT_MARGINS,
       textStyles: [],
-      swatches: [],
+      swatches: [], fonts: [],
       pageNumberRules: [],
       masters: [],
       pages: [createPage("封面", { width: 400, height: 600 }, "#000000")],
@@ -999,7 +999,7 @@ describe("editorReducer / text styles", () => {
     const document = {
       ...initial.history.present,
       textStyles: defaultTextStyles(),
-      swatches: [],
+      swatches: [], fonts: [],
       pages: [{ ...initial.history.present.pages[0], elements: [text, shape] }],
     };
     return { state: createInitialState(document), text, shape };

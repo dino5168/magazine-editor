@@ -20,6 +20,7 @@ import type { EditorDocument } from "@/lib/editor/types";
 import { useLibrary, useLibraryControl } from "@/lib/library/library-context";
 import { projectAssets } from "@/lib/library/library-selectors";
 import { EMPTY_LIBRARY, type Library } from "@/lib/library/types";
+import { setFontUrlResolver } from "@/lib/editor/use-fonts-ready";
 import { resolveAssetUrl } from "./asset-url";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
 import type { OpenedProject, ProjectContent, ProjectInfo, RecoveryEntry } from "./project-types";
@@ -204,7 +205,12 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
   }, [present.name, dirty]);
 
   const root = info?.root ?? null;
-  const resolveSrc = useCallback((src: string) => resolveAssetUrl(src, root, convertFileSrc), [root]);
+  const resolveSrc = useMemo(() => {
+    const resolve = (src: string) => resolveAssetUrl(src, root, convertFileSrc);
+    // 在 render 裡設定而不是 effect：子元件（畫布）的 effect 比這裡先跑，會用舊的路徑載入專案字型
+    setFontUrlResolver(resolve);
+    return resolve;
+  }, [root]);
 
   const value = useMemo<ProjectContextValue>(
     () => ({ ready, dirty, resolveSrc, getSnapshot, createNew, loadOpened, markSaved }),

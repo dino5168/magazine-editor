@@ -27,7 +27,7 @@ const doc = (masters: MasterPage[], pages: Page[] = [page("p1")]): EditorDocumen
   name: "測試",
   margins: DEFAULT_MARGINS,
   textStyles: [],
-  swatches: [],
+  swatches: [], fonts: [],
   pageNumberRules: [],
   masters,
   pages,

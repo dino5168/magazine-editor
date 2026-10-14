@@ -4,6 +4,14 @@ import { canSetParent, copyElements, deleteMaster, findSheet, isMasterId } from 
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
 import { isPageOrder } from "./page-order";
 import {
+  addProjectFont,
+  applyFontEdits,
+  deleteProjectFont,
+  updateProjectFont,
+  type FontDeletion,
+  type ProjectFontChange,
+} from "./project-fonts";
+import {
   TEXT_STYLE_NAME_MAX_LENGTH,
   deleteTextStyle,
   isTextStyleSheet,
@@ -50,6 +58,7 @@ import type {
   PageNumberRule,
   Sheet,
   Size,
+  ProjectFont,
   Swatch,
   TextStyle,
   TextStyleDef,
@@ -200,6 +209,16 @@ export type EditorAction =
   | { readonly type: "swatch/delete"; readonly id: string; readonly replaceWith: string | null }
   /** Swatch dialog: the whole new list plus the deleted swatches, in one undo step. */
   | { readonly type: "swatch/applyEdits"; readonly swatches: readonly Swatch[]; readonly deletions: readonly SwatchDeletion[] }
+  /**
+   * Project fonts (`project-fonts.ts`), each one undo step; invalid input is a no-op. The files are
+   * already in `assets/fonts/` (`font_import`). A new fallback kind rewrites every use; deleting a
+   * font switches its uses to `replaceWith` (the CSS family of a menu font).
+   */
+  | { readonly type: "font/add"; readonly font: ProjectFont }
+  | { readonly type: "font/update"; readonly id: string; readonly change: ProjectFontChange }
+  | { readonly type: "font/delete"; readonly id: string; readonly replaceWith: string }
+  /** Font dialog: the whole new list plus the deleted fonts, in one undo step. */
+  | { readonly type: "font/applyEdits"; readonly fonts: readonly ProjectFont[]; readonly deletions: readonly FontDeletion[] }
   | { readonly type: "document/rename"; readonly name: string }
   /** Page setup dialog: resizes every page (elements stay where they are) and sets the margins, in one undo step. */
   | { readonly type: "document/setPageSetup"; readonly size: Size; readonly margins: Margins }
@@ -810,6 +829,26 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   "swatch/applyEdits": (state, action) => {
     const next = applySwatchEdits(state.history.present, action.swatches, action.deletions);
+    return next ? commit(state, next) : state;
+  },
+
+  "font/add": (state, action) => {
+    const next = addProjectFont(state.history.present, action.font);
+    return next ? commit(state, next) : state;
+  },
+
+  "font/update": (state, action) => {
+    const next = updateProjectFont(state.history.present, action.id, action.change);
+    return next ? commit(state, next) : state;
+  },
+
+  "font/delete": (state, action) => {
+    const next = deleteProjectFont(state.history.present, action.id, action.replaceWith);
+    return next ? commit(state, next) : state;
+  },
+
+  "font/applyEdits": (state, action) => {
+    const next = applyFontEdits(state.history.present, action.fonts, action.deletions);
     return next ? commit(state, next) : state;
   },
 

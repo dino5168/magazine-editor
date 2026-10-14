@@ -4,11 +4,12 @@
  * 只讀 `history.present` 與目前頁，不改任何東西。數字四捨五入到 0.01 pt（清單）或原樣（單一物件）。
  */
 import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/editor-reducer";
-import { findFontOption } from "@/lib/editor/fonts";
+import { FONT_OPTIONS, findFontOption, projectFontOption } from "@/lib/editor/fonts";
+import { mapFontFamilies } from "@/lib/editor/project-fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchUsage } from "@/lib/editor/swatches";
-import type { CanvasElement, PageId, Sheet, Swatch, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
+import type { CanvasElement, PageId, ProjectFont, Sheet, Swatch, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import { visibleItems } from "@/lib/library/library-selectors";
 import { folderPath } from "@/lib/library/library-tree";
@@ -313,11 +314,16 @@ function swatchNameOf(swatches: readonly Swatch[]) {
   };
 }
 
-function styleSummary(style: TextStyleDef, usedBy: number, swatch: ReturnType<typeof swatchNameOf>): TextStyleSummary {
+function styleSummary(
+  style: TextStyleDef,
+  usedBy: number,
+  swatch: ReturnType<typeof swatchNameOf>,
+  fonts: readonly ProjectFont[],
+): TextStyleSummary {
   return {
     id: style.id,
     name: style.name,
-    font: findFontOption(style.fontFamily)?.label ?? style.fontFamily,
+    font: findFontOption(style.fontFamily, fonts)?.label ?? style.fontFamily,
     fontSize: style.fontSize,
     bold: style.fontStyle === "bold",
     italic: style.italic,
@@ -346,7 +352,7 @@ export function listTextStyles(state: EditorState): TextStyleSummary[] {
   const document = state.history.present;
   const usage = textStyleUsage(document);
   const swatch = swatchNameOf(document.swatches);
-  return document.textStyles.map((style) => styleSummary(style, usage.get(style.id) ?? 0, swatch));
+  return document.textStyles.map((style) => styleSummary(style, usage.get(style.id) ?? 0, swatch, document.fonts));
 }
 
 export interface SwatchSummary {
@@ -371,6 +377,56 @@ export function listSwatches(state: EditorState): SwatchSummary[] {
   const document = state.history.present;
   const usage = swatchUsage(document);
   return document.swatches.map(({ id, name, color }) => ({ id, name, color, usedBy: usage.get(id) ?? 0 }));
+}
+
+/** A font the AI can pass as `font` (tool `list_fonts`). */
+export interface FontSummary {
+  /** Project fonts only; built-in fonts are named. */
+  readonly id?: string;
+  readonly name: string;
+  readonly kind: "builtIn" | "project";
+  /** Project fonts: the built-in font kind drawn for characters the font lacks. */
+  readonly fallback?: "黑體" | "明體";
+  /** Project fonts: false = bold looks the same as regular. */
+  readonly hasBold?: boolean;
+  /** Project fonts: embedding permission of the files (`installable` / `editable` / `previewAndPrint`). */
+  readonly embedding?: string;
+  readonly usedBy: number;
+}
+
+/**
+ * Built-in and project fonts (tool `list_fonts`).
+ *
+ * Args:
+ *   state: Editor state.
+ *
+ * Returns:
+ *   The built-in fonts, then the project fonts in menu order, each with how many places use it.
+ */
+export function listFonts(state: EditorState): FontSummary[] {
+  const document = state.history.present;
+  const families = new Map<string, number>();
+  mapFontFamilies(document, (family) => {
+    const option = findFontOption(family, document.fonts);
+    if (option) families.set(option.id, (families.get(option.id) ?? 0) + 1);
+    return family;
+  });
+  const builtIn = FONT_OPTIONS.map((option): FontSummary => ({ name: option.label, kind: "builtIn", usedBy: families.get(option.id) ?? 0 }));
+  const project = document.fonts.map((font): FontSummary => {
+    const files = [font.regular, ...(font.bold ? [font.bold] : [])];
+    // 授權取最嚴格的那個檔案
+    const embedding = files.find((f) => f.embedding === "previewAndPrint") ?? files.find((f) => f.embedding === "editable") ?? font.regular;
+    return {
+      id: font.id,
+      name: font.name,
+      kind: "project",
+      fallback: font.generic === "serif" ? "明體" : "黑體",
+      hasBold: font.bold !== null,
+      embedding: embedding.embedding,
+      usedBy: families.get(projectFontOption(font).id) ?? 0,
+    };
+  });
+  return [...builtIn, ...project];
 }
 
 /** Folder path joined the way the trash shows it (`封面 / 人物`). */

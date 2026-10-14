@@ -45,10 +45,11 @@ rmcp = { version = "=3.5.1", default-features = false, features = ["server", "tr
 roxmltree = "0.21"
 # 匯出前用 typst 自己的 SVG 解析檢查每張 SVG（typst 的 API 要求 comemo 的 Tracked world）；版本和 typst 0.15.1 用的相同
 comemo = "0.5.1"
+# 匯入專案字型時讀字型檔（授權、度量、名稱）；typst 已經依賴同一版（原本只在 dev-dependencies）
+ttf-parser = "0.25"
 
 [dev-dependencies]
 tempfile = "3"
-ttf-parser = "0.25"
 typst-render = "=0.15.1"
 
 

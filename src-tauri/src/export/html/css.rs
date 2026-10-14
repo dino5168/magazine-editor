@@ -1,7 +1,7 @@
 //! `styles/page.css` pieces every HTML-based format shares: `@font-face` rules for the embedded
 //! fonts and the rules inside a `.page` box.
 
-use crate::export::fonts::BundledFont;
+use super::EmbeddedFont;
 use std::fmt::Write;
 
 // .page 裁掉超出頁面的物件（和 PDF 被紙張邊界裁掉一致）。
@@ -20,17 +20,26 @@ svg.el { overflow: visible; }
 "#;
 
 /// `@font-face` rules for the embedded fonts, each stored at `fonts/<file>` and referenced from
-/// `styles/page.css`.
-pub fn font_faces(fonts: &[&BundledFont]) -> String {
+/// `styles/page.css`. Project fonts also carry the canvas metrics as overrides, so engines that
+/// support them (Chromium, Firefox) put the baseline where the canvas does; Apple engines ignore them.
+pub fn font_faces(fonts: &[EmbeddedFont]) -> String {
     let mut css = String::new();
     for font in fonts {
+        let overrides = font.overrides.map_or_else(String::new, |(ascent, descent)| {
+            format!(" ascent-override: {}%; descent-override: {}%; line-gap-override: 0%;", percent(ascent), percent(descent))
+        });
         let _ = writeln!(
             css,
-            r#"@font-face {{ font-family: "{family}"; font-weight: {weight}; font-style: normal; src: url("../fonts/{file}"); }}"#,
+            r#"@font-face {{ font-family: "{family}"; font-weight: {weight}; font-style: normal; src: url("../fonts/{file}");{overrides} }}"#,
             family = font.family,
             weight = if font.bold { 700 } else { 400 },
             file = font.file,
         );
     }
     css
+}
+
+/// An em value as a CSS percentage, same rounding as the canvas (`projectFontDescriptors`).
+fn percent(em: f64) -> f64 {
+    (em * 1_000_000.0).round() / 10_000.0
 }

@@ -46,7 +46,7 @@ export function TextStyleLink({ elementId, text }: TextStyleLinkProps) {
 
   const apply = (styleId: string | null): void => {
     const target = textStyles.find((candidate) => candidate.id === styleId);
-    void (target ? loadFontFamily(target.fontFamily) : Promise.resolve()).then(() =>
+    void (target ? loadFontFamily(target.fontFamily, state.history.present.fonts) : Promise.resolve()).then(() =>
       dispatch({ type: "element/applyTextStyle", ids: [elementId], styleId }),
     );
   };

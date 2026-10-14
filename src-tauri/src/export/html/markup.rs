@@ -5,6 +5,7 @@
 //! 1 CSS px), and the reading system or viewer scales the whole page to the screen.
 
 use super::PageImages;
+use crate::export::document_fonts::is_project_family;
 use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{
     rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderPage, RenderRect, RenderStroke,
@@ -112,16 +113,19 @@ fn svg_box(out: &mut String, element: &RenderElement, width: f64, height: f64, s
     );
 }
 
-/// CSS `font-family` value: only bundled families (their canonical names, never the user's
-/// string) followed by the first family's generic fallback (`serif` for 明體 / 楷體).
+/// CSS `font-family` value: only bundled families (their canonical names) and project families
+/// (`project-font-<id>`, letters, digits, `-`, `_` only), never any other user string, followed by
+/// the generic fallback of the first bundled family (`serif` for 明體 / 楷體; a project font's stack
+/// ends with the built-in Chinese font of its kind).
 fn font_family(fonts: &[String]) -> String {
     let mut families: Vec<&str> = Vec::new();
-    for family in fonts.iter().filter_map(|font| bundled_family(font)) {
+    let known = fonts.iter().filter_map(|font| bundled_family(font).or_else(|| is_project_family(font).then_some(font.as_str())));
+    for family in known {
         if !families.contains(&family) {
             families.push(family);
         }
     }
-    let generic = families.first().and_then(|family| bundled_generic(family)).unwrap_or("sans-serif");
+    let generic = families.iter().find_map(|family| bundled_generic(family)).unwrap_or("sans-serif");
     families.iter().map(|family| format!("'{family}',")).collect::<String>() + generic
 }
 
@@ -388,6 +392,10 @@ mod tests {
         assert_eq!(font_family(&["Noto Serif TC".to_owned()]), "'Noto Serif TC',serif");
         assert_eq!(font_family(&["LXGW WenKai TC".to_owned()]), "'LXGW WenKai TC',serif");
         assert_eq!(font_family(&["GenSenRounded2 TW".to_owned()]), "'GenSenRounded2 TW',sans-serif");
+        // 專案字型：名稱照原樣（只有英數 - _），泛用字族取後面的內建中文字型
+        let project = vec!["project-font-f1".to_owned(), "Noto Serif TC".to_owned()];
+        assert_eq!(font_family(&project), "'project-font-f1','Noto Serif TC',serif");
+        assert_eq!(font_family(&["project-font-x');}body{".to_owned()]), "sans-serif");
     }
 
     #[test]

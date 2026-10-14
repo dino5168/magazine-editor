@@ -3,12 +3,14 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置））+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
   - `docs/02-Plans-操作/`：操作類的任務檔與實作計畫（2026-10-14 起；`01-繪圖物件ContextMenu-實作.md`）。
   - `docs/03-Plans-匯出檔案/`：匯出格式的任務檔與實作計畫（2026-10-14 起；`01-匯出HTML5-翻頁電子書-實作.md`）。
+  - `docs/04-Plans-畫面顯示/`：畫面顯示（2026-10-14 起；`01-換程式的圖示-實作.md`，圖示候選在 `icons/`）。
+  - `docs/05-Plans-字型/`：字型（2026-10-14 起；`01-專案字型-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
@@ -67,6 +69,7 @@ cd tools; uv run pytest          # 開發用腳本（壓力測試、範本）的
 $env:EXPORT_PREVIEW_DIR = "<dir>"
 cargo test --manifest-path src-tauri/Cargo.toml export_preview -- --ignored
 # 翻頁電子書寫到 <dir>/flipbook/（可加 EXPORT_REQUEST_JSON；FLIPBOOK_PAGES 指定 fixture 複製幾頁）
+# 三個 preview（export_preview / epub_preview / flipbook_preview）都可以加 EXPORT_PROJECT_DIR=<專案資料夾>：讀那裡的圖片與專案字型，不用暫存資料夾
 cargo test --manifest-path src-tauri/Cargo.toml flipbook_preview -- --ignored
 ```
 
@@ -94,6 +97,7 @@ src/
       page-setup-fields.tsx       # PageSetupFields：直橫 / 寬高 / 邊界 / 錯誤訊息（受控），頁面設定與新增文件共用
       grid-dialog.tsx             # 「格線與參考線」：格線（間距、吸附）/ 內容區對齊線 / 邊界參考線三區，各自的顯示開關與顏色・粗細・線型；即時預覽；恢復預設 / 設為預設 / 原廠設定（App 偏好）
       page-numbers-dialog.tsx     # 「頁碼管理」：頁碼型態、套用頁面與起始值、奇偶頁位置與前後置文字、設定列表、「顯示頁碼」開關
+      fonts-dialog.tsx            # 「字型」：專案字型列表（預覽、一般 / 粗體、使用數、刪除）、匯入（`font_import`，一次一個檔）、名稱 / 缺字用的後備 / 粗體檔「選擇檔案...」、授權與 Apple 基線提醒；草稿在 font-draft.ts，「確定」一次 font/applyEdits，刪除使用中的字型先問換成哪一套
       swatches-dialog.tsx         # 「色票」：列表（把手排序、使用數、刪除）、新增、名稱 / hex / Tailwind 改色、刪除使用中的色票先問替換；草稿在 swatch-draft.ts，「確定」一次 swatch/applyEdits（見「文件色票」）
       mcp-dialog.tsx              # 「Claude Code 連線（MCP）」：允許連線開關（App 偏好，預設關）、目前狀態、Claude Code 端的設定說明
     app/app-sidebar.tsx           # 舊的導覽側邊欄，保留但不引用，不要修改或刪除
@@ -144,6 +148,7 @@ src/
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
       page-guides.tsx             # 畫布上的格線（PageGrid，一個 Konva Shape 畫完所有線）、內容區對齊線（ContentGuides）與邊界參考線（MarginGuide），樣式來自偏好（guideLineAttrs）
       color-picker.tsx            # 調色板：ColorPalette（文件色票區（在 DocumentSwatchesProvider 裡才有）+ Tailwind 色系 / 深淺 / 不透明度；onCommit(color, swatchId)）與 ColorPicker（按鈕 + 受控 Popover）
+      manage-fonts.tsx            # ManageFontsProvider（home-page 接到「字型...」對話框；頁碼管理、文字樣式對話框包一個沒有 handler 的，不顯示「管理字型...」）、useManageFonts
       document-swatches.tsx       # DocumentSwatchesProvider（調色板顯示文件色票；manage={false} 不顯示「管理色票...」）、ManageSwatchesProvider（home-page 接到「色票...」對話框）、useDocumentSwatches
       style-controls.tsx          # 文字樣式（TextStyleFields：字體 / 字級 / 粗體・斜體・底線・刪除線 / 可選的對齊（ALIGN_BUTTONS，依 TEXT_ALIGNS）/ 顏色 / 陰影；按鈕分組 ButtonGroup，放不下時整組換行）與邊框（StrokeFields）控制項，屬性面板與頁碼管理共用；線條的顏色 / 粗細 / 樣式是 LineStyleFields（粗細欄位由 LineWidthField 設定），格線與參考線對話框也用它
       icon-button.tsx · inline-name-input.tsx   # 共用小元件
@@ -216,6 +221,8 @@ src/
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       swatches.ts                 # 文件色票的純邏輯：內建色票（BUILT_IN_SWATCH_IDS / defaultSwatches）、名稱 / hex（swatchNameError、nextSwatchName、parseSwatchHex）、走過每個顏色欄位 mapColorSlots、swatchUsage、swatchColor（色票 RGB + 使用處透明度）、hasValidSwatchLinks、applySwatchEdits / updateSwatch / deleteSwatch
+      project-fonts.ts            # 專案字型的純邏輯：名稱（fontNameError：也不可和內建字型同名）、defaultFontName、mapFontFamilies（唯一走過所有字型欄位的地方）、fontUsage、add / update / delete / applyFontEdits
+      font-draft.ts               # 「字型」對話框的草稿（同 swatch-draft.ts：匯入、改名、後備、粗體、刪除含連鎖替換、草稿使用數、名稱錯誤）
       swatch-draft.ts             # 「色票」對話框的草稿（新增 / 改名改色 / 排序 / 刪除含連鎖替換、草稿使用數、名稱錯誤）
       image.ts                    # loadImageSize()
       ruler.ts                    # 尺規的純邏輯：rulerScale（依縮放選 1–2–5 主刻度與細分）、rulerTicks（可見刻度）、rulerOrigin（目前頁左上角的螢幕位置）、selectionSpans（選取範圍）
@@ -225,8 +232,8 @@ src/
       master-pages.ts             # 主頁：findSheet、masterChain / inheritedElements / masterContent（要畫哪些主頁內容）、canSetParent / isMasterGraphValid（循環與深度，和 Rust 同規則）、deleteMaster、pagesUsingMaster、nextMasterName
       variables.ts                # 動態變數：TEXT_VARIABLES（{頁碼} {總頁數} {文件名稱} {頁面名稱}）、variableValues（主頁回傳 null）、resolveElementsVariables
       add-pages.ts                # 新增頁面 / 主頁對話框的純邏輯：預設值、錯誤訊息、插入位置、建立新頁面
-      fonts.ts                    # FONT_OPTIONS（可選的字型）、文件用到的字型、載入參數
-      use-fonts-ready.ts          # 字型用到才載入：loadFontOption、useFontsReady（畫布等字型）
+      fonts.ts                    # FONT_OPTIONS（可選的字型）、專案字型的選項（projectFontOption：`"project-font-<id>", <同類內建中文字型>, <generic>`；findFontOption 只比第一個家族名稱）、文件用到的字型、載入參數、projectFontDescriptors（FontFace 的 weight 與 ascent / descent override）
+      use-fonts-ready.ts          # 字型用到才載入：loadFontOption（專案字型先用 FontFace API 登記：一般 = 400、粗體檔或一般檔 = 700）、useFontsReady（畫布等字型）、setFontUrlResolver（ProjectProvider 在 render 裡設定 asset URL）
       tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
@@ -236,7 +243,7 @@ src-tauri/
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）
-  src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
+  src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、document_fonts.rs（這次匯出要用的專案字型）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
     html/                         # HTML 系列格式共用（EPUB、翻頁書）：markup.rs（一頁的 .page 標記：真文字 + 絕對定位、inline SVG、escape）、css.rs（@font-face + .page 裡的規則）、mod.rs（PageImages 圖片改名、collect_images、used_fonts、LANGUAGE）
     epub/                         # EPUB 3 固定版面（還沒接 UI）：mod.rs（build_epub）、xhtml.rs（XHTML 外框）、css.rs、package.rs（OPF / nav）、zip.rs
     flipbook/                     # HTML5 翻頁電子書：mod.rs（build_flipbook、check_target、write_folder）、viewer/（viewer.js / viewer.css：工具列、縮圖、放大、目錄與搜尋）、vendor/（page-flip，見 README.md）、tests.rs
@@ -250,7 +257,7 @@ src-tauri/
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**
 .mcp.json                         # Claude Code 的專案 MCP 設定：server「magazine-editor」→ src-tauri/target/debug/magazine-mcp.exe
 tools/                            # 開發用腳本（uv 專案，見 tools/README.md）：mcp_client.py（MCP stdio 用戶端）、stress/（200 頁壓力測試）、profiling/（WebView CPU profile）、school_template/（用 MCP 建立範本）；不屬於 App、不打包
-tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v12：六個色票，九種顏色欄位都有連結（頁面 / 主頁背景、主頁文字、圖形填色、邊框、圖形內文字、文字樣式、頁碼的文字 / 陰影 / 框線；頁碼文字是靛藍 50%）；封面的圓角矩形四角不同 [12, 12, 0, 4]；「標題」樣式是首尾置中（沒有文字連到它）；封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
+tests/fixtures/sample.magproj     # Rust 與 vitest 共用的專案檔 fixture（v13：兩套專案字型（一套有粗體檔、一套沒有，檔案不存在）；六個色票，九種顏色欄位都有連結（頁面 / 主頁背景、主頁文字、圖形填色、邊框、圖形內文字、文字樣式、頁碼的文字 / 陰影 / 框線；頁碼文字是靛藍 50%）；封面的圓角矩形四角不同 [12, 12, 0, 4]；「標題」樣式是首尾置中（沒有文字連到它）；封面標題行距 1.4 / 字距 −20‰、頁尾 1.2 / 50‰；三個文字樣式（主頁頁尾連「頁尾」無覆寫、橢圓內文字連「內文」覆寫字級、封面標題不連結）；文字、四種 geometry 的圖形、圖片；有 / 沒有邊框與圖形內文字；兩層主頁，第 1 頁套用子主頁，主頁上有只在主頁用到的圖片）
 tests/fixtures/default-text-styles.json  # 內建三個文字樣式：TS defaultTextStyles 與 Rust default_text_styles（舊檔升級時加上）都和它比對；fillSwatchId 是 null（舊檔沒有色票，新文件的連結在 createBlankDocument 才加）
 tests/fixtures/sample-v2.magproj  # 同一份內容的 v2 格式，測試舊檔升級
 tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture（兩層資料夾、未分類、文字、音訊、來自已刪除資料夾的垃圾桶素材）
@@ -302,6 +309,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - `element/add` / `update` / `updateMany` / `delete` 可帶 `pageId`：改那一頁（或主頁）而不切換使用者正在看的頁面（MCP 用）；加到別頁時不改選取；未知的 `pageId` 是 no-op。不帶時照舊作用在目前頁。
 - 文字樣式：`textStyle/add { style, link? }`（`link` = 同一筆復原裡讓選取的文字連到新樣式）、`textStyle/update { id, style, name? }`（連到它的文字只改沒覆寫的欄位，頁面與主頁都走過）、`textStyle/rename`、`textStyle/delete`（文字外觀不變、取消連結）、`element/applyTextStyle { ids, styleId | null, pageId? }`（取樣式的值並清除覆寫；null = 只取消連結）。`element/add` / `update` 帶進來的 `styleId`（含 `label.styleId`）必須存在，否則 no-op（同 Rust `require_style`）。見「文字樣式」。
 - 文件色票：`swatch/add { swatch }`、`swatch/update { id, name?, color? }`（連到它的顏色換 RGB、保留透明度）、`swatch/delete { id, replaceWith }`（換成另一個色票或 `null` = 保留顏色、取消連結）、`swatch/applyEdits { swatches, deletions }`（「色票」對話框一次送出）。帶顏色進來的 action（`element/*`、`page/addMany`、`page/setBackground`（可選 `swatchId`）、`master/add`、`textStyle/*`、`document/setPageNumbering`）要過 `hasValidSwatchLinks`：連到的色票存在、**RGB 等於色票**，否則 no-op。`element/update` 只給 `fill` 沒給 `fillSwatchId` = 取消連結。見「文件色票」。
+- 專案字型（`lib/editor/project-fonts.ts`，計畫 `docs/05-Plans-字型/01-專案字型-實作.md`）：`font/add { font }`、`font/update { id, change: { name?, generic?, bold? } }`、`font/delete { id, replaceWith }`，各一筆復原。名稱不可和其他專案字型或**內建字型的名稱**重複（`fontNameError`）。所有字型欄位（文字、圖形內文字、文字樣式、頁碼）由 `mapFontFamilies` 走過：改後備種類（`generic`）時把用到它的字串都換成新的 `projectFontOption(...).family`；刪除時換成 `replaceWith`（選單裡的字型，不可是自己）。`fontUsage` 算使用數。
 - 頁面順序由 `page/reorder { order }` 一次改完（完整的新順序，必須剛好是現有頁面的排列，否則 no-op；順序沒變回傳同一個 state；目前頁與選取跟著頁面走，不調整）。見「頁面排序」。
 - 紙張尺寸與邊界由 `document/setPageSetup { size, margins }` 一次改完（所有頁面與主頁 + 邊界 = 一筆復原；物件位置不動；沒變的部分保留原參考）。
 - 頁碼規則由 `document/setPageNumbering { rules }` 整份取代（一筆復原；依 `from` 排序後存；內容相同時回傳同一個 state；重疊或不合法時 no-op）。
@@ -383,11 +391,25 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 「設定 → 文件 → 色票...」（`settings.swatches`）：所有修改都是草稿（`swatch-draft.ts`），「確定」一次 `swatch/applyEdits`、「取消」/ Esc 放棄。hex 輸入 Enter / 失焦才讀（`parseSwatchHex`：`#` 可省略、大小寫、3 位數展開，存小寫）；名稱重複或空白時停用「確定」；把手拖曳或 ↑ / ↓ 排序；刪除有人用的色票先問替換（草稿裡 A 換成 B、B 又被刪時 A 跟著改，草稿永遠能被 `applySwatchEdits` 接受）。使用數 = 文件裡的使用數 + 草稿換過來的。
 - **匯出、畫布、量測都不用改**：它們只讀實際的 hex。
 
+### 專案字型（`lib/editor/project-fonts.ts` / `font-draft.ts` / `fonts.ts` + `settings/fonts-dialog.tsx` + Rust `project/fonts.rs`、`export/document_fonts.rs`）
+
+計畫、實測與決定：`docs/05-Plans-字型/01-專案字型-實作.md`。內建四套字型（`fonts/`）不變；專案字型是使用者匯入**這個專案**的 TTF / OTF，存在 `assets/fonts/`，跟著專案資料夾走。
+
+- **範圍**（使用者決定）：一般檔必要、粗體檔可選（任何字重）；只收靜態的單一字型（可變字型、`.ttc`、`.woff(2)` 拒絕）；授權 `fsType` 禁止嵌入 / 只能嵌入點陣圖拒絕，「預覽與列印」「可編輯」可以匯入但提醒；「設定 → 文件 → 字型...」對話框；MCP 能查詢與選用，不能匯入。
+- **模型**：見「文件模型」的 v13 與 `docs-website/types.html`。**家族名稱由程式決定**：一律 `project-font-<id>`，不管檔案自己叫什麼（Typst 依檔案名稱分組造成的問題——找不到粗體、讀到中文名稱——都不會發生，也不用改字型檔）。文字照舊存 CSS 字串 `"project-font-<id>", "Noto Sans TC" / "Noto Serif TC", <generic>`（`projectFontOption`；後備是同類的內建中文字型），**只比第一個家族名稱**認字型（`usesProjectFont` / `findFontOption(family, fonts)`）。
+- **粗體**：沒有粗體檔時，一般檔也登記成 700（瀏覽器 `FontFace` 與 Typst 的 FontBook 都是）。**不能省**：只登記 400 時 Chromium 會模擬加粗（實測墨水多 41%），Typst 不會，畫面和 PDF 就不一樣。
+- **基線**：匯入時記下畫布（Windows 引擎）用的 ascent / descent（`USE_TYPO_METRICS` 時 typo，否則 win），`FontFace` 與 EPUB / 翻頁書的 `@font-face` 都寫成 `ascent-override` / `descent-override`（值 = 畫布的，所以畫布不變）。**Safari / Apple Books 不支援 override**：`hhea` 和 Windows 度量不同的字型在 Apple 裝置的 EPUB / 翻頁書基線會偏（`appleBaselineShift`，對話框提示；PDF 不受影響）。這是已知限制（使用者決定不改字型檔）。
+- **載入**（`use-fonts-ready.ts`）：專案字型是多一種 `FontOption`（`project` 欄位）；`loadFontOption` 先 `new FontFace(family, url(asset URL), projectFontDescriptors(...))` 加進 `document.fonts` 再 `load`。asset URL 由 `setFontUrlResolver`（`ProjectProvider` **在 render 裡**設定：子元件的 effect 先跑）。CSP `font-src` 有 asset protocol。呼叫 `useFontsReady` / `loadFontFamily` 時要傳 `document.fonts`。
+- **編輯**：`font/applyEdits`（對話框的草稿一次寫入）與 `font/add` / `update` / `delete`，各一筆復原。`mapFontFamilies` 是唯一走過所有字型欄位（文字、圖形內文字、文字樣式、頁碼）的地方，**新增帶字型的欄位時要在這裡補**。刪除使用中的字型要指定替代（內建或另一套）；改後備種類時所有使用處的字串一起換。名稱不可和內建字型（黑體…）相同。
+- **字型選單**（`FontFamilySelect`）：有專案字型時分「內建 / 專案字型」兩區，最下面「管理字型...」（`ManageFontsProvider`；頁碼管理、文字樣式對話框裡沒有：它們有自己的草稿）。粗體按鈕在沒有粗體檔時提示。
+- **匯入**（Rust `font_import`，raw body）：`project/fonts.rs` 的 `analyze` 檢查並讀出名稱、字重、授權、度量；**Typst 讀不了的字型也拒絕**（否則 PDF 整段沒字）。上限 64 MB。匯入時就寫進 `assets/fonts/`（同檔只存一份）；對話框取消時檔案留著，下次開檔清理。
+- **匯出**：見「匯出 PDF」的字型。只收錄文字用到的；字型檔不見時那套略過、文字用後備（不讓匯出失敗）。
+- 不做（之後另排）：字型子集化（和 EPUB 一起）、字型集合 / 網頁字型 / 可變字型、跨專案的字型庫、把專案字型存成內建字型、MCP 匯入字型。
 ### 設定對話框（`lib/preferences/settings-pages.ts` + `components/app/settings/`）
 
 計畫與決定：`docs/Plans/imp-偏好設定調整.html`。
 
-- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...、色票...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,；Claude Code 連線（MCP）...）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
+- **選單**：「設定 → 文件 ▸（頁面設定...、頁碼管理...、色票...、字型...）」放存進專案、可復原的文件設定；「設定 → 偏好設定 ▸（格線與參考線...，Ctrl+,；Claude Code 連線（MCP）...）」放存在這台電腦的 App 偏好。**一項一個對話框**，各自「取消 / 確定」，沒有分頁。
 - **單一資料來源**是 `SETTINGS_PAGES`（id / label / group / 可選的 shortcut）與 `SETTINGS_GROUPS`（子選單順序與名稱）：指令 `settings.<id>`（`settingsCommandId`，同 `panelCommandId` 的做法）、子選單、`home-page.tsx` 的 handler 與對話框都由它推導；`SETTINGS_DIALOGS`（`components/app/settings/index.ts`）以 `satisfies Record<SettingsPageId, …>` 檢查完整性。
 - 頁面設定的直橫 / 寬高 / 邊界欄位是 `page-setup-fields.tsx` 的 `PageSetupFields`（受控，紙張下拉與「尺寸不一致」提示由呼叫端以 `paperPicker` / `sizeNote` 傳入），「新增文件」對話框也用它。`SettingsDialogFooter` 的 `applyLabel` 可以把「確定」換成別的字（新增文件是「建立」）。
 - **新增設定頁**：在 `SETTINGS_PAGES` 加一筆 → 寫一個 `({ open, onOpenChange }: SettingsDialogProps)` 對話框（外框用 `SettingsDialog`、頁尾用 `SettingsDialogFooter`）→ 登記到 `SETTINGS_DIALOGS`（漏了會編譯失敗）。要放到新的子選單就加一個 group。
@@ -668,7 +690,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
-- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 12；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍；v10 的 `align` 可以是 `distributed`（首尾置中），沒有新欄位，提升版本是讓舊版 App 明確說「檔案比較新」而不是解析失敗；v11 的矩形 `cornerRadius` 可以是四個數字（Rust `CornerRadius` untagged enum），四角一樣仍存數字；v12 加 `document.swatches` 與各顏色的連結欄位 `fillSwatchId` / `swatchId` / `backgroundSwatchId`，缺少時沒有色票、都不連結（serde 預設，不需要升級步驟，備份檔也一樣），驗證色票格式與引用存在）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）。一個專案 = 一份多頁文件。
+- **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 13；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍；v10 的 `align` 可以是 `distributed`（首尾置中），沒有新欄位，提升版本是讓舊版 App 明確說「檔案比較新」而不是解析失敗；v11 的矩形 `cornerRadius` 可以是四個數字（Rust `CornerRadius` untagged enum），四角一樣仍存數字；v12 加 `document.swatches` 與各顏色的連結欄位 `fillSwatchId` / `swatchId` / `backgroundSwatchId`，缺少時沒有色票、都不連結（serde 預設，不需要升級步驟，備份檔也一樣），驗證色票格式與引用存在；v13 加 `document.fonts`（專案字型：`id` 只能英數 `-` `_`、`name`、`generic`、`regular` / `bold`（可為 null）的 `FontFile`：`src` 在 `assets/fonts/` 的 `.ttf` / `.otf`、檔內名稱、字重、`embedding`（`installable` / `editable` / `previewAndPrint`）、`ascent` / `descent` / `appleBaselineShift`（em）），CSS / Typst 家族名稱是 `project-font-<id>`（Rust `project_font_family`），缺少時沒有專案字型；計畫 `docs/05-Plans-字型/01-專案字型-實作.md`）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）、`assets/fonts/`（專案字型，`ASSET_DIRS` 之一：開檔清理與另存都包含）。一個專案 = 一份多頁文件。
 - **專案資料夾自給自足**：頁面上的每張圖片（上傳、內建相片）都先複製進 `assets/images/`。`ImageElement.src` / `AssetInfo.src` 存**專案相對路徑**，顯示時由 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）轉成 asset protocol URL。圖片檔寫入後不再修改，復原歷史可以放心引用。
 - **Rust 是檔案格式的權威定義**：`project/format.rs` 的 serde 型別對應 `types.ts`，讀取與存檔時都會驗證（顏色、頁面尺寸、`src` 只能是 `assets/images/<檔名>`）。**修改 `types.ts` 的文件模型時必須同步修改 `format.rs` 和 `tests/fixtures/sample.magproj`**；兩邊的測試都會讀這份 fixture，欄位不一致時會失敗。格式變更要提升 `SCHEMA_VERSION`；需要改寫舊版內容時，在 `parse_project` 的版本判斷處把舊版 JSON（`serde_json::Value`）升級後再轉換（v1 → v2 只放寬顏色格式，沒有升級步驟；v1 / v2 → v3 由 `upgrade_shapes_to_v3` 改寫圖形，備份檔也要套用）；比 App 新的版本拒絕開啟。只有最上層的未知欄位會在存檔時保留。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 中目前開啟的專案。前端不需要 dialog 的 JS 套件或 capability。
@@ -715,7 +737,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - Rust 端缺 layout 時會退回「以 `\n` 分行 + 估算基線」，只是保險，正常路徑不該走到。
 - **使用者文字絕不進入 Typst 程式碼**：模板 `template.typ` 是固定的，資料以 `data.json`（`export/pdf.rs` 的 `to_data()` 產生）傳入，用 `json()` 讀取。`#`、`$`、`[`、`\` 這些字元會原樣輸出（有測試 `user_text_is_data_not_typst_code` 守著）。**不要改成用字串拼接組出 .typ**。
 - **`ExportWorld` 是沙箱**：只有 `main.typ`（內嵌模板）、`data.json` 與 `assets/images/*` 可讀，其他路徑一律 `AccessDenied`，圖片路徑還要過 `validate_asset_path`（和專案檔同一個檢查，擋 `../` 與絕對路徑）。
-- **字型**：畫面、PDF、EPUB **共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。前端用 `src/index.css` 的 `@font-face` 與 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（字體選單），Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一處就要改其他處**。新增字型的步驟、修改過的字型檔與 `patch_font.py` 見 `fonts/README.md`。
+- **字型**：畫面、PDF、EPUB **共用 `fonts/` 底下的同一批檔案**，換行位置才會一致。**專案字型**（使用者匯入，`assets/fonts/`）由 `export/document_fonts.rs` 的 `load` 每次匯出讀進來（只讀文字用到的；檔案不見就略過，文字用後面的內建後備字型）：PDF 的 `world.rs` `font_book` 把每個檔案以 `project-font-<id>` 與 400 / 700 登記（不管檔案自己的名稱，沒有粗體檔時一般檔也登記成 700）；EPUB / 翻頁書收錄成 `fonts/project-font-<n>.<ext>`（產生的檔名，同一個檔只放一份），`@font-face` 帶 `ascent-override` / `descent-override`（畫布的度量），`markup.rs` 的 `font-family` 只放內建與符合 `project-font-[A-Za-z0-9_-]+` 的名稱（`is_project_family`）。疊圖比對（Calibri：hhea 與 Windows 度量差很多）：PDF、翻頁書和畫布每行墨水的上下緣與左緣 ≤ 0.5 pt。前端用 `src/index.css` 的 `@font-face` 與 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（字體選單），Rust 用 `export/fonts.rs` 的 `BUNDLED_FONTS`（`include_bytes!`），**改一處就要改其他處**。新增字型的步驟、修改過的字型檔與 `patch_font.py` 見 `fonts/README.md`。
   - Typst 讀到的家族名稱不一定等於 CSS 名稱（霞鶩文楷是「霞鶩文楷 TC」）：`BUNDLED_FONTS.typst_family` 記錄它，`pdf.rs` 用 `typst_family()` 轉換。測試 `typst_sees_the_declared_family_and_weight` 守著。
   - 霞鶩文楷沒有 Bold，粗體用 Medium（CSS 宣告為 700、`bold: true`）。
   - 只放**靜態**字重（Geist / Noto Sans TC 各 Regular + Bold），不要換成可變字型：模型的 `fontStyle` 只有 `normal` / `bold`，而可變字型與靜態實例的度量可能不同，混用會讓畫面與輸出對不上。沒有斜體字型檔：`italic` 是模擬斜切（見「文字裝飾」），加入真的斜體字型會讓畫面與輸出的斜體不一致。
@@ -773,7 +795,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **工具是單一資料來源**：`lib/automation/tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、寫給 AI 看的中文說明、zod strict schema、`readOnly`）。`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作會編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 的 `toMatchFileSnapshot` 產生並比對，橋接程式 `include_str!` 內嵌（App 沒開時 Claude Code 仍看得到工具）。
   - **新增工具**：在 `TOOL_DEFINITIONS` 加一筆 → 在 `HANDLERS` 實作（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，寫測試，用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp`。
   - 參數驗證失敗回中文訊息（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex（和 `isElementColor` / `isHexColor` 同規則）才會出現在 JSON Schema；不用 ajv（`new Function` 會被 CSP 擋）。
-- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）；文件色票 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`（色票以名稱或 id 指定（`findSwatch`）；`delete_swatch` 的 `replaceWith` 省略 = 保留顏色、取消連結）。
+- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）；文件色票 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`（色票以名稱或 id 指定（`findSwatch`）；`delete_swatch` 的 `replaceWith` 省略 = 保留顏色、取消連結）。專案字型 `list_fonts`（內建四套 + 專案字型：id、名稱、缺字用的內建種類、有沒有粗體檔、授權、使用數）；文字樣式參數 `font` 是字串：內建名稱，或專案字型的名稱 / id（`findFont`，找不到時回中文錯誤）。匯入、改名、刪除字型不給 MCP（要選檔案、要確認替換）。
   - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）是 `hex | { swatch, opacity? }`（`colorInput`，JSON Schema 是 `anyOf`），背景是 `hex | { swatch }`（`pageColorInput`）：給 hex = 不連色票；給 `{ swatch }` = 色票顏色（`opacity` 換成 `#rrggbbaa`）+ 連結。查詢回報連結的色票名稱（`list_pages` 的 `backgroundSwatch`、`list_text_styles` 的 `textColorSwatch`）。
   - `run_command` 和點選單呼叫**同一個 handler**（`home-page.tsx` 的 `menuHandlers` 傳給 `McpBridge`）；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」且不執行（不會跳 toast）。會開對話框的指令只觸發，不等結果。
   - 編輯：**一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外：和 UI 一樣切到新頁）。`update_element` 依物件類型檢查欄位（文字沒有 height、文字顏色是 `textColor`、圖片只能改位置尺寸）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。
@@ -790,7 +812,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`font_import`（raw body，專案字型：檢查並存到 `assets/fonts/`，回傳 `FontFile`，見 `project/fonts.rs`）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 
@@ -798,7 +820,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 `tauri.conf.json` 設定嚴格 CSP，並以 `dangerousDisableAssetCspModification: ["style-src"]` 允許 `'unsafe-inline'`：Radix 和 sonner 會在 runtime 注入 `<style>`，而 Tauri 預設加的 nonce 會讓 `'unsafe-inline'` 失效。**不可移除此設定**。
 
-圖片只允許 `'self'`、`data:`、`blob:`、`asset:`（專案圖片走 asset protocol，即 `http://asset.localhost`）。Vite 會把小於 4KB 的 SVG 內嵌成 `data:` URI。載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則會被靜默阻擋。
+圖片只允許 `'self'`、`data:`、`blob:`、`asset:`（專案圖片走 asset protocol，即 `http://asset.localhost`）。字型（`font-src`）是 `'self'`、`data:` 與 asset protocol（專案字型用 asset URL 建 `FontFace`，2026-10-14）。Vite 會把小於 4KB 的 SVG 內嵌成 `data:` URI。載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則會被靜默阻擋。
 
 ## 慣例
 
