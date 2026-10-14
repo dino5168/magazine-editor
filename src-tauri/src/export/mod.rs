@@ -6,7 +6,9 @@
 //! [`pdf`] hands it to the embedded Typst compiler, [`epub`] writes fixed-layout XHTML pages.
 
 pub mod epub;
+pub mod flipbook;
 pub mod fonts;
+pub mod html;
 pub mod pdf;
 pub mod render;
 #[cfg(test)]

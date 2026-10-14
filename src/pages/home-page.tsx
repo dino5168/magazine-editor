@@ -116,6 +116,7 @@ function EditorLayout() {
       "file.save": () => void project.save(),
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
+      "file.exportFlipbook": () => void project.exportFlipbook(),
       "file.importImage": importImage,
       "file.library": () => openLibrary(),
       ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),

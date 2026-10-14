@@ -11,122 +11,28 @@
 //! OEBPS/images/image-<n>.<ext>  project images, renamed
 //! OEBPS/pages/page-<n>.xhtml    one per page, in reading order
 //! ```
+//!
+//! The page markup, stylesheet rules, images and fonts come from [`crate::export::html`], shared
+//! with the flip book.
 
 mod css;
 mod package;
 mod xhtml;
 mod zip;
 
-use super::fonts::{bundled_family, BundledFont, BUNDLED_FONTS};
-use super::render::{build_render, RenderDocument, RenderKind};
+use super::html::markup::has_svg;
+use super::html::{collect_images, non_empty_or, used_fonts, UNTITLED_DOCUMENT};
+use super::render::build_render;
 use super::{ExportOutput, ExportRequest};
 use crate::error::AppResult;
-use crate::project::assets::detect_extension;
 use package::{ManifestItem, Metadata};
-use std::collections::HashMap;
 use std::path::Path;
-
-/// Language of the publication and of every page. The document model has no language yet; this is
-/// the single place to replace once it does (see `docs/01-Plans/Imp-Plan-ExportEpub.md` §8).
-pub const LANGUAGE: &str = "zh-TW";
-
-const UNTITLED_DOCUMENT: &str = "未命名文件";
-
-/// Project images copied into the EPUB, keyed by their project path (`assets/images/<file>`).
-///
-/// Images get generated names (`images/image-<n>.<ext>`) instead of the project's file names: a
-/// crafted project may use names that are valid on disk but not in a URL (`#`, `%`, spaces).
-pub struct EpubImages {
-    by_src: HashMap<String, EpubImage>,
-    /// In first-use order, so the output is deterministic.
-    order: Vec<String>,
-}
-
-struct EpubImage {
-    href: String,
-    media_type: &'static str,
-    data: Vec<u8>,
-}
-
-impl EpubImages {
-    /// Path of an image relative to `content.opf`, or `None` when it was not included.
-    pub fn href(&self, src: &str) -> Option<&str> {
-        self.by_src.get(src).map(|image| image.href.as_str())
-    }
-}
-
-/// Detects the image formats EPUB reading systems display (the same check as importing).
-///
-/// # Returns
-/// The media type and file extension, or `None` for other content.
-fn image_type(data: &[u8]) -> Option<(&'static str, &'static str)> {
-    let extension = detect_extension(data)?;
-    let media_type = match extension {
-        "png" => "image/png",
-        "jpg" => "image/jpeg",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        // EPUB 3 的核心媒體類型；頁面用 <img> 引用，和畫布一樣不執行 script、不載入外部資源
-        "svg" => "image/svg+xml",
-        _ => return None,
-    };
-    Some((media_type, extension))
-}
-
-/// Reads every image the document draws.
-///
-/// # Returns
-/// The images and how many were skipped (unreadable, or not a format EPUB can show). Like a missing
-/// file, a skipped image does not fail the export.
-fn collect_images(root: &Path, document: &RenderDocument) -> (EpubImages, usize) {
-    let mut images = EpubImages { by_src: HashMap::new(), order: Vec::new() };
-    let mut skipped = 0;
-    let sources = document.pages.iter().flat_map(|page| &page.elements).filter_map(|element| match &element.kind {
-        RenderKind::Image(image) => Some(&image.src),
-        _ => None,
-    });
-    for src in sources {
-        if images.by_src.contains_key(src) {
-            continue;
-        }
-        // src 已經過 validate_asset_path（只能是 assets/images/<檔名>），build_render 也確認過檔案存在
-        let detected = std::fs::read(root.join(src)).ok().and_then(|data| image_type(&data).map(|kind| (kind, data)));
-        let Some(((media_type, ext), data)) = detected else {
-            skipped += 1;
-            continue;
-        };
-        let href = format!("images/image-{}.{ext}", images.order.len() + 1);
-        images.by_src.insert(src.clone(), EpubImage { href, media_type, data });
-        images.order.push(src.clone());
-    }
-    (images, skipped)
-}
-
-/// Bundled font files for every family some text element uses (both weights, since any element
-/// may switch to bold), in `BUNDLED_FONTS` order.
-fn used_fonts(document: &RenderDocument) -> Vec<&'static BundledFont> {
-    let mut families: Vec<&str> = Vec::new();
-    for element in document.pages.iter().flat_map(|page| &page.elements) {
-        if let RenderKind::Text(text) = &element.kind {
-            families.extend(text.fonts.iter().filter_map(|font| bundled_family(font)));
-        }
-    }
-    BUNDLED_FONTS.iter().filter(|font| families.contains(&font.family)).collect()
-}
 
 fn font_media_type(file: &str) -> &'static str {
     if file.ends_with(".otf") {
         "font/otf"
     } else {
         "font/ttf"
-    }
-}
-
-fn non_empty_or(text: &str, fallback: impl FnOnce() -> String) -> String {
-    if text.trim().is_empty() {
-        fallback()
-    } else {
-        text.to_owned()
     }
 }
 
@@ -198,8 +104,7 @@ pub fn build_epub(root: &Path, request: &ExportRequest, meta: &EpubMeta) -> AppR
             font.data.to_vec(),
         );
     }
-    for (n, src) in images.order.iter().enumerate() {
-        let image = &images.by_src[src];
+    for (n, image) in images.iter().enumerate() {
         add(
             ManifestItem {
                 id: format!("img-{}", n + 1),
@@ -220,7 +125,7 @@ pub fn build_epub(root: &Path, request: &ExportRequest, meta: &EpubMeta) -> AppR
                 id: format!("page-{}", n + 1),
                 href: href.clone(),
                 media_type: "application/xhtml+xml",
-                properties: xhtml::has_svg(page).then_some("svg"),
+                properties: has_svg(page).then_some("svg"),
                 in_spine: true,
             },
             xhtml::page(page, &page_title, &images).into_bytes(),

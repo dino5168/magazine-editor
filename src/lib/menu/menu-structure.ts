@@ -50,6 +50,7 @@ export const MENUS = [
           { kind: "item", command: "file.exportJpeg" },
           separator,
           { kind: "item", command: "file.exportPdf" },
+          { kind: "item", command: "file.exportFlipbook" },
           { kind: "item", command: "file.exportEpub" },
         ],
       },

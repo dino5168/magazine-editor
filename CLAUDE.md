@@ -3,11 +3,12 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」））+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
   - `docs/02-Plans-操作/`：操作類的任務檔與實作計畫（2026-10-14 起；`01-繪圖物件ContextMenu-實作.md`）。
+  - `docs/03-Plans-匯出檔案/`：匯出格式的任務檔與實作計畫（2026-10-14 起；`01-匯出HTML5-翻頁電子書-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
@@ -32,6 +33,7 @@
 | 自動化 / MCP | `zod` 4（MCP 工具參數的 schema 與驗證，只用在 `src/lib/automation`）· Rust `rmcp` **`=3.5.1`**（官方 MCP SDK，只用在橋接程式 `magazine-mcp.exe`）· `tokio`（named pipe） |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版）· `roxmltree`（匯入時確認 SVG）· `comemo`（匯出前用 typst 的 SVG 解析檢查，版本跟 typst） |
+| 翻頁書 | StPageFlip（npm `page-flip` **2.0.7**，MIT，沒有相依套件）：**vendor** 在 `src-tauri/src/export/flipbook/vendor/`（`include_str!`，匯出時原樣複製進書裡，不從網路載入；版本、SHA-256 與升級方式見那裡的 `README.md`）。不在 `package.json` |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
 
@@ -58,6 +60,8 @@ cd tools; uv run pytest          # 開發用腳本（壓力測試、範本）的
 # 匯出 PDF 的疊圖比對：把每頁算成 PNG（2 px/pt）放到 <dir>，用來對照畫布
 $env:EXPORT_PREVIEW_DIR = "<dir>"
 cargo test --manifest-path src-tauri/Cargo.toml export_preview -- --ignored
+# 翻頁電子書寫到 <dir>/flipbook/（可加 EXPORT_REQUEST_JSON；FLIPBOOK_PAGES 指定 fixture 複製幾頁）
+cargo test --manifest-path src-tauri/Cargo.toml flipbook_preview -- --ignored
 ```
 
 目前沒有設定 ESLint / Prettier。
@@ -145,7 +149,7 @@ src/
       project-api.ts              # invoke 包裝（回傳 Result）、isDesktop、describeCommandError
       asset-url.ts                # resolveAssetUrl：專案相對路徑 → asset protocol URL
       project-context.tsx         # ProjectProvider：啟動載入、createNew / loadOpened / markSaved、視窗標題、resolveSrc
-      use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存 / 匯出 PDF（未存檔提示與新增文件對話框由 UI 注入）
+      use-project-commands.ts     # 新增 / 開啟 / 儲存 / 另存 / 匯出 PDF 與翻頁電子書（共用 runExport(format)；未存檔提示與新增文件對話框由 UI 注入）
       use-close-guard.ts          # 關閉視窗前提示未存檔
       use-autosave.ts             # 每 60 秒把未存檔內容寫入備份（decideAutosave 是純函式）
       __tests__/
@@ -177,7 +181,7 @@ src/
       dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
       __tests__/
     automation/                   # MCP 工具（見「MCP」）：tool-definitions.ts（工具名稱、說明、zod schema 的單一資料來源）、queries.ts（查詢）、commands.ts（選單指令）、edits.ts（編輯 → reducer action）、run-tool.ts（找工具 → 驗證 → 執行）、mcp-tools.ts（產生 MCP 工具清單）、mcp-status.ts（連線狀態 store）、use-mcp-bridge.ts（event ↔ runTool、開關 pipe）
-    export/                       # 匯出 PDF 的前端部分
+    export/                       # 匯出（PDF / 翻頁電子書 / EPUB 共用）的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
       text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行、基線與每行寬度；measureLineWidth：單行寬度（頁碼外框）
       __tests__/
@@ -226,7 +230,10 @@ src-tauri/
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）
-  src/export/                     # 匯出 PDF：mod.rs（文件 → data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）
+  src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
+    html/                         # HTML 系列格式共用（EPUB、翻頁書）：markup.rs（一頁的 .page 標記：真文字 + 絕對定位、inline SVG、escape）、css.rs（@font-face + .page 裡的規則）、mod.rs（PageImages 圖片改名、collect_images、used_fonts、LANGUAGE）
+    epub/                         # EPUB 3 固定版面（還沒接 UI）：mod.rs（build_epub）、xhtml.rs（XHTML 外框）、css.rs、package.rs（OPF / nav）、zip.rs
+    flipbook/                     # HTML5 翻頁電子書：mod.rs（build_flipbook、check_target、write_folder）、viewer/（viewer.js / viewer.css：工具列、縮圖、放大、目錄與搜尋）、vendor/（page-flip，見 README.md）、tests.rs
   src/mcp/                        # MCP 的 App 端：protocol.rs（pipe 上的 ToolRequest / ToolResponse）、pipe.rs（named pipe server）、bridge.rs（McpState：開關 pipe、event 交給前端、等 mcp_respond）、client.rs（橋接程式用的 pipe 用戶端）
   src/bin/magazine-mcp.rs         # MCP 橋接程式（Claude Code 以 stdio 啟動；rmcp；工具清單內嵌 mcp-tools.json）
   mcp-tools.json                  # MCP 工具清單，由 vitest 從 tool-definitions.ts 產生，不要手改（.gitattributes 固定 LF）
@@ -273,7 +280,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **主頁**（v7 起）：`EditorDocument.masters: MasterPage[]` 和 `pages` 分開存；`Page` 與 `MasterPage` 都 extends `Sheet`（id / name / 尺寸 / 背景 / elements）。`Page.masterId` 指套用的主頁、`MasterPage.parentId` 指以哪個主頁為基礎（`null` = 沒有）；頁面與主頁的 id 在整份文件中不重複。見「主頁與動態變數」。v7 之前的檔案讀成沒有主頁。
 - 新增物件類型（不是框的東西，例如之後的自由繪圖 `path`）時要改的地方：
   - 前端：`types.ts` 的 union，以及 `geometry.localBounds`、`canvas-elements`（renderer + `StaticElement` + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`。這些都有 exhaustive switch 或 mapped type，漏改會編譯失敗。
-  - 匯出端：`format.rs` 的 `Element`、`export/render.rs` 的 `build_render`（exhaustive match，漏改會編譯失敗），以及 `template.typ` 的 `draw` 與 EPUB `xhtml.rs` 的 `element_markup`。`template.typ` 是 Typst 腳本，漏改只會**靜默不畫**，要自己記得。
+  - 匯出端：`format.rs` 的 `Element`、`export/render.rs` 的 `build_render`（exhaustive match，漏改會編譯失敗），以及 `template.typ` 的 `draw` 與 EPUB / 翻頁書共用的 `export/html/markup.rs` 的 `element_markup`。`template.typ` 是 Typst 腳本，漏改只會**靜默不畫**，要自己記得。
 - 新增 geometry 種類時要改的地方：`ShapeGeometry`，以及 `shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometrySection`、`validation.ts` 的 `isShapeGeometry`；Rust `format.rs` 的 `ShapeGeometry` / `validate_geometry`、`render.rs` 的 `shape_kind`（都有 exhaustive switch / match）。
 - **檔案格式升級**：`format.rs` 的 `upgrade_shapes_to_v3` 把 v1 / v2 的 rect / ellipse / polygon / star 改寫成 shape。`recovery::read` 也會呼叫它，因為備份檔沒有版本號，舊版 App 當機留下的備份可能還是舊格式。
 
@@ -569,7 +576,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 - 選單使用自訂 HTML（shadcn `Menubar`），**不使用** Tauri 原生選單；橫跨全寬，放在 Grid 第一列。
 - **指令是單一資料來源**：`COMMANDS` 定義 label、快捷鍵與停用原因；`MENUS` 只描述結構；`CommandHandlers` 是 `{ [K in CommandId]: () => void }`，新增指令卻沒有提供 handler 時會編譯失敗。
-- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF、設定頁（由 `SETTINGS_PAGES` 產生，見「設定對話框」）已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
+- Handlers 在 `home-page.tsx` 建立（需要編輯器與專案狀態，所以在 `EditorProvider` / `ProjectProvider` 內）：新增、開啟、儲存、另存新檔、匯入圖片、匯出 PDF、匯出翻頁電子書、設定頁（由 `SETTINGS_PAGES` 產生，見「設定對話框」）已實作（`file.exportPdf` 和上方工具列的「匯出 PDF」按鈕呼叫同一個 `project.exportPdf()`）；其餘仍是佔位（`createPlaceholderHandlers` → toast「『xxx』尚未實作」），實作時覆寫對應的 key 即可。
 - 新增選單項目的步驟：在 `COMMANDS` 加定義 → 在 `MENUS` 放入結構 → 提供 handler。`menu-structure.test.ts` 會檢查每個指令都出現在選單中恰好一次、快捷鍵沒有重複，也不會和編輯器快捷鍵衝突。
 - 快捷鍵以 **`event.code`**（實體按鍵，例如 `KeyS`、`Comma`）比對，不用 `event.key`：注音輸入法啟用時 `key` 可能是 `Process`。`metaKey` 視同 Ctrl。
 - `use-menu-shortcuts` 在 `window` capture 階段註冊：
@@ -708,7 +715,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 不讀系統字型，所以 `load_fonts()` 不會失敗，匯出結果在每台機器上都一樣。字型在第一次匯出時解析並快取在 `ExportState` 的 `OnceLock`。
   - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，再套 `LEGACY_FAMILIES`（`"Geist Variable"` → `"Geist"`、`"Microsoft JhengHei"` → `"Noto Sans TC"`）。**這個對應表不能刪**：內嵌字型之前存檔的專案仍然帶著舊名稱，而且沒有 schema 遷移會改寫它。
   - `font-display` 用 `block`：讓瀏覽器先以 fallback 畫再換字，會讓 Konva 已經量好的行寬失效。
-- **兩步 command**：`export_pdf_choose_path`（開儲存對話框，路徑存進 `ExportState.pending`，只回傳檔名）→ `export_pdf`（取出路徑、排版、寫檔）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的 PDF（成功 toast 的「開啟」按鈕）。
+- **兩步 command**：`export_choose_path(format, suggestedName)`（`ExportFormat` 是 `pdf` / `flipbook`；開儲存對話框，路徑與格式存進 `ExportState.pending`，只回傳檔名）→ `export_pdf` / `export_flipbook`（取出**同一格式**的路徑、排版、寫檔；格式不符視為沒選位置）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的檔案（PDF，或翻頁書的 `index.html`；成功 toast 的「開啟」按鈕）。
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
 - **SVG 圖片**：Typst 本身會畫 SVG（usvg），但一張讀不了的 SVG（壞 XML、寬高 0、連到絕對路徑或 `assets/images/` 以外的圖片）會讓**整份**排版失敗。所以 `pdf.rs` 的 `drop_undrawable_svgs` 在排版前用 Typst 的 `SvgImage::with_fonts_images`（模板 `image()` 用的同一個函式、同一個 `ExportWorld`；所以要直接依賴 `comemo`，版本跟 typst）逐張檢查，失敗的同樣算進 `skippedImages`。SVG 文字的字型沒內嵌時 Typst 退回「圖片所在位置的字型」，模板沒有預設字型就一個字都不畫：圖片包在 `text(font: data.svgFonts)` 裡（`SVG_FALLBACK_FONTS` = 預設黑體）。EPUB 收錄成 `image/svg+xml`（`image_type` 沿用匯入的 `detect_extension`）。已知限制：SVG 連到另一個 `assets/images/` 檔案時 PDF 會畫、畫布不畫（檔名是 hash，實際碰不到）。
@@ -716,10 +723,35 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 多邊形與星形由 `project/shape.rs` 算出頂點後以 Typst `polygon` 繪製，兩者在模板裡是同一個 `kind: "polygon"`。
 - **邊框的虛線位置由路徑起點決定**：Typst 內建 `rect` / `ellipse` 的起點和 Konva 不同。所以有邊框的矩形與橢圓在 PDF 裡改畫成 `kind: "path"`（矩形是 `render.rs` 的 `rounded_rect_path`（四個角各自的半徑）經 `pdf.rs` 的 `rect_path` 轉成模板的路徑，橢圓是 `ellipse_path`；起點與方向和 Konva、SVG 相同），沒有邊框的照舊（矩形的四個圓角用 Typst `radius` 字典）。
 - EPUB 中有邊框的矩形 / 橢圓輸出成 inline SVG，因為 CSS border 畫在框內，位置會差半個線寬。四個圓角不同的矩形 SVG `<rect>` 做不到，改畫 `<path>`（和 PDF 同一條 `rounded_rect_path`）；沒有邊框時 CSS `border-radius` 四值。
-- 半透明顏色：PDF 直接交給 Typst 的 `rgb("#rrggbbaa")`；**EPUB 輸出前轉換**（`epub/xhtml.rs` 的 `css_color` / `svg_fill`），CSS 用 `rgba()`、SVG 用 `fill-opacity`，不讓 8 位 hex 進入 EPUB（SVG 1.1 不允許，舊閱讀引擎也不支援）。
+- 半透明顏色：PDF 直接交給 Typst 的 `rgb("#rrggbbaa")`；**EPUB 輸出前轉換**（`export/html/markup.rs` 的 `css_color` / `svg_fill`，翻頁書共用），CSS 用 `rgba()`、SVG 用 `fill-opacity`，不讓 8 位 hex 進入 EPUB（SVG 1.1 不允許，舊閱讀引擎也不支援）。
 - 預設儲存位置：已存檔的專案用專案資料夾，未命名專案用「文件\雜誌編輯軟體」（暫存資料夾不適合放成品）。
 - **已知限制**：所見即所得只保證換行位置，字距由 Typst 的字型引擎計算，置中 / 靠右可能差零點幾 pt；顏色是 RGB（可含透明度），沒有出血、裁切線與 CMYK；內嵌字型沒有的字元（含 emoji）會是缺字方塊，瀏覽器則可能用系統字型補上。
 - **調校方式**：`export_preview` 測試（`#[ignore]`）把每頁算成 2 px/pt 的 PNG 和畫布疊圖比對；設 `EXPORT_REQUEST_JSON` 可以改用從編輯器擷取的真實 `ExportRequest`。
+
+## 匯出翻頁電子書（`src-tauri/src/export/flipbook` + `export/html`）
+
+計畫、實測與每一步的決定：`docs/03-Plans-匯出檔案/01-匯出HTML5-翻頁電子書-實作.md`。
+
+- **是什麼**：「檔案 → 匯出為 → 翻頁電子書（HTML5）...」輸出一個**資料夾**（自帶 viewer），用瀏覽器開 `index.html`（`file://` 或任何靜態網站空間）像雜誌一樣翻頁。不做 ZIP（使用者決定）。結構：`index.html`、`viewer/`（`page-flip.browser.js` + `page-flip.LICENSE` + `viewer.js` + `viewer.css`）、`styles/page.css`、`fonts/`、`images/`。
+- **頁面 = EPUB 的頁面標記**（真文字，使用者決定，不轉圖片）：`export/html/` 是 EPUB 與翻頁書共用的部分（`markup::page_div(page, images, image_prefix)`：EPUB 傳 `../`、翻頁書傳空字串；`css::font_faces` + `PAGE_RULES` 只作用在 `.page` 裡，`html, body` 的規則各格式自己寫）。改頁面標記兩邊一起變；抽出時以固定 `EpubMeta` 比對過 EPUB 位元組不變。實測：每頁在翻頁書的 CSS 裡和 EPUB **逐像素相同**，書裡縮放後的位置 ≤ 0.03 pt。
+- **書的結構寫在 `index.html` 裡**（不另放 JSON：`file://` 擋 `fetch()`）：`#book` 的 `data-width` / `data-height`（pt，**第 1 頁的尺寸**）；每頁 `<div class="fb-page" data-name="頁名" [data-toc]>` > `<div class="fb-scale">` > `.page`。**沒有 inline script**，頁名 / 書名都經 `escape`。
+  - `.fb-page` 的 style 每次繪製都被 page-flip 改寫，所以縮放放在裡面的 `.fb-scale`（`transform: scale(var(--s))`，`--s` = 翻頁區頁寬 ÷ 頁寬 pt）。
+  - 尺寸和第 1 頁不同的頁面：`.fb-scale` 多 `translate(…) scale(k)` 等比例縮進並置中（`fit_transform`），`.fb-page` 加 `fb-fitted`，留白是淺灰（使用者決定）。
+  - `data-toc`：頁名不是空白、也不是 `Page-<數字>`（`is_default_page_name`，**和編輯器 `nextPageNames` 的預設名稱同規則，改一邊要改另一邊**）的頁面才進目錄（使用者決定）。
+- **CSP**（`<meta http-equiv>`）：`default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'`：只能載入書裡的檔案（`data:` 圖片也不行）。`file://` 下實測不擋任何東西。測試只檢查有 CSP、沒有外部 URL、每個 `src` / `href` / `url()` 都指到書裡的檔案。
+- **翻頁引擎是 vendor 的 StPageFlip**（見 Tech Stack）：`showCover: true` = 第 1 頁單獨在右、之後 2–3、4–5…（和編輯器的雙頁模式相同）；翻頁區寬度 < 600 px（`minWidth: 300` × 2）改單頁；`#book` 必須有明確寬高，page-flip 才會把頁面縮進畫面。page-flip 在 `mousedown` 時 `preventDefault`，**翻頁區不能選取文字**（所以放大檢視是另一層）；**按頁角是拖曳翻頁、點頁面中間是點擊翻頁**；雙擊會被當成兩次點擊。沒有鍵盤操作（由 `viewer.js` 做）。升級 page-flip 時重跑計畫裡的瀏覽器驗證。
+- **viewer（`viewer/viewer.js`，DOM API、不用 `innerHTML`、不讀網址）**：
+  - 工具列（下方浮動）：第一頁 / 上一頁 / 頁碼「2–3 / 7」（按下可輸入跳頁）/ 下一頁 / 最後一頁 ｜ 目錄與搜尋 / 放大檢視 / 頁面縮圖 / 全螢幕。鍵盤 ← → PageUp PageDown Home End、Z（放大）、Ctrl+F（搜尋）。跳 2 頁以內播動畫，更遠直接跳。目前看到的頁由 page-flip 的 index 依配對規則推算（`visibleRange`）。
+  - 縮圖列：預設收起；依跨頁分組；縮圖是**原本頁面 `.fb-scale` 的複本**（`--s` 換成縮圖比例），捲進縮圖列才建立（`IntersectionObserver`）。複本都從**初始化前留下的頁面**複製（page-flip 翻頁時會暫時複製頁面）。
+  - 放大檢視：`role="dialog"` 覆蓋層，目前跨頁的複本可捲動、**可選取文字**；符合寬度～400%、`+` `-` `0`、Ctrl+滾輪以游標為中心；方向鍵捲動不翻書；不做拖曳移動（和選取文字衝突）。
+  - 目錄與搜尋：左側面板（≤ 720 px 時全寬）。搜尋 NFKC + 不分大小寫 + 連續空白當一個，**行與行直接接起來**（英文在換行處少一個空白是已知限制），每個文字框一筆、第一次搜尋才建索引；Enter / Shift+Enter 換結果並標示文字框（`.fb-hit`）。
+  - 開關狀態都不記憶（沒有 localStorage）。
+- **寫入**（`flipbook::write_folder`）：先寫到旁邊的隱藏暫存資料夾 `.<名稱>.<uuid>.tmp` → 再檢查目標 → rename；失敗時刪掉暫存資料夾。目標只能是不存在或**空的**資料夾，**絕不覆蓋或刪除有內容的資料夾**（`check_target`，選完位置時先檢查一次）。對話框輸入的名稱就是資料夾名稱（打了 `.html` / `.htm` 會去掉）。
+- **command**：見「匯出 PDF」的兩步 command（`export_choose_path("flipbook", …)` → `export_flipbook`）；「開啟」用預設瀏覽器開 `index.html`。
+- **驗證工具**：`EXPORT_PREVIEW_DIR=<dir> [EXPORT_REQUEST_JSON=<file>] [FLIPBOOK_PAGES=<n>] cargo test flipbook_preview -- --ignored` 寫出 `<dir>/flipbook/`（沒給請求時是 fixture 複製成 n 頁，第 1、4 頁有名稱、每頁一行「第N頁 Unique」）。
+- **效能**（200 頁）：`index.html` 658 KB、載入 0.47 秒、翻頁最長一格 28 ms、搜尋 15 ms。
+- **已知限制**：字型全量內嵌（黑體＋明體約 27 MB，子集化之後和 EPUB 一起做）；Firefox 的 `file://` 字型未實測；全螢幕只在桌面版人工確認；搜尋標示框可能被疊在上面的物件蓋住一部分。
+- 之後另排：EPUB 接線（`ExportFormat` 加 `Epub`、`EXPORT_FORMATS` 加一筆）、字型子集化、翻頁音效、連結 / 互動元件、記住上次看到的頁。
 
 ## MCP（Claude Code 連線）（`lib/automation` + `src-tauri/src/mcp` + `src/bin/magazine-mcp.rs`）
 
@@ -751,7 +783,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_pdf_choose_path`、`export_pdf`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 

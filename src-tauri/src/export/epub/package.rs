@@ -1,7 +1,7 @@
 //! Package files: `META-INF/container.xml`, `content.opf` and the navigation document.
 
-use super::xhtml::escape;
-use super::LANGUAGE;
+use crate::export::html::markup::escape;
+use crate::export::html::LANGUAGE;
 use std::fmt::Write;
 
 pub const CONTAINER_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>

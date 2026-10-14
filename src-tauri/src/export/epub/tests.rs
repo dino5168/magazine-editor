@@ -1,5 +1,7 @@
 use super::*;
-use crate::export::render::build_render;
+use crate::export::fonts::BUNDLED_FONTS;
+use crate::export::html::markup::num;
+use crate::export::render::{build_render, RenderKind};
 use crate::export::test_support::{fixture_document, project_with_image, request};
 use crate::export::TextLayout;
 use crate::project::format::{Element, ShapeGeometry};
@@ -210,7 +212,7 @@ fn renders_every_element_type() {
         let expected: Vec<String> = shape
             .points
             .iter()
-            .map(|[x, y]| format!("{},{}", xhtml::num(*x), xhtml::num(*y)))
+            .map(|[x, y]| format!("{},{}", num(*x), num(*y)))
             .collect();
         assert_eq!(svg.attribute("points"), Some(expected.join(" ").as_str()));
     }

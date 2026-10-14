@@ -99,6 +99,7 @@
             "file.exportPng",
             "file.exportJpeg",
             "file.exportPdf",
+            "file.exportFlipbook",
             "file.exportEpub",
             "view.rulers",
             "view.grid",

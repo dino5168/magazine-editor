@@ -4,3 +4,5 @@
 *.icns binary
 # vitest 的 toMatchFileSnapshot 逐字比對，checkout 成 CRLF 會失敗
 src-tauri/mcp-tools.json text eol=lf
+# 翻頁書 vendor 的 page-flip：原樣打包進匯出的書，SHA-256 由測試比對，checkout 成 CRLF 會失敗
+src-tauri/src/export/flipbook/vendor/** text eol=lf

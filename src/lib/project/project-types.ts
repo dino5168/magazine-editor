@@ -38,7 +38,10 @@ export interface RecoveryEntry {
   readonly projectRoot: string;
 }
 
-/** Result of `export_pdf` (`ExportResult` in Rust). */
+/** Output format of `export_choose_path` (`ExportFormat` in Rust). */
+export type ExportFormat = "pdf" | "flipbook";
+
+/** Result of `export_pdf` / `export_flipbook` (`ExportResult` in Rust). */
 export interface ExportResult {
   readonly pages: number;
   /** Images left out because their file no longer exists in the project, or the format cannot draw it. */

@@ -1,0 +1,133 @@
+/* 翻頁書的版面與工具列。頁面內容的規則在 styles/page.css（和 EPUB 共用）。 */
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #3f3f46; }
+/* 下方留給工具列 */
+#stage { position: absolute; inset: 16px 16px 72px 16px; }
+/* page-flip 要量得到翻頁區的寬高，才會把頁面縮到放得進畫面 */
+#book { width: 100%; height: 100%; }
+/* .fb-page 的 style 由 page-flip 每次繪製時改寫，所以縮放放在裡面一層 */
+.fb-page { background: #ffffff; overflow: hidden; }
+.fb-scale { transform-origin: 0 0; transform: scale(var(--s, 1)); }
+/* 尺寸和書不同、縮小置中的頁面：四周留白用淺灰，看得出這一頁的邊界（書裡、縮圖、放大檢視都一樣） */
+.fb-page.fb-fitted, .fb-thumb-page.fb-fitted, .fb-zoom-page.fb-fitted { background: #e4e4e7; }
+
+#toolbar {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; padding: 4px 6px;
+  border-radius: 999px; background: rgba(24, 24, 27, 0.88); color: #fafafa;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font: 14px/1 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  user-select: none; z-index: 10;
+}
+.fb-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; color: inherit; cursor: pointer;
+}
+.fb-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fb-button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.fb-button:disabled { opacity: 0.35; cursor: default; }
+.fb-button:focus-visible, .fb-page-field input:focus-visible { outline: 2px solid #818cf8; outline-offset: 1px; }
+.fb-page-field { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; font-variant-numeric: tabular-nums; }
+.fb-page-field input {
+  box-sizing: content-box; min-width: 2ch; height: 26px; padding: 0 4px; border: 0; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1); color: inherit; font: inherit; text-align: center;
+}
+.fb-page-field input:focus { background: #fafafa; color: #18181b; }
+.fb-page-total { color: #a1a1aa; white-space: nowrap; }
+.fb-divider { width: 1px; height: 20px; margin: 0 4px; background: rgba(255, 255, 255, 0.2); }
+.fb-button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.22); }
+
+/* 縮圖列：工具列上方。打開時翻頁區讓出高度（96 px 縮圖 + 頁碼 + 內距 + 橫向捲軸） */
+#thumbs {
+  position: fixed; left: 16px; right: 16px; bottom: 66px; height: 144px; box-sizing: border-box;
+  overflow-x: auto; overflow-y: hidden; padding: 8px 12px; border-radius: 12px;
+  background: rgba(24, 24, 27, 0.88); scrollbar-width: thin; scrollbar-color: #52525b transparent; z-index: 9;
+}
+#thumbs[hidden] { display: none; }
+body.fb-thumbs-open #stage { bottom: 222px; }
+/* 縮圖少時置中，多時從左邊開始捲 */
+.fb-thumbs-inner { display: flex; gap: 12px; width: max-content; margin: 0 auto; }
+.fb-thumb {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px; border: 0; border-radius: 6px;
+  background: transparent; color: #a1a1aa; cursor: pointer; font: 12px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.fb-thumb:hover { background: rgba(255, 255, 255, 0.1); }
+.fb-thumb:focus-visible { outline: 2px solid #818cf8; outline-offset: 1px; }
+.fb-thumb[aria-current="page"] { color: #fafafa; }
+.fb-thumb[aria-current="page"] .fb-thumb-pages { outline: 2px solid #818cf8; outline-offset: 2px; }
+.fb-thumb-pages { display: flex; }
+.fb-thumb-page { position: relative; display: block; overflow: hidden; background: #ffffff; }
+.fb-thumb-label { font-variant-numeric: tabular-nums; }
+
+/* 目錄與搜尋：左側面板，打開時翻頁區與縮圖列讓出寬度（窄螢幕改成蓋住整個畫面） */
+#panel {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 320px; z-index: 15; box-sizing: border-box;
+  display: flex; flex-direction: column; background: #18181b; color: #e4e4e7; color-scheme: dark;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+}
+#panel[hidden] { display: none; }
+body.fb-panel-open #stage { left: 336px; }
+body.fb-panel-open #thumbs { left: 336px; }
+.fb-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 0 12px; border-bottom: 1px solid #27272a; }
+.fb-panel-header [role="tablist"] { display: flex; gap: 4px; }
+.fb-tab {
+  padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #a1a1aa;
+  font: inherit; cursor: pointer;
+}
+.fb-tab[aria-selected="true"] { color: #fafafa; border-bottom-color: #818cf8; }
+.fb-tab:focus-visible, .fb-list-item:focus-visible, .fb-search-input:focus-visible { outline: 2px solid #818cf8; outline-offset: -2px; }
+.fb-panel-view { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; }
+.fb-panel-view[hidden] { display: none; }
+.fb-list { display: flex; flex-direction: column; }
+.fb-list-item {
+  display: flex; align-items: baseline; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: 6px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.fb-list-item:hover { background: #27272a; }
+.fb-list-item[aria-current="true"] { background: #312e81; }
+.fb-list-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fb-list-text mark { background: #facc15; color: #18181b; border-radius: 2px; }
+.fb-list-page { color: #a1a1aa; font-variant-numeric: tabular-nums; }
+.fb-empty { display: block; padding: 8px; color: #a1a1aa; }
+.fb-search-input {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #3f3f46; border-radius: 6px;
+  background: #09090b; color: #fafafa; font: inherit;
+}
+.fb-search-status { margin: 8px 4px; color: #a1a1aa; font-size: 13px; }
+/* 搜尋命中的文字框（在書裡與放大檢視裡都看得到） */
+.fb-hit { background: rgba(250, 204, 21, 0.35); box-shadow: 0 0 0 2px #f59e0b; border-radius: 2px; }
+
+/* 放大檢視：蓋住整個畫面，捲動區可選取文字 */
+#zoom { position: fixed; inset: 0; z-index: 20; background: rgba(9, 9, 11, 0.96); color-scheme: dark; }
+#zoom[hidden] { display: none; }
+.fb-zoom-scroll {
+  position: absolute; inset: 0; display: flex; overflow: auto; box-sizing: border-box;
+  padding: 64px 24px 24px; outline: none; overscroll-behavior: contain;
+}
+/* margin: auto 在 flex 裡置中，內容比畫面大時從左上開始捲（不會被裁掉） */
+.fb-zoom-spread { display: flex; margin: auto; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5); }
+.fb-zoom-page { position: relative; overflow: hidden; background: #ffffff; flex: none; }
+.fb-zoom-bar {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-radius: 999px;
+  background: rgba(39, 39, 42, 0.95); color: #fafafa; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font: 14px/1 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; user-select: none; white-space: nowrap;
+}
+.fb-zoom-pages, .fb-zoom-label { padding: 0 6px; font-variant-numeric: tabular-nums; color: #d4d4d8; }
+.fb-zoom-label { min-width: 4ch; text-align: center; }
+
+@media (max-width: 720px) {
+  #panel { width: 100%; }
+  body.fb-panel-open #stage, body.fb-panel-open #thumbs { left: 8px; }
+}
+
+@media (max-width: 480px) {
+  .fb-zoom-scroll { padding: 60px 8px 8px; }
+  .fb-zoom-bar { top: 8px; }
+  #stage { inset: 8px 8px 64px 8px; }
+  #toolbar { bottom: 10px; }
+  #thumbs { left: 8px; right: 8px; bottom: 58px; }
+  body.fb-thumbs-open #stage { bottom: 210px; }
+  .fb-button { width: 32px; height: 32px; }
+}

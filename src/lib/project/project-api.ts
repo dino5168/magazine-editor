@@ -6,6 +6,7 @@ import {
   CommandError,
   ERROR_KINDS,
   type AppErrorKind,
+  type ExportFormat,
   type ExportResult,
   type OpenedProject,
   type ProjectContent,
@@ -71,9 +72,14 @@ export const projectApi = {
   discardRecovery: (id: string) => call<null>("recovery_discard", { id }),
   writeRecovery: (content: ProjectContent) => call<null>("recovery_write", { content }),
   clearRecovery: () => call<null>("recovery_clear"),
-  /** Shows the save dialog; resolves to the chosen file name, or null when cancelled. */
-  chooseExportPath: (suggestedName: string) => call<string | null>("export_pdf_choose_path", { suggestedName }),
+  /**
+   * Shows the save dialog for `format`; resolves to the chosen file (PDF) or folder (flip book)
+   * name, or null when cancelled.
+   */
+  chooseExportPath: (format: ExportFormat, suggestedName: string) =>
+    call<string | null>("export_choose_path", { format, suggestedName }),
   exportPdf: (request: ExportRequest) => call<ExportResult>("export_pdf", { request }),
+  exportFlipbook: (request: ExportRequest) => call<ExportResult>("export_flipbook", { request }),
   openLastExport: () => call<null>("export_open_last"),
   /** Starts / stops listening for the MCP bridge (`magazine-mcp.exe`). */
   mcpSetEnabled: (enabled: boolean) => call<null>("mcp_set_enabled", { enabled }),

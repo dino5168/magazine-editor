@@ -95,6 +95,7 @@ export const COMMANDS = {
   "file.exportPng": { label: "PNG...", title: "匯出為 PNG" },
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
+  "file.exportFlipbook": { label: "翻頁電子書（HTML5）...", title: "匯出為翻頁電子書" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
   ...VIEW_COMMANDS,
   ...SETTINGS_COMMANDS,
