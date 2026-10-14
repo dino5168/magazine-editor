@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>程式圖示候選</title>
+<style>
+  body { margin: 0; padding: 24px; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: #fafafa; color: #171717; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .icon { display: flex; gap: 12px; margin-bottom: 12px; }
+  .row { flex: 1; display: flex; align-items: flex-end; gap: 20px; padding: 16px 20px; border-radius: 12px; }
+  .row.light { background: #f3f3f3; }
+  .row.dark { background: #202020; color: #e5e5e5; }
+  .name { width: 96px; font-weight: 600; align-self: center; }
+  figure { margin: 0; text-align: center; font-size: 11px; color: #737373; }
+  figure img { display: block; margin: 0 auto 4px; }
+</style>
+</head>
+<body>
+<h1>程式圖示候選（16 / 24 / 32 / 48 / 64 / 128 px，淺色與深色底）</h1>
+<div id="rows"></div>
+<script>
+  const icons = [["A 翻開的雜誌", "icon-a.svg"], ["B 雜誌封面", "icon-b.svg"], ["C 排版版面", "icon-c.svg"]];
+  const sizes = [16, 24, 32, 48, 64, 128];
+  const rows = document.getElementById("rows");
+  for (const [name, file] of icons) {
+    const icon = document.createElement("div");
+    icon.className = "icon";
+    rows.append(icon);
+    for (const theme of ["light", "dark"]) {
+      const row = document.createElement("div");
+      row.className = "row " + theme;
+      const label = document.createElement("div");
+      label.className = "name";
+      label.textContent = name;
+      row.append(label);
+      for (const s of sizes) {
+        const fig = document.createElement("figure");
+        const img = document.createElement("img");
+        img.src = file; img.width = s; img.height = s; img.alt = name;
+        const cap = document.createElement("figcaption");
+        cap.textContent = s + " px";
+        fig.append(img, cap);
+        row.append(fig);
+      }
+      icon.append(row);
+    }
+  }
+</script>
+</body>
+</html>

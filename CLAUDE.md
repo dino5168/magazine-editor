@@ -52,6 +52,10 @@ cargo check --manifest-path src-tauri/Cargo.toml    # Rust 型別檢查
 cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試
 npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（鎖定和 scaffold 相同的版本）
 
+# 程式圖示：改了 src-tauri/app-icon.svg 之後重新產生 src-tauri/icons/，再刪掉多產生的 android/、ios/、64x64.png，
+# 並把同一張 SVG 複製到 public/app-icon.svg（網頁 favicon）
+npx tauri icon src-tauri/app-icon.svg
+
 # MCP：橋接程式（`tauri dev` 只編主程式，改了 Rust 或工具清單後要自己編）與工具清單
 cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp
 npx vitest run mcp-tools -u      # 改了 src/lib/automation/tool-definitions.ts 後更新 src-tauri/mcp-tools.json
@@ -238,6 +242,7 @@ src-tauri/
   src/bin/magazine-mcp.rs         # MCP 橋接程式（Claude Code 以 stdio 啟動；rmcp；工具清單內嵌 mcp-tools.json）
   mcp-tools.json                  # MCP 工具清單，由 vitest 從 tool-definitions.ts 產生，不要手改（.gitattributes 固定 LF）
   src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、export.rs、mcp.rs）
+  app-icon.svg                    # 程式圖示的來源（翻開的雜誌；計畫 docs/04-Plans-畫面顯示/01-換程式的圖示-實作.md）；icons/ 由它產生（見 Commands），public/app-icon.svg 是同一張（favicon）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
 fonts/                            # 畫面與匯出共用的字型檔（見 fonts/README.md）；**不要只改一邊的引用**

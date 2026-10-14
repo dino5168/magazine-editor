@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- 候選 B：雜誌封面（刊頭 M、封面圖、翻起的頁角） -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <linearGradient id="photo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <clipPath id="photoClip"><rect x="322" y="456" width="356" height="232" rx="16"/></clipPath>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <!-- 後面的一本 -->
+  <rect x="316" y="196" width="460" height="660" rx="24" fill="#a5b4fc"/>
+  <!-- 封面（右下角切掉，留給翻起的頁角） -->
+  <path d="M272 192 A24 24 0 0 1 296 168 L704 168 A24 24 0 0 1 728 192 L728 748 L636 840 L296 840 A24 24 0 0 1 272 816 Z" fill="#ffffff"/>
+  <!-- 刊頭 M -->
+  <path d="M352 408 V258 L500 368 L648 258 V408" fill="none" stroke="#4f46e5" stroke-width="60" stroke-linejoin="round"/>
+  <!-- 封面圖 -->
+  <rect x="322" y="456" width="356" height="232" rx="16" fill="url(#photo)"/>
+  <path d="M322 652 L420 548 L500 628 L548 584 L678 672 V688 H322 Z" fill="#c2410c" clip-path="url(#photoClip)"/>
+  <circle cx="610" cy="520" r="28" fill="#fef3c7"/>
+  <!-- 標題文字 -->
+  <rect x="322" y="728" width="240" height="26" rx="13" fill="#c7d2fe"/>
+  <rect x="322" y="778" width="160" height="26" rx="13" fill="#c7d2fe"/>
+  <!-- 翻起的頁角 -->
+  <path d="M728 748 L636 840 L652 764 Z" fill="#818cf8" stroke="#818cf8" stroke-width="12" stroke-linejoin="round"/>
+</svg>

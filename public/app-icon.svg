@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- 程式圖示：翻開的雜誌（跨頁）。修改後重新產生：npx tauri icon src-tauri/app-icon.svg（見 CLAUDE.md） -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <clipPath id="photo"><rect x="572" y="324" width="200" height="180" rx="16"/></clipPath>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <!-- 書的厚度 -->
+  <path d="M512 324 C430 286 320 274 200 286 L200 764 C320 752 430 764 512 802 C594 764 704 752 824 764 L824 286 C704 274 594 286 512 324 Z" fill="#a5b4fc"/>
+  <!-- 左頁 / 右頁 -->
+  <path d="M512 296 C430 258 320 246 200 258 L200 736 C320 724 430 736 512 774 Z" fill="#ffffff"/>
+  <path d="M512 296 C594 258 704 246 824 258 L824 736 C704 724 594 736 512 774 Z" fill="#eef2ff"/>
+  <!-- 左頁：標題與文字 -->
+  <rect x="252" y="332" width="200" height="52" rx="12" fill="#4f46e5"/>
+  <rect x="252" y="428" width="200" height="24" rx="12" fill="#c7d2fe"/>
+  <rect x="252" y="488" width="200" height="24" rx="12" fill="#c7d2fe"/>
+  <rect x="252" y="548" width="200" height="24" rx="12" fill="#c7d2fe"/>
+  <rect x="252" y="608" width="140" height="24" rx="12" fill="#c7d2fe"/>
+  <!-- 右頁：圖片與文字 -->
+  <rect x="572" y="324" width="200" height="180" rx="16" fill="#f59e0b"/>
+  <path d="M572 468 L636 400 L686 452 L716 424 L772 484 V504 H572 Z" fill="#b45309" clip-path="url(#photo)"/>
+  <circle cx="730" cy="370" r="22" fill="#fef3c7"/>
+  <rect x="572" y="548" width="200" height="24" rx="12" fill="#c7d2fe"/>
+  <rect x="572" y="608" width="160" height="24" rx="12" fill="#c7d2fe"/>
+  <!-- 書背 -->
+  <path d="M512 296 L512 774" stroke="#818cf8" stroke-width="8"/>
+</svg>

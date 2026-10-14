@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- 候選 C：排版版面（標題、圖片框被選取、文字行） -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <clipPath id="photo"><rect x="300" y="364" width="424" height="236" rx="12"/></clipPath>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <!-- 頁面 -->
+  <rect x="236" y="172" width="552" height="680" rx="28" fill="#ffffff"/>
+  <!-- 標題 -->
+  <rect x="300" y="240" width="300" height="56" rx="14" fill="#4f46e5"/>
+  <!-- 圖片框 -->
+  <rect x="300" y="364" width="424" height="236" rx="12" fill="#f59e0b"/>
+  <path d="M300 556 L404 452 L492 540 L548 488 L724 592 V600 H300 Z" fill="#b45309" clip-path="url(#photo)"/>
+  <circle cx="650" cy="424" r="28" fill="#fef3c7"/>
+  <!-- 選取框與控制點 -->
+  <rect x="300" y="364" width="424" height="236" fill="none" stroke="#4f46e5" stroke-width="10"/>
+  <g fill="#ffffff" stroke="#4f46e5" stroke-width="10">
+    <rect x="278" y="342" width="44" height="44" rx="6"/>
+    <rect x="702" y="342" width="44" height="44" rx="6"/>
+    <rect x="278" y="578" width="44" height="44" rx="6"/>
+    <rect x="702" y="578" width="44" height="44" rx="6"/>
+  </g>
+  <!-- 文字行 -->
+  <rect x="300" y="664" width="424" height="26" rx="13" fill="#c7d2fe"/>
+  <rect x="300" y="720" width="424" height="26" rx="13" fill="#c7d2fe"/>
+  <rect x="300" y="776" width="260" height="26" rx="13" fill="#c7d2fe"/>
+</svg>
