@@ -53,8 +53,10 @@ cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試
 npx shadcn@4.21.0 add <component>                    # 新增 shadcn 元件（鎖定和 scaffold 相同的版本）
 
 # 程式圖示：改了 src-tauri/app-icon.svg 之後重新產生 src-tauri/icons/，再刪掉多產生的 android/、ios/、64x64.png，
-# 並把同一張 SVG 複製到 public/app-icon.svg（網頁 favicon）
+# 並把同一張 SVG 複製到 public/app-icon.svg（網頁 favicon）。圖示是編譯時內嵌的，cargo 不一定發現它變了：
+# 要 clean 主程式再編，否則 tauri dev 的 exe / 視窗還是舊圖示
 npx tauri icon src-tauri/app-icon.svg
+cargo clean --manifest-path src-tauri/Cargo.toml -p magazine-editor
 
 # MCP：橋接程式（`tauri dev` 只編主程式，改了 Rust 或工具清單後要自己編）與工具清單
 cargo build --manifest-path src-tauri/Cargo.toml --bin magazine-mcp
