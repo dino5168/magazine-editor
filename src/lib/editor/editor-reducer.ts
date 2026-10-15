@@ -29,7 +29,8 @@ import {
   type SwatchDeletion,
 } from "./swatches";
 import { isLetterSpacing, isLineHeight } from "./text-style";
-import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, type ToolId } from "./tools";
+import { DEFAULT_LINE_KIND, type LineKind } from "./line-kinds";
+import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, isCreateTool, type ToolId } from "./tools";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
   PAGE_NAME_MAX_LENGTH,
@@ -38,6 +39,7 @@ import {
   isMargins,
   isPageSize,
   isShapeGeometry,
+  isValidLine,
   isShapeLabel,
   isStroke,
   isSwatchLink,
@@ -94,6 +96,8 @@ export interface EditorState {
   readonly tool: ToolId;
   /** Shape the shape tool creates; also the last shape used, shown on the toolbar button. */
   readonly shapeKind: ShapeChoice;
+  /** Line the line tool creates (straight / arrow / double arrow); the last one used. */
+  readonly lineKind: LineKind;
   /** Document as last saved / loaded; null when it must be saved (e.g. opened from a backup). */
   readonly savedDocument: EditorDocument | null;
 }
@@ -234,7 +238,7 @@ export type EditorAction =
   | { readonly type: "selection/setMany"; readonly ids: readonly ElementId[]; readonly additive: boolean }
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
-  | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeChoice }
+  | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeChoice; readonly line?: LineKind }
   | {
       readonly type: "document/load";
       readonly document: EditorDocument;
@@ -264,6 +268,7 @@ export function createInitialState(document: EditorDocument = createSampleDocume
     view: { zoom: 1, fitRequest: 1 },
     tool: DEFAULT_TOOL,
     shapeKind: DEFAULT_SHAPE_KIND,
+    lineKind: DEFAULT_LINE_KIND,
     savedDocument: document,
   };
 }
@@ -428,6 +433,11 @@ function isValidPatch(patch: ElementPatch): boolean {
   return !Object.values(patch).some((value) => typeof value === "number" && !Number.isFinite(value));
 }
 
+/** Checks the fields a patch cannot check alone: a line's points, stroke and ends (`isValidLine`). */
+function isValidElementShape(element: CanvasElement): boolean {
+  return element.type !== "line" || isValidLine(element);
+}
+
 /** Applies a validated patch; returns the same element when nothing changes. */
 function applyPatch(current: CanvasElement, patch: ElementPatch): CanvasElement {
   const changed = Object.entries(patch).some(
@@ -464,6 +474,8 @@ function updateElements(state: EditorState, entries: readonly ElementPatchEntry[
   const sheet = findSheet(document, targetSheetId(state, pageId));
   const patched = sheet?.elements.filter((element) => patches.has(element.id)) ?? [];
   if (!patched.every((element) => hasValidSwatchLinks(document, applyPatch(element, patches.get(element.id)!)))) return state;
+  // 線條的欄位（點、線條、兩端）看套用後的整條線
+  if (!patched.every((element) => isValidElementShape(applyPatch(element, patches.get(element.id)!)))) return state;
   // 全部的變更放在同一次 commit：多選移動 = 一筆復原
   return updateSheet(state, targetSheetId(state, pageId), (page) => {
     let changed = false;
@@ -524,6 +536,7 @@ function sameIds(a: readonly ElementId[], b: readonly ElementId[]): boolean {
 
 const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   "element/add": (state, action) => {
+    if (!isValidElementShape(action.element)) return state;
     if (!hasValidStyleLinks(state.history.present, action.element)) return state;
     if (!hasValidSwatchLinks(state.history.present, action.element)) return state;
     const sheetId = targetSheetId(state, action.pageId);
@@ -951,12 +964,13 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
 
   "view/fit": (state) => ({ ...state, view: { ...state.view, fitRequest: state.view.fitRequest + 1 } }),
 
-  // 切到建立工具（文字、圖形）時取消選取，建立前畫面上不留控制框；選取與手形保留原本的選取
+  // 切到建立工具（文字、圖形、線條）時取消選取，建立前畫面上不留控制框；選取與手形保留原本的選取
   "tool/set": (state, action) => {
     const shapeKind = action.shape ?? state.shapeKind;
-    if (action.tool === state.tool && shapeKind === state.shapeKind) return state;
-    const creates = action.tool === "text" || action.tool === "shape";
-    return { ...state, tool: action.tool, shapeKind, selectedIds: creates ? NO_SELECTION : state.selectedIds };
+    const lineKind = action.line ?? state.lineKind;
+    if (action.tool === state.tool && shapeKind === state.shapeKind && lineKind === state.lineKind) return state;
+    const creates = isCreateTool(action.tool);
+    return { ...state, tool: action.tool, shapeKind, lineKind, selectedIds: creates ? NO_SELECTION : state.selectedIds };
   },
 
   // 開啟 / 新增專案：換掉整份文件並清空復原歷史（不能復原到另一個專案的內容）
@@ -968,6 +982,7 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       // 工具是使用者的操作狀態，換專案時保留
       tool: state.tool,
       shapeKind: state.shapeKind,
+      lineKind: state.lineKind,
       savedDocument: action.saved ? action.document : null,
     };
   },

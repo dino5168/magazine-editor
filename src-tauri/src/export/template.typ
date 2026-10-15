@@ -84,7 +84,7 @@
 // 所有物件都以外框左上角為定位點，旋轉也繞左上角
 #let at-corner(el, body) = place(top + left, dx: pt(el.x), dy: pt(el.y), rotated(el, top + left, body))
 
-// 邊框：畫在外框線的中心（和 Konva 相同）；虛線與點線的數字由 Rust 算好（render.rs 的 dash_pattern）
+// 邊框：畫在外框線的中心（和 Konva 相同）；虛線、點線、點劃線的數字由 Rust 算好（render.rs 的 dash_pattern）
 #let stroke-of(s) = if s == none { none } else {
   (
     paint: rgb(s.color),

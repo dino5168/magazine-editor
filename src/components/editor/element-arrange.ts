@@ -22,6 +22,7 @@ import { alignContentPatch, contentArea, fillContentDisabledReason, fillContentP
 import { useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage } from "@/lib/editor/editor-reducer";
 import type { ReorderDirection } from "@/lib/editor/layer-order";
+import { linePointBounds } from "@/lib/editor/line-geometry";
 import { textBlockHeight } from "@/lib/editor/shape-label";
 import type { Bounds, CanvasElement, ElementPatch, TextElement } from "@/lib/editor/types";
 import { resolveElementVariables, variableValues } from "@/lib/editor/variables";
@@ -95,6 +96,10 @@ export function useContentAlign(element: CanvasElement): ContentAlign {
   const area = contentArea(sheet, document.margins);
   const variables = useMemo(() => variableValues(document, sheet.id), [document, sheet.id]);
   const height = useMemo(() => {
+    if (element.type === "line") {
+      const bounds = linePointBounds(element.points);
+      return bounds.maxY - bounds.minY;
+    }
     if (element.type !== "text") return element.height;
     const shown = variables ? (resolveElementVariables(element, variables) as TextElement) : element;
     return textBlockHeight(measureTextLayout(shown).lines.length, element.fontSize, element.lineHeight);

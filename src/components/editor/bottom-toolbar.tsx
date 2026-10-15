@@ -5,7 +5,10 @@ import {
   EllipsisVertical,
   Hand,
   Image,
+  Minus,
   MousePointer2,
+  MoveHorizontal,
+  MoveRight,
   Redo2,
   Trash,
   Type,
@@ -27,6 +30,7 @@ import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement, selectSelectedElements } from "@/lib/editor/editor-reducer";
 import { type ShapeChoice } from "@/lib/editor/element-factory";
 import { canReorder } from "@/lib/editor/layer-order";
+import { LINE_KINDS, lineKindLabel, type LineKind } from "@/lib/editor/line-kinds";
 import { deleteSelection, duplicateSelection } from "@/lib/editor/selection-actions";
 import { getToolKeyLabel, getToolLabel, type ToolId } from "@/lib/editor/tools";
 import { cn } from "@/lib/utils";
@@ -34,9 +38,15 @@ import { REORDER_ITEM_BY_DIRECTION } from "./element-arrange";
 import { IconButton } from "./icon-button";
 import { SHAPE_OPTION_GROUPS, shapeOption, type ShapeIcon } from "./shape-options";
 
-// 圖形的 icon 依「最近用過的圖形」變化，所以不在這張表裡
+// 圖形與線條的 icon 依「最近用過的」變化，所以不在這張表裡
 const TOOL_ICONS = { select: MousePointer2, hand: Hand, text: Type } as const satisfies Record<
-  Exclude<ToolId, "shape">,
+  Exclude<ToolId, "shape" | "line">,
+  LucideIcon
+>;
+
+// 線條種類的 icon（和圖層面板同一組）
+const LINE_KIND_ICONS = { straight: Minus, arrow: MoveRight, doubleArrow: MoveHorizontal } as const satisfies Record<
+  LineKind,
   LucideIcon
 >;
 
@@ -158,10 +168,11 @@ interface BottomToolbarProps {
  *   Toolbar overlay (pointer events only on the bars themselves).
  */
 export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) {
-  const { tool, shapeKind } = useEditorState();
+  const { tool, shapeKind, lineKind } = useEditorState();
   const dispatch = useEditorDispatch();
   // 選了工具之後到畫布上點擊或拖曳建立（圖片除外：直接開選檔對話框）
   const chooseTool = (id: ToolId, shape?: ShapeChoice) => dispatch({ type: "tool/set", tool: id, shape });
+  const chooseLine = (line: LineKind) => dispatch({ type: "tool/set", tool: "line", line });
   const shape = shapeOption(shapeKind);
 
   const toolButton = (id: ToolId, label: string, icon: ShapeIcon, onClick: () => void, key: string | null) => {
@@ -197,16 +208,36 @@ export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) 
             () => chooseTool("shape", shapeKind),
             getToolKeyLabel("shape", shapeKind),
           )}
+          {toolButton("line", lineKindLabel(lineKind), LINE_KIND_ICONS[lineKind], () => chooseLine(lineKind), getToolKeyLabel("line"))}
           <IconButton label="圖片" size="icon-lg" onClick={onImportImage}>
             <Image className="size-5" strokeWidth={1.75} />
           </IconButton>
           <Separator orientation="vertical" className="mx-0.5 h-6" />
           <MenuIconButton
-            label="更多圖形"
+            label="更多圖形與線條"
             size="icon-lg"
             menu={
-              // 所有圖形依圖形庫分類；選了之後到畫布上點擊或拖曳建立（和元素面板同一份清單）
+              // 線條種類，以及所有圖形（依圖形庫分類，和元素面板同一份清單）；選了之後到畫布上點擊或拖曳建立
               <div className="flex max-h-[min(28rem,60vh)] flex-col gap-1 overflow-y-auto">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="px-1 py-0.5 text-xs text-muted-foreground">線條</DropdownMenuLabel>
+                  <div className="grid grid-cols-6 gap-1">
+                    {LINE_KINDS.map(({ id, label }) => {
+                      const Icon = LINE_KIND_ICONS[id];
+                      return (
+                        <DropdownMenuItem
+                          key={id}
+                          aria-label={label}
+                          title={label}
+                          onSelect={() => chooseLine(id)}
+                          className="size-10 justify-center p-0"
+                        >
+                          <Icon className="size-5" strokeWidth={1.75} />
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                </DropdownMenuGroup>
                 {SHAPE_OPTION_GROUPS.map((group) => (
                   <DropdownMenuGroup key={group.id}>
                     <DropdownMenuLabel className="px-1 py-0.5 text-xs text-muted-foreground">{group.label}</DropdownMenuLabel>

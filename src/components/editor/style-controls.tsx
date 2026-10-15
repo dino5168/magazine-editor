@@ -44,6 +44,7 @@ import type { ProjectFont, ShapeLabel, Stroke, TextAlign, TextShadow, TextStyle 
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  STROKE_DASHES,
   STROKE_WIDTH_MAX,
   STROKE_WIDTH_MIN,
   TEXT_SHADOW_OFFSET_MAX,
@@ -380,17 +381,19 @@ function ShadowFields({
   );
 }
 
-const DASH_OPTIONS: readonly { readonly value: Stroke["dash"]; readonly label: string }[] = [
-  { value: "solid", label: "實線" },
-  { value: "dashed", label: "虛線" },
-  { value: "dotted", label: "點線" },
-];
+const DASH_LABELS = {
+  solid: "實線",
+  dashed: "虛線",
+  dotted: "點線",
+  dashDot: "點劃線",
+} as const satisfies Record<Stroke["dash"], string>;
 
 // 線條樣式的小預覽（用和畫布相同的虛線比例）
 function DashPreview({ dash }: { readonly dash: Stroke["dash"] }) {
   const pattern = dashPattern(dash, 2);
   return (
-    <svg width="40" height="6" aria-hidden className="shrink-0 text-foreground">
+    // size-auto：選單項目預設把沒有 size- class 的 svg 壓成 16 px
+    <svg width="40" height="6" aria-hidden className="size-auto shrink-0 text-foreground">
       <line
         x1="2"
         y1="3"
@@ -398,7 +401,7 @@ function DashPreview({ dash }: { readonly dash: Stroke["dash"] }) {
         y2="3"
         stroke="currentColor"
         strokeWidth="2"
-        strokeDasharray={pattern ? `${pattern.dash} ${pattern.gap}` : undefined}
+        strokeDasharray={pattern ? pattern.segments.join(" ") : undefined}
         strokeLinecap={pattern?.roundCap ? "round" : "butt"}
       />
     </svg>
@@ -480,10 +483,10 @@ export function LineStyleFields<T extends LineStyleValue>({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {DASH_OPTIONS.map(({ value: dash, label }) => (
+            {STROKE_DASHES.map((dash) => (
               <SelectItem key={dash} value={dash}>
                 <DashPreview dash={dash} />
-                {label}
+                {DASH_LABELS[dash]}
               </SelectItem>
             ))}
           </SelectContent>
@@ -493,8 +496,8 @@ export function LineStyleFields<T extends LineStyleValue>({
   );
 }
 
-// 物件邊框的線寬：pt，不跟著縮放
-const STROKE_WIDTH_FIELD: LineWidthField = {
+/** Width field of element borders and lines: pt, not scaled with the zoom. */
+export const STROKE_WIDTH_FIELD: LineWidthField = {
   label: "線寬",
   unit: "pt",
   normalize: (width) => clamp(width, STROKE_WIDTH_MIN, STROKE_WIDTH_MAX),

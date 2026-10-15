@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createBlankDocument,
   createImageElement,
+  createLineElement,
   createMasterPage,
   createShapeElement,
   createTextElement,
@@ -32,6 +33,7 @@ const FACTORY_ELEMENTS: { readonly [K in ElementType]: CanvasElement } = {
   text: createTextElement("body", center),
   shape: createShapeElement("rect", center),
   image: createImageElement("assets/images/a.png", { width: 10, height: 10 }, { width: 100, height: 100 }, center),
+  line: createLineElement([center, { x: 200, y: 150 }]),
 };
 
 // 每種 geometry 的欄位（kind 以外）；漏了一種會編譯失敗
@@ -50,8 +52,10 @@ describe("project file fixture", () => {
   const shapes = elements.filter((element): element is ShapeElement => element.type === "shape");
 
   it("uses the same element fields as the TypeScript model", () => {
+    // 線條放在主頁（第 1 頁要和 v2 fixture 逐一比對）
+    const everywhere = [...fixture.document.pages, ...fixture.document.masters].flatMap((sheet) => sheet.elements);
     for (const [type, element] of Object.entries(FACTORY_ELEMENTS)) {
-      const fromFile = elements.find((candidate) => candidate.type === type);
+      const fromFile = everywhere.find((candidate) => candidate.type === type);
       expect(fromFile, `fixture is missing a ${type} element`).toBeDefined();
       expect(sortedKeys(fromFile as object)).toEqual(sortedKeys(element));
     }
@@ -195,6 +199,7 @@ describe("project file fixture", () => {
       "fillSwatchId:document.pageNumberRules[].style",
       "fillSwatchId:document.pages[].elements[].label",
       "fillSwatchId:document.textStyles[]",
+      "swatchId:document.masters[].elements[].stroke", // 主頁 B 的箭頭線
       "swatchId:document.pageNumberRules[].style.shadow",
       "swatchId:document.pageNumberRules[].style.stroke",
       "swatchId:document.pages[].elements[].stroke",

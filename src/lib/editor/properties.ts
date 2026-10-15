@@ -64,8 +64,8 @@ export function normalizeRotation(degrees: number): number {
  * Returns:
  *   True for shapes and images.
  */
-export function hasEditableHeight(element: CanvasElement): element is Exclude<CanvasElement, { type: "text" }> {
-  return element.type !== "text";
+export function hasEditableHeight(element: CanvasElement): element is Extract<CanvasElement, { type: "shape" | "image" }> {
+  return element.type === "shape" || element.type === "image";
 }
 
 /**
@@ -127,6 +127,8 @@ export function resizePatch(
   keepRatio: boolean,
 ): ElementPatch {
   const clamp = (value: number) => Math.max(MIN_ELEMENT_SIZE_PT, value);
+  // 線條以端點定義，沒有寬高可以改
+  if (element.type === "line") return {};
   if (!hasEditableHeight(element)) {
     // 文字只有換行寬度；高度由內容決定
     return "width" in change ? { width: clamp(change.width) } : {};

@@ -89,7 +89,7 @@ describe("mapColorSlots", () => {
       "swatch-text": 2, // 圖形內文字、「內文」樣式
       "swatch-white": 1, // 第 1 頁背景
       "swatch-brand": 3, // 橢圓邊框、頁碼框線與陰影
-      "swatch-indigo": 2, // 主頁色帶、頁碼文字（50%）
+      "swatch-indigo": 3, // 主頁色帶、主頁 B 的箭頭線、頁碼文字（50%）
       "swatch-paper": 1, // 主頁 B 背景
       "swatch-gray": 2, // 主頁頁尾、「頁尾」樣式
     });
@@ -163,7 +163,7 @@ describe("deleteSwatch", () => {
     const document = deleteSwatch(fixture(), "swatch-indigo", "swatch-brand")!;
     expect(bodyRule(document)).toMatchObject({ fill: "#be123c80", fillSwatchId: "swatch-brand" });
     expect(document.masters[0].elements[0]).toMatchObject({ fill: "#be123c", fillSwatchId: "swatch-brand" });
-    expect(swatchUsage(document).get("swatch-brand")).toBe(5);
+    expect(swatchUsage(document).get("swatch-brand")).toBe(6);
   });
 
   it("rejects unknown swatches and replacing a swatch with itself", () => {

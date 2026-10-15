@@ -8,7 +8,7 @@ import { CORNER_NAMES, clampCornerRadii, cornerRadii, isUniformCornerRadius, wit
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
-import { choiceGeometry, describeShape, shapeChoiceOf, type ShapeChoice } from "@/lib/editor/element-factory";
+import { choiceGeometry, describeLine, describeShape, shapeChoiceOf, type ShapeChoice } from "@/lib/editor/element-factory";
 import {
   clampVertexCount,
   hasEditableHeight,
@@ -30,14 +30,15 @@ import { ColorPicker } from "../color-picker";
 import { DocumentSwatchesProvider } from "../document-swatches";
 import { ALIGN_EDGES, defaultKeepRatio, FILL_ITEMS, REORDER_ITEMS, useContentAlign } from "../element-arrange";
 import { IconButton } from "../icon-button";
+import { LineGeometrySection, LineTab } from "../line-controls";
 import { NumberField } from "../number-field";
 import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
 
-type TabId = "style" | "text" | "arrange";
+type TabId = "style" | "text" | "line" | "arrange";
 
-const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", arrange: "調整" };
+const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", line: "線條", arrange: "調整" };
 
 // 各物件有哪些分頁
 function tabsOf(element: CanvasElement): readonly TabId[] {
@@ -48,6 +49,8 @@ function tabsOf(element: CanvasElement): readonly TabId[] {
       return ["style", "text", "arrange"];
     case "image":
       return ["arrange"];
+    case "line":
+      return ["line", "arrange"];
     default: {
       const exhaustive: never = element;
       return exhaustive;
@@ -63,6 +66,8 @@ function elementName(element: CanvasElement): string {
       return describeShape(element);
     case "image":
       return "圖片";
+    case "line":
+      return describeLine(element);
     default: {
       const exhaustive: never = element;
       return exhaustive;
@@ -431,6 +436,8 @@ function ArrangeTab({ element, update }: { readonly element: CanvasElement; read
         </div>
       </Section>
       <ContentAlignSection element={element} keepRatio={keepRatio} update={update} />
+      {element.type === "line" && element.points.length === 2 && <LineGeometrySection line={element} update={update} />}
+      {element.type !== "line" && (
       <Section title="大小">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           <NumberField
@@ -459,12 +466,15 @@ function ArrangeTab({ element, update }: { readonly element: CanvasElement; read
           <p className="text-xs text-muted-foreground">文字的高度由內容決定。</p>
         )}
       </Section>
+      )}
       <Section title="位置（外框左上角）">
         <div className="grid grid-cols-2 gap-x-3 gap-y-2">
           <NumberField key={field("x", element.x)} label="X" unit="pt" value={element.x} onCommit={(x) => update({ x })} />
           <NumberField key={field("y", element.y)} label="Y" unit="pt" value={element.y} onCommit={(y) => update({ y })} />
         </div>
       </Section>
+      {/* 線條的角度由端點決定 */}
+      {element.type !== "line" && (
       <Section title="旋轉">
         <NumberField
           key={field("r", element.rotation)}
@@ -475,6 +485,7 @@ function ArrangeTab({ element, update }: { readonly element: CanvasElement; read
           className="w-1/2 pr-1.5"
         />
       </Section>
+      )}
       <Section title="物件">
         <Button
           variant="outline"
@@ -524,6 +535,11 @@ function SelectedProperties({ element }: { readonly element: CanvasElement }) {
       {element.type === "text" && (
         <TabsContent value="text">
           <TextTab text={element} update={update} />
+        </TabsContent>
+      )}
+      {element.type === "line" && (
+        <TabsContent value="line">
+          <LineTab line={element} update={update} />
         </TabsContent>
       )}
       <TabsContent value="arrange">

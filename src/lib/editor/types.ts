@@ -87,7 +87,8 @@ export interface Stroke {
   readonly swatchId: string | null;
   /** Line width in pt. */
   readonly width: number;
-  readonly dash: "solid" | "dashed" | "dotted";
+  /** `dashDot`（點劃線）since v15. */
+  readonly dash: "solid" | "dashed" | "dotted" | "dashDot";
 }
 
 /** Text inside a shape (draw.io's label). */
@@ -149,7 +150,43 @@ export interface ImageElement extends BaseElement {
   readonly height: number;
 }
 
-export type CanvasElement = TextElement | ShapeElement | ImageElement;
+/** A point of a line, relative to the line's (x, y). */
+export interface LinePoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** What a line end draws: nothing, an open head (`>`, stroked) or a filled triangle. */
+export type LineArrowhead = "none" | "open" | "triangle";
+
+/** One end of a line. Arrowheads are always solid, whatever the line's dash. */
+export interface LineEnd {
+  readonly arrowhead: LineArrowhead;
+  /** Size factor of the arrowhead (`line-path.ts` turns it into pt with the stroke width). */
+  readonly scale: number;
+}
+
+/**
+ * A line or arrow (v15), defined by its points rather than a box. (x, y) is the top-left corner
+ * of the points' bounding box, so the points' smallest x and y are 0 (`withLinePoints`).
+ */
+export interface LineElement extends BaseElement {
+  readonly type: "line";
+  /** 2–`MAX_LINE_POINTS` points, relative to (x, y). */
+  readonly points: readonly LinePoint[];
+  /** straight: segments from point to point (2 points = a straight line); smooth: a curve through every point. */
+  readonly path: "straight" | "smooth";
+  /** double: two parallel thin lines, total width = the stroke width (straight lines only; drawn single when smooth). */
+  readonly compound: "single" | "double";
+  /** Lines always have a stroke. */
+  readonly stroke: Stroke;
+  /** End at the first point. */
+  readonly start: LineEnd;
+  /** End at the last point. */
+  readonly end: LineEnd;
+}
+
+export type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement;
 
 export type ElementType = CanvasElement["type"];
 

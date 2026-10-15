@@ -270,10 +270,10 @@ pub struct RenderStroke {
 }
 
 /// Dash pattern in pt. Same numbers as `dashPattern` in `src/lib/editor/stroke.ts`.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DashPattern {
-    pub dash: f64,
-    pub gap: f64,
+    /// Dash, gap, dash, gap… lengths.
+    pub segments: Vec<f64>,
     /// Round caps turn the zero-length dashes of a dotted line into dots.
     pub round_cap: bool,
 }
@@ -285,8 +285,12 @@ pub const STROKE_MITER_LIMIT: f64 = 10.0;
 pub fn dash_pattern(dash: StrokeDash, width: f64) -> Option<DashPattern> {
     match dash {
         StrokeDash::Solid => None,
-        StrokeDash::Dashed => Some(DashPattern { dash: 3.0 * width, gap: 3.0 * width, round_cap: false }),
-        StrokeDash::Dotted => Some(DashPattern { dash: 0.0, gap: 2.0 * width, round_cap: true }),
+        StrokeDash::Dashed => Some(DashPattern { segments: vec![3.0 * width, 3.0 * width], round_cap: false }),
+        StrokeDash::Dotted => Some(DashPattern { segments: vec![0.0, 2.0 * width], round_cap: true }),
+        // 長劃、空、短劃（平頭，長度 = 線寬）、空
+        StrokeDash::DashDot => {
+            Some(DashPattern { segments: vec![4.0 * width, 2.0 * width, width, 2.0 * width], round_cap: false })
+        }
     }
 }
 
@@ -616,6 +620,8 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                     }
                     continue;
                 }
+                // 編輯器匯出前把線條換成路徑圖形（buildExportRequest），匯出請求裡不該有線條
+                Element::Line(_) => return Err(AppError::invalid_input("匯出資料有誤：線條沒有先換成路徑")),
                 Element::Image(e) => {
                     // 圖片檔被刪除時略過，和畫布顯示灰框一樣不讓整份匯出失敗
                     if !root.join(&e.src).is_file() {
@@ -657,6 +663,18 @@ mod tests {
             }
         }
         request(document)
+    }
+
+    #[test]
+    fn lines_must_be_turned_into_paths_by_the_editor() {
+        // 主頁上的線條不會被畫（主頁由編輯器展開）；頁面上的線條代表編輯器沒有先換成路徑
+        let mut document = fixture_document();
+        let line = document.masters.iter().flat_map(|master| &master.elements).find(|e| matches!(e, Element::Line(_))).cloned();
+        let root = project_with_image();
+        assert!(build_render(root.path(), &request(document.clone())).is_ok());
+        document.pages[0].elements.push(line.expect("the fixture has a line on a master page"));
+        let error = build_render(root.path(), &request(document)).unwrap_err();
+        assert!(matches!(error, AppError::InvalidInput(_)), "{error:?}");
     }
 
     /// A shape path as the editor sends it (`ExportShapePath`).
@@ -831,7 +849,7 @@ mod tests {
         let expected = RenderStroke {
             color: "#be123c".into(),
             width: 2.0,
-            dash: Some(DashPattern { dash: 6.0, gap: 6.0, round_cap: false }),
+            dash: Some(DashPattern { segments: vec![6.0, 6.0], round_cap: false }),
         };
         assert_eq!(strokes, vec![None, Some(expected), None, None]);
     }
@@ -839,8 +857,12 @@ mod tests {
     #[test]
     fn dash_patterns_scale_with_the_width() {
         assert_eq!(dash_pattern(StrokeDash::Solid, 2.0), None);
-        assert_eq!(dash_pattern(StrokeDash::Dashed, 2.0), Some(DashPattern { dash: 6.0, gap: 6.0, round_cap: false }));
-        assert_eq!(dash_pattern(StrokeDash::Dotted, 2.0), Some(DashPattern { dash: 0.0, gap: 4.0, round_cap: true }));
+        assert_eq!(dash_pattern(StrokeDash::Dashed, 2.0), Some(DashPattern { segments: vec![6.0, 6.0], round_cap: false }));
+        assert_eq!(dash_pattern(StrokeDash::Dotted, 2.0), Some(DashPattern { segments: vec![0.0, 4.0], round_cap: true }));
+        assert_eq!(
+            dash_pattern(StrokeDash::DashDot, 2.0),
+            Some(DashPattern { segments: vec![8.0, 4.0, 2.0, 4.0], round_cap: false })
+        );
     }
 
     #[test]

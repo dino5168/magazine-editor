@@ -13,11 +13,26 @@ export const TOOL_DEFINITIONS = [
   { id: "hand", label: "手形" },
   { id: "text", label: "文字" },
   { id: "shape", label: "圖形" },
+  { id: "line", label: "線條" },
 ] as const satisfies readonly ToolDefinition[];
 
 export type ToolId = (typeof TOOL_DEFINITIONS)[number]["id"];
 
 export const DEFAULT_TOOL: ToolId = "select";
+
+/**
+ * Whether a tool creates elements by clicking or dragging on the canvas (choosing it clears the
+ * selection, and the canvas shows a crosshair).
+ *
+ * Args:
+ *   tool: Tool id.
+ *
+ * Returns:
+ *   True for text, shape and line.
+ */
+export function isCreateTool(tool: ToolId): boolean {
+  return tool === "text" || tool === "shape" || tool === "line";
+}
 export const DEFAULT_SHAPE_KIND: ShapeChoice = "rect";
 
 /** A tool shortcut: one key without modifiers, matched by physical key (works with the Zhuyin IME on). */
@@ -35,6 +50,8 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
   { code: "KeyT", keyLabel: "T", tool: "text" },
   { code: "KeyR", keyLabel: "R", tool: "shape", shape: "rect" },
   { code: "KeyO", keyLabel: "O", tool: "shape", shape: "ellipse" },
+  // 線條工具：沿用最近用過的種類（直線 / 箭頭 / 雙向箭頭）
+  { code: "KeyL", keyLabel: "L", tool: "line" },
 ];
 
 /**

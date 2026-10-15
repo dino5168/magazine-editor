@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { alignContentPatch, contentArea, fillContentDisabledReason, fillContentPatch } from "../content-align";
-import { createImageElement, createShapeInBox, createTextElement } from "../element-factory";
+import { createImageElement, createLineElement, createShapeInBox, createTextElement } from "../element-factory";
 import { getElementBounds, rotatedBoxBounds } from "../geometry";
-import type { Bounds, CanvasElement, ElementPatch } from "../types";
+import { linePagePoints } from "../line-geometry";
+import type { Bounds, CanvasElement, ElementPatch, LineElement } from "../types";
 
 const PAGE = { width: 600, height: 800 };
 const MARGINS = { top: 40, right: 50, bottom: 60, left: 30 };
@@ -41,7 +42,8 @@ describe("fillContentPatch", () => {
     const photo = image();
     const filled = apply(photo, fillContentPatch(photo, AREA, "height", true));
     expect(filled).toMatchObject({ height: 700, y: 40, x: photo.x });
-    expect(filled.width / (filled as { height: number }).height).toBeCloseTo(photo.width / photo.height);
+    const size = filled as { width: number; height: number };
+    expect(size.width / size.height).toBeCloseTo(photo.width / photo.height);
   });
 
   it("turns a rotated element back to 0° in the same patch", () => {
@@ -100,5 +102,56 @@ describe("rotatedBoxBounds", () => {
   it("matches getElementBounds", () => {
     const shape = rect({ rotation: 30 });
     close(rotatedBoxBounds(shape, { minX: 0, minY: 0, maxX: 200, maxY: 100 }, 30), getElementBounds(shape));
+  });
+});
+
+describe("lines", () => {
+  const line = (points: { x: number; y: number }[], rotation = 0) => ({ ...createLineElement(points), rotation }) as LineElement;
+
+  it("fills the width with a horizontal line (a rule across the content area)", () => {
+    const rule = line([
+      { x: 100, y: 300 },
+      { x: 200, y: 300 },
+    ]);
+    expect(fillContentDisabledReason(rule, AREA, "width")).toBeNull();
+    expect(fillContentDisabledReason(rule, AREA, "height")).toBe("只有垂直線可以填滿高度");
+    const filled = apply(rule, fillContentPatch(rule, AREA, "width", false)) as LineElement;
+    expect(linePagePoints(filled)).toEqual([
+      { x: 30, y: 300 },
+      { x: 550, y: 300 },
+    ]);
+    // 旋轉 180° 的水平線：樣子一樣，填滿時轉回 0°
+    const turned = line([{ x: 0, y: 0 }, { x: 100, y: 0 }], 180);
+    const patch = fillContentPatch({ ...turned, x: 300, y: 300 }, AREA, "width", false)!;
+    expect(patch.rotation).toBe(0);
+    expect(linePagePoints(apply({ ...turned, x: 300, y: 300 }, patch) as LineElement).map((p) => p.x).sort((a, b) => a - b)).toEqual([30, 550]);
+  });
+
+  it("fills the height with a vertical polyline, stretching its points proportionally", () => {
+    const column = line([
+      { x: 80, y: 100 },
+      { x: 80, y: 150 },
+      { x: 80, y: 300 },
+    ]);
+    const filled = apply(column, fillContentPatch(column, AREA, "height", false)) as LineElement;
+    expect(linePagePoints(filled).map((p) => p.y)).toEqual([40, 40 + 700 / 4, 740]);
+  });
+
+  it("does not fill slanted lines", () => {
+    const slanted = line([
+      { x: 0, y: 0 },
+      { x: 100, y: 50 },
+    ]);
+    expect(fillContentDisabledReason(slanted, AREA, "width")).toBe("只有水平線可以填滿寬度");
+    expect(fillContentPatch(slanted, AREA, "width", false)).toBeNull();
+  });
+
+  it("aligns by the points' bounding box", () => {
+    const slanted = line([
+      { x: 100, y: 100 },
+      { x: 200, y: 160 },
+    ]);
+    expect(alignContentPatch(slanted, AREA, "right", 60)).toEqual({ x: 450 });
+    expect(alignContentPatch(slanted, AREA, "bottom", 60)).toEqual({ y: 680 });
   });
 });

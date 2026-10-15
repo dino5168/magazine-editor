@@ -91,8 +91,9 @@ fn svg_stroke(stroke: &Option<RenderStroke>) -> String {
         (rgb, Some(alpha)) => format!(r#" stroke="{rgb}" stroke-opacity="{alpha}""#),
     };
     let _ = write!(attrs, r#" stroke-width="{}" stroke-miterlimit="{}""#, num(stroke.width), num(STROKE_MITER_LIMIT));
-    if let Some(dash) = stroke.dash {
-        let _ = write!(attrs, r#" stroke-dasharray="{} {}""#, num(dash.dash), num(dash.gap));
+    if let Some(dash) = &stroke.dash {
+        let lengths: Vec<String> = dash.segments.iter().map(|length| num(*length)).collect();
+        let _ = write!(attrs, r#" stroke-dasharray="{}""#, lengths.join(" "));
         if dash.round_cap {
             attrs.push_str(r#" stroke-linecap="round""#);
         }
@@ -447,8 +448,14 @@ mod tests {
         let dotted = RenderStroke {
             color: "#000000".into(),
             width: 2.0,
-            dash: Some(DashPattern { dash: 0.0, gap: 4.0, round_cap: true }),
+            dash: Some(DashPattern { segments: vec![0.0, 4.0], round_cap: true }),
         };
         assert!(svg_stroke(&Some(dotted)).ends_with(r#" stroke-dasharray="0 4" stroke-linecap="round""#));
+        let dash_dot = RenderStroke {
+            color: "#000000".into(),
+            width: 1.5,
+            dash: Some(DashPattern { segments: vec![6.0, 3.0, 1.5, 3.0], round_cap: false }),
+        };
+        assert!(svg_stroke(&Some(dash_dot)).ends_with(r#" stroke-dasharray="6 3 1.5 3""#));
     }
 }

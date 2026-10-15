@@ -138,6 +138,11 @@ function mapElementColors(element: CanvasElement, update: ColorSlotUpdate): Canv
     }
     case "image":
       return element;
+    case "line": {
+      // 線一定有線條，mapStroke 收非 null 就回傳非 null
+      const stroke = mapStroke(element.stroke, update)!;
+      return stroke === element.stroke ? element : { ...element, stroke };
+    }
   }
 }
 

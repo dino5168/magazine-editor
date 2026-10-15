@@ -53,7 +53,7 @@ describe("swatch draft", () => {
       { id: "swatch-brand", replaceWith: "swatch-text" },
       { id: "swatch-indigo", replaceWith: "swatch-text" },
     ]);
-    expect(draftUsage(draft, usage).get("swatch-text")).toBe(2 + 3 + 2);
+    expect(draftUsage(draft, usage).get("swatch-text")).toBe(2 + 3 + 3);
     // 換到之後又被刪掉的新色票：鏈接到它的替代
     let viaNew = addDraftSwatch(startSwatchDraft(document), "new", "#0ea5e9");
     viaNew = removeDraftSwatch(viaNew, "swatch-brand", "new", ids);

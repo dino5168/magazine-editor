@@ -18,6 +18,7 @@ import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   PAGE_NAME_MAX_LENGTH,
+  STROKE_DASHES,
   STROKE_WIDTH_MAX,
   STROKE_WIDTH_MIN,
   SWATCH_NAME_MAX_LENGTH,
@@ -130,7 +131,7 @@ const stroke = z
   .strictObject({
     color: colorInput,
     width: z.number().min(STROKE_WIDTH_MIN).max(STROKE_WIDTH_MAX).describe("線寬（pt），畫在外框線中心"),
-    dash: z.enum(["solid", "dashed", "dotted"]),
+    dash: z.enum(STROKE_DASHES).describe("solid 實線、dashed 虛線、dotted 點線、dashDot 點劃線"),
   })
   .nullable()
   .describe("邊框；null = 沒有邊框");

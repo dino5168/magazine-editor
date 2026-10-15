@@ -21,13 +21,22 @@ import type {
   ShapeElement,
   ShapeGeometry,
   Size,
+  Stroke,
   TextElement,
   TextStyleDef,
+  LineElement,
+  LineEnd,
+  LinePoint,
 } from "./types";
+import { normalizeLinePoints } from "./line-geometry";
 
 /** 新文字的字型：字型清單的第一個選項（黑體） */
 export const DEFAULT_FONT_FAMILY = DEFAULT_FONT_OPTION.family;
 export const DEFAULT_SHAPE_FILL = "#64748b";
+/** Stroke of a new line (not linked to a swatch). */
+export const DEFAULT_LINE_STROKE: Stroke = { color: "#171717", swatchId: null, width: 1, dash: "solid" };
+/** A line end without an arrowhead. */
+export const PLAIN_LINE_END: LineEnd = { arrowhead: "none", scale: 1 };
 export { DEFAULT_TEXT_FILL };
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
 /** Margins of a new document (15 mm on every side). Files without margins load as all 0 instead. */
@@ -439,6 +448,34 @@ export function createToolText(start: Point, box: Bounds | null, style: TextStyl
 }
 
 /**
+ * Creates a line through points given on the page (x / y become the points' top-left corner).
+ *
+ * Args:
+ *   pagePoints: 2 or more points in page coordinates.
+ *   options: Path, compound, stroke and ends; a plain 1 pt straight line by default.
+ *
+ * Returns:
+ *   New line element.
+ */
+export function createLineElement(
+  pagePoints: readonly LinePoint[],
+  options: Partial<Pick<LineElement, "path" | "compound" | "stroke" | "start" | "end">> = {},
+): LineElement {
+  return {
+    id: createId(),
+    type: "line",
+    ...normalizeLinePoints(pagePoints),
+    rotation: 0,
+    path: "straight",
+    compound: "single",
+    stroke: DEFAULT_LINE_STROKE,
+    start: PLAIN_LINE_END,
+    end: PLAIN_LINE_END,
+    ...options,
+  };
+}
+
+/**
  * Creates an image element scaled to fit within half of the page, preserving aspect ratio.
  *
  * Args:
@@ -598,6 +635,22 @@ export function createSampleDocument(): EditorDocument {
     { ...createShapeElement("ellipse", { x: 180, y: 480 }), fill: "#fda4af" },
     { ...createShapeElement("star", { x: centerX, y: 480 }), fill: "#fcd34d" },
     { ...createShapeElement("triangle", { x: size.width - 180, y: 490 }), fill: "#86efac" },
+    // 分隔線與箭頭（線條，見 docs/06-Plans-繪圖/03-自由繪圖-實作.md）
+    createLineElement([
+      { x: centerX - 240, y: 330 },
+      { x: centerX + 240, y: 330 },
+    ]),
+    createLineElement(
+      [
+        { x: 120, y: 620 },
+        { x: centerX, y: 680 },
+        { x: size.width - 120, y: 600 },
+      ],
+      {
+        stroke: { color: "#4f46e5", swatchId: null, width: 2, dash: "dashed" },
+        end: { arrowhead: "triangle", scale: 1 },
+      },
+    ),
   ];
   return {
     name: "未命名文件",
@@ -610,6 +663,23 @@ export function createSampleDocument(): EditorDocument {
 }
 
 const POLYGON_NAMES: Readonly<Record<number, string>> = { 3: "三角形", 4: "四邊形", 5: "五邊形", 6: "六邊形" };
+
+/**
+ * Returns the name of a line's kind: 「直線」「折線」「曲線」, or 「箭頭」「雙向箭頭」 when it has arrowheads.
+ *
+ * Args:
+ *   line: Line element.
+ *
+ * Returns:
+ *   Label text.
+ */
+export function describeLine(line: LineElement): string {
+  const [start, end] = [line.start.arrowhead !== "none", line.end.arrowhead !== "none"];
+  if (start && end) return "雙向箭頭";
+  if (start || end) return "箭頭";
+  if (line.path === "smooth") return "曲線";
+  return line.points.length > 2 ? "折線" : "直線";
+}
 
 /**
  * Returns the name of a shape's kind, e.g. 「圓角矩形」.
@@ -667,6 +737,8 @@ export function describeElement(element: CanvasElement): string {
     }
     case "image":
       return "圖片";
+    case "line":
+      return describeLine(element);
     default: {
       const exhaustive: never = element;
       return exhaustive;

@@ -6,6 +6,7 @@ import type { PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import type { EditorDocument, Page, Stroke, TextElement } from "@/lib/editor/types";
 import { resolveElementsVariables, resolveElementVariables, variableValues } from "@/lib/editor/variables";
+import { exportedLinePieces } from "./line-export";
 
 /** How the editor wrapped one text element; mirrors `TextLayout` in `src-tauri/src/export/mod.rs`. */
 export interface TextLayout {
@@ -97,8 +98,9 @@ function exportedPage(document: EditorDocument, page: Page, pageIndex: number): 
  *
  * Each page gets its master pages' content, the facing page's elements crossing the spine and its
  * text variables resolved (`exportedPage`),
- * then its page number as an ordinary shape on top (`withPageNumbers`), so the Rust renderers draw
- * everything as plain elements and never read master pages. The exported copy is never stored.
+ * then its page number as an ordinary shape on top (`withPageNumbers`); lines become path shapes
+ * (`exportedLinePieces`). So the Rust renderers draw everything as plain elements and never read
+ * master pages or lines. The exported copy is never stored.
  *
  * Args:
  *   source: Document to export.
@@ -115,10 +117,22 @@ export function buildExportRequest(
 ): ExportRequest {
   const expanded = source.pages.map((page, index) => exportedPage(source, page, index));
   const changed = expanded.some((page, index) => page !== source.pages[index]);
-  const pages = withPageNumbers(changed ? expanded : source.pages, source.pageNumberRules, source.margins, measureWidth);
-  const document = pages === source.pages ? source : { ...source, pages };
-  const textLayouts: Record<string, TextLayout> = {};
+  const numbered = withPageNumbers(changed ? expanded : source.pages, source.pageNumberRules, source.margins, measureWidth);
+  // 線條換成路徑圖形（主頁與跨頁的複本也是）；路徑先放進 shapePaths，下面的圖形庫迴圈不認得它們的 id、不會覆蓋
   const shapePaths: Record<string, ExportShapePath> = {};
+  const pages = numbered.map((page) => {
+    if (!page.elements.some((element) => element.type === "line")) return page;
+    const elements = page.elements.flatMap((element) => {
+      if (element.type !== "line") return [element];
+      return exportedLinePieces(element).map(({ shape, path }) => {
+        shapePaths[shape.id] = path;
+        return shape;
+      });
+    });
+    return { ...page, elements };
+  });
+  const document = pages.every((page, index) => page === source.pages[index]) && pages.length === source.pages.length ? source : { ...source, pages };
+  const textLayouts: Record<string, TextLayout> = {};
   for (const page of document.pages) {
     for (const element of page.elements) {
       if (element.type === "text") textLayouts[element.id] = measure(element);

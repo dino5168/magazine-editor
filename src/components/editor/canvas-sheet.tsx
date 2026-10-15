@@ -182,7 +182,7 @@ export function CanvasSheet({
                 onPickElsewhere(pageId, element.id);
               }}
             >
-              <StaticElement element={element} listening />
+              <StaticElement element={element} listening zoom={zoom} />
             </Group>
           ))}
         </Group>
@@ -191,11 +191,11 @@ export function CanvasSheet({
       <Group {...(clipAtSpine ? clip : {})}>
         {shownElements.map((element) =>
           active ? (
-            <ElementNode key={element.id} element={element} textHidden={element.id === editingId} {...handlers} />
+            <ElementNode key={element.id} element={element} textHidden={element.id === editingId} zoom={zoom} {...handlers} />
           ) : (
             // 對頁的物件：選取只屬於目前頁，所以按下時先切頁再選取
             <Group key={element.id} onMouseDown={(event) => activate(event, element.id)} onTouchStart={(event) => activate(event, element.id)}>
-              <StaticElement element={element} listening />
+              <StaticElement element={element} listening zoom={zoom} />
             </Group>
           ),
         )}

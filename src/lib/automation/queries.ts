@@ -7,7 +7,8 @@ import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/
 import { FONT_OPTIONS, findFontOption, projectFontOption } from "@/lib/editor/fonts";
 import { mapFontFamilies } from "@/lib/editor/project-fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
-import { SHAPE_KIND_LABELS, shapeDefaultSize, type ShapeKind } from "@/lib/editor/element-factory";
+import { SHAPE_KIND_LABELS, describeLine, shapeDefaultSize, type ShapeKind } from "@/lib/editor/element-factory";
+import { linePointBounds } from "@/lib/editor/line-geometry";
 import { SHAPE_CATEGORIES, SHAPE_LIBRARY } from "@/lib/editor/shape-presets";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchUsage } from "@/lib/editor/swatches";
@@ -161,6 +162,15 @@ function sheetRef(state: EditorState, sheet: Sheet): SheetRef {
     : { id: sheet.id, name: sheet.name, kind: "master", index: null };
 }
 
+// 線條回報點的外接框大小
+function elementSize(element: CanvasElement): { width: number; height?: number } {
+  if (element.type === "line") {
+    const bounds = linePointBounds(element.points);
+    return { width: round(bounds.maxX - bounds.minX), height: round(bounds.maxY - bounds.minY) };
+  }
+  return element.type === "text" ? { width: round(element.width) } : { width: round(element.width), height: round(element.height) };
+}
+
 function elementSummary(element: CanvasElement): string {
   switch (element.type) {
     case "text":
@@ -172,6 +182,8 @@ function elementSummary(element: CanvasElement): string {
     }
     case "image":
       return `圖片 ${element.src}`;
+    case "line":
+      return `${describeLine(element)}，${element.points.length} 個點，線條 ${element.stroke.color}`;
   }
 }
 
@@ -272,8 +284,7 @@ export function listElements(
     layer,
     x: round(element.x),
     y: round(element.y),
-    width: round(element.width),
-    ...(element.type === "text" ? {} : { height: round(element.height) }),
+    ...elementSize(element),
     rotation: round(element.rotation),
     summary: elementSummary(element),
     ...linkedStyle(element, styleNames),

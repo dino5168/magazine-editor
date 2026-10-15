@@ -1,7 +1,7 @@
 import { getPaletteHex, withAlpha } from "@/lib/editor/palette";
 import type { Stroke } from "@/lib/editor/types";
 import { mmToPt } from "@/lib/editor/units";
-import { clamp, isElementColor } from "@/lib/editor/validation";
+import { clamp, isElementColor, STROKE_DASHES } from "@/lib/editor/validation";
 
 /** Look of one kind of canvas guide line. Width is in screen px, so zooming does not change it. */
 export interface GuideLineStyle {
@@ -74,8 +74,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   mcpEnabled: false,
 };
 
-const DASHES: readonly Stroke["dash"][] = ["solid", "dashed", "dotted"];
-
 const LINE_KINDS = ["grid", "contentGuides", "margins"] as const satisfies readonly (keyof GuideLineStyles)[];
 
 /**
@@ -125,7 +123,7 @@ function parseLineStyle(value: unknown, fallback: GuideLineStyle): GuideLineStyl
   const { color, dash, width } = value;
   return {
     color: typeof color === "string" && isElementColor(color) ? color : fallback.color,
-    dash: DASHES.find((candidate) => candidate === dash) ?? fallback.dash,
+    dash: STROKE_DASHES.find((candidate) => candidate === dash) ?? fallback.dash,
     width: typeof width === "number" && Number.isFinite(width) ? clampGuideLineWidth(width) : fallback.width,
   };
 }

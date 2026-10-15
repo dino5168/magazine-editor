@@ -1,10 +1,26 @@
-import { ArrowDown, ArrowUp, Circle, Image, Shapes, Square, Star, Trash, Triangle, Type, type LucideIcon } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Circle,
+  Image,
+  Minus,
+  MoveHorizontal,
+  MoveRight,
+  Shapes,
+  Spline,
+  Square,
+  Star,
+  Trash,
+  Triangle,
+  Type,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage } from "@/lib/editor/editor-reducer";
 import { describeElement } from "@/lib/editor/element-factory";
-import type { CanvasElement, GeometryKind } from "@/lib/editor/types";
+import type { CanvasElement, GeometryKind, LineElement } from "@/lib/editor/types";
 import { IconButton } from "../icon-button";
 
 const GEOMETRY_ICONS: { readonly [K in GeometryKind]: LucideIcon } = {
@@ -15,6 +31,14 @@ const GEOMETRY_ICONS: { readonly [K in GeometryKind]: LucideIcon } = {
   preset: Shapes,
 };
 
+// 和 describeLine 同一組分類：箭頭 → 雙向 → 曲線 / 折線 → 直線
+function lineIcon(line: LineElement): LucideIcon {
+  const [start, end] = [line.start.arrowhead !== "none", line.end.arrowhead !== "none"];
+  if (start && end) return MoveHorizontal;
+  if (start || end) return MoveRight;
+  return line.path === "smooth" || line.points.length > 2 ? Spline : Minus;
+}
+
 function elementIcon(element: CanvasElement): LucideIcon {
   switch (element.type) {
     case "text":
@@ -23,6 +47,8 @@ function elementIcon(element: CanvasElement): LucideIcon {
       return GEOMETRY_ICONS[element.geometry.kind];
     case "image":
       return Image;
+    case "line":
+      return lineIcon(element);
     default: {
       const exhaustive: never = element;
       return exhaustive;

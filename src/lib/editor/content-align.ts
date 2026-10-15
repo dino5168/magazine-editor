@@ -4,8 +4,9 @@
  * 計畫：`docs/01-Plans-2026-10/14-物件屬性增加填滿寬度、高度-實作.md`。
  */
 import { contentGuides, MIN_ELEMENT_SIZE_PT, rotatedBoxBounds } from "./geometry";
+import { linePagePoints, linePointBounds, withLinePoints } from "./line-geometry";
 import { resizePatch } from "./properties";
-import type { Bounds, CanvasElement, ElementPatch, Margins, Size } from "./types";
+import type { Bounds, CanvasElement, ElementPatch, LineElement, Margins, Size } from "./types";
 
 /** Which side a fill button stretches. */
 export type FillAxis = "width" | "height";
@@ -44,15 +45,46 @@ export function contentArea(sheet: Size, margins: Margins): Bounds {
  */
 export function fillContentDisabledReason(element: CanvasElement, area: Bounds, axis: FillAxis): string | null {
   if (axis === "height" && element.type === "text") return "文字的高度由內容決定";
+  if (element.type === "line") {
+    const reason = lineFillDisabledReason(element, axis);
+    if (reason !== null) return reason;
+  }
   const span = axis === "width" ? area.maxX - area.minX : area.maxY - area.minY;
   if (span < MIN_ELEMENT_SIZE_PT) return "內容區太小（邊界合計超過頁面）";
   return null;
+}
+
+// 小於這個差距（pt）當成同一條水平 / 垂直線（浮點誤差）
+const STRAIGHT_TOLERANCE_PT = 1e-6;
+
+// 線條只有「水平線填滿寬度」（分隔線）與「垂直線填滿高度」：斜的線拉伸會改角度，不做
+function lineFillDisabledReason(line: LineElement, axis: FillAxis): string | null {
+  const bounds = linePointBounds(line.points);
+  const [width, height] = [bounds.maxX - bounds.minX, bounds.maxY - bounds.minY];
+  if (axis === "width") {
+    return line.rotation % 180 === 0 && height < STRAIGHT_TOLERANCE_PT && width > STRAIGHT_TOLERANCE_PT ? null : "只有水平線可以填滿寬度";
+  }
+  return line.rotation % 180 === 0 && width < STRAIGHT_TOLERANCE_PT && height > STRAIGHT_TOLERANCE_PT ? null : "只有垂直線可以填滿高度";
+}
+
+// 依比例拉長每個點（折線的轉角也照比例），旋轉 180° 的線先轉回 0°（樣子一樣：點在同一條水平 / 垂直線上）
+function fillLinePatch(line: LineElement, area: Bounds, axis: FillAxis): ElementPatch {
+  const pagePoints = linePagePoints(line);
+  const key = axis === "width" ? "x" : "y";
+  const values = pagePoints.map((point) => point[key]);
+  const [min, max] = [Math.min(...values), Math.max(...values)];
+  const [from, to] = axis === "width" ? [area.minX, area.maxX] : [area.minY, area.maxY];
+  const stretched = pagePoints.map((point) => ({ ...point, [key]: from + ((point[key] - min) / (max - min)) * (to - from) }));
+  const patch = withLinePoints({ ...line, rotation: 0 }, stretched);
+  return line.rotation === 0 ? patch : { ...patch, rotation: 0 };
 }
 
 /**
  * Patch that stretches the element across the content area's width or height. A rotated element is
  * turned back to 0° first (in the same patch); with `keepRatio` the other side follows
  * proportionally, as when typing the size into the property panel, and its position stays.
+ * Lines: a horizontal line fills the width (a rule across the content area), a vertical one the
+ * height; their points stretch proportionally.
  *
  * Args:
  *   element: Selected element.
@@ -65,6 +97,7 @@ export function fillContentDisabledReason(element: CanvasElement, area: Bounds, 
  */
 export function fillContentPatch(element: CanvasElement, area: Bounds, axis: FillAxis, keepRatio: boolean): ElementPatch | null {
   if (fillContentDisabledReason(element, area, axis) !== null) return null;
+  if (element.type === "line") return fillLinePatch(element, area, axis);
   const size =
     axis === "width"
       ? resizePatch(element, { width: area.maxX - area.minX }, keepRatio)
@@ -88,7 +121,8 @@ export function fillContentPatch(element: CanvasElement, area: Bounds, axis: Fil
  *   `{ x }` or `{ y }`, or null when the element is already there.
  */
 export function alignContentPatch(element: CanvasElement, area: Bounds, edge: ContentEdge, height: number): ElementPatch | null {
-  const bounds = rotatedBoxBounds(element, { minX: 0, minY: 0, maxX: element.width, maxY: height }, element.rotation);
+  const local = element.type === "line" ? linePointBounds(element.points) : { minX: 0, minY: 0, maxX: element.width, maxY: height };
+  const bounds = rotatedBoxBounds(element, local, element.rotation);
   const centre = (min: number, max: number) => (min + max) / 2;
   const delta = {
     left: area.minX - bounds.minX,

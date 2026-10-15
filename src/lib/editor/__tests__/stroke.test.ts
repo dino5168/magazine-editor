@@ -2,14 +2,20 @@ import { describe, expect, it } from "vitest";
 import { FACTORY_LINE_STYLES } from "@/lib/preferences/preferences";
 import { colorAlpha } from "../palette";
 import { CONTENT_GUIDE_EMPHASIS, DEFAULT_STROKE, dashPattern, guideLineAttrs, konvaStroke } from "../stroke";
-import { isStroke } from "../validation";
+import { isStroke, STROKE_DASHES } from "../validation";
 
 describe("dashPattern", () => {
   // 和 Rust render.rs 的 dash_patterns_scale_with_the_width 是同一組數字
   it("scales with the width, same numbers as the exports", () => {
     expect(dashPattern("solid", 2)).toBeNull();
-    expect(dashPattern("dashed", 2)).toEqual({ dash: 6, gap: 6, roundCap: false });
-    expect(dashPattern("dotted", 2)).toEqual({ dash: 0, gap: 4, roundCap: true });
+    expect(dashPattern("dashed", 2)).toEqual({ segments: [6, 6], roundCap: false });
+    expect(dashPattern("dotted", 2)).toEqual({ segments: [0, 4], roundCap: true });
+    expect(dashPattern("dashDot", 2)).toEqual({ segments: [8, 4, 2, 4], roundCap: false });
+  });
+
+  it("has a pattern for every listed style, so the menus can offer all of them", () => {
+    for (const dash of STROKE_DASHES) expect(isStroke({ color: "#000000", swatchId: null, width: 1, dash })).toBe(true);
+    expect(STROKE_DASHES.filter((dash) => dashPattern(dash, 1) === null)).toEqual(["solid"]);
   });
 });
 
@@ -27,6 +33,11 @@ describe("konvaStroke", () => {
       lineCap: "round",
     });
     expect(konvaStroke(DEFAULT_STROKE)).toMatchObject({ dashEnabled: false, lineCap: "butt" });
+    expect(konvaStroke({ color: "#000000", swatchId: null, width: 1, dash: "dashDot" })).toMatchObject({
+      dash: [4, 2, 1, 2],
+      dashEnabled: true,
+      lineCap: "butt",
+    });
   });
 });
 
@@ -42,6 +53,7 @@ describe("guideLineAttrs", () => {
   it("draws solid lines without dashes and dotted lines with round caps", () => {
     expect(guideLineAttrs({ ...style, dash: "solid" }, 1)).toMatchObject({ dash: undefined, dashEnabled: false, lineCap: "butt" });
     expect(guideLineAttrs({ ...style, dash: "dotted" }, 2)).toMatchObject({ dash: [0, 2], dashEnabled: true, lineCap: "round" });
+    expect(guideLineAttrs({ ...style, dash: "dashDot" }, 2)).toMatchObject({ dash: [4, 2, 1, 2], lineCap: "butt" });
   });
 
   it("makes 1/2 content guides thicker and 1/4 ones lighter, like before the styles existed", () => {

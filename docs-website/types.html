@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-15
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；2026-10-15 <code>Stroke.dash</code> 加入點劃線 <code>"dashDot"</code>（<code>schemaVersion</code> 15）；2026-10-15 加入線條 <code>LineElement</code>、<code>LinePoint</code>、<code>LineEnd</code>、<code>LineArrowhead</code>（同樣是 <code>schemaVersion</code> 15）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-15
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -158,7 +158,7 @@
   <li>長度單位一律是 <strong>pt</strong>（1/72 inch，和 Typst 相同），座標原點是<strong>頁面左上角</strong>。</li>
   <li><code>types.ts</code> 裡<strong>沒有任何 class</strong>，只有 <code>interface</code> 和 <code>type</code>。它們只描述資料的形狀，編譯成 JavaScript 後會完全消失。</li>
   <li>所有欄位都是 <code>readonly</code>：修改資料時會產生新的物件，舊版本保留下來給「復原」使用。</li>
-  <li>物件種類靠 <code>type</code> 欄位區分（<code>"text"</code>、<code>"shape"</code>、<code>"image"</code>），不是靠繼承。</li>
+  <li>物件種類靠 <code>type</code> 欄位區分（<code>"text"</code>、<code>"shape"</code>、<code>"image"</code>、<code>"line"</code>），不是靠繼承。</li>
   <li>所有圖形（矩形、橢圓、多邊形、星形）都是同一種 <code>ShapeElement</code>：共用外框、填色、邊框、圖形內文字，差別只在 <code>geometry</code>（再用 <code>kind</code> 欄位區分）。</li>
   <li>每種物件的 <code>x</code> / <code>y</code> 都是<strong>外框的左上角</strong>，旋轉也繞這一點。</li>
   <li>文件的結構是一棵樹：<code>EditorDocument</code> → <code>Page</code> → <code>CanvasElement</code>。主頁（<code>MasterPage</code>）是另一串，頁面以 <code>masterId</code> 指向它。</li>
@@ -190,7 +190,7 @@
   <polygon class="diamond" points="737.5,206 731.5,218 737.5,230 743.5,218"/>
   <line class="edge" x1="737.5" y1="230" x2="737.5" y2="250"/>
   <text class="elabel" x="747" y="236">elements　0..*</text>
-  <path class="edge union" d="M737.5 346 V510 M135 510 H1065 M135 510 V540 M435 510 V540 M1065 510 V540"/>
+  <path class="edge union" d="M737.5 346 V510 M135 510 H1065 M135 510 V540 M435 510 V540 M1065 510 V540 M972 510 V900 H980"/>
   <text class="elabel" x="746" y="430">union 成員（ | ）</text>
   <!-- ShapeElement 擁有 geometry（1 個）、stroke 與 label（0 或 1 個） -->
   <polygon class="diamond" points="570,610 582,604 594,610 582,616"/>
@@ -293,7 +293,7 @@
     <rect class="frame" x="600" y="250" width="275" height="96" rx="6"/>
     <text class="st" x="737.5" y="267">«union»</text>
     <text class="nm" x="737.5" y="285">CanvasElement</text>
-      <text class="prose" x="610" y="314">三種 Element 其中之一</text>
+      <text class="prose" x="610" y="314">四種 Element 其中之一</text>
       <text class="prose" x="610" y="334">以 type 欄位區分</text>
   </a>
   <a href="#t-ElementId" class="node derived">
@@ -325,7 +325,7 @@
     <text class="st" x="1027.5" y="142">«type»</text>
     <text class="nm" x="1027.5" y="160">ElementType</text>
       <text class="field" x="920" y="189"><tspan class="ft">= CanvasElement["type"]</tspan></text>
-      <text class="field" x="920" y="209"><tspan class="ft">"text"|"shape"|"image"</tspan></text>
+      <text class="field" x="920" y="209"><tspan class="ft">"text"|"shape"|"image"|"line"</tspan></text>
   </a>
   <a href="#t-ElementPatch" class="node derived">
     <title>ElementPatch：點擊查看說明</title>
@@ -404,6 +404,20 @@
       <text class="field" x="995" y="644">width<tspan class="ft">: number</tspan></text>
       <text class="field" x="995" y="664">height<tspan class="ft">: number</tspan></text>
   </a>
+  <a href="#t-LineElement" class="node doc">
+    <title>LineElement：點擊查看說明</title>
+    <rect class="body" x="980" y="810" width="165" height="156" rx="6"/>
+    <path class="hdr" d="M980 854 V816 a6 6 0 0 1 6 -6 H1139 a6 6 0 0 1 6 6 V854 Z"/>
+    <line class="sep" x1="980" y1="854" x2="1145" y2="854"/>
+    <rect class="frame" x="980" y="810" width="165" height="156" rx="6"/>
+    <text class="st" x="1062.5" y="827">«interface» · v15</text>
+    <text class="nm" x="1062.5" y="845">LineElement</text>
+      <text class="field disc" x="990" y="874">type<tspan class="ft">: "line"</tspan></text>
+      <text class="field" x="990" y="894">points<tspan class="ft">: LinePoint[]</tspan></text>
+      <text class="field" x="990" y="914">path / compound</text>
+      <text class="field" x="990" y="934">stroke<tspan class="ft">: Stroke</tspan></text>
+      <text class="field" x="990" y="954">start / end<tspan class="ft">: LineEnd</tspan></text>
+  </a>
   <a href="#t-GeometryKind" class="node derived">
     <title>GeometryKind：點擊查看說明</title>
     <rect class="body" x="985" y="700" width="160" height="96" rx="6"/>
@@ -471,7 +485,7 @@
     <text class="nm" x="800" y="825">Stroke</text>
       <text class="field" x="650" y="854">color / swatchId<tspan class="ft">: 顏色 / 色票</tspan></text>
       <text class="field" x="650" y="874">width<tspan class="ft">: number</tspan></text>
-      <text class="field" x="650" y="894">dash<tspan class="ft">: "solid"|"dashed"|"dotted"</tspan></text>
+      <text class="field" x="650" y="894">dash<tspan class="ft">: "solid"|"dashed"|"dotted"|"dashDot"</tspan></text>
   </a>
   <a href="#t-BaseElement" class="node doc">
     <title>BaseElement：點擊查看說明</title>
@@ -479,7 +493,7 @@
     <path class="hdr" d="M470 1034 V996 a6 6 0 0 1 6 -6 H684 a6 6 0 0 1 6 6 V1034 Z"/>
     <line class="sep" x1="470" y1="1034" x2="690" y2="1034"/>
     <rect class="frame" x="470" y="990" width="220" height="136" rx="6"/>
-    <text class="st" x="580" y="1007">«interface» · 三種 Element 都 extends</text>
+    <text class="st" x="580" y="1007">«interface» · 四種 Element 都 extends</text>
     <text class="nm" x="580" y="1025">BaseElement</text>
       <text class="field" x="480" y="1054">id<tspan class="ft">: ElementId</tspan></text>
       <text class="field" x="480" y="1074">x<tspan class="ft">: number</tspan></text>
@@ -683,7 +697,7 @@
   </g>
 </svg>
 </div>
-<p class="hint">點擊方框可以跳到該型別的說明。方框裡只列出該型別<strong>自己</strong>宣告的欄位：三種 Element 都 extends <code>BaseElement</code>（<code>id</code> / <code>x</code> / <code>y</code> / <code>rotation</code>），<code>TextElement</code> 與 <code>ShapeLabel</code> 另外 extends <code>TextStyle</code>（字型欄位），這些都不重複列出。</p>
+<p class="hint">點擊方框可以跳到該型別的說明。方框裡只列出該型別<strong>自己</strong>宣告的欄位：四種 Element 都 extends <code>BaseElement</code>（<code>id</code> / <code>x</code> / <code>y</code> / <code>rotation</code>），<code>TextElement</code> 與 <code>ShapeLabel</code> 另外 extends <code>TextStyle</code>（字型欄位），這些都不重複列出。</p>
 
 <ul class="legend" aria-label="圖例">
   <li><span class="swatch" style="background:var(--doc-hdr);border-color:var(--doc-stroke)"></span><span>文件資料：會進入復原歷史</span></li>
@@ -851,8 +865,8 @@
 <section class="card doc" id="t-CanvasElement">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>CanvasElement</code><span class="badge">union type</span></h4>
-  <p>「畫布上的任何一個物件」，是三種 Element 其中之一：</p>
-  <pre><code>type CanvasElement = TextElement | ShapeElement | ImageElement;</code></pre>
+  <p>「畫布上的任何一個物件」，是四種 Element 其中之一（<code>LineElement</code> 是 v15 加的）：</p>
+  <pre><code>type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement;</code></pre>
   <p>程式用 <code>type</code> 欄位判斷拿到的是哪一種。在 <code>switch (el.type)</code> 的 <code>case "text":</code> 裡，TypeScript 會自動把 <code>el</code> 視為 <code>TextElement</code>，所以可以直接讀 <code>el.fontSize</code>。圖形還要再看一層 <code>el.geometry.kind</code> 才知道是矩形、橢圓、多邊形還是星形。</p>
   <p class="uses">使用位置：<code>components/editor/canvas-elements.tsx</code> · <code>components/editor/panels/layers-panel.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/editor/geometry.ts</code> · <code>lib/editor/properties.ts</code></p>
 </section>
@@ -860,7 +874,7 @@
 <section class="card doc" id="t-BaseElement">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>BaseElement</code><span class="badge">interface</span></h4>
-  <p>三種 Element 共用的欄位。它只是一份「欄位清單」，程式裡不會出現單獨的 <code>BaseElement</code> 物件。</p>
+  <p>四種 Element 共用的欄位。它只是一份「欄位清單」，程式裡不會出現單獨的 <code>BaseElement</code> 物件。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>id</code></td><td><code>ElementId</code></td><td>唯一識別碼，建立後不能修改（<code>ElementPatch</code> 排除了它）</td></tr>
@@ -972,7 +986,7 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
     <tr><td><code>color</code></td><td><code>string</code></td><td><code>#rrggbb</code> 或 <code>#rrggbbaa</code></td></tr>
     <tr><td><code>swatchId</code></td><td><code>string | null</code></td><td>邊框色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連</td></tr>
     <tr><td><code>width</code></td><td><code>number</code></td><td>線寬（pt），大於 0、最多 100</td></tr>
-    <tr><td><code>dash</code></td><td><code>"solid" | "dashed" | "dotted"</code></td><td>虛線 = 線段 3 倍線寬 + 間隔 3 倍線寬；點線 = 圓點，間距 2 倍線寬（<code>stroke.ts</code> 的 <code>dashPattern</code>）</td></tr>
+    <tr><td><code>dash</code></td><td><code>"solid" | "dashed" | "dotted" | "dashDot"</code></td><td>虛線 = 線段 3 倍線寬 + 間隔 3 倍線寬；點線 = 圓點，間距 2 倍線寬；點劃線（v15）= 長劃 4 倍、間隔 2 倍、短劃 1 倍（平頭）、間隔 2 倍線寬（<code>stroke.ts</code> 的 <code>dashPattern</code>，回傳一串長度 <code>segments</code>）</td></tr>
   </table></div>
   <p class="uses">使用位置：<code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/stroke.ts</code> · <code>lib/editor/validation.ts</code></p>
 </section>
@@ -1067,6 +1081,21 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
     <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>顯示尺寸（pt）。新增時由 <code>createImageElement()</code> 依原始尺寸換算，並縮小到頁面範圍內</td></tr>
   </table></div>
   <p class="uses">使用位置：<code>components/editor/canvas-elements.tsx</code> · <code>lib/editor/element-factory.ts</code></p>
+</section>
+
+<section class="card doc" id="t-LineElement">
+  <a class="back" href="#diagram">↑ 回到圖</a>
+  <h4><code>LineElement</code><span class="badge">interface · type: "line" · v15</span></h4>
+  <p>線條與箭頭（直線、折線、曲線、鉛筆）。和其他物件不同，它<strong>以點定義，沒有 <code>width</code> / <code>height</code></strong>：水平線的外框高度是 0，兩端可以各自拖。<code>x</code> / <code>y</code> 仍是外框（點的外接框）的左上角，所以框選、捲動範圍、跨頁都照常運作；改點時由 <code>line-geometry.ts</code> 重新正規化。匯出前編輯器把它換成路徑圖形，Rust 的繪製不認識線條。計畫：<code>docs/06-Plans-繪圖/03-自由繪圖-實作.md</code>。</p>
+  <div class="table-wrap"><table>
+    <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+    <tr><td><code>points</code></td><td><code>LinePoint[]</code>（<code>{ x, y }</code>）</td><td>2–500 個點（<code>MAX_LINE_POINTS</code>），相對於 (x, y)；座標 |v| ≤ 1e6</td></tr>
+    <tr><td><code>path</code></td><td><code>"straight" | "smooth"</code></td><td><code>straight</code> = 點與點之間連直線（2 點 = 直線，更多 = 折線）；<code>smooth</code> = 穿過每個點的平滑曲線（曲線、鉛筆）</td></tr>
+    <tr><td><code>compound</code></td><td><code>"single" | "double"</code></td><td><code>double</code> = 兩條平行細線，總寬 = 線寬（只給直線 / 折線）</td></tr>
+    <tr><td><code>stroke</code></td><td><code>Stroke</code></td><td>線的顏色（可連色票）、粗細、虛線樣式；<strong>不可為 <code>null</code></strong></td></tr>
+    <tr><td><code>start</code> / <code>end</code></td><td><code>LineEnd</code>（<code>{ arrowhead, scale }</code>）</td><td>第一個 / 最後一個點那一端。<code>arrowhead</code> 是 <code>"none" | "open" | "triangle"</code>（<code>LineArrowhead</code>），<code>scale</code> 是大小倍數 0.5–5；箭頭永遠是實線</td></tr>
+  </table></div>
+  <p class="uses">使用位置：<code>lib/editor/line-geometry.ts</code> · <code>lib/editor/element-factory.ts</code>（<code>createLineElement</code>、<code>describeLine</code>）· <code>lib/editor/validation.ts</code>（<code>isValidLine</code>）· <code>lib/editor/editor-reducer.ts</code> · Rust <code>project/format.rs</code></p>
 </section>
 
 <h3 class="group-title">UI 狀態（不進入復原歷史）</h3>

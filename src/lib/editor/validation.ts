@@ -2,6 +2,10 @@ import type {
   CornerRadius,
   FontEmbedding,
   FontFile,
+  LineArrowhead,
+  LineElement,
+  LineEnd,
+  LinePoint,
   Margins,
   ProjectFont,
   ShapeGeometry,
@@ -30,7 +34,11 @@ export const FONT_SIZE_MAX = 400;
 export const STROKE_WIDTH_MIN = 0.25;
 /** Thickest stroke (pt); same as `STROKE_WIDTH_MAX` in Rust `format.rs`. */
 export const STROKE_WIDTH_MAX = 100;
-const STROKE_DASHES: readonly Stroke["dash"][] = ["solid", "dashed", "dotted"];
+/** Every stroke style, in menu order; same as `StrokeDash` in Rust `format.rs`. */
+export const STROKE_DASHES = ["solid", "dashed", "dotted", "dashDot"] as const satisfies readonly Stroke["dash"][];
+// 型別多了一種樣式、這裡卻沒列時編譯失敗
+const ALL_DASHES_LISTED: readonly (typeof STROKE_DASHES)[number][] = [] as Stroke["dash"][];
+void ALL_DASHES_LISTED;
 
 /** Most polygon sides / star points a document may contain; same as `MAX_VERTEX_COUNT` in Rust. */
 export const MAX_VERTEX_COUNT = 1000;
@@ -298,6 +306,81 @@ export function isStroke(value: unknown): value is Stroke {
     width > 0 &&
     width <= STROKE_WIDTH_MAX &&
     (STROKE_DASHES as readonly unknown[]).includes(dash)
+  );
+}
+
+/** Most points a line may have (pencil strokes are simplified below it); same as `MAX_LINE_POINTS` in Rust. */
+export const MAX_LINE_POINTS = 500;
+/** Largest |coordinate| of a line point (pt); same as `LINE_COORDINATE_MAX` in Rust. */
+export const LINE_COORDINATE_MAX = 1e6;
+/** Arrowhead size factor range; same as `LINE_END_SCALE_MIN` / `MAX` in Rust. */
+export const LINE_END_SCALE_MIN = 0.5;
+export const LINE_END_SCALE_MAX = 5;
+/** Every arrowhead, in menu order; same as `LineArrowhead` in Rust `format.rs`. */
+export const LINE_ARROWHEADS = ["none", "open", "triangle"] as const satisfies readonly LineArrowhead[];
+const LINE_PATHS: readonly LineElement["path"][] = ["straight", "smooth"];
+const LINE_COMPOUNDS: readonly LineElement["compound"][] = ["single", "double"];
+// 型別多了一種箭頭、這裡卻沒列時編譯失敗
+const ALL_ARROWHEADS_LISTED: readonly (typeof LINE_ARROWHEADS)[number][] = [] as LineArrowhead[];
+void ALL_ARROWHEADS_LISTED;
+
+/**
+ * Checks a line end (same rules as Rust `validate_line_end`): known arrowhead, scale within
+ * [LINE_END_SCALE_MIN, LINE_END_SCALE_MAX].
+ *
+ * Args:
+ *   value: Candidate end (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `LineElement.start` / `end`.
+ */
+export function isLineEnd(value: unknown): value is LineEnd {
+  if (typeof value !== "object" || value === null) return false;
+  const { arrowhead, scale } = value as Record<string, unknown>;
+  return (
+    (LINE_ARROWHEADS as readonly unknown[]).includes(arrowhead) &&
+    typeof scale === "number" &&
+    scale >= LINE_END_SCALE_MIN &&
+    scale <= LINE_END_SCALE_MAX
+  );
+}
+
+/**
+ * Checks a line's points (same rules as Rust `validate_line`): 2–MAX_LINE_POINTS points with
+ * finite coordinates within ±LINE_COORDINATE_MAX.
+ *
+ * Args:
+ *   value: Candidate points (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `LineElement.points`.
+ */
+export function isLinePoints(value: unknown): value is readonly LinePoint[] {
+  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_LINE_POINTS) return false;
+  const inRange = (v: unknown) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= LINE_COORDINATE_MAX;
+  return value.every(
+    (point: unknown) => typeof point === "object" && point !== null && inRange((point as LinePoint).x) && inRange((point as LinePoint).y),
+  );
+}
+
+/**
+ * Checks the line-only fields of a whole line element (same rules as Rust `validate_element` for
+ * lines). Position and rotation are checked like other elements' (finite numbers).
+ *
+ * Args:
+ *   line: Line element (e.g. after a patch).
+ *
+ * Returns:
+ *   True when the line can be stored.
+ */
+export function isValidLine(line: LineElement): boolean {
+  return (
+    isLinePoints(line.points) &&
+    LINE_PATHS.includes(line.path) &&
+    LINE_COMPOUNDS.includes(line.compound) &&
+    isStroke(line.stroke) &&
+    isLineEnd(line.start) &&
+    isLineEnd(line.end)
   );
 }
 

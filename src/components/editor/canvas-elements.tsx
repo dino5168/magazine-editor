@@ -6,7 +6,8 @@ import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
-import { pathData } from "@/lib/editor/shape-path";
+import { linePaths } from "@/lib/editor/line-path";
+import { pathData, type PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
@@ -17,6 +18,7 @@ import type {
   ElementId,
   ElementPatch,
   ImageElement,
+  LineElement,
   ShapeElement,
   ShapeGeometry,
   ShapeLabel,
@@ -45,7 +47,12 @@ export interface ElementNodeProps {
   readonly onEditText: (id: ElementId) => void;
   /** Konva dragBoundFunc in absolute coordinates (grid snapping); null = free dragging. */
   readonly dragBound: ((id: ElementId, pos: Konva.Vector2d) => Konva.Vector2d) | null;
+  /** Canvas zoom: thin lines get a hit area of `LINE_HIT_PX` screen pixels. */
+  readonly zoom: number;
 }
+
+/** Width (screen px) of the area that picks a line, however thin it is drawn. */
+export const LINE_HIT_PX = 8;
 
 /**
  * Snaps a point given in stage (absolute) coordinates to the page grid: absolute → page pt via the
@@ -109,6 +116,9 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
         width: Math.max(MIN_SIZE_PT, element.width * scaleX),
         height: Math.max(MIN_SIZE_PT, element.height * scaleY),
       };
+    // 線條的 Transformer 沒有控制點，只會移動
+    case "line":
+      return base;
     default: {
       const exhaustive: never = element;
       return exhaustive;
@@ -245,6 +255,37 @@ export function StaticShape({ shape, listening = false }: { readonly shape: Shap
   );
 }
 
+/**
+ * Draws a line in its own coordinates: the line (dashed as its stroke says), filled heads (the line's
+ * color) and open heads (always solid), from the same `linePaths` the export uses. Thin lines are
+ * picked within `LINE_HIT_PX` screen pixels; heads pick too (they may cover the whole line).
+ *
+ * Args:
+ *   props.line: Line element (points, stroke and ends are used).
+ *   props.zoom: Canvas zoom.
+ *
+ * Returns:
+ *   Konva nodes to put in a group at the line's position.
+ */
+export function LineBody({ line, zoom }: { readonly line: LineElement; readonly zoom: number }) {
+  const { points, stroke, start, end } = line;
+  const paths = useMemo(() => {
+    const built = linePaths({ points, stroke, start, end });
+    const data = (commands: readonly PathCommand[]) => (commands.length > 0 ? pathData(commands) : null);
+    return { stroke: data(built.stroke), fills: data(built.fills), outlines: data(built.outlines) };
+  }, [points, stroke, start, end]);
+  const hitStrokeWidth = Math.max(stroke.width, LINE_HIT_PX / zoom);
+  return (
+    <>
+      {paths.stroke && <Path data={paths.stroke} {...konvaStroke(stroke)} fillEnabled={false} hitStrokeWidth={hitStrokeWidth} />}
+      {paths.fills && <Path data={paths.fills} fill={stroke.color} />}
+      {paths.outlines && (
+        <Path data={paths.outlines} {...konvaStroke({ ...stroke, dash: "solid" })} fillEnabled={false} hitStrokeWidth={hitStrokeWidth} />
+      )}
+    </>
+  );
+}
+
 // 文字節點的內容與樣式；可編輯的 ElementNode 與靜態的 StaticElement 共用，兩邊才不會畫得不一樣
 function textAttrs(element: TextElement) {
   return {
@@ -271,7 +312,16 @@ function textAttrs(element: TextElement) {
  * Returns:
  *   Konva node.
  */
-export function StaticElement({ element, listening = false }: { readonly element: CanvasElement; readonly listening?: boolean }) {
+export function StaticElement({
+  element,
+  listening = false,
+  zoom = 1,
+}: {
+  readonly element: CanvasElement;
+  readonly listening?: boolean;
+  /** Canvas zoom, for the hit area of thin lines (only matters when listening). */
+  readonly zoom?: number;
+}) {
   const position: StaticNodeProps = { x: element.x, y: element.y, rotation: element.rotation, listening };
   switch (element.type) {
     case "text":
@@ -280,6 +330,12 @@ export function StaticElement({ element, listening = false }: { readonly element
       return <StaticShape shape={element} listening={listening} />;
     case "image":
       return <ImageNode element={element} common={position} />;
+    case "line":
+      return (
+        <Group {...position}>
+          <LineBody line={element} zoom={zoom} />
+        </Group>
+      );
     default: {
       const exhaustive: never = element;
       return exhaustive;
@@ -296,7 +352,7 @@ export function StaticElement({ element, listening = false }: { readonly element
  * Returns:
  *   Konva node.
  */
-export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd, onEditText, dragBound }: ElementNodeProps) {
+export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd, onEditText, dragBound, zoom }: ElementNodeProps) {
   const common: CommonNodeProps = {
     id: element.id,
     name: ELEMENT_NODE_NAME,
@@ -345,6 +401,13 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
       );
     case "image":
       return <ImageNode element={element} common={common} />;
+    // Group 的原點是線條的 (x, y)；Transformer 掛在 Group 上，只能移動（端點由把手改）
+    case "line":
+      return (
+        <Group {...common}>
+          <LineBody line={element} zoom={zoom} />
+        </Group>
+      );
     default: {
       const exhaustive: never = element;
       return exhaustive;

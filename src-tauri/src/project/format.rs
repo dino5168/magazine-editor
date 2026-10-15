@@ -34,13 +34,22 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// backups → none.
 /// v14: shape geometry `{ kind: "preset", preset, params }`, a shape from the editor's shape
 /// library; the editor computes its outline for export. Older files have none.
-pub const SCHEMA_VERSION: u32 = 14;
+/// v15: stroke `dash` may be `dashDot`（點劃線）; line elements follow (`docs/06-Plans-繪圖/03-自由繪圖-實作.md`).
+/// Older files have neither.
+pub const SCHEMA_VERSION: u32 = 15;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
 /// Most polygon sides / star points a file may contain (each is drawn as vertices); same as
 /// `MAX_VERTEX_COUNT` in `src/lib/editor/validation.ts`.
 pub const MAX_VERTEX_COUNT: u32 = 1000;
+/// Most points a line may have; same as `MAX_LINE_POINTS` in `src/lib/editor/validation.ts`.
+pub const MAX_LINE_POINTS: usize = 500;
+/// Largest |coordinate| of a line point (pt); same as `LINE_COORDINATE_MAX` in TS.
+pub const LINE_COORDINATE_MAX: f64 = 1e6;
+/// Arrowhead size factor range; same as `LINE_END_SCALE_MIN` / `MAX` in TS.
+pub const LINE_END_SCALE_MIN: f64 = 0.5;
+pub const LINE_END_SCALE_MAX: f64 = 5.0;
 /// Longest shape-library id and parameter name; same as `SHAPE_PRESET_ID_MAX_LENGTH` in
 /// `src/lib/editor/validation.ts`.
 pub const SHAPE_PRESET_ID_MAX_LENGTH: usize = 32;
@@ -438,11 +447,13 @@ pub enum VerticalAlign {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "camelCase")]
 pub enum StrokeDash {
     Solid,
     Dashed,
     Dotted,
+    /// 點劃線（v15）.
+    DashDot,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -552,12 +563,68 @@ pub struct ImageElement {
     pub height: f64,
 }
 
+/// A point of a line, relative to the line's `x` / `y`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct LinePoint {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// What a line end draws. Same values as `LineArrowhead` in `src/lib/editor/types.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum LineArrowhead {
+    None,
+    Open,
+    Triangle,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct LineEnd {
+    pub arrowhead: LineArrowhead,
+    /// Arrowhead size factor (the editor turns it into pt with the stroke width).
+    pub scale: f64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum LinePath {
+    /// Segments from point to point.
+    Straight,
+    /// A curve through every point.
+    Smooth,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum LineCompound {
+    Single,
+    /// Two parallel thin lines (straight lines only; a smooth one is drawn single).
+    Double,
+}
+
+/// A line or arrow (v15), defined by its points. `x` / `y` is the top-left corner of the points'
+/// bounding box. The editor turns lines into path shapes before exporting, so the exporters never
+/// see one (`render.rs`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LineElement {
+    #[serde(flatten)]
+    pub base: Base,
+    pub points: Vec<LinePoint>,
+    pub path: LinePath,
+    pub compound: LineCompound,
+    pub stroke: Stroke,
+    pub start: LineEnd,
+    pub end: LineEnd,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Element {
     Text(TextElement),
     Shape(ShapeElement),
     Image(ImageElement),
+    Line(LineElement),
 }
 
 /// An image stored in the project's `assets/images/` (listed in the upload panel).
@@ -1025,7 +1092,32 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
             require_id(&e.base.id)?;
             validate_asset_path(&e.src)
         }
+        Element::Line(e) => {
+            require_id(&e.base.id)?;
+            validate_stroke(&e.stroke, &refs.swatches)?;
+            validate_line(e)
+        }
     }
+}
+
+/// Same rules as `isValidLine` in `src/lib/editor/validation.ts`: 2–MAX_LINE_POINTS points with
+/// finite coordinates within ±LINE_COORDINATE_MAX, arrowhead scales within
+/// [LINE_END_SCALE_MIN, LINE_END_SCALE_MAX].
+fn validate_line(line: &LineElement) -> AppResult<()> {
+    let count = line.points.len();
+    if !(2..=MAX_LINE_POINTS).contains(&count) {
+        return Err(AppError::invalid_project(format!("line {} has {count} points", line.base.id)));
+    }
+    let in_range = |v: f64| v.is_finite() && v.abs() <= LINE_COORDINATE_MAX;
+    if !line.points.iter().all(|p| in_range(p.x) && in_range(p.y)) {
+        return Err(AppError::invalid_project(format!("line {} has an invalid point", line.base.id)));
+    }
+    for end in [&line.start, &line.end] {
+        if !(LINE_END_SCALE_MIN..=LINE_END_SCALE_MAX).contains(&end.scale) {
+            return Err(AppError::invalid_project(format!("invalid arrowhead scale {}", end.scale)));
+        }
+    }
+    Ok(())
 }
 
 /// Rejects geometry that cannot be drawn sensibly. Same rules as `isShapeGeometry` in
@@ -1170,6 +1262,43 @@ mod tests {
         let written: Value = serde_json::from_str(&serde_json::to_string_pretty(&project).unwrap()).unwrap();
         let original: Value = serde_json::from_str(FIXTURE).unwrap();
         assert_eq!(normalize(written), normalize(original));
+    }
+
+    #[test]
+    fn lines_keep_their_points_ends_and_swatch_link() {
+        let project = parse_project(FIXTURE).unwrap();
+        let Element::Line(line) = &project.document.masters[1].elements[3] else { panic!("expected the arrow line") };
+        assert_eq!(line.points.len(), 3);
+        assert_eq!((line.path, line.compound), (LinePath::Straight, LineCompound::Single));
+        assert_eq!(line.end, LineEnd { arrowhead: LineArrowhead::Triangle, scale: 1.5 });
+        assert_eq!(line.stroke.swatch_id.as_deref(), Some("swatch-indigo"));
+    }
+
+    #[test]
+    fn invalid_lines_are_rejected() {
+        use serde_json::json;
+        const LINE: &str = "/document/masters/1/elements/3";
+        let with = |field: &str, replacement: Value| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            *value.pointer_mut(&format!("{LINE}/{field}")).unwrap() = replacement;
+            parse_project(&value.to_string())
+        };
+        assert!(with("points", json!([{ "x": 0, "y": 0 }, { "x": -LINE_COORDINATE_MAX, "y": 0 }])).is_ok());
+        let too_many: Vec<Value> = (0..=MAX_LINE_POINTS).map(|x| json!({ "x": x, "y": 0 })).collect();
+        for (field, bad) in [
+            ("points", json!([{ "x": 0, "y": 0 }])),
+            ("points", Value::from(too_many)),
+            ("points", json!([{ "x": 0, "y": 0 }, { "x": 2e6, "y": 0 }])),
+            ("path", json!("bezier")),
+            ("compound", json!("triple")),
+            ("stroke", Value::Null),
+            ("stroke", json!({ "color": "#000000", "swatchId": "missing", "width": 1, "dash": "solid" })),
+            ("end", json!({ "arrowhead": "circle", "scale": 1 })),
+            ("start", json!({ "arrowhead": "open", "scale": LINE_END_SCALE_MAX + 1.0 })),
+            ("id", json!("")),
+        ] {
+            assert!(with(field, bad.clone()).is_err(), "{field} = {bad}");
+        }
     }
 
     #[test]

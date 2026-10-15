@@ -37,8 +37,10 @@ import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { CanvasRuler, moveRulerMarker, RULER_SIZE_PX, RulerCorner } from "./canvas-ruler";
 import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
 import { ElementContextMenu } from "./element-context-menu";
+import { LineHandles } from "./line-handles";
 import { TextEditorOverlay } from "./text-editor-overlay";
 import { useCanvasCreate } from "./use-canvas-create";
+import { useCanvasLine } from "./use-canvas-line";
 import { useCanvasMarquee } from "./use-canvas-marquee";
 import { useCanvasPan } from "./use-canvas-pan";
 
@@ -56,12 +58,14 @@ const ALL_ANCHORS: readonly AnchorName[] = [
 ];
 
 const TRANSFORMER_OPTIONS: {
-  readonly [K in ElementType]: { readonly anchors: readonly AnchorName[]; readonly keepRatio: boolean };
+  readonly [K in ElementType]: { readonly anchors: readonly AnchorName[]; readonly keepRatio: boolean; readonly rotatable: boolean };
 } = {
-  text: { anchors: ["middle-left", "middle-right"], keepRatio: false },
+  text: { anchors: ["middle-left", "middle-right"], keepRatio: false, rotatable: true },
   // 所有圖形都以外框定義，可以自由拉伸（多邊形與星形也是）
-  shape: { anchors: ALL_ANCHORS, keepRatio: false },
-  image: { anchors: ALL_ANCHORS, keepRatio: false },
+  shape: { anchors: ALL_ANCHORS, keepRatio: false, rotatable: true },
+  image: { anchors: ALL_ANCHORS, keepRatio: false, rotatable: true },
+  // 線條的長度與角度由端點決定（端點把手），Transformer 只負責移動
+  line: { anchors: [], keepRatio: false, rotatable: false },
 };
 
 /**
@@ -183,6 +187,14 @@ export function EditorCanvas() {
     // 文字工具建的文字連到「內文」（以固定 id 找，改名不影響）；文件沒有就不連結
     textStyle: document.textStyles.find((style) => style.id === BUILT_IN_TEXT_STYLE_IDS.body) ?? null,
     onTextDraft: setDraftText,
+  });
+  const lineTool = useCanvasLine({
+    scrollRef,
+    tool: state.tool,
+    lineKind: state.lineKind,
+    pageAt,
+    snapSpacing,
+    swatches: document.swatches,
   });
   const marquee = useCanvasMarquee({
     scrollRef,
@@ -427,6 +439,8 @@ export function EditorCanvas() {
 
   // 多選只能一起移動：不顯示縮放與旋轉控制點
   const multiSelected = state.selectedIds.length > 1;
+  // 單選一條線：不畫 Transformer 的框，改畫端點把手（拖整條線時先藏起來；手形 / 建立工具在 capture 階段攔下按鍵，把手不作用）
+  const selectedLine = !multiSelected && selected?.type === "line" && editingId === null ? selected : null;
   // 縮放時把拖曳中的控制點對齊格線；旋轉過的物件外框邊不在格線方向上，不吸附
   const snapAnchor =
     snapSpacing !== null && selected && selected.rotation % 360 === 0
@@ -489,26 +503,30 @@ export function EditorCanvas() {
       <div
         ref={scrollRef}
         className="relative min-h-0 min-w-0 overflow-scroll bg-muted"
-        style={{ cursor: pan.cursor ?? create.cursor }}
+        style={{ cursor: pan.cursor ?? create.cursor ?? (lineTool.active ? "crosshair" : undefined) }}
         onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
         // 平移優先（手形 / 空白鍵 / 中鍵）；平移攔下的事件，建立工具不再處理
         onPointerDownCapture={(event) => {
           pan.handlers.onPointerDownCapture(event);
           create.handlers.onPointerDownCapture(event);
+          lineTool.handlers.onPointerDownCapture(event);
         }}
         onPointerMove={(event) => {
           trackPointer(event);
           pan.handlers.onPointerMove(event);
           create.handlers.onPointerMove(event);
+          lineTool.handlers.onPointerMove(event);
         }}
         onPointerLeave={() => trackPointer(null)}
         onPointerUp={(event) => {
           pan.handlers.onPointerUp();
           create.handlers.onPointerUp(event);
+          lineTool.handlers.onPointerUp(event);
         }}
         onLostPointerCapture={() => {
           pan.handlers.onLostPointerCapture();
           create.handlers.onLostPointerCapture();
+          lineTool.handlers.onLostPointerCapture();
         }}
         onMouseDownCapture={pan.handlers.onMouseDownCapture}
       >
@@ -559,7 +577,7 @@ export function EditorCanvas() {
                       <Transformer
                         ref={transformerRef}
                         enabledAnchors={multiSelected ? [] : [...transformerOptions.anchors]}
-                        rotateEnabled={!multiSelected}
+                        rotateEnabled={!multiSelected && transformerOptions.rotatable}
                         keepRatio={transformerOptions.keepRatio}
                         flipEnabled={false}
                         // 控制框貼著外框（不含邊線的外半邊），拖曳控制點換算的 scale 才對應 width / height
@@ -575,7 +593,17 @@ export function EditorCanvas() {
                         anchorDragBoundFunc={snapAnchor}
                         onTransformStart={() => setInteracting(true)}
                         onTransformEnd={() => setInteracting(false)}
+                        borderEnabled={selectedLine === null}
                       />
+                      {selectedLine && !interacting && (
+                        <LineHandles
+                          line={selectedLine}
+                          offsetX={activeX}
+                          zoom={zoom}
+                          snapSpacing={snapSpacing}
+                          onCommit={(patch) => dispatch({ type: "element/update", id: selectedLine.id, patch })}
+                        />
+                      )}
                     </Layer>
                   </Stage>
                 </div>
@@ -590,6 +618,9 @@ export function EditorCanvas() {
                 !create.previewVisible && "hidden",
               )}
             />
+            <svg aria-hidden className={cn("pointer-events-none absolute inset-0 size-full", !lineTool.previewVisible && "hidden")}>
+              <line ref={lineTool.previewRef} className="stroke-primary" strokeWidth={1.5} strokeDasharray="4 3" />
+            </svg>
             <div
               ref={marquee.previewRef}
               aria-hidden

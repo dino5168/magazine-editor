@@ -46,8 +46,8 @@ fn stroke_data(stroke: &Option<RenderStroke>) -> Value {
         Some(s) => json!({
             "color": s.color,
             "width": s.width,
-            "dash": s.dash.map(|d| [d.dash, d.gap]),
-            "cap": if s.dash.is_some_and(|d| d.round_cap) { "round" } else { "butt" },
+            "dash": s.dash.as_ref().map(|d| d.segments.clone()),
+            "cap": if s.dash.as_ref().is_some_and(|d| d.round_cap) { "round" } else { "butt" },
             "miterLimit": STROKE_MITER_LIMIT,
         }),
     }
@@ -603,8 +603,8 @@ mod tests {
     }
 
     #[test]
-    fn dashed_and_dotted_strokes_have_gaps() {
-        for dash in [StrokeDash::Dashed, StrokeDash::Dotted] {
+    fn dashed_dotted_and_dash_dot_strokes_have_gaps() {
+        for dash in [StrokeDash::Dashed, StrokeDash::Dotted, StrokeDash::DashDot] {
             let pixmap = render_page(stroked_rect(4.0, dash));
             // 沿著上緣（y = 100）取樣
             let row: Vec<[u8; 3]> = (110..290).map(|x| rgb_at(&pixmap, x, 100)).collect();

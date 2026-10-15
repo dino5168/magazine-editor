@@ -5,8 +5,8 @@ import type { Stroke } from "./types";
 
 /** Dash pattern in pt. */
 export interface DashPattern {
-  readonly dash: number;
-  readonly gap: number;
+  /** Dash, gap, dash, gap… lengths (Konva `dash`, SVG `stroke-dasharray`, Typst `dash.array`). */
+  readonly segments: readonly number[];
   /** Round caps turn the zero-length dashes of a dotted line into dots. */
   readonly roundCap: boolean;
 }
@@ -30,9 +30,12 @@ export function dashPattern(dash: Stroke["dash"], width: number): DashPattern | 
     case "solid":
       return null;
     case "dashed":
-      return { dash: 3 * width, gap: 3 * width, roundCap: false };
+      return { segments: [3 * width, 3 * width], roundCap: false };
     case "dotted":
-      return { dash: 0, gap: 2 * width, roundCap: true };
+      return { segments: [0, 2 * width], roundCap: true };
+    // 點劃線：長劃、空、短劃（平頭，長度 = 線寬，看起來是方點）、空
+    case "dashDot":
+      return { segments: [4 * width, 2 * width, width, 2 * width], roundCap: false };
     default: {
       const exhaustive: never = dash;
       return exhaustive;
@@ -56,7 +59,7 @@ export function konvaStroke(stroke: Stroke | null) {
   return {
     stroke: stroke.color,
     strokeWidth: stroke.width,
-    dash: pattern ? [pattern.dash, pattern.gap] : undefined,
+    dash: pattern ? [...pattern.segments] : undefined,
     dashEnabled: pattern !== null,
     lineCap: pattern?.roundCap ? "round" : "butt",
     lineJoin: "miter",
@@ -97,7 +100,7 @@ export function guideLineAttrs(style: GuideLineStyle, zoom: number, emphasis: Gu
   return {
     stroke: color,
     strokeWidth: width / zoom,
-    dash: pattern ? [pattern.dash / zoom, pattern.gap / zoom] : undefined,
+    dash: pattern ? pattern.segments.map((length) => length / zoom) : undefined,
     dashEnabled: pattern !== null,
     lineCap: pattern?.roundCap ? "round" : "butt",
   } as const;

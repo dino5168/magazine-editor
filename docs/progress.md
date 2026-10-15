@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-15(圖形庫)
+最後更新:2026-10-15(自由繪圖評估)
 
 ---
 
 ## 目前階段
+
+- **自由繪圖（線條與箭頭）可行性評估（2026-10-15，文件，還沒 commit）**：任務檔 `docs/06-Plans-繪圖/03-自由繪圖-需求分析。.md`，評估 `03-自由繪圖-需求分析-評估.md`。結論可行：新物件類型 `line`（端點定義），畫布與匯出共用 `line-path.ts` 的路徑，匯出時展開成虛擬圖形（同頁碼），Rust render / Typst / EPUB 不改。使用者決定：鉛筆這次一起做、直線 → 折線 → 曲線（逐點自動平滑）、點劃線 + 雙線（可選，只給直線 / 折線）、底部工具列「線條」（L）+「繪圖」面板常用組合、分叉箭頭做成圖形庫圖形。實作計畫 `03-自由繪圖-實作.md` 已完成（步驟 0 點劃線 → 1 模型 v15 → 2 路徑 → 3 畫布 → 4 端點把手 → 5 線條工具 → 6 屬性面板 → 7 匯出 → 8 折線 → 9 曲線 → 10 鉛筆 → 11 繪圖面板＋分叉箭頭 → 12 雙線（可選）→ 13 MCP 與文件）。**步驟 0 完成（點劃線，v15，還沒 commit）**：`Stroke.dash` 加 `dashDot`、`DashPattern` 改成一串長度、`STROKE_DASHES` 單一清單；疊圖 PDF / EPUB 容許 0.5 pt 時差異 0。**步驟 1 完成（`LineElement` 模型，v15，還沒 commit）**：TS / Rust 型別與驗證、reducer 檢查整條線、`createLineElement` / `describeLine`、所有 exhaustive switch 的最小實作（畫布暫不畫）、fixture 主頁 B 的箭頭線；vitest 974、cargo 203。**步驟 2 完成**（`line-path.ts` 路徑與箭頭、`line-geometry.ts` 長度 / 角度 / 正規化；箭頭比例長 4、寬 3.5 倍線寬，使用者確認；vitest 986）。**步驟 3 完成**（畫布畫線條：`LineBody` 三個 Path、細線點擊範圍 8 螢幕 px、線條不能旋轉 / 縮放只能移動、圖層 icon、示範文件加兩條線；無頭 Edge 10 項全過）。**步驟 4 完成**（端點把手 `line-handles.tsx`：拖曳中只畫預覽、放開一筆復原、Shift 45°、吸附格線；無頭 Edge 8 項全過）。**步驟 5 完成**（線條工具：`L` 鍵、底部工具列按鈕與「更多圖形與線條」選單、拖曳建立 / 點一下 150 pt / Shift 45° / 吸附 / Esc 取消；新線條 1 pt `#171717` 連「文字」色票；vitest 991、無頭 Edge 8 項全過）。**步驟 6 完成**（屬性面板「線條」分頁：顏色 / 線寬 / 線型、兩端箭頭與大小；「調整」的長度 / 角度；水平線填滿寬度 = 分隔線、垂直線填滿高度；vitest 995、無頭 Edge 9 項全過）。**步驟 7 完成**（匯出：`line-export.ts` 把線條換成 `x-line` / `x-line-heads` 路徑圖形，Rust 不改；疊圖 9 條線 PDF / EPUB 容許 0.5 pt 差異 0；vitest 1000、cargo 203）。「直線 + 箭頭」整條路完成，等使用者決定要不要先 commit。下一步：步驟 8（折線）。
 
 - **元素面板改成 Accordion（2026-10-15，四個步驟全部完成，commit `076bec6`（已推送））**：沒有任務檔（使用者需求：分類全部展開 → Accordion、單一展開）。計畫 `docs/06-Plans-繪圖/02-元素面板-Accordion-實作.md`（每一步的結果都在那裡）。用 shadcn `accordion`（`npx shadcn@4.21.0 add accordion`，底層 `radix-ui`，沒有新套件）`type="single" collapsible`。使用者決定：記住上次展開的分類（第一次「基本」；localStorage `magazine-editor.elementsPanel.v1`，`lib/dock/elements-panel-layout.ts`）、可以全部收起（也記住）、標題顯示數量、工具列「更多圖形」選單不改。滑過標題的底線是 shadcn 預設，保留。驗證：vitest 965、build 通過；無頭 Edge 10 項（單一展開、全部收起、重新載入後記得、鍵盤、動畫、點圖形加入）。**要 commit 的範圍**：`src/components/ui/accordion.tsx`（新）、`src/components/editor/panels/elements-panel.tsx`、`src/lib/dock/elements-panel-layout.ts`（新）與 `__tests__/elements-panel-layout.test.ts`（新）、`CLAUDE.md`、`docs/progress.md`、計畫 `02-元素面板-Accordion-實作.md`。
 

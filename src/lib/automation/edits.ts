@@ -375,9 +375,11 @@ const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   text: ["width", "text", ...STYLE_KEYS],
   shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
+  // 線條的欄位在 MCP 步驟加（docs/06-Plans-繪圖/03-自由繪圖-實作.md 步驟 13）
+  line: [],
 };
 
-const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片" };
+const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條" };
 
 /** Builds the patch of `update_element`, or explains which argument does not fit the element. */
 function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
@@ -402,6 +404,8 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
       return ok({ ...position, ...(args.text !== undefined && { text: args.text }), ...style });
     case "image":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
+    case "line":
+      return ok(position);
     case "shape": {
       const width = args.width ?? element.width;
       const height = args.height ?? element.height;

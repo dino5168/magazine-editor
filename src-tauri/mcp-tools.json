@@ -491,8 +491,10 @@
                   "enum": [
                     "solid",
                     "dashed",
-                    "dotted"
-                  ]
+                    "dotted",
+                    "dashDot"
+                  ],
+                  "description": "solid 實線、dashed 虛線、dotted 點線、dashDot 點劃線"
                 }
               },
               "required": [
@@ -794,8 +796,10 @@
                   "enum": [
                     "solid",
                     "dashed",
-                    "dotted"
-                  ]
+                    "dotted",
+                    "dashDot"
+                  ],
+                  "description": "solid 實線、dashed 虛線、dotted 點線、dashDot 點劃線"
                 }
               },
               "required": [
