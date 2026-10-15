@@ -11,7 +11,7 @@
   - `docs/03-Plans-匯出檔案/`：匯出格式的任務檔與實作計畫（2026-10-14 起；`01-匯出HTML5-翻頁電子書-實作.md`）。
   - `docs/04-Plans-畫面顯示/`：畫面顯示（2026-10-14 起；`01-換程式的圖示-實作.md`，圖示候選在 `icons/`）。
   - `docs/05-Plans-字型/`：字型（2026-10-14 起；`01-專案字型-實作.md`）。
-  - `docs/06-Plans-繪圖/`：繪圖（2026-10-15 起；`01-繪圖-評估.md`（可行性）、`01-繪圖-實作.md`（圖形庫））。
+  - `docs/06-Plans-繪圖/`：繪圖（2026-10-15 起；`01-繪圖-評估.md`（可行性）、`01-繪圖-實作.md`（圖形庫）、`02-元素面板-Accordion-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 - **開始工作前先讀 `docs/progress.md`**（目前階段、已做的決定、待辦）；完成工作或做出決定後更新它。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
@@ -144,7 +144,7 @@ src/
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 10 個面板（「相片」2026-10-14 移除，內建相片在素材面板的「內建範例」）；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單（含「內建範例」）、匯入、點一下放到中央、拖到畫布；素材與內建範例共用拖曳流程 `Placeable`）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；elements-panel 是「元素」面板（依分類列出所有圖形，點一下放到頁面中央）；draw 目前是佔位（保留給自由繪圖 / 鋼筆）
+      panels/*.tsx                # 10 個面板（「相片」2026-10-14 移除，內建相片在素材面板的「內建範例」）；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單（含「內建範例」）、匯入、點一下放到中央、拖到畫布；素材與內建範例共用拖曳流程 `Placeable`）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；elements-panel 是「元素」面板（依分類的 Accordion，`type="single" collapsible`：一次只展開一個、可以全部收起，記住展開哪一個（`lib/dock/elements-panel-layout.ts`），標題有圖形數量；點一下放到頁面中央）；draw 目前是佔位（保留給自由繪圖 / 鋼筆）
       sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
@@ -190,6 +190,7 @@ src/
     dock/                         # 工具面板版面（不含 UI）
       panels.ts                   # PANEL_DEFINITIONS（id / label / category / defaultSide / 可選的 scroll: "self"）：面板的單一資料來源，PanelId 由它推導；PANEL_CATEGORIES（加入內容 / 屬性與樣式 / 頁面與圖層，順序 = 選單順序 = 新群組的上下順序）、panelsIn、getPanelCategory
       pages-panel-layout.ts       # 「頁面」面板兩區的收合與高度比例（純函式、最小高度、parse、localStorage 讀寫）
+      elements-panel-layout.ts    # 「元素」面板展開的分類（或全部收起）：parse（不認得的分類 → 基本）、和 Accordion 值互轉、localStorage `magazine-editor.elementsPanel.v1`
       dock-layout.ts              # DockLayout / DockGroup 型別與純函式（開關 / 切換頁籤 / 拖放（併入、另成一組）/ 收合 / 寬度）、parseDockLayout / parseDockWidths
       dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
       __tests__/
