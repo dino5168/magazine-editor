@@ -7,6 +7,7 @@ import type { Result } from "@/lib/editor/validation";
 import type { Library } from "@/lib/library/types";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
+  addLine,
   addMaster,
   addPage,
   addShape,
@@ -66,6 +67,7 @@ const HANDLERS: ToolHandlers = {
   run_command: ({ id }, { commands }) => runCommand(commands, id),
   add_text: (args, { state, apply }) => addText(state, apply, args),
   add_shape: (args, { state, apply }) => addShape(state, apply, args),
+  add_line: (args, { state, apply }) => addLine(state, apply, args),
   update_element: (args, { state, apply }) => updateElement(state, apply, args),
   delete_elements: (args, { state, apply }) => deleteElements(state, apply, args),
   add_page: (args, { state, apply }) => addPage(state, apply, args),

@@ -5,6 +5,7 @@
  */
 import { contentGuides, MIN_ELEMENT_SIZE_PT, rotatedBoxBounds } from "./geometry";
 import { linePagePoints, linePointBounds, withLinePoints } from "./line-geometry";
+import { lineLocalBounds } from "./line-path";
 import { resizePatch } from "./properties";
 import type { Bounds, CanvasElement, ElementPatch, LineElement, Margins, Size } from "./types";
 
@@ -121,7 +122,7 @@ export function fillContentPatch(element: CanvasElement, area: Bounds, axis: Fil
  *   `{ x }` or `{ y }`, or null when the element is already there.
  */
 export function alignContentPatch(element: CanvasElement, area: Bounds, edge: ContentEdge, height: number): ElementPatch | null {
-  const local = element.type === "line" ? linePointBounds(element.points) : { minX: 0, minY: 0, maxX: element.width, maxY: height };
+  const local = element.type === "line" ? lineLocalBounds(element) : { minX: 0, minY: 0, maxX: element.width, maxY: height };
   const bounds = rotatedBoxBounds(element, local, element.rotation);
   const centre = (min: number, max: number) => (min + max) / 2;
   const delta = {

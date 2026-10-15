@@ -186,3 +186,84 @@ export function constrainAngle(anchor: LinePoint, point: LinePoint): LinePoint {
   const length = dx * cos + dy * sin;
   return { x: anchor.x + length * cos, y: anchor.y + length * sin };
 }
+
+/**
+ * Where to add a point to a line for a double-click near it: on the closest segment, at the spot
+ * closest to the click.
+ *
+ * Args:
+ *   points: The line's points (any coordinate system; the result is in the same one).
+ *   at: The click.
+ *
+ * Returns:
+ *   The points with the new one inserted, and its index.
+ */
+export function insertLinePoint(points: readonly LinePoint[], at: LinePoint): { readonly points: LinePoint[]; readonly index: number } {
+  let best = { distance: Infinity, segment: 0, point: points[0] };
+  for (let i = 0; i + 1 < points.length; i++) {
+    const [a, b] = [points[i], points[i + 1]];
+    const [dx, dy] = [b.x - a.x, b.y - a.y];
+    const lengthSquared = dx * dx + dy * dy;
+    const t = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, ((at.x - a.x) * dx + (at.y - a.y) * dy) / lengthSquared));
+    const point = { x: a.x + dx * t, y: a.y + dy * t };
+    const distance = Math.hypot(at.x - point.x, at.y - point.y);
+    if (distance < best.distance) best = { distance, segment: i, point };
+  }
+  const index = best.segment + 1;
+  return { points: [...points.slice(0, index), best.point, ...points.slice(index)], index };
+}
+
+/**
+ * Removes one point of a line, keeping at least two.
+ *
+ * Args:
+ *   points: The line's points.
+ *   index: Point to remove.
+ *
+ * Returns:
+ *   The remaining points, or null when the line has only two (it would no longer be a line).
+ */
+export function removeLinePoint(points: readonly LinePoint[], index: number): LinePoint[] | null {
+  if (points.length <= 2 || index < 0 || index >= points.length) return null;
+  return points.filter((_, i) => i !== index);
+}
+
+// Ramer–Douglas–Peucker：保留頭尾，離頭尾連線最遠的點超過容差就保留並遞迴兩邊
+function rdp(points: readonly LinePoint[], tolerance: number): LinePoint[] {
+  if (points.length <= 2) return [...points];
+  const [first, last] = [points[0], points[points.length - 1]];
+  const [dx, dy] = [last.x - first.x, last.y - first.y];
+  const length = Math.hypot(dx, dy);
+  let [farthest, index] = [-1, 0];
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i];
+    // 頭尾重合時用到頭的距離
+    const distance = length === 0 ? Math.hypot(p.x - first.x, p.y - first.y) : Math.abs(dy * p.x - dx * p.y + last.x * first.y - last.y * first.x) / length;
+    if (distance > farthest) [farthest, index] = [distance, i];
+  }
+  if (farthest <= tolerance) return [first, last];
+  return [...rdp(points.slice(0, index + 1), tolerance).slice(0, -1), ...rdp(points.slice(index), tolerance)];
+}
+
+/**
+ * Simplifies a pencil stroke: drops points that stay within `tolerance` of the line through their
+ * neighbours (Ramer–Douglas–Peucker), keeping both ends; raises the tolerance until at most
+ * `maxPoints` remain.
+ *
+ * Args:
+ *   points: The recorded pointer positions.
+ *   tolerance: Largest distance a dropped point may be from the simplified line.
+ *   maxPoints: Most points the result may have (at least 2).
+ *
+ * Returns:
+ *   The kept points, in order.
+ */
+export function simplifyPoints(points: readonly LinePoint[], tolerance: number, maxPoints: number): LinePoint[] {
+  let current = tolerance;
+  let result = rdp(points, current);
+  while (result.length > maxPoints) {
+    current *= 1.5;
+    result = rdp(points, current);
+  }
+  return result;
+}

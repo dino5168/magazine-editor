@@ -6,7 +6,7 @@ import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
-import { linePaths } from "@/lib/editor/line-path";
+import { linePaths, lineStrokeWidth } from "@/lib/editor/line-path";
 import { pathData, type PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
@@ -43,7 +43,7 @@ export interface ElementNodeProps {
   readonly onChange: (id: ElementId, patch: ElementPatch) => void;
   /** Drag ended; the canvas reads the final position (of the whole selection when several are dragged). */
   readonly onMoveEnd: (id: ElementId, node: Konva.Node) => void;
-  /** Double-click: edit a text element, or the text inside a shape. */
+  /** Double-click: edit a text element or the text inside a shape; on a line, add a point there. */
   readonly onEditText: (id: ElementId) => void;
   /** Konva dragBoundFunc in absolute coordinates (grid snapping); null = free dragging. */
   readonly dragBound: ((id: ElementId, pos: Konva.Vector2d) => Konva.Vector2d) | null;
@@ -268,16 +268,18 @@ export function StaticShape({ shape, listening = false }: { readonly shape: Shap
  *   Konva nodes to put in a group at the line's position.
  */
 export function LineBody({ line, zoom }: { readonly line: LineElement; readonly zoom: number }) {
-  const { points, stroke, start, end } = line;
+  const { points, path, compound, stroke, start, end } = line;
   const paths = useMemo(() => {
-    const built = linePaths({ points, stroke, start, end });
+    const built = linePaths({ points, path, compound, stroke, start, end });
     const data = (commands: readonly PathCommand[]) => (commands.length > 0 ? pathData(commands) : null);
     return { stroke: data(built.stroke), fills: data(built.fills), outlines: data(built.outlines) };
-  }, [points, stroke, start, end]);
+  }, [points, path, compound, stroke, start, end]);
+  // 雙線：兩條細線各 1/3 線寬（虛線比例也照細線算，和匯出相同）；箭頭照整條線的寬
+  const lineStroke = { ...stroke, width: lineStrokeWidth({ compound, path, stroke }) };
   const hitStrokeWidth = Math.max(stroke.width, LINE_HIT_PX / zoom);
   return (
     <>
-      {paths.stroke && <Path data={paths.stroke} {...konvaStroke(stroke)} fillEnabled={false} hitStrokeWidth={hitStrokeWidth} />}
+      {paths.stroke && <Path data={paths.stroke} {...konvaStroke(lineStroke)} fillEnabled={false} hitStrokeWidth={hitStrokeWidth} />}
       {paths.fills && <Path data={paths.fills} fill={stroke.color} />}
       {paths.outlines && (
         <Path data={paths.outlines} {...konvaStroke({ ...stroke, dash: "solid" })} fillEnabled={false} hitStrokeWidth={hitStrokeWidth} />
@@ -401,10 +403,10 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
       );
     case "image":
       return <ImageNode element={element} common={common} />;
-    // Group 的原點是線條的 (x, y)；Transformer 掛在 Group 上，只能移動（端點由把手改）
+    // Group 的原點是線條的 (x, y)；Transformer 掛在 Group 上，只能移動（端點由把手改）。雙擊線段 = 在那裡加一點
     case "line":
       return (
-        <Group {...common}>
+        <Group {...common} onDblClick={editOnDblClick} onDblTap={() => onEditText(element.id)}>
           <LineBody line={element} zoom={zoom} />
         </Group>
       );

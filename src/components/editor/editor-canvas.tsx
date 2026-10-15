@@ -16,6 +16,7 @@ import {
   unionBounds,
 } from "@/lib/editor/geometry";
 import { usedFontFamilies } from "@/lib/editor/fonts";
+import { insertLinePoint, linePagePoints, withLinePoints } from "@/lib/editor/line-geometry";
 import { rulerOrigin, selectionSpans } from "@/lib/editor/ruler";
 import { canvasSheets, canvasSlotAt, pageAcrossSpine } from "@/lib/editor/spreads";
 import { BUILT_IN_TEXT_STYLE_IDS } from "@/lib/editor/style-sheet";
@@ -422,8 +423,18 @@ export function EditorCanvas() {
   const handleEditText = useCallback(
     (id: ElementId) => {
       dispatch({ type: "selection/set", id });
+      // 雙擊線條：在最近的線段上、離指標最近的地方加一點（一筆復原）
+      const element = latest.current.elements.find((candidate) => candidate.id === id);
+      if (element?.type === "line") {
+        const pointer = transformerRef.current?.getStage()?.getPointerPosition();
+        if (!pointer) return;
+        const { points } = insertLinePoint(linePagePoints(element), toPagePt(pointer));
+        dispatch({ type: "element/update", id, patch: withLinePoints(element, points) });
+        return;
+      }
       setEditingId(id);
     },
+    // toPagePt 讀 latest，舊的函式也拿得到最新的版面
     [dispatch],
   );
 
@@ -619,7 +630,7 @@ export function EditorCanvas() {
               )}
             />
             <svg aria-hidden className={cn("pointer-events-none absolute inset-0 size-full", !lineTool.previewVisible && "hidden")}>
-              <line ref={lineTool.previewRef} className="stroke-primary" strokeWidth={1.5} strokeDasharray="4 3" />
+              <path ref={lineTool.previewRef} className="stroke-primary" fill="none" strokeWidth={1.5} strokeDasharray="4 3" />
             </svg>
             <div
               ref={marquee.previewRef}

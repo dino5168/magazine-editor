@@ -4,6 +4,7 @@
  */
 import type { ReactNode } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { lineAngle, lineLength, withLengthAngle } from "@/lib/editor/line-geometry";
 import { ARROWHEAD_LABELS, ARROWHEAD_SCALES } from "@/lib/editor/line-kinds";
 import { linePaths } from "@/lib/editor/line-path";
@@ -33,6 +34,8 @@ export function ArrowheadIcon({ arrowhead, atStart }: { readonly arrowhead: Line
   const end: LineEnd = { arrowhead, scale: 1 };
   const plain: LineEnd = { arrowhead: "none", scale: 1 };
   const paths = linePaths({
+    path: "straight",
+    compound: "single",
     points: [
       { x: 3, y: ICON_HEIGHT / 2 },
       { x: ICON_WIDTH - 3, y: ICON_HEIGHT / 2 },
@@ -117,6 +120,18 @@ export function LineTab({ line, update }: { readonly line: LineElement; readonly
     <>
       <Section title="線條">
         <LineStyleFields id={line.id} value={line.stroke} onChange={(stroke) => update({ stroke })} colorLabel="線條顏色" width={STROKE_WIDTH_FIELD} />
+        <label className="flex items-center gap-2 text-sm">
+          <Switch
+            size="sm"
+            checked={line.compound === "double"}
+            disabled={line.path === "smooth"}
+            onCheckedChange={(on) => update({ compound: on ? "double" : "single" })}
+          />
+          雙線
+        </label>
+        <p className="text-xs text-muted-foreground">
+          {line.path === "smooth" ? "曲線不能畫成雙線。" : "兩條細線中間留空，三者各佔線寬的 1/3。"}
+        </p>
       </Section>
       <Section title="箭頭">
         <EndFields label="起點" end={line.start} atStart onChange={(start) => update({ start })} />

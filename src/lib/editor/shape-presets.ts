@@ -427,6 +427,35 @@ export const SHAPE_LIBRARY: readonly ShapePreset[] = [
     },
   },
 
+  {
+    // 一根箭身在中間分成上下兩支箭（流程的分支）；兩個箭頭的尖端在右緣，頭部碰到上下緣
+    id: "arrowSplit",
+    label: "分叉箭頭",
+    category: "arrows",
+    size: { width: 160, height: 100 },
+    params: [
+      { name: "head", label: "頭部長度", kind: "ratio", min: 0.05, max: 0.5, step: 0.01, default: 0.3 },
+      { name: "body", label: "箭身粗細", kind: "ratio", min: 0.05, max: 0.3, step: 0.01, default: 0.14 },
+    ],
+    path: ({ width: w, height: h }, { head, body }) => {
+      const length = head * w;
+      // 箭頭半高固定 0.22 高：上支的中心 = 0.22 高（頭碰到上緣），下支對稱，兩個頭之間留空隙
+      const half = 0.22 * h;
+      const [y1, y2] = [half, h - half];
+      const xc = (w - length) * 0.45;
+      // 箭身不比箭頭寬、連接的直條不碰到箭頭
+      const t = Math.min(body * h, 1.6 * half, (w - length - xc) * 0.9);
+      const hx = w - length;
+      return outlineOnly(
+        polygon([
+          [0, h / 2 - t / 2], [xc, h / 2 - t / 2], [xc, y1 - t / 2], [hx, y1 - t / 2], [hx, 0], [w, y1], [hx, y1 + half],
+          [hx, y1 + t / 2], [xc + t, y1 + t / 2], [xc + t, y2 - t / 2], [hx, y2 - t / 2], [hx, y2 - half], [w, y2], [hx, h],
+          [hx, y2 + t / 2], [xc, y2 + t / 2], [xc, h / 2 + t / 2], [0, h / 2 + t / 2],
+        ]),
+      );
+    },
+  },
+
   // ── 標註與旗幟 ──
   {
     id: "callout",

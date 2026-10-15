@@ -8,7 +8,8 @@ import { FONT_OPTIONS, findFontOption, projectFontOption } from "@/lib/editor/fo
 import { mapFontFamilies } from "@/lib/editor/project-fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
 import { SHAPE_KIND_LABELS, describeLine, shapeDefaultSize, type ShapeKind } from "@/lib/editor/element-factory";
-import { linePointBounds } from "@/lib/editor/line-geometry";
+import { linePagePoints } from "@/lib/editor/line-geometry";
+import { lineLocalBounds } from "@/lib/editor/line-path";
 import { SHAPE_CATEGORIES, SHAPE_LIBRARY } from "@/lib/editor/shape-presets";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchUsage } from "@/lib/editor/swatches";
@@ -140,6 +141,8 @@ export interface ElementDetail {
   readonly sheet: SheetRef;
   readonly layer: number;
   readonly element: CanvasElement;
+  /** Lines: the points on the page (the same coordinates as `add_line` / `update_element`). */
+  readonly pagePoints?: readonly { readonly x: number; readonly y: number }[];
 }
 
 function round(value: number): number {
@@ -165,7 +168,7 @@ function sheetRef(state: EditorState, sheet: Sheet): SheetRef {
 // 線條回報點的外接框大小
 function elementSize(element: CanvasElement): { width: number; height?: number } {
   if (element.type === "line") {
-    const bounds = linePointBounds(element.points);
+    const bounds = lineLocalBounds(element);
     return { width: round(bounds.maxX - bounds.minX), height: round(bounds.maxY - bounds.minY) };
   }
   return element.type === "text" ? { width: round(element.width) } : { width: round(element.width), height: round(element.height) };
@@ -307,7 +310,9 @@ export function getElement(state: EditorState, id: string): Result<ElementDetail
   for (const sheet of [...document.pages, ...document.masters]) {
     const layer = sheet.elements.findIndex((element) => element.id === id);
     if (layer >= 0) {
-      return { data: { sheet: sheetRef(state, sheet), layer, element: sheet.elements[layer] }, error: null };
+      const element = sheet.elements[layer];
+      const pagePoints = element.type === "line" ? linePagePoints(element).map((p) => ({ x: round(p.x), y: round(p.y) })) : undefined;
+      return { data: { sheet: sheetRef(state, sheet), layer, element, ...(pagePoints && { pagePoints }) }, error: null };
     }
   }
   return { data: null, error: new Error(`找不到物件「${id}」，請先用 list_elements 取得 id`) };

@@ -9,6 +9,9 @@ import {
   MousePointer2,
   MoveHorizontal,
   MoveRight,
+  Pencil,
+  Spline,
+  Waypoints,
   Redo2,
   Trash,
   Type,
@@ -39,13 +42,13 @@ import { IconButton } from "./icon-button";
 import { SHAPE_OPTION_GROUPS, shapeOption, type ShapeIcon } from "./shape-options";
 
 // 圖形與線條的 icon 依「最近用過的」變化，所以不在這張表裡
-const TOOL_ICONS = { select: MousePointer2, hand: Hand, text: Type } as const satisfies Record<
+const TOOL_ICONS = { select: MousePointer2, hand: Hand, text: Type, pencil: Pencil } as const satisfies Record<
   Exclude<ToolId, "shape" | "line">,
   LucideIcon
 >;
 
 // 線條種類的 icon（和圖層面板同一組）
-const LINE_KIND_ICONS = { straight: Minus, arrow: MoveRight, doubleArrow: MoveHorizontal } as const satisfies Record<
+const LINE_KIND_ICONS = { straight: Minus, arrow: MoveRight, doubleArrow: MoveHorizontal, polyline: Waypoints, curve: Spline } as const satisfies Record<
   LineKind,
   LucideIcon
 >;
@@ -209,6 +212,7 @@ export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) 
             getToolKeyLabel("shape", shapeKind),
           )}
           {toolButton("line", lineKindLabel(lineKind), LINE_KIND_ICONS[lineKind], () => chooseLine(lineKind), getToolKeyLabel("line"))}
+          {toolButton("pencil", getToolLabel("pencil"), TOOL_ICONS.pencil, () => chooseTool("pencil"), getToolKeyLabel("pencil"))}
           <IconButton label="圖片" size="icon-lg" onClick={onImportImage}>
             <Image className="size-5" strokeWidth={1.75} />
           </IconButton>

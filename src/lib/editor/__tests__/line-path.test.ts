@@ -2,13 +2,26 @@ import { describe, expect, it } from "vitest";
 import { createLineElement } from "../element-factory";
 import {
   constrainAngle,
+  insertLinePoint,
+  removeLinePoint,
+  simplifyPoints,
   lineAngle,
   lineLength,
   linePagePoints,
   withLengthAngle,
   withLinePoints,
 } from "../line-geometry";
-import { ARROWHEAD_LENGTH, ARROWHEAD_MIN_LINE_WIDTH, ARROWHEAD_WIDTH, arrowheadSize, linePaths } from "../line-path";
+import {
+  ARROWHEAD_LENGTH,
+  ARROWHEAD_MIN_LINE_WIDTH,
+  ARROWHEAD_WIDTH,
+  arrowheadSize,
+  isDoubleLine,
+  lineLocalBounds,
+  lineStrokeWidth,
+  linePathCommands,
+  linePaths,
+} from "../line-path";
 import type { PathCommand } from "../shape-path";
 import type { LineArrowhead, LineElement, LinePoint } from "../types";
 
@@ -211,5 +224,174 @@ describe("line geometry", () => {
     expect(constrainAngle(anchor, { x: 13, y: -90 })).toEqual({ x: 10, y: -90 });
     const diagonal = constrainAngle(anchor, { x: 60, y: 64 });
     expect(diagonal.x - anchor.x).toBeCloseTo(diagonal.y - anchor.y);
+  });
+});
+
+describe("adding and removing points", () => {
+  const zigzag = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+  ];
+
+  it("adds a point on the closest segment, at the spot closest to the click", () => {
+    expect(insertLinePoint(zigzag, { x: 40, y: 5 })).toEqual({
+      points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
+      index: 1,
+    });
+    expect(insertLinePoint(zigzag, { x: 96, y: 70 })).toMatchObject({ index: 2, points: [zigzag[0], zigzag[1], { x: 100, y: 70 }, zigzag[2]] });
+    // 線段外面：夾在端點
+    expect(insertLinePoint(zigzag, { x: -30, y: 0 }).points[1]).toEqual({ x: 0, y: 0 });
+  });
+
+  it("removes a point but keeps at least two", () => {
+    expect(removeLinePoint(zigzag, 1)).toEqual([zigzag[0], zigzag[2]]);
+    expect(removeLinePoint(zigzag.slice(0, 2), 0)).toBeNull();
+    expect(removeLinePoint(zigzag, 5)).toBeNull();
+  });
+});
+
+describe("smooth lines", () => {
+  const wave = [
+    { x: 0, y: 50 },
+    { x: 60, y: 0 },
+    { x: 120, y: 50 },
+    { x: 180, y: 0 },
+  ];
+  const curve = (ends: Partial<Pick<LineElement, "start" | "end">> = {}, points = wave) =>
+    ({ ...createLineElement(points, { path: "smooth", ...ends }), points }) as LineElement;
+
+  it("goes through every point with cubic segments", () => {
+    const { stroke } = linePaths(curve());
+    expect(stroke.map((command) => command.op)).toEqual(["M", "C", "C", "C"]);
+    // C 的終點就是下一個點
+    expect(points(stroke)).toEqual(wave);
+    // 和 linePathCommands（工具的預覽、外框用）是同一條
+    expect(stroke).toEqual(linePathCommands(wave, "smooth"));
+  });
+
+  it("drops repeated points instead of making zero-length pieces", () => {
+    const repeated = [wave[0], wave[1], wave[1], wave[2]];
+    expect(linePaths(curve({}, repeated)).stroke.map((command) => command.op)).toEqual(["M", "C", "C"]);
+  });
+
+  it("points arrowheads along the curve's tangent and trims the curve under a filled head", () => {
+    const line = curve({ end: { arrowhead: "triangle", scale: 1 } });
+    const paths = linePaths(line);
+    const [tip, a, b] = points(paths.fills);
+    expect(tip).toEqual(wave[3]);
+    // 終點的切線方向 = 最後一段的第二個控制點 → 終點
+    const last = linePathCommands(wave, "smooth")[3] as Extract<PathCommand, { op: "C" }>;
+    const tangent = Math.atan2(last.y - last.y2, last.x - last.x2);
+    const base = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    expect(Math.atan2(tip.y - base.y, tip.x - base.x)).toBeCloseTo(tangent);
+    // 縮短後的終點在原本的曲線上（沿曲線剪，不是剪直線）、離尖端 = 縮短的長度
+    const trimmed = points(paths.stroke);
+    const end = trimmed[trimmed.length - 1];
+    expect(Math.hypot(end.x - tip.x, end.y - tip.y)).toBeGreaterThan(0);
+    expect(Math.hypot(end.x - tip.x, end.y - tip.y)).toBeLessThanOrEqual(arrowheadSize(line.stroke.width, 1).length + 1e-6);
+    expect(paths.stroke.map((command) => command.op)).toEqual(["M", "C", "C", "C"]);
+  });
+
+  it("bounds include where the curve bulges past its points", () => {
+    // 轉直角：曲線在 (100, 0) 的切線斜向右下，會鼓出 x = 100 外面
+    const corner = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+    ];
+    const line = curve({}, corner);
+    expect(lineLocalBounds(line).maxX).toBeGreaterThan(100);
+    // 直線的外框就是點的外框
+    expect(lineLocalBounds({ ...line, path: "straight" })).toEqual({ minX: 0, minY: 0, maxX: 100, maxY: 100 });
+  });
+});
+
+describe("simplifyPoints", () => {
+  it("keeps both ends and the corners, drops points along straight runs", () => {
+    const run = [
+      ...Array.from({ length: 50 }, (_, i) => ({ x: i * 2, y: 0.3 * Math.sin(i) })),
+      ...Array.from({ length: 50 }, (_, i) => ({ x: 100, y: i * 2 })),
+    ];
+    const simple = simplifyPoints(run, 1, 500);
+    expect(simple[0]).toEqual(run[0]);
+    expect(simple[simple.length - 1]).toEqual(run[run.length - 1]);
+    expect(simple.length).toBeLessThanOrEqual(4);
+    // 轉角那一點留著
+    expect(simple.some((p) => Math.hypot(p.x - 98, p.y) < 3)).toBe(true);
+  });
+
+  it("raises the tolerance until the stroke fits the point limit", () => {
+    const scribble = Array.from({ length: 3000 }, (_, i) => ({ x: i * 0.5, y: 20 * Math.sin(i / 5) }));
+    const simple = simplifyPoints(scribble, 0.5, 100);
+    expect(simple.length).toBeLessThanOrEqual(100);
+    expect(simple.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("returns a closed loop as its start, farthest point and end", () => {
+    const loop = Array.from({ length: 41 }, (_, i) => ({ x: Math.cos((i / 40) * 2 * Math.PI) * 50, y: Math.sin((i / 40) * 2 * Math.PI) * 50 }));
+    expect(simplifyPoints(loop, 1, 500).length).toBeGreaterThan(3);
+  });
+});
+
+describe("double lines", () => {
+  const double = (pts: LinePoint[], width = 3, extra: Partial<LineElement> = {}) =>
+    ({ ...createLineElement(pts, { compound: "double", stroke: { color: "#000000", swatchId: null, width, dash: "solid" } }), points: pts, ...extra }) as LineElement;
+  const subpaths = (commands: readonly PathCommand[]) =>
+    commands.reduce<LinePoint[][]>((all, command) => {
+      if (command.op === "M") all.push([{ x: command.x, y: command.y }]);
+      else if (command.op === "L") all[all.length - 1].push({ x: command.x, y: command.y });
+      return all;
+    }, []);
+
+  it("draws two parallel lines a third of the width each, 2/3 of the width apart", () => {
+    const line = double([
+      { x: 0, y: 0 },
+      { x: 90, y: 0 },
+    ]);
+    expect(lineStrokeWidth(line)).toBe(1);
+    expect(subpaths(linePaths(line).stroke)).toEqual([
+      [{ x: 0, y: 1 }, { x: 90, y: 1 }],
+      [{ x: 0, y: -1 }, { x: 90, y: -1 }],
+    ]);
+  });
+
+  it("meets at a mitred corner, and bevels corners sharper than the miter limit", () => {
+    const corner = double([
+      { x: 0, y: 0 },
+      { x: 90, y: 0 },
+      { x: 90, y: 90 },
+    ]);
+    const [left, right] = subpaths(linePaths(corner).stroke);
+    // 直角：兩條平移線段的交點
+    expect(left[1].x).toBeCloseTo(89);
+    expect(left[1].y).toBeCloseTo(1);
+    expect(right[1].x).toBeCloseTo(91);
+    expect(right[1].y).toBeCloseTo(-1);
+    // 原路折返（0°）：斜切成兩點
+    const folded = double([
+      { x: 0, y: 0 },
+      { x: 90, y: 0 },
+      { x: 0, y: 0.5 },
+    ]);
+    expect(subpaths(linePaths(folded).stroke)[0]).toHaveLength(4);
+  });
+
+  it("is single for smooth lines and keeps the arrowheads at the full width", () => {
+    const smooth = double(
+      [
+        { x: 0, y: 0 },
+        { x: 50, y: 30 },
+        { x: 100, y: 0 },
+      ],
+      3,
+      { path: "smooth" },
+    );
+    expect(isDoubleLine(smooth)).toBe(false);
+    expect(lineStrokeWidth(smooth)).toBe(3);
+    const arrow = double([{ x: 0, y: 0 }, { x: 90, y: 0 }], 3, { end: { arrowhead: "triangle", scale: 1 } });
+    const [tip, a] = points(linePaths(arrow).fills);
+    expect(tip).toEqual({ x: 90, y: 0 });
+    expect(Math.abs(a.y)).toBeCloseTo(arrowheadSize(3, 1).width / 2);
   });
 });

@@ -60,6 +60,14 @@ describe("exportedLinePieces", () => {
     expect(pieces[0].path.detailStroke).toEqual({ ...stroke, swatchId: null, dash: "solid" });
   });
 
+  it("strokes a double line's two thin lines a third of the width; open heads keep the full width", () => {
+    const line = { ...arrow("open", "none"), compound: "double" } as LineElement;
+    const [body] = exportedLinePieces(line);
+    expect(body.shape.stroke?.width).toBeCloseTo(stroke.width / 3);
+    expect(body.path.outline.filter((command) => command.op === "M")).toHaveLength(2);
+    expect(body.path.detailStroke?.width).toBe(stroke.width);
+  });
+
   it("gives a horizontal line a box with some height", () => {
     const rule = createLineElement([
       { x: 0, y: 100 },

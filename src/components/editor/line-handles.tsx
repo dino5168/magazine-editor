@@ -3,13 +3,15 @@
  *
  * 拖曳中只在這個元件裡畫預覽（原本的線暫時隱藏），不 dispatch、整個畫布不重畫；放開時一次
  * `element/update`（一筆復原）。Shift = 這一段鎖在 45° 的倍數（優先於吸附）；開吸附時點對齊格線。
+ * 點一下把手 = 選中那一點（實心），這時 Delete / Backspace 只刪那一點（至少留兩點）、Esc 取消選中。
  * 計畫：`docs/06-Plans-繪圖/03-自由繪圖-實作.md` 步驟 4。
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Circle, Group } from "react-konva";
-import { constrainAngle, linePagePoints, withLinePoints } from "@/lib/editor/line-geometry";
+import { constrainAngle, linePagePoints, removeLinePoint, withLinePoints } from "@/lib/editor/line-geometry";
 import type { ElementPatch, LineElement, LinePoint } from "@/lib/editor/types";
 import { LineBody } from "./canvas-elements";
 
@@ -48,6 +50,30 @@ export function LineHandles({ line, offsetX, zoom, snapSpacing, onCommit }: Line
   // 拖曳中的點（頁面座標）；null = 沒在拖
   const [dragged, setDragged] = useState<LinePoint[] | null>(null);
   const shown = dragged ?? pagePoints;
+  // 選中的點（點一下把手）；換線或點數改變時清掉
+  const [picked, setPicked] = useState<number | null>(null);
+  useEffect(() => setPicked(null), [line.id, line.points.length]);
+
+  // 選中一點時，Delete / Backspace 只刪那一點：capture + stopImmediatePropagation，編輯器不會刪掉整條線
+  useEffect(() => {
+    if (picked === null) return;
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable], [role=dialog], [role=menu]")) return;
+      if (event.key === "Escape") {
+        event.stopImmediatePropagation();
+        setPicked(null);
+      } else if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const next = removeLinePoint(linePagePoints(line), picked);
+        if (next) onCommit(withLinePoints(line, next));
+        else toast.info("線條至少要有兩個點；要刪掉整條線，先取消選中的點（Esc）再按 Delete。");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [picked, line, onCommit]);
   const indexes =
     line.points.length > LINE_HANDLES_MAX_POINTS ? [0, line.points.length - 1] : line.points.map((_, index) => index);
 
@@ -81,7 +107,7 @@ export function LineHandles({ line, offsetX, zoom, snapSpacing, onCommit }: Line
           x={shown[index].x}
           y={shown[index].y}
           radius={HANDLE_RADIUS_PX / zoom}
-          fill="#ffffff"
+          fill={picked === index ? HANDLE_COLOR : "#ffffff"}
           stroke={HANDLE_COLOR}
           strokeWidth={1.5 / zoom}
           hitStrokeWidth={HANDLE_HIT_PX / zoom}
@@ -89,6 +115,8 @@ export function LineHandles({ line, offsetX, zoom, snapSpacing, onCommit }: Line
           // 不讓 Stage 當成按在空白處（清空選取、框選），也不讓 Layer 以為在拖物件（目前頁不裁切的狀態）
           onMouseDown={(event) => (event.cancelBubble = true)}
           onTouchStart={(event) => (event.cancelBubble = true)}
+          // 沒有拖動的一下 = 選中這一點（再按一下取消）
+          onClick={() => setPicked((current) => (current === index ? null : index))}
           onMouseEnter={(event) => setCursor(event, "crosshair")}
           onMouseLeave={(event) => setCursor(event, "")}
           onDragStart={(event) => {

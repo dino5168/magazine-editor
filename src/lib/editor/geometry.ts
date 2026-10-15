@@ -1,4 +1,4 @@
-import { linePointBounds } from "./line-geometry";
+import { lineLocalBounds } from "./line-path";
 import type { Bounds, CanvasElement, ElementId, Margins, Point, Sheet, Size, TextElement } from "./types";
 
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
@@ -40,7 +40,7 @@ function localBounds(element: CanvasElement): Bounds {
     case "image":
       return { minX: 0, minY: 0, maxX: element.width, maxY: element.height };
     case "line":
-      return linePointBounds(element.points);
+      return lineLocalBounds(element);
     default: {
       const exhaustive: never = element;
       return exhaustive;

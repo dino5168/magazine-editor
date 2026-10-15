@@ -18,14 +18,18 @@ import {
   createId,
   createMasterPage,
   createImageElement,
+  createLineElement,
   createShapeInBox,
   createTextElement,
   presetChoice,
+  PLAIN_LINE_END,
   type ShapeChoice,
   type ShapeKind,
 } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
+import { withLinePoints } from "@/lib/editor/line-geometry";
+import { toolLineStroke } from "@/lib/editor/line-kinds";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadii } from "@/lib/editor/corner-radius";
 import { withAlpha } from "@/lib/editor/palette";
@@ -36,6 +40,8 @@ import { swatchNameError, swatchUsage, type ColorSlot } from "@/lib/editor/swatc
 import type {
   CanvasElement,
   ElementPatch,
+  LineElement,
+  LineEnd,
   PageId,
   ShapeElement,
   ShapeGeometry,
@@ -370,13 +376,66 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
   return addElement(apply, element, sheet.data);
 }
 
+type LineEndInput = NonNullable<ToolArgs<"add_line">["start"]>;
+
+// 箭頭參數 → LineEnd：scale 省略 = 原本的大小（新線條是 1）
+function lineEnd(input: LineEndInput | undefined, current: LineEnd): LineEnd {
+  return input ? { arrowhead: input.arrowhead, scale: input.scale ?? current.scale } : current;
+}
+
+/** Tool `add_line`: a line through page points, styled like the line tool's lines unless told otherwise. */
+export function addLine(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_line">) {
+  const sheet = targetSheet(state, args.pageId);
+  if (sheet.error) return sheet;
+  const path = args.path ?? "straight";
+  if (args.compound === "double" && path === "smooth") return fail("曲線（path: smooth）不能畫成雙線");
+  const color = args.color === undefined ? null : resolveColor(state, args.color);
+  if (color?.error) return color;
+  const stroke: Stroke = {
+    ...toolLineStroke(state.history.present.swatches),
+    ...(color && color.data),
+    ...(args.width !== undefined && { width: args.width }),
+    ...(args.dash !== undefined && { dash: args.dash }),
+  };
+  const line = createLineElement(args.points, {
+    path,
+    compound: args.compound ?? "single",
+    stroke,
+    start: lineEnd(args.start, PLAIN_LINE_END),
+    end: lineEnd(args.end, PLAIN_LINE_END),
+  });
+  return addElement(apply, line, sheet.data);
+}
+
+// update_element 對線條：points 換掉所有點（頁面座標，保留旋轉）；雙線只給 straight；線條一定有 stroke
+function linePatch(state: EditorState, line: LineElement, args: ToolArgs<"update_element">, position: ElementPatch): Result<ElementPatch> {
+  if (args.points !== undefined && (args.x !== undefined || args.y !== undefined)) {
+    return fail("points 是頁面座標、已經決定了位置，不能同時給 x / y");
+  }
+  if (args.stroke === null) return fail("線條一定要有線條樣式（stroke 不能是 null）");
+  const stroke = resolveStroke(state, args.stroke);
+  if (stroke.error) return stroke;
+  const path = args.path ?? line.path;
+  const compound = args.compound ?? line.compound;
+  if (compound === "double" && path === "smooth") return fail("曲線（path: smooth）不能畫成雙線");
+  const placed = { ...line, ...position } as LineElement;
+  return ok({
+    ...position,
+    ...(args.points !== undefined && withLinePoints(placed, args.points)),
+    ...(args.path !== undefined && { path }),
+    ...(args.compound !== undefined && { compound }),
+    ...(stroke.data && { stroke: stroke.data }),
+    ...(args.start !== undefined && { start: lineEnd(args.start, line.start) }),
+    ...(args.end !== undefined && { end: lineEnd(args.end, line.end) }),
+  });
+}
+
 /** Fields of `update_element` each element type accepts (besides position and rotation). */
 const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   text: ["width", "text", ...STYLE_KEYS],
   shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
-  // 線條的欄位在 MCP 步驟加（docs/06-Plans-繪圖/03-自由繪圖-實作.md 步驟 13）
-  line: [],
+  line: ["points", "path", "compound", "stroke", "start", "end"],
 };
 
 const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條" };
@@ -405,7 +464,7 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
     case "image":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
     case "line":
-      return ok(position);
+      return linePatch(state, element, args, position);
     case "shape": {
       const width = args.width ?? element.width;
       const height = args.height ?? element.height;

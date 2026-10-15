@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
 import type { PanelId } from "@/lib/dock/panels";
 import { BackgroundPanel } from "./background-panel";
+import { DrawPanel } from "./draw-panel";
 import { ElementsPanel } from "./elements-panel";
 import { LayersPanel } from "./layers-panel";
 import { LibraryPanel } from "./library-panel";
 import { PagesPanel } from "./pages-panel";
-import { DrawPanel } from "./placeholder-panels";
 import { PropertiesPanel } from "./properties-panel";
 import { StylesPanel } from "./styles-panel";
 import { TemplatesPanel } from "./templates-panel";

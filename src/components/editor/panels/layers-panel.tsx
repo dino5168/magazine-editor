@@ -13,6 +13,7 @@ import {
   Trash,
   Triangle,
   Type,
+  Waypoints,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +37,8 @@ function lineIcon(line: LineElement): LucideIcon {
   const [start, end] = [line.start.arrowhead !== "none", line.end.arrowhead !== "none"];
   if (start && end) return MoveHorizontal;
   if (start || end) return MoveRight;
-  return line.path === "smooth" || line.points.length > 2 ? Spline : Minus;
+  if (line.path === "smooth") return Spline;
+  return line.points.length > 2 ? Waypoints : Minus;
 }
 
 function elementIcon(element: CanvasElement): LucideIcon {

@@ -32,6 +32,11 @@ describe("line tool", () => {
       tool: "line",
     });
     expect(getToolKeyLabel("line")).toBe("L");
+    // 鉛筆：P
+    expect(isCreateTool("pencil")).toBe(true);
+    expect(findToolShortcut({ code: "KeyP", ctrlKey: false, metaKey: false, altKey: false, shiftKey: false } as KeyboardEvent)).toMatchObject({
+      tool: "pencil",
+    });
   });
 
   it("clears the selection when chosen and remembers the kind", () => {

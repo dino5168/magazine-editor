@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -131,6 +131,9 @@ src/
       text-style-dialog.tsx       # 編輯 / 新增文字樣式的對話框（名稱 + TextStyleFields + 預覽，確定才寫入；表單只包名稱欄，見「文字樣式」）
       text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
+      use-canvas-line.ts          # 線條工具（直線 / 箭頭：拖曳；折線 / 曲線：逐點點擊）與鉛筆（按住拖曳、放開簡化）在畫布上建立線條；預覽是 SVG path
+      line-handles.tsx            # 單選線條時的端點把手（拖點、Shift 45°、吸附；點把手選中 + Delete 刪點）
+      line-controls.tsx           # 屬性面板的線條分頁（線型、雙線、兩端箭頭）與長度 / 角度、ArrowheadIcon
       use-canvas-create.ts        # 文字 / 圖形工具在畫布上點擊或拖曳建立（預覽框）
       use-canvas-marquee.ts       # 選取工具在空白處拖曳框選（選取框、Ctrl 加入、Esc 取消）
       bottom-toolbar.tsx          # tldraw 風格底部工具列：工具 + 動作列（復原 / 重做 / 刪除 / 複製 / ⋮）
@@ -144,7 +147,7 @@ src/
       use-page-tab-drag.ts        # 拖曳頁籤調整順序：插入位置（insertionSlot）、頁籤列上下 48 px 內才算、左右邊緣自動捲動
       page-menu.tsx               # 頁面清單選單（`≡` 與目前頁籤的 `˅` 共用）：插入頁面...（新增頁面對話框）、切換頁面；`˅` 另有目前頁的向左 / 向右 / 移到最前 / 移到最後（pageActions）
       panels/index.ts             # PANELS：PanelId → 面板元件（satisfies Record，缺項會編譯失敗）
-      panels/*.tsx                # 10 個面板（「相片」2026-10-14 移除，內建相片在素材面板的「內建範例」）；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單（含「內建範例」）、匯入、點一下放到中央、拖到畫布；素材與內建範例共用拖曳流程 `Placeable`）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；elements-panel 是「元素」面板（依分類的 Accordion，`type="single" collapsible`：一次只展開一個、可以全部收起，記住展開哪一個（`lib/dock/elements-panel-layout.ts`），標題有圖形數量；點一下放到頁面中央）；draw 目前是佔位（保留給自由繪圖 / 鋼筆）
+      panels/*.tsx                # 10 個面板（「相片」2026-10-14 移除，內建相片在素材面板的「內建範例」）；styles-panel 是「樣式」面板（文件的文字樣式：點一下套用到選取、編輯 / 複製 / 刪除、雙擊改名，見「文字樣式」）；text-panel 列出文件的樣式（新文字連到該樣式）；library-panel 是「素材」面板（id 仍是 upload：資料夾選單（含「內建範例」）、匯入、點一下放到中央、拖到畫布；素材與內建範例共用拖曳流程 `Placeable`）；properties-panel 是 draw.io 式屬性面板（樣式 / 文字 / 調整，文字分頁有「插入變數」）；pages-panel 是 Affinity 式「頁面」面板（主頁 / 頁面縮圖，兩區各自收合、拖曳「頁面」標題列調高度：use-section-resize.ts）；elements-panel 是「元素」面板（依分類的 Accordion，`type="single" collapsible`：一次只展開一個、可以全部收起，記住展開哪一個（`lib/dock/elements-panel-layout.ts`），標題有圖形數量；點一下放到頁面中央）；draw-panel 是「繪圖」面板（常用線條與箭頭 `LINE_PRESETS`，`lib/editor/line-presets.ts`：點一下放到頁面中央，分隔線橫跨內容區）
       sheet-thumbnail.tsx         # 頁面 / 主頁縮圖：小 Konva Stage + StaticElement，捲進畫面才建立、memo
       page-dialogs.tsx            # PageDialogsProvider / usePageDialogs：「新增頁面」「新增主頁」對話框（頁籤列、頁面選單、頁面面板共用）
       master-edit-banner.tsx      # 編輯主頁時畫布上方的提示（主頁名稱、以誰為基礎、幾頁使用）與「回到頁面」
@@ -197,6 +200,7 @@ src/
     automation/                   # MCP 工具（見「MCP」）：tool-definitions.ts（工具名稱、說明、zod schema 的單一資料來源）、queries.ts（查詢）、commands.ts（選單指令）、edits.ts（編輯 → reducer action）、run-tool.ts（找工具 → 驗證 → 執行）、mcp-tools.ts（產生 MCP 工具清單）、mcp-status.ts（連線狀態 store）、use-mcp-bridge.ts（event ↔ runTool、開關 pipe）
     export/                       # 匯出（PDF / 翻頁電子書 / EPUB 共用）的前端部分
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
+      line-export.ts              # exportedLinePieces：匯出前把線條換成 x-line / x-line-heads 路徑圖形（Rust 不認識線條）
       text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行、基線與每行寬度；measureLineWidth：單行寬度（頁碼外框）
       __tests__/
     editor/                       # 不含 UI 的編輯器核心，新增邏輯優先放這裡並補測試
@@ -210,7 +214,11 @@ src/
       page-numbers.ts             # 頁碼：規則 → 虛擬圖形（pageNumberShape / withPageNumbers）、驗證（isPageNumberRules，和 Rust 同規則）、對話框的說明與錯誤訊息
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-path.ts               # 路徑工具（不認得任何圖形）：PathCommand（M / L / C / Z）、PathBuilder（含 arc：每段 ≤ 90°、90° 倍數端點精確）、svgPathCommands（svgpath 正規化）、pathBounds（曲線真正的極值）、fitPaths、pathData
-      shape-presets.ts            # 圖形庫（見「圖形庫」）：SHAPE_LIBRARY（27 個）、SHAPE_CATEGORIES、findShapePreset、resolvePresetParams、presetPath、detailStroke、參數欄位的換算
+      shape-presets.ts            # 圖形庫（見「圖形庫」）：SHAPE_LIBRARY（28 個：2026-10-15 加「分叉箭頭」）、SHAPE_CATEGORIES、findShapePreset、resolvePresetParams、presetPath、detailStroke、參數欄位的換算
+      line-geometry.ts            # 線條的幾何：點的外框、正規化（x / y = 點的外框左上角）、withLinePoints（含旋轉）、長度 / 角度、Shift 45°、加點 / 刪點、simplifyPoints（RDP，鉛筆）
+      line-path.ts                # 線條與箭頭的路徑（畫布、圖示、匯出共用）：直線段 / Catmull-Rom 曲線、箭頭與縮短、雙線偏移、lineLocalBounds
+      line-kinds.ts               # 線條工具的種類（直線 / 箭頭 / 雙向箭頭 / 折線 / 曲線）、箭頭大小與名稱、toolLineStroke
+      line-presets.ts             # 「繪圖」面板的常用線條與箭頭（LINE_PRESETS、createPresetLine）
       shape-label.ts              # 圖形內文字的文字框、垂直對齊、轉成 TextElement（量測 / 編輯 / 匯出共用）
       stroke.ts                   # 邊框的虛線樣式（dashPattern，和 Rust render.rs 同數字）與 Konva 屬性；畫布參考線的 Konva 屬性（guideLineAttrs，螢幕 px ÷ zoom）與對齊線 1/2 / 1/4 的倍數（CONTENT_GUIDE_EMPHASIS）
       style-sheet.ts              # 文字樣式（樣式表）的純邏輯：內建樣式 defaultTextStyles、覆寫比對 styleOverrides、套用 / 跟著樣式改（applyTextStyle / restyle / restyleDocument / linkTextStyle）、走過所有文字 mapStyledTexts、使用數 textStyleUsage、名稱檢查與驗證（和 Rust 同規則）
@@ -239,7 +247,7 @@ src/
       add-pages.ts                # 新增頁面 / 主頁對話框的純邏輯：預設值、錯誤訊息、插入位置、建立新頁面
       fonts.ts                    # FONT_OPTIONS（可選的字型）、專案字型的選項（projectFontOption：`"project-font-<id>", <同類內建中文字型>, <generic>`；findFontOption 只比第一個家族名稱）、文件用到的字型、載入參數、projectFontDescriptors（FontFace 的 weight 與 ascent / descent override）
       use-fonts-ready.ts          # 字型用到才載入：loadFontOption（專案字型先用 FontFace API 登記：一般 = 400、粗體檔或一般檔 = 700）、useFontsReady（畫布等字型）、setFontUrlResolver（ProjectProvider 在 render 裡設定 asset URL）
-      tools.ts                    # 畫布工具（select / hand / text / shape）與工具快捷鍵的單一資料來源
+      tools.ts                    # 畫布工具（select / hand / text / shape / line / pencil）與工具快捷鍵的單一資料來源
       use-editor-shortcuts.ts     # 全域快捷鍵
       __tests__/                  # vitest
   assets/photos/*.svg             # 素材面板「內建範例」的佔位範例圖（換成真實照片時同時改 lib/library/bundled-photos.ts）
@@ -276,7 +284,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 
 - **長度單位一律是 pt（1/72 inch）**，和 Typst 一致。座標原點是頁面左上角；zoom 1 時 1pt = 1 CSS px。
 - 物件有四種：`text` / `shape` / `image` / `line`（v15，線條以點定義，見下面的「線條」）。**每種物件的 `x` / `y` 都是外框（旋轉前）的左上角**，旋轉也繞這一點（2026-10-01 起；舊檔的橢圓 / 多邊形 / 星形以中心定位，開檔時由 Rust 換算）。
-- **線條 = `LineElement`**（v15，計畫 `docs/06-Plans-繪圖/03-自由繪圖-實作.md`）：`points`（2–500 個，相對於 x / y；x / y = 點的外接框左上角，`line-geometry.ts` 的 `normalizeLinePoints` 負責）、`path`（`straight` / `smooth`）、`compound`（`single` / `double`）、`stroke`（**不可 null**）、`start` / `end`（`LineEnd`：`arrowhead` `none` / `open` / `triangle`、`scale` 0.5–5）。沒有 width / height（水平線外框高 0）。reducer 的 `element/add` 與 `element/update` 對線條檢查**套用後的整條線**（`isValidLine`）。Rust 的匯出不畫線條（`build_render` 遇到就回 `InvalidInput`）：編輯器匯出前會換成路徑圖形（步驟 7）。畫布、工具、屬性面板、MCP 之後的步驟才做。
+- **線條 = `LineElement`**（v15，計畫 `docs/06-Plans-繪圖/03-自由繪圖-實作.md`）：`points`（2–500 個，相對於 x / y；x / y = 點的外接框左上角，`line-geometry.ts` 的 `normalizeLinePoints` 負責）、`path`（`straight` / `smooth`）、`compound`（`single` / `double`）、`stroke`（**不可 null**）、`start` / `end`（`LineEnd`：`arrowhead` `none` / `open` / `triangle`、`scale` 0.5–5）。沒有 width / height（水平線外框高 0）。reducer 的 `element/add` 與 `element/update` 對線條檢查**套用後的整條線**（`isValidLine`）。Rust 的匯出不畫線條（`build_render` 遇到就回 `InvalidInput`）：編輯器匯出前會換成路徑圖形。畫布、工具、屬性面板、MCP 見下面的「線條」。
 - **圖形 = `ShapeElement`**（計畫與決定：`docs/Plans/imp-refactory-types.md`）：
   - 外框 `width` / `height` + `geometry`（`rect` 圓角 / `ellipse` / `polygon` 邊數 / `star` 角數與 `innerRatio`）+ `fill` + `stroke: Stroke | null` + `label: ShapeLabel | null`。
   - **圓角**（`CornerRadius`，計畫 `docs/01-Plans-2026-10/15-屬性-樣式-圓角-實作.md`）：四個角一樣存**一個數字**，不同才存 `[左上, 右上, 右下, 左下]`（Konva 的順序，v11）；`normalizeCornerRadius` 負責「一樣就存數字」，舊檔不用升級。畫的時候**每個角各自限制在短邊的一半**（Konva 10.5.0 實測，不是 CSS 的等比例縮小）：Rust render model 先限制好（`RenderRect.corner_radii`），PDF 有邊框與 EPUB 有邊框且四角不同時都畫 `render.rs` 的 `rounded_rect_path`（起點 (左上, 0)、順時針，同 Konva，虛線位置才一樣），PDF 無邊框用 Typst `radius` 字典、EPUB 無邊框用 CSS `border-radius` 四值。屬性面板：「圓角」一個欄位 + 切換鈕（`Scan`）展開成照角的位置排的 2 × 2 四欄位，四角不同時直接展開、收起時顯示「混合」（`CornerRadiusFields`）。
@@ -383,6 +391,22 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **選擇**：`ShapeChoice`（基本 5 種的 `ShapeKind`，或 `preset:<id>`；`presetChoice` / `choicePreset`）；`createShapeElement` / `createShapeInBox` 收它（點一下 = 預設大小、拖曳 = 填滿拖曳框）。元素面板、底部工具列「更多圖形」選單（可直接在畫布拖曳建立）、屬性面板「換成」都用 `SHAPE_OPTION_GROUPS`；icon 由同一個 `presetPath` 畫（`ShapePresetIcon`），新增圖形不用另做 icon。
 - **屬性面板**「樣式 → 形狀」：「圖形」下拉 = **換成**（`choiceGeometry`：新圖形的預設，位置 / 大小 / 樣式 / 文字不變，一筆復原；`shapeChoiceOf` 找目前的選項，三邊以外的正多邊形沒有對應選項）＋ 該圖形的欄位（圖形庫參數：`presetParamToField` / `presetParamFromField`，夾在範圍內）。
 - **匯出**：見「匯出 PDF」的圖形庫圖形。
+
+### 線條（`lib/editor/line-*.ts` + `use-canvas-line.ts` / `line-handles.tsx` / `line-controls.tsx` + `lib/export/line-export.ts`）
+
+評估、計畫與每一步的結果：`docs/06-Plans-繪圖/03-自由繪圖-需求分析-評估.md`、`03-自由繪圖-實作.md`。
+
+- **模型**：見「文件模型」的線條。線條**不是**圖形庫的框型圖形（兩端可以自由拖、水平線外框高 0）；圖形庫的粗箭頭是填色的框型箭頭，兩者並存。
+- **路徑只有一份**：`linePaths(line) → { stroke, fills, outlines }`（相對於 x / y，只有 M / L / C / Z）——畫布（`LineBody`）、工具列 / 面板圖示、匯出都用它。
+  - 箭頭尖端在端點上、方向 = 端點的切線；實心三角時線縮短藏進三角形；開放箭頭的折點往回退，miter 尖角剛好在端點；**箭頭永遠是實線**。大小：長 4、寬 3.5 個 `max(線寬, 1.5)` 再乘倍數，UI 小 / 中 / 大 = 0.7 / 1 / 1.5。
+  - `path: "smooth"`：均勻 Catmull-Rom → 三次貝茲，穿過每個點；箭頭的縮短沿曲線量。外框用 `lineLocalBounds`（曲線鼓出點外的部分也算）。
+  - 雙線（`isDoubleLine`，只給 straight）：兩個平移 ±1/3 線寬的子路徑，畫的寬度 `lineStrokeWidth` = 線寬 / 3；尖角（miter 比 > 10）斜切。
+- **畫布**：`LineBody` 三個 Konva Path，點擊範圍至少 8 螢幕 px（`LINE_HIT_PX`，所以 `ElementNode` / `StaticElement` 收 `zoom`）。Transformer 對線條沒有控制點、不能旋轉、單選時不畫框；改畫 `LineHandles`（拖曳中只畫預覽、放開一筆 `element/update`）。雙擊線段加點（`handleEditText` 對線條改成 `insertLinePoint`）。
+- **工具**：`L` = 線條（`EditorState.lineKind`：直線 / 箭頭 / 雙向箭頭拖曳畫；折線 / 曲線逐點點擊，點最後一點或 Enter 完成、Backspace / Esc），`P` = 鉛筆（放開時 `simplifyPoints` 1.5 px、上限 500 點 → 平滑曲線）。新線條 1 pt `#171717`，連內建「文字」色票（`toolLineStroke`）。畫線中的按鍵在 capture 階段 `stopImmediatePropagation`，編輯器的 Backspace / Esc 不會跟著觸發。
+- **屬性面板**：「線條」分頁（`LineStyleFields`、雙線、兩端箭頭與大小）；「調整」分頁兩點直線的長度 / 角度（起點不動，90° 的倍數用精確值）；水平線「填滿寬度」= 內容區寬的分隔線、垂直線「填滿高度」（`content-align.ts`）。
+- **匯出**：`buildExportRequest` 把線條換成路徑圖形（見「匯出 PDF」的線條），Rust render / Typst / EPUB 都不認識線條。疊圖比對（直線、折線尖角、曲線、鉛筆、雙線）PDF / EPUB 容許 0.5 pt 差異 0。
+- **MCP**：`add_line`（頁面座標的 points、path、compound、color、width、dash、start / end）、`update_element` 的線條欄位（points 換掉所有點、不能和 x / y 同時給；stroke 不能 null）、`get_element` 多 `pagePoints`。
+- 已知限制：半透明線在實心箭頭下的那一小段疊兩次色（三端一樣）；雙擊曲線加點時照點連成的折線找最近一段；拖把手中途不能 Esc 取消。之後另排：鋸齒 / 波浪花樣、線帽選項、鉛筆壓力、連接線（不做）。
 
 ### 調色板（`color-picker.tsx` + `lib/editor/palette.ts`）
 
@@ -613,7 +637,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 可選的字型是 `lib/editor/fonts.ts` 的 `FONT_OPTIONS`（屬性面板的下拉選單與字型載入的單一資料來源）；第一個是預設（黑體 `"Geist", "Noto Sans TC", sans-serif`）。文件的 `fontFamily` 存 `family` 字串，不在清單中的照常顯示，選單顯示「其他字型」。
   - **用到才載入**（`use-fonts-ready.ts`）：畫布等「預設字型 + 文件所有頁面用到的字型」都載入才畫；屬性面板換字型時先 `loadFontOption` 再寫入，畫布不會閃。中文字型也要等，一份中文雜誌的換行幾乎都由中文字型決定。
 - 文字編輯 overlay 會用 `compositionstart/end` 和 `isComposing` 忽略選字期間的 Enter / Esc。
-- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O・L（線條） / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End / 移動目前頁面 Ctrl+Shift+PageUp・PageDown）焦點在 input、textarea、dialog、menu 內時不觸發。
+- 快捷鍵（Delete / Ctrl+Z / Ctrl+Y / Ctrl+D / Esc / 方向鍵 / 工具鍵 V・H・T・R・O・L（線條）・P（鉛筆） / 換頁 PageUp・PageDown・Ctrl+Home・Ctrl+End / 移動目前頁面 Ctrl+Shift+PageUp・PageDown）焦點在 input、textarea、dialog、menu 內時不觸發。
   - 一般瀏覽器分頁（`npm run dev`）會自己攔下 Ctrl+Shift+PageUp / PageDown（移動瀏覽器分頁），網頁收不到；桌面版沒有這個問題。
   - 工具鍵與 Ctrl+D 以 **`event.code`** 比對；工具鍵只接受不帶修飾鍵的按鍵（不會和選單快捷鍵衝突），按住不放只觸發一次。沒有選取時 Esc 回到選取工具。
   - 空白鍵（暫時手形）只在焦點在 `document.body` 時生效：輸入框照常打空白，按鈕照常用空白鍵觸發。
@@ -818,7 +842,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **工具是單一資料來源**：`lib/automation/tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、寫給 AI 看的中文說明、zod strict schema、`readOnly`）。`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作會編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 的 `toMatchFileSnapshot` 產生並比對，橋接程式 `include_str!` 內嵌（App 沒開時 Claude Code 仍看得到工具）。
   - **新增工具**：在 `TOOL_DEFINITIONS` 加一筆 → 在 `HANDLERS` 實作（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，寫測試，用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp`。
   - 參數驗證失敗回中文訊息（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex（和 `isElementColor` / `isHexColor` 同規則）才會出現在 JSON Schema；不用 ajv（`new Function` 會被 CSP 擋）。
-- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；圖形庫 `list_shapes`（id、名稱、分類、預設大小、參數）、`add_shape.shape` 收基本 5 種或圖形庫 id（`SHAPE_NAMES`）並可帶 `params`、`update_element` 的 `params`（只改有給的）與 `shape`（換成，同屬性面板）——參數名稱不對時錯誤訊息列出可用的；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）；文件色票 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`（色票以名稱或 id 指定（`findSwatch`）；`delete_swatch` 的 `replaceWith` 省略 = 保留顏色、取消連結）。專案字型 `list_fonts`（內建四套 + 專案字型：id、名稱、缺字用的內建種類、有沒有粗體檔、授權、使用數）；文字樣式參數 `font` 是字串：內建名稱，或專案字型的名稱 / id（`findFont`，找不到時回中文錯誤）。匯入、改名、刪除字型不給 MCP（要選檔案、要確認替換）。
+- **目前的工具**：查詢 `get_document` / `list_pages` / `list_elements` / `get_element`；選單 `list_commands` / `run_command`；編輯 `add_text` / `add_shape` / `update_element` / `delete_elements` / `add_page` / `add_master` / `set_page_master` / `rename_page` / `set_page_background` / `rename_document` / `undo` / `redo`；文字樣式 `list_text_styles` / `add_text_style` / `update_text_style` / `delete_text_style` / `apply_text_style`（樣式以名稱或 id 指定；`add_text` / `add_shape` 也可帶 `style`，先取樣式的值再套這次的欄位；文字樣式參數含 `lineHeight`（倍數）/ `letterSpacing`（‰），`align` 含 `distributed`（首尾置中）；`update_element` 的 `cornerRadius` 收一個數字或 `[左上, 右上, 右下, 左下]`）；線條 `add_line`（points 是頁面座標，2–500 點；path / compound / color / width / dash / start / end）、`update_element` 的線條欄位（points、path、compound、stroke、start、end）、`get_element` 對線條多回 `pagePoints`；圖形庫 `list_shapes`（id、名稱、分類、預設大小、參數）、`add_shape.shape` 收基本 5 種或圖形庫 id（`SHAPE_NAMES`）並可帶 `params`、`update_element` 的 `params`（只改有給的）與 `shape`（換成，同屬性面板）——參數名稱不對時錯誤訊息列出可用的；素材庫 `list_library_items` / `place_library_item`（只讀素材庫、只能放圖片，尺寸規則同素材面板；`ToolContext.library` 由 `getLibrary()` 每次呼叫時取，計畫 `docs/01-Plans-2026-10/11-mcpserver-addimage-實作.md`）；文件色票 `list_swatches` / `add_swatch` / `update_swatch` / `delete_swatch`（色票以名稱或 id 指定（`findSwatch`）；`delete_swatch` 的 `replaceWith` 省略 = 保留顏色、取消連結）。專案字型 `list_fonts`（內建四套 + 專案字型：id、名稱、缺字用的內建種類、有沒有粗體檔、授權、使用數）；文字樣式參數 `font` 是字串：內建名稱，或專案字型的名稱 / id（`findFont`，找不到時回中文錯誤）。匯入、改名、刪除字型不給 MCP（要選檔案、要確認替換）。
   - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）是 `hex | { swatch, opacity? }`（`colorInput`，JSON Schema 是 `anyOf`），背景是 `hex | { swatch }`（`pageColorInput`）：給 hex = 不連色票；給 `{ swatch }` = 色票顏色（`opacity` 換成 `#rrggbbaa`）+ 連結。查詢回報連結的色票名稱（`list_pages` 的 `backgroundSwatch`、`list_text_styles` 的 `textColorSwatch`）。
   - `run_command` 和點選單呼叫**同一個 handler**（`home-page.tsx` 的 `menuHandlers` 傳給 `McpBridge`）；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」且不執行（不會跳 toast）。會開對話框的指令只觸發，不等結果。
   - 編輯：**一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外：和 UI 一樣切到新頁）。`update_element` 依物件類型檢查欄位（文字沒有 height、文字顏色是 `textColor`、圖片只能改位置尺寸）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。

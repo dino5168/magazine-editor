@@ -2,7 +2,7 @@
  * 匯出前把線條換成路徑圖形（同頁碼：只在匯出的副本），所以 Rust 的 render、Typst 模板、EPUB 標記都不用
  * 認識線條。路徑和畫布是同一份 `linePaths`。計畫：`docs/06-Plans-繪圖/03-自由繪圖-實作.md` §1.6、步驟 7。
  */
-import { linePaths } from "@/lib/editor/line-path";
+import { linePaths, lineStrokeWidth } from "@/lib/editor/line-path";
 import { pathBounds, type PathCommand } from "@/lib/editor/shape-path";
 import type { LineElement, ShapeElement, Stroke } from "@/lib/editor/types";
 import type { ExportShapePath } from "./export-request";
@@ -62,7 +62,8 @@ export function exportedLinePieces(line: LineElement): ExportedLinePiece[] {
   const outline = paths.stroke.length > 0 ? paths.stroke : paths.outlines;
   const details = paths.stroke.length > 0 ? paths.outlines : [];
   if (outline.length > 0) {
-    const lineStroke = paths.stroke.length > 0 ? stroke : { ...stroke, dash: "solid" as const };
+    // 雙線的兩條細線各 1/3 線寬；被箭頭蓋住、外框改用開放箭頭時是整條線的寬、實線
+    const lineStroke = paths.stroke.length > 0 ? { ...stroke, width: lineStrokeWidth(line) } : { ...stroke, dash: "solid" as const };
     pieces.push({
       shape: pieceShape(line, line.id, LINE_EXPORT_PRESET, [...outline, ...details], TRANSPARENT, lineStroke),
       path: { outline, details, detailStroke: details.length > 0 ? { ...stroke, dash: "solid" } : null },

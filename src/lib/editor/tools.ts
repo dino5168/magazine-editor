@@ -14,6 +14,7 @@ export const TOOL_DEFINITIONS = [
   { id: "text", label: "文字" },
   { id: "shape", label: "圖形" },
   { id: "line", label: "線條" },
+  { id: "pencil", label: "鉛筆" },
 ] as const satisfies readonly ToolDefinition[];
 
 export type ToolId = (typeof TOOL_DEFINITIONS)[number]["id"];
@@ -28,10 +29,10 @@ export const DEFAULT_TOOL: ToolId = "select";
  *   tool: Tool id.
  *
  * Returns:
- *   True for text, shape and line.
+ *   True for text, shape, line and pencil.
  */
 export function isCreateTool(tool: ToolId): boolean {
-  return tool === "text" || tool === "shape" || tool === "line";
+  return tool === "text" || tool === "shape" || tool === "line" || tool === "pencil";
 }
 export const DEFAULT_SHAPE_KIND: ShapeChoice = "rect";
 
@@ -52,6 +53,7 @@ export const TOOL_SHORTCUTS: readonly ToolShortcut[] = [
   { code: "KeyO", keyLabel: "O", tool: "shape", shape: "ellipse" },
   // 線條工具：沿用最近用過的種類（直線 / 箭頭 / 雙向箭頭）
   { code: "KeyL", keyLabel: "L", tool: "line" },
+  { code: "KeyP", keyLabel: "P", tool: "pencil" },
 ];
 
 /**

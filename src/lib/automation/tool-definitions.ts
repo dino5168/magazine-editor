@@ -18,6 +18,10 @@ import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   PAGE_NAME_MAX_LENGTH,
+  LINE_ARROWHEADS,
+  LINE_END_SCALE_MAX,
+  LINE_END_SCALE_MIN,
+  MAX_LINE_POINTS,
   STROKE_DASHES,
   STROKE_WIDTH_MAX,
   STROKE_WIDTH_MIN,
@@ -138,6 +142,21 @@ const stroke = z
 
 const verticalAlign = z.enum(["top", "middle", "bottom"]).describe("圖形內文字的垂直對齊");
 
+const linePoints = z
+  .array(z.strictObject({ x: coordinate, y: coordinate }))
+  .min(2)
+  .max(MAX_LINE_POINTS)
+  .describe(`線條的點（頁面座標 pt），2–${MAX_LINE_POINTS} 個，依序連起來`);
+const linePath = z.enum(["straight", "smooth"]).describe("straight = 點與點之間連直線（2 點 = 直線，更多 = 折線）；smooth = 穿過每個點的平滑曲線");
+const lineCompound = z.enum(["single", "double"]).describe("double = 雙線（兩條細線各 1/3 線寬、中間留空；只給 straight）");
+const lineEnd = z
+  .strictObject({
+    arrowhead: z.enum(LINE_ARROWHEADS).describe("none 無、open 開放箭頭 >、triangle 實心三角"),
+    scale: z.number().min(LINE_END_SCALE_MIN).max(LINE_END_SCALE_MAX).optional().describe("箭頭大小倍數：小 0.7、中 1（預設）、大 1.5"),
+  })
+  .describe("這一端的箭頭；箭頭永遠是實線，尖端在端點上");
+const lineDash = z.enum(STROKE_DASHES).describe("solid 實線、dashed 虛線、dotted 點線、dashDot 點劃線");
+
 const cornerRadiusValue = z.number().min(0).max(COORDINATE_LIMIT_PT);
 const styleRef = z.string().min(1).describe("文字樣式的名稱或 id（由 list_text_styles 取得）");
 const styleName = z.string().min(1).max(TEXT_STYLE_NAME_MAX_LENGTH * 2);
@@ -170,13 +189,13 @@ export const TOOL_DEFINITIONS = {
   list_elements: {
     title: "物件清單",
     description:
-      "列出一個頁面或主頁上的物件，由最底層到最上層：id、類型（text / shape / image）、位置與尺寸（pt，外框旋轉前的左上角）、旋轉角度、文字摘要（最多 80 字）。省略 pageId 時是使用者正在看的頁面。不含主頁帶來的物件與頁碼。",
+      "列出一個頁面或主頁上的物件，由最底層到最上層：id、類型（text / shape / image / line）、位置與尺寸（pt，外框旋轉前的左上角；線條是點的外框）、旋轉角度、文字摘要（最多 80 字）。省略 pageId 時是使用者正在看的頁面。不含主頁帶來的物件與頁碼。",
     input: z.strictObject({ pageId: pageId.optional() }),
     readOnly: true,
   },
   get_element: {
     title: "物件內容",
-    description: "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。",
+    description: "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。線條的 points 是相對於 x / y 的座標，另外附 pagePoints（頁面座標，和 add_line / update_element 的 points 同一套）。",
     input: z.strictObject({ id: elementId }),
     readOnly: true,
   },
@@ -232,9 +251,25 @@ export const TOOL_DEFINITIONS = {
     }),
     readOnly: false,
   },
+  add_line: {
+    title: "新增線條",
+    description: `在頁面加一條線條或箭頭（放在最上層），回傳新物件的 id。points 是頁面座標（pt），2 點 = 直線，更多 = 折線；path: "smooth" = 穿過每個點的平滑曲線。start / end 是第一點 / 最後一點那一端的箭頭（預設都沒有）。預設線條：1 pt 實線、#171717（文件有內建「文字」色票時連到它，同使用者用線條工具畫的線）。compound: "double" = 雙線（只給 straight）。水平的分隔線：兩點同 y，要橫跨內容區就用 get_document 的邊界算 x。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    input: z.strictObject({
+      pageId: pageId.optional(),
+      points: linePoints,
+      path: linePath.optional(),
+      compound: lineCompound.optional(),
+      color: colorInput.optional().describe("線條顏色：hex，或 { swatch, opacity? } 連到文件色票"),
+      width: z.number().min(STROKE_WIDTH_MIN).max(STROKE_WIDTH_MAX).optional().describe("線寬（pt），預設 1"),
+      dash: lineDash.optional(),
+      start: lineEnd.optional(),
+      end: lineEnd.optional(),
+    }),
+    readOnly: false,
+  },
   update_element: {
     title: "修改物件",
-    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       id: elementId,
       x: coordinate.optional(),
@@ -252,6 +287,11 @@ export const TOOL_DEFINITIONS = {
       shape: shapeName.optional(),
       params: shapeParams.optional(),
       verticalAlign: verticalAlign.optional(),
+      points: linePoints.optional(),
+      path: linePath.optional(),
+      compound: lineCompound.optional(),
+      start: lineEnd.optional(),
+      end: lineEnd.optional(),
       ...textStyleInput.shape,
     }),
     readOnly: false,
