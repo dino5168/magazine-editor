@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Circle, Image, Square, Star, Trash, Triangle, Type, type LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, Circle, Image, Shapes, Square, Star, Trash, Triangle, Type, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
@@ -12,6 +12,7 @@ const GEOMETRY_ICONS: { readonly [K in GeometryKind]: LucideIcon } = {
   ellipse: Circle,
   polygon: Triangle,
   star: Star,
+  preset: Shapes,
 };
 
 function elementIcon(element: CanvasElement): LucideIcon {

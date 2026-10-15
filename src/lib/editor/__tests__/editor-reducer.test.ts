@@ -157,6 +157,19 @@ describe("editorReducer / elements", () => {
     ).toBe(state);
   });
 
+  it("changes a shape into a shape-library shape and ignores malformed ones", () => {
+    const element = createShapeElement("rect", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const geometry = { kind: "preset", preset: "hexagon", params: { size: 0.25 } } as const;
+
+    expect(selectSelectedElement(run(state, { type: "element/update", id: element.id, patch: { geometry } }))).toMatchObject({
+      geometry,
+    });
+    expect(
+      editorReducer(state, { type: "element/update", id: element.id, patch: { geometry: { ...geometry, preset: "../x" } } }),
+    ).toBe(state);
+  });
+
   it("ignores numbers that are not finite", () => {
     const element = createShapeElement("rect", { x: 100, y: 100 });
     const state = run(blankState(), { type: "element/add", element });
@@ -414,6 +427,11 @@ describe("editorReducer / tools", () => {
     expect(state).toMatchObject({ tool: "select", shapeKind: "ellipse" });
     expect(state.history.past).toHaveLength(0);
     expect(run(state, { type: "tool/set", tool: "shape" }).shapeKind).toBe("ellipse");
+  });
+
+  it("remembers a shape-library shape as the last shape", () => {
+    const state = run(blankState(), { type: "tool/set", tool: "shape", shape: "preset:cloud" }, { type: "tool/set", tool: "select" });
+    expect(run(state, { type: "tool/set", tool: "shape" }).shapeKind).toBe("preset:cloud");
   });
 
   it("returns the same state when nothing changes", () => {

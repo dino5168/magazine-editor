@@ -1,11 +1,13 @@
 import { useMemo } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Ellipse, Group, Image as KonvaImage, Line, Rect, Text } from "react-konva";
+import { Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text } from "react-konva";
 import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
+import { pathData } from "@/lib/editor/shape-path";
+import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
 import { konvaAlignAttrs } from "@/lib/editor/distributed-text";
@@ -16,6 +18,7 @@ import type {
   ElementPatch,
   ImageElement,
   ShapeElement,
+  ShapeGeometry,
   ShapeLabel,
   TextElement,
 } from "@/lib/editor/types";
@@ -164,6 +167,44 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
   );
 }
 
+// 圖形庫的圖形：外框填色 + 描邊，細節線只描邊（沒有邊框時用比填色深的 1 pt 線，見 detailStroke）。
+// 路徑以 pt 算好（不靠 scale），拉伸時線不會變粗；圖形庫不認得的 id 畫成虛線外框
+function PresetShapeBody({
+  shape,
+  geometry,
+}: {
+  readonly shape: ShapeElement;
+  readonly geometry: Extract<ShapeGeometry, { kind: "preset" }>;
+}) {
+  const { width, height, fill } = shape;
+  const paths = useMemo(() => {
+    const path = presetPath(geometry, width, height);
+    return path && { outline: pathData(path.outline), details: path.details.length > 0 ? pathData(path.details) : null };
+  }, [geometry, width, height]);
+  if (!paths) return <MissingShape width={width} height={height} />;
+  return (
+    <>
+      <Path data={paths.outline} fill={fill} {...konvaStroke(shape.stroke)} />
+      {paths.details && <Path data={paths.details} {...konvaStroke(detailStroke(shape.stroke, fill))} />}
+    </>
+  );
+}
+
+// 認不得的圖形庫圖形；虛線不隨縮放變粗。填一層幾乎透明的底色，整個框都按得到
+function MissingShape({ width, height }: { readonly width: number; readonly height: number }) {
+  return (
+    <Rect
+      width={width}
+      height={height}
+      fill="rgba(148, 163, 184, 0.12)"
+      stroke="#94a3b8"
+      strokeWidth={1}
+      dash={[4, 4]}
+      strokeScaleEnabled={false}
+    />
+  );
+}
+
 function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
   const { geometry, width, height, fill } = shape;
   const stroke = konvaStroke(shape.stroke);
@@ -176,6 +217,8 @@ function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
     case "polygon":
     case "star":
       return <Line points={shapePoints(geometry, width, height) ?? []} closed fill={fill} {...stroke} />;
+    case "preset":
+      return <PresetShapeBody shape={shape} geometry={geometry} />;
     default: {
       const exhaustive: never = geometry;
       return exhaustive;

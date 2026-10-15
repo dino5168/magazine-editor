@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import type { PageSetup } from "@/lib/editor/page-setup";
 import { useLibraryControl } from "@/lib/library/library-context";
-import { buildExportRequest, type ExportRequest } from "@/lib/export/export-request";
+import { buildExportRequest, skippedShapeCount, type ExportRequest } from "@/lib/export/export-request";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
@@ -143,7 +143,8 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       }
       if (chosen.data === null) return false;
       const toastId = toast.loading(`正在匯出「${chosen.data}」…`);
-      const exported = await run(buildExportRequest(document, measureTextLayout, measureLineWidth));
+      const request = buildExportRequest(document, measureTextLayout, measureLineWidth);
+      const exported = await run(request);
       if (exported.error) {
         toast.error(`匯出${name}失敗：${describeCommandError(exported.error)}`, { id: toastId });
         return false;
@@ -154,6 +155,10 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       });
       if (exported.data.skippedImages > 0) {
         toast.warning(`有 ${exported.data.skippedImages} 張圖片找不到檔案或無法輸出（例如 SVG 連結了外部檔案），已略過`);
+      }
+      const skippedShapes = skippedShapeCount(request);
+      if (skippedShapes > 0) {
+        toast.warning(`有 ${skippedShapes} 個圖形是這個版本不認得的圖形庫圖形，已略過`);
       }
       return true;
     },

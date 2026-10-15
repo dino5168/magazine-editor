@@ -5,7 +5,7 @@ import {
   createShapeElement,
   createShapeInBox,
   createToolText,
-  type ShapeKind,
+  type ShapeChoice,
 } from "@/lib/editor/element-factory";
 import { snapPointToGrid } from "@/lib/editor/geometry";
 import type { ToolId } from "@/lib/editor/tools";
@@ -24,7 +24,7 @@ interface CreateDrag {
 interface UseCanvasCreateOptions {
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   readonly tool: ToolId;
-  readonly shapeKind: ShapeKind;
+  readonly shapeKind: ShapeChoice;
   /**
    * The page under a container-relative screen point (in spread view, either page of the spread)
    * and a converter from screen points to that page's pt.

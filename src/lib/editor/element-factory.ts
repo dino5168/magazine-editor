@@ -3,6 +3,7 @@ import { DEFAULT_FONT_OPTION } from "./fonts";
 import { estimateTextHeight } from "./geometry";
 import type { PageSetup } from "./page-setup";
 import { naturalAspect, unitVertices, vertexBounds } from "./shape-geometry";
+import { findShapePreset, type ShapePreset } from "./shape-presets";
 import { BUILT_IN_TEXT_STYLE_IDS, defaultTextStyles, pickTextStyle } from "./style-sheet";
 import { BUILT_IN_SWATCH_IDS, defaultSwatches } from "./swatches";
 import { DEFAULT_TEXT_FILL } from "./text-style";
@@ -42,6 +43,48 @@ const IMAGE_MAX_PAGE_RATIO = 0.5;
 
 export type TextPreset = "heading" | "subheading" | "body";
 export type ShapeKind = "rect" | "roundedRect" | "ellipse" | "triangle" | "star";
+/** Names of the basic shapes, in display order (the elements panel, the toolbar menu, MCP `list_shapes`). */
+export const SHAPE_KIND_LABELS: { readonly [K in ShapeKind]: string } = {
+  rect: "矩形",
+  roundedRect: "圓角矩形",
+  ellipse: "圓形",
+  triangle: "三角形",
+  star: "星形",
+};
+/** A shape-library shape picked in the elements panel or the shape tool: `preset:<ShapePreset.id>`. */
+export type PresetChoice = `preset:${string}`;
+/** Any shape the user can pick: one of the five basic shapes or a shape-library shape. */
+export type ShapeChoice = ShapeKind | PresetChoice;
+
+/**
+ * The shape choice of a shape-library shape.
+ *
+ * Args:
+ *   id: `ShapePreset.id`.
+ *
+ * Returns:
+ *   `preset:<id>`.
+ */
+export function presetChoice(id: string): PresetChoice {
+  return `preset:${id}`;
+}
+
+function isPresetChoice(choice: ShapeChoice): choice is PresetChoice {
+  return choice.startsWith("preset:");
+}
+
+/**
+ * The shape-library shape a choice picks.
+ *
+ * Args:
+ *   choice: Shape choice.
+ *
+ * Returns:
+ *   The library shape, or undefined for a basic shape or an id this version does not know.
+ */
+export function choicePreset(choice: ShapeChoice): ShapePreset | undefined {
+  return isPresetChoice(choice) ? findShapePreset(choice.slice("preset:".length)) : undefined;
+}
 
 interface TextPresetConfig {
   readonly label: string;
@@ -192,16 +235,34 @@ function createShape(geometry: ShapeGeometry, box: Bounds): ShapeElement {
 }
 
 /**
+ * Size of a basic shape created by a click (or from the elements panel).
+ *
+ * Args:
+ *   kind: Basic shape.
+ *
+ * Returns:
+ *   Size in pt.
+ */
+export function shapeDefaultSize(kind: ShapeKind): Size {
+  return SHAPE_PRESETS[kind].size;
+}
+
+/**
  * Creates a shape element centered on a point.
  *
  * Args:
- *   kind: Shape kind shown in the elements panel.
+ *   kind: Shape choice: one of the basic shapes, or `preset:<id>` for a shape-library shape.
  *   center: Center position in pt.
  *
  * Returns:
  *   New shape element.
  */
-export function createShapeElement(kind: ShapeKind, center: Point): ShapeElement {
+export function createShapeElement(kind: ShapeChoice, center: Point): ShapeElement {
+  if (isPresetChoice(kind)) {
+    // 不認得的圖形庫 id 不會從 UI 來；保險起見建立矩形
+    const preset = choicePreset(kind);
+    return preset ? createPresetShapeElement(preset, center) : createShapeElement("rect", center);
+  }
   const { geometry, size } = SHAPE_PRESETS[kind];
   return createShape(geometry, {
     minX: center.x - size.width / 2,
@@ -209,6 +270,81 @@ export function createShapeElement(kind: ShapeKind, center: Point): ShapeElement
     maxX: center.x + size.width / 2,
     maxY: center.y + size.height / 2,
   });
+}
+
+/**
+ * Creates a shape-library shape centered on a point, at the shape's default size. Every parameter
+ * is stored with its default value, so a later change of a default does not change existing shapes.
+ *
+ * Args:
+ *   preset: Library shape.
+ *   center: Center position in pt.
+ *
+ * Returns:
+ *   New shape element.
+ */
+export function createPresetShapeElement(preset: ShapePreset, center: Point): ShapeElement {
+  const { width, height } = preset.size;
+  return createShape(presetGeometry(preset), {
+    minX: center.x - width / 2,
+    minY: center.y - height / 2,
+    maxX: center.x + width / 2,
+    maxY: center.y + height / 2,
+  });
+}
+
+// 新圖形的 geometry：每個參數都存預設值
+function presetGeometry(preset: ShapePreset): ShapeGeometry {
+  return { kind: "preset", preset: preset.id, params: Object.fromEntries(preset.params.map((param) => [param.name, param.default])) };
+}
+
+/**
+ * Which pickable shape a shape is (the properties panel's 「換成」 list shows it as selected).
+ *
+ * Args:
+ *   shape: Shape element.
+ *
+ * Returns:
+ *   Its choice; null for shapes no option produces as they are (a polygon that is not a triangle).
+ */
+export function shapeChoiceOf(shape: ShapeElement): ShapeChoice | null {
+  const { geometry } = shape;
+  switch (geometry.kind) {
+    case "rect":
+      return hasRoundedCorner(geometry.cornerRadius) ? "roundedRect" : "rect";
+    case "ellipse":
+      return "ellipse";
+    case "polygon":
+      return geometry.sides === 3 ? "triangle" : null;
+    case "star":
+      return "star";
+    case "preset":
+      return presetChoice(geometry.preset);
+    default: {
+      const exhaustive: never = geometry;
+      return exhaustive;
+    }
+  }
+}
+
+/**
+ * The geometry a shape gets when it is changed into another shape (「換成」): the new shape's
+ * defaults, in the shape's current box. Position, size, fill, border and text stay.
+ *
+ * Args:
+ *   choice: Shape to change into.
+ *   size: The shape's current size (a rounded rectangle's corners are limited to it).
+ *
+ * Returns:
+ *   New geometry.
+ */
+export function choiceGeometry(choice: ShapeChoice, size: Size): ShapeGeometry {
+  if (isPresetChoice(choice)) {
+    const preset = choicePreset(choice);
+    return preset ? presetGeometry(preset) : SHAPE_PRESETS.rect.geometry;
+  }
+  const { geometry } = SHAPE_PRESETS[choice];
+  return geometry.kind === "rect" ? { kind: "rect", cornerRadius: clampCornerRadii(size, geometry.cornerRadius) } : geometry;
 }
 
 /** Text created by dragging is never narrower than this, in pt. */
@@ -242,13 +378,18 @@ function fitAspect(box: Bounds, aspect: number): Bounds {
  * Triangles and stars keep their proportions and are centred in the box.
  *
  * Args:
- *   kind: Shape kind.
+ *   kind: Shape choice.
  *   box: Dragged box in pt (non-empty).
  *
  * Returns:
  *   New shape element.
  */
-export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
+export function createShapeInBox(kind: ShapeChoice, box: Bounds): ShapeElement {
+  if (isPresetChoice(kind)) {
+    // 圖形庫的圖形填滿拖曳框（每種都能自由拉伸）
+    const preset = choicePreset(kind);
+    return preset ? createShape(presetGeometry(preset), box) : createShapeInBox("rect", box);
+  }
   const { geometry } = SHAPE_PRESETS[kind];
   switch (geometry.kind) {
     case "rect": {
@@ -256,6 +397,7 @@ export function createShapeInBox(kind: ShapeKind, box: Bounds): ShapeElement {
       return createShape({ kind: "rect", cornerRadius: clampCornerRadii(size, geometry.cornerRadius) }, box);
     }
     case "ellipse":
+    case "preset":
       return createShape(geometry, box);
     case "polygon":
     case "star":
@@ -489,6 +631,8 @@ export function describeShape(shape: ShapeElement): string {
       return POLYGON_NAMES[geometry.sides] ?? `${geometry.sides} 邊形`;
     case "star":
       return "星形";
+    case "preset":
+      return findShapePreset(geometry.preset)?.label ?? "圖形";
     default: {
       const exhaustive: never = geometry;
       return exhaustive;

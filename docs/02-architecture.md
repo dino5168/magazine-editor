@@ -185,9 +185,9 @@ sequenceDiagram
 |---|---|
 | `editor-reducer.ts` 的 `HANDLERS` | 每一種 action 都必須有對應的處理函式 |
 | `panels/index.ts` 的 `PANELS` | 每個工具面板都必須有對應的內容 |
-| `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式;`ShapeBody` 的 `switch` 對每一種 geometry(矩形、橢圓、多邊形、星形)也一樣 |
+| `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式;`ShapeBody` 的 `switch` 對每一種 geometry(矩形、橢圓、多邊形、星形、圖形庫)也一樣;圖形庫裡的 27 個圖形是資料(`shape-presets.ts`),新增圖形不用改這裡 |
 | `editor-canvas.tsx` 的 `TRANSFORMER_OPTIONS` | 每一種物件類型都必須設定縮放控制點 |
-| `properties-panel.tsx` 的 `tabsOf` / `GeometrySection` | 每一種物件都必須決定屬性面板有哪些分頁;每一種 geometry 都必須決定有哪些參數 |
+| `properties-panel.tsx` 的 `tabsOf` / `GeometryFields` | 每一種物件都必須決定屬性面板有哪些分頁;每一種 geometry 都必須決定有哪些參數 |
 | `panel-icons.ts` 的 `PANEL_ICONS` | 每個工具面板都必須有 icon |
 | `lib/menu/commands.ts` 的 `CommandHandlers` | 每個選單指令都必須有處理函式(還沒做的用佔位函式) |
 | Rust `export/render.rs` 的 `match` | 每一種物件類型都必須能轉成匯出用的資料 |

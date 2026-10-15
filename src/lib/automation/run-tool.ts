@@ -35,6 +35,7 @@ import {
   listLibraryItems,
   listPages,
   listFonts,
+  listShapes,
   listSwatches,
   listTextStyles,
 } from "./queries";
@@ -75,6 +76,7 @@ const HANDLERS: ToolHandlers = {
   update_text_style: (args, { state, apply }) => updateTextStyle(state, apply, args),
   delete_text_style: (args, { state, apply }) => deleteTextStyle(state, apply, args),
   apply_text_style: (args, { state, apply }) => applyTextStyle(state, apply, args),
+  list_shapes: () => ok(listShapes()),
   list_fonts: (_args, { state }) => ok(listFonts(state)),
   list_swatches: (_args, { state }) => ok(listSwatches(state)),
   add_swatch: (args, { state, apply }) => addSwatch(state, apply, args),

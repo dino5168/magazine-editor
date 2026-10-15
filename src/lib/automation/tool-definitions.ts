@@ -10,6 +10,7 @@ import type { ShapeKind } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
 import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
 import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
+import { SHAPE_LIBRARY } from "@/lib/editor/shape-presets";
 import { TEXT_STYLE_NAME_MAX_LENGTH } from "@/lib/editor/style-sheet";
 import { LETTER_SPACING_MAX, LETTER_SPACING_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_MIN, TEXT_ALIGNS } from "@/lib/editor/text-style";
 import {
@@ -78,6 +79,16 @@ const rotation = z.number().min(-360).max(360).describe("旋轉角度（度，�
 export const FONT_NAMES = FONT_OPTIONS.map((option) => option.label) as [string, ...string[]];
 
 export const SHAPE_KINDS = ["rect", "roundedRect", "ellipse", "triangle", "star"] as const satisfies readonly ShapeKind[];
+
+/** Every shape `add_shape` can make: the basic shapes, then the shape library's ids (`list_shapes`). */
+export const SHAPE_NAMES = [...SHAPE_KINDS, ...SHAPE_LIBRARY.map((preset) => preset.id)] as [string, ...string[]];
+
+const shapeName = z
+  .enum(SHAPE_NAMES)
+  .describe("圖形：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形，或圖形庫的 id（hexagon、cloud、cylinder…；名稱與參數見 list_shapes）");
+const shapeParams = z
+  .record(z.string(), z.number())
+  .describe("圖形庫圖形的參數（名稱 → 值，見 list_shapes）：ratio 參數是 0–1 的比例、pt 參數是 pt；省略的參數用預設值，超出範圍時夾回");
 
 const textStyleShape = {
   fontSize: z.number().min(FONT_SIZE_MIN).max(FONT_SIZE_MAX).describe("字級（pt）"),
@@ -201,10 +212,11 @@ export const TOOL_DEFINITIONS = {
   },
   add_shape: {
     title: "新增圖形",
-    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形；圖形撐滿 x / y / width / height 指定的外框（pt）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形，或圖形庫的圖形（六角形、雲、圓柱、箭頭、對話框…共 ${SHAPE_LIBRARY.length} 種，id 與參數用 list_shapes 查）；圖形撐滿 x / y / width / height 指定的外框（pt）。params 是圖形庫圖形的參數（只有圖形庫的圖形能給）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
-      shape: z.enum(SHAPE_KINDS),
+      shape: shapeName,
+      params: shapeParams.optional(),
       x: coordinate,
       y: coordinate,
       width: length,
@@ -221,7 +233,7 @@ export const TOOL_DEFINITIONS = {
   },
   update_element: {
     title: "修改物件",
-    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       id: elementId,
       x: coordinate.optional(),
@@ -236,6 +248,8 @@ export const TOOL_DEFINITIONS = {
         .union([cornerRadiusValue, z.tuple([cornerRadiusValue, cornerRadiusValue, cornerRadiusValue, cornerRadiusValue])])
         .optional()
         .describe("矩形圓角（pt）：一個數字 = 四個角一樣；四個數字 = [左上, 右上, 右下, 左下] 分別設定。每個角超過短邊一半時取一半"),
+      shape: shapeName.optional(),
+      params: shapeParams.optional(),
       verticalAlign: verticalAlign.optional(),
       ...textStyleInput.shape,
     }),
@@ -319,6 +333,13 @@ export const TOOL_DEFINITIONS = {
       style: styleRef.nullable().describe("文字樣式的名稱或 id；null = 取消連結"),
     }),
     readOnly: false,
+  },
+  list_shapes: {
+    title: "圖形清單",
+    description:
+      "列出 add_shape 能建立的所有圖形：id、名稱、分類、點一下建立時的預設大小（pt），以及圖形庫圖形的參數（名稱、說明、ratio = 0–1 的比例 / pt = 固定長度、範圍、預設值）。基本圖形（rect、roundedRect、ellipse、triangle、star）沒有參數，矩形圓角用 update_element 的 cornerRadius。",
+    input: z.strictObject({}),
+    readOnly: true,
   },
   list_fonts: {
     title: "字型清單",

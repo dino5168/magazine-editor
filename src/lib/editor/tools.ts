@@ -1,5 +1,5 @@
 import type { KeyboardEventLike } from "@/lib/menu/shortcut";
-import type { ShapeKind } from "./element-factory";
+import type { ShapeChoice, ShapeKind } from "./element-factory";
 
 interface ToolDefinition {
   readonly id: string;
@@ -18,7 +18,7 @@ export const TOOL_DEFINITIONS = [
 export type ToolId = (typeof TOOL_DEFINITIONS)[number]["id"];
 
 export const DEFAULT_TOOL: ToolId = "select";
-export const DEFAULT_SHAPE_KIND: ShapeKind = "rect";
+export const DEFAULT_SHAPE_KIND: ShapeChoice = "rect";
 
 /** A tool shortcut: one key without modifiers, matched by physical key (works with the Zhuyin IME on). */
 export interface ToolShortcut {
@@ -76,7 +76,7 @@ export function findToolShortcut(event: KeyboardEventLike): ToolShortcut | null 
  * Returns:
  *   Key label, or null when the tool (or shape) has no shortcut.
  */
-export function getToolKeyLabel(tool: ToolId, shape?: ShapeKind): string | null {
+export function getToolKeyLabel(tool: ToolId, shape?: ShapeChoice): string | null {
   const match = TOOL_SHORTCUTS.find((s) => s.tool === tool && (tool !== "shape" || s.shape === shape));
   return match?.keyLabel ?? null;
 }

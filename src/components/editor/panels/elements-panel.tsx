@@ -2,13 +2,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useActivePage, useEditorDispatch } from "@/lib/editor/editor-context";
 import { createShapeElement } from "@/lib/editor/element-factory";
 import { pageCenter } from "@/lib/editor/geometry";
-import { SHAPE_OPTIONS } from "../shape-options";
+import { SHAPE_OPTION_GROUPS } from "../shape-options";
 
 /**
- * Panel for adding basic shapes.
+ * Panel for adding shapes: the basic shapes and the shape library, grouped by category.
  *
  * Returns:
- *   Grid of shape buttons.
+ *   One grid of shape buttons per group.
  */
 export function ElementsPanel() {
   const page = useActivePage();
@@ -18,19 +18,27 @@ export function ElementsPanel() {
     <Card size="sm">
       <CardHeader>
         <CardTitle>圖形</CardTitle>
-        <CardDescription>點擊加入頁面中央，可在上方工具列修改填色。</CardDescription>
+        <CardDescription>點擊加入頁面中央；也可以在下方工具列選好圖形，到畫布上拖曳建立。</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-3 gap-2">
-        {SHAPE_OPTIONS.map(({ kind, label, icon: Icon }) => (
-          <button
-            key={kind}
-            type="button"
-            onClick={() => dispatch({ type: "element/add", element: createShapeElement(kind, pageCenter(page)) })}
-            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border bg-background text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Icon className="size-9 fill-slate-400 text-slate-500" strokeWidth={1} />
-            {label}
-          </button>
+      <CardContent className="flex flex-col gap-3">
+        {SHAPE_OPTION_GROUPS.map((group) => (
+          <section key={group.id} aria-label={group.label} className="flex flex-col gap-1.5">
+            <h3 className="text-xs font-medium text-muted-foreground">{group.label}</h3>
+            <div className="grid grid-cols-4 gap-1.5">
+              {group.options.map(({ kind, label, icon: Icon }) => (
+                <button
+                  key={kind}
+                  type="button"
+                  title={label}
+                  onClick={() => dispatch({ type: "element/add", element: createShapeElement(kind, pageCenter(page)) })}
+                  className="flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-lg border bg-background px-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Icon className="size-7 fill-slate-400 text-slate-500" strokeWidth={1} />
+                  <span className="w-full truncate text-center">{label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
         ))}
       </CardContent>
     </Card>

@@ -40,6 +40,7 @@ const GEOMETRY_FIELDS: { readonly [K in GeometryKind]: readonly string[] } = {
   ellipse: [],
   polygon: ["sides"],
   star: ["innerRatio", "numPoints"],
+  preset: ["params", "preset"],
 };
 
 const sortedKeys = (value: object): string[] => Object.keys(value).sort();
@@ -57,8 +58,12 @@ describe("project file fixture", () => {
   });
 
   it("covers every geometry kind with the TypeScript field names", () => {
+    // 圖形庫的圖形放在主頁（第 1 頁要和 v2 fixture 逐一比對）
+    const allShapes = [...fixture.document.pages, ...fixture.document.masters]
+      .flatMap((sheet) => sheet.elements)
+      .filter((element): element is ShapeElement => element.type === "shape");
     for (const [kind, fields] of Object.entries(GEOMETRY_FIELDS)) {
-      const shape = shapes.find((candidate) => candidate.geometry.kind === kind);
+      const shape = allShapes.find((candidate) => candidate.geometry.kind === kind);
       expect(shape, `fixture is missing a ${kind} shape`).toBeDefined();
       expect(sortedKeys(shape!.geometry)).toEqual(["kind", ...fields].sort());
     }

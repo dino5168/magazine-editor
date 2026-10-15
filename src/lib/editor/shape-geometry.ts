@@ -12,7 +12,7 @@ function regularPoints(radii: readonly number[], count: number): Vertex[] {
 }
 
 /**
- * Returns the unit vertices of a polygon or star geometry (null for rect / ellipse).
+ * Returns the unit vertices of a polygon or star geometry (null for rect / ellipse / shape-library shapes).
  *
  * Args:
  *   geometry: Shape geometry.
@@ -24,6 +24,7 @@ export function unitVertices(geometry: ShapeGeometry): Vertex[] | null {
   switch (geometry.kind) {
     case "rect":
     case "ellipse":
+    case "preset":
       return null;
     case "polygon":
       return regularPoints([1], Math.max(3, Math.floor(geometry.sides)));

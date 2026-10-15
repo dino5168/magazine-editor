@@ -14,11 +14,15 @@ import {
 import type { EditorAction, EditorState } from "@/lib/editor/editor-reducer";
 import {
   builtInTextStyle,
+  choiceGeometry,
   createId,
   createMasterPage,
   createImageElement,
   createShapeInBox,
   createTextElement,
+  presetChoice,
+  type ShapeChoice,
+  type ShapeKind,
 } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
@@ -26,6 +30,7 @@ import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadii } from "@/lib/editor/corner-radius";
 import { withAlpha } from "@/lib/editor/palette";
 import { createLabel } from "@/lib/editor/shape-label";
+import { findShapePreset, resolvePresetParams } from "@/lib/editor/shape-presets";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchNameError, swatchUsage, type ColorSlot } from "@/lib/editor/swatches";
 import type {
@@ -33,6 +38,7 @@ import type {
   ElementPatch,
   PageId,
   ShapeElement,
+  ShapeGeometry,
   Stroke,
   StyledText,
   Swatch,
@@ -43,7 +49,7 @@ import type {
 import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, validateName, type Result } from "@/lib/editor/validation";
 import type { Library, LibraryItem } from "@/lib/library/types";
 import { getElement } from "./queries";
-import type { ColorInput, PageColorInput, ToolArgs, TextStyleInput } from "./tool-definitions";
+import { SHAPE_KINDS, type ColorInput, type PageColorInput, type ToolArgs, type TextStyleInput } from "./tool-definitions";
 
 /** Width of text added without one (pt); the body text preset. */
 export const DEFAULT_TEXT_WIDTH = 280;
@@ -299,6 +305,28 @@ export function placeLibraryItem(
   return added.error ? added : ok({ ...added.data, width, height });
 }
 
+// add_shape / update_element 的 shape：基本圖形照名稱，其他是圖形庫的 id（schema 已限制在 SHAPE_NAMES 裡）
+function shapeChoiceOfName(name: string): ShapeChoice {
+  return (SHAPE_KINDS as readonly string[]).includes(name) ? (name as ShapeKind) : presetChoice(name);
+}
+
+/**
+ * Applies `params` to a shape-library shape: every name must be one of the shape's parameters;
+ * values are clamped to their ranges, parameters not given keep their value.
+ */
+function withParams(geometry: ShapeGeometry, params: Readonly<Record<string, number>> | undefined): Result<ShapeGeometry> {
+  if (params === undefined) return ok(geometry);
+  if (geometry.kind !== "preset") return fail("只有圖形庫的圖形有 params（基本圖形沒有參數，矩形圓角用 cornerRadius）");
+  const preset = findShapePreset(geometry.preset);
+  if (!preset) return fail(`這個版本不認得圖形「${geometry.preset}」，不能設定參數`);
+  const unknown = Object.keys(params).filter((name) => !preset.params.some((param) => param.name === name));
+  if (unknown.length > 0) {
+    const names = preset.params.map((param) => param.name).join("、") || "沒有參數";
+    return fail(`圖形「${preset.label}」沒有參數 ${unknown.join("、")}（可用：${names}；見 list_shapes）`);
+  }
+  return ok({ ...geometry, params: resolvePresetParams(preset, { ...geometry.params, ...params }) });
+}
+
 /** Tool `add_shape`. */
 export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_shape">) {
   const sheet = targetSheet(state, args.pageId);
@@ -315,14 +343,17 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
   if (fill.error) return fill;
   const stroke = resolveStroke(state, args.stroke);
   if (stroke.error) return stroke;
-  const shape = createShapeInBox(args.shape, {
+  const shape = createShapeInBox(shapeChoiceOfName(args.shape), {
     minX: args.x,
     minY: args.y,
     maxX: args.x + args.width,
     maxY: args.y + args.height,
   });
+  const geometry = withParams(shape.geometry, args.params);
+  if (geometry.error) return geometry;
   const element: ShapeElement = {
     ...shape,
+    geometry: geometry.data,
     rotation: args.rotation ?? 0,
     ...fill.data,
     ...(stroke.data !== undefined && { stroke: stroke.data }),
@@ -342,7 +373,7 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
 /** Fields of `update_element` each element type accepts (besides position and rotation). */
 const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   text: ["width", "text", ...STYLE_KEYS],
-  shape: ["width", "height", "fill", "stroke", "cornerRadius", "text", "verticalAlign", ...STYLE_KEYS],
+  shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
 };
 
@@ -384,10 +415,16 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
         ...fill.data,
         ...(stroke.data !== undefined && { stroke: stroke.data }),
       };
+      // 依序：換成另一個圖形 → 圓角 → 參數（所以可以一次換成圓角矩形並給圓角，或換成圖形庫圖形並給參數）
+      let geometry = args.shape === undefined ? element.geometry : choiceGeometry(shapeChoiceOfName(args.shape), { width, height });
       if (args.cornerRadius !== undefined) {
-        if (element.geometry.kind !== "rect") return fail("只有矩形可以設定 cornerRadius");
-        patch.geometry = { kind: "rect", cornerRadius: clampCornerRadii({ width, height }, args.cornerRadius) };
+        if (geometry.kind !== "rect") return fail("只有矩形可以設定 cornerRadius");
+        geometry = { kind: "rect", cornerRadius: clampCornerRadii({ width, height }, args.cornerRadius) };
       }
+      const withParamsGeometry = withParams(geometry, args.params);
+      if (withParamsGeometry.error) return withParamsGeometry;
+      geometry = withParamsGeometry.data;
+      if (geometry !== element.geometry) patch.geometry = geometry;
       const labelChanges = hasKeys(style) || args.verticalAlign !== undefined;
       if (args.text === "") {
         if (labelChanges) return fail("text 是空字串會移除圖形內的文字，不能同時給文字樣式");

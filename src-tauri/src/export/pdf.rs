@@ -6,8 +6,8 @@
 use super::document_fonts;
 use super::fonts::typst_family;
 use super::render::{
-    build_render, rounded_rect_path, DecorationKind, PathSegment, RenderDocument, RenderElement, RenderKind, RenderStroke,
-    KAPPA, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
+    self, build_render, rounded_rect_path, DecorationKind, PathSegment, RenderDocument, RenderElement, RenderKind,
+    RenderStroke, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use super::world::{file_id, ExportWorld};
 use super::{ExportOutput, ExportRequest};
@@ -53,11 +53,24 @@ fn stroke_data(stroke: &Option<RenderStroke>) -> Value {
     }
 }
 
-/// One path segment for `template.typ`: `["m", x, y]`, `["l", x, y]` or `["c", x1, y1, x2, y2, x, y]`.
+/// One path segment for `template.typ`: `["m", x, y]`, `["l", x, y]`, `["c", x1, y1, x2, y2, x, y]`
+/// or `["z"]`.
 fn seg(kind: &str, coords: &[f64]) -> Value {
     let mut items = vec![Value::from(kind)];
     items.extend(coords.iter().map(|&c| Value::from(c)));
     Value::Array(items)
+}
+
+/// A path as `template.typ` path segments.
+fn path_segments(path: &[PathSegment]) -> Vec<Value> {
+    path.iter()
+        .map(|segment| match *segment {
+            PathSegment::Move(x, y) => seg("m", &[x, y]),
+            PathSegment::Line(x, y) => seg("l", &[x, y]),
+            PathSegment::Cubic(x1, y1, x2, y2, x, y) => seg("c", &[x1, y1, x2, y2, x, y]),
+            PathSegment::Close => seg("z", &[]),
+        })
+        .collect()
 }
 
 /// Rounded-rectangle outline (`render::rounded_rect_path`) as `template.typ` path segments.
@@ -65,27 +78,12 @@ fn seg(kind: &str, coords: &[f64]) -> Value {
 /// 虛線的位置由路徑起點與方向決定；Typst 內建的 rect 起點不同，有邊框時改畫這條路徑，
 /// 虛線才會和畫布、EPUB 落在同樣的位置。
 fn rect_path(w: f64, h: f64, radii: [f64; 4]) -> Vec<Value> {
-    rounded_rect_path(w, h, radii)
-        .into_iter()
-        .map(|segment| match segment {
-            PathSegment::Move(x, y) => seg("m", &[x, y]),
-            PathSegment::Line(x, y) => seg("l", &[x, y]),
-            PathSegment::Cubic(x1, y1, x2, y2, x, y) => seg("c", &[x1, y1, x2, y2, x, y]),
-        })
-        .collect()
+    path_segments(&rounded_rect_path(w, h, radii))
 }
 
-/// Ellipse outline in Konva's order: from the rightmost point, clockwise (y down).
+/// Ellipse outline (`render::ellipse_path`) as `template.typ` path segments.
 fn ellipse_path(w: f64, h: f64) -> Vec<Value> {
-    let (rx, ry) = (w / 2.0, h / 2.0);
-    let (kx, ky) = (rx * KAPPA, ry * KAPPA);
-    vec![
-        seg("m", &[w, ry]),
-        seg("c", &[w, ry + ky, rx + kx, h, rx, h]),
-        seg("c", &[rx - kx, h, 0.0, ry + ky, 0.0, ry]),
-        seg("c", &[0.0, ry - ky, rx - kx, 0.0, rx, 0.0]),
-        seg("c", &[rx + kx, 0.0, w, ry - ky, w, ry]),
-    ]
+    path_segments(&render::ellipse_path(w, h))
 }
 
 fn element_data(element: &RenderElement) -> Value {
@@ -128,6 +126,11 @@ fn element_data(element: &RenderElement) -> Value {
             "kind": "polygon", "x": x, "y": y, "rotation": rotation,
             "width": e.width, "height": e.height, "fill": e.fill, "points": e.points,
             "stroke": stroke_data(&e.stroke),
+        }),
+        RenderKind::Path(e) => json!({
+            "kind": "path", "x": x, "y": y, "rotation": rotation, "width": e.width, "height": e.height,
+            "fill": e.fill, "stroke": stroke_data(&e.stroke), "segments": path_segments(&e.outline),
+            "details": path_segments(&e.details), "detailStroke": stroke_data(&e.detail_stroke),
         }),
         RenderKind::Image(e) => json!({
             "kind": "image", "x": x, "y": y, "rotation": rotation,
@@ -550,19 +553,41 @@ mod tests {
         // 圓角超過短邊一半時限制為 20（和 Konva、SVG 一樣）
         assert_eq!(rect[0], json!(["m", 20.0, 0.0]));
         assert_eq!(rect[1], json!(["l", 80.0, 0.0]), "goes right first");
-        assert_eq!(end(rect.last().unwrap()), (20.0, 0.0));
-        assert_eq!(rect_path(10.0, 10.0, [0.0; 4]).len(), 5, "no curves without a corner radius");
+        assert_eq!(end(&rect[rect.len() - 2]), (20.0, 0.0));
+        assert_eq!(rect.last(), Some(&json!(["z"])), "ends closed");
+        assert_eq!(rect_path(10.0, 10.0, [0.0; 4]).len(), 6, "no curves without a corner radius");
         // 四個角不同：從 (左上, 0) 開始，只有圓角的角有曲線，每個角各自限制在短邊一半（40 → 20）
         let corners = rect_path(100.0, 40.0, [40.0, 0.0, 10.0, 0.0]);
         assert_eq!(corners[0], json!(["m", 20.0, 0.0]));
         assert_eq!(corners[1], json!(["l", 100.0, 0.0]), "a square top-right corner has no curve");
         assert_eq!(corners.iter().filter(|s| s[0] == "c").count(), 2);
-        assert_eq!(end(corners.last().unwrap()), (20.0, 0.0));
+        assert_eq!(end(&corners[corners.len() - 2]), (20.0, 0.0));
 
         let ellipse = ellipse_path(100.0, 40.0);
         assert_eq!(ellipse[0], json!(["m", 100.0, 20.0]), "rightmost point");
         assert_eq!(end(&ellipse[1]), (50.0, 40.0), "then down (clockwise)");
-        assert_eq!(end(ellipse.last().unwrap()), (100.0, 20.0));
+        assert_eq!(end(&ellipse[ellipse.len() - 2]), (100.0, 20.0));
+        assert_eq!(ellipse.last(), Some(&json!(["z"])), "ends closed");
+    }
+
+    #[test]
+    fn path_shapes_fill_each_subpath_and_keep_open_details_open() {
+        let document = crate::export::test_support::path_shape_document();
+        let root = project_with_image();
+        let project = document_fonts::load(root.path(), &[], &document);
+        let world = ExportWorld::new(root.path(), serde_json::to_vec(&to_data(&document)).unwrap(), fonts(), &project);
+        let compiled = compile(&world).unwrap();
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 1.0.into(), ..Default::default() });
+        let at = |x: u32, y: u32| pixmap.pixel(x, y).map(|p| [p.red(), p.green(), p.blue()]).unwrap();
+        // 外框的兩個子路徑各自填色，中間不連起來
+        assert_eq!(at(40, 40), [255, 0, 0], "first subpath filled");
+        assert_eq!(at(150, 40), [255, 0, 0], "second subpath filled");
+        assert_eq!(at(90, 15), WHITE, "no fill between the subpaths");
+        // 細節線只描邊；沒有 "z" 的子路徑不會被接回起點
+        assert_eq!(at(40, 90), [0, 0, 255], "detail line drawn");
+        assert_eq!(at(40, 100), WHITE, "open detail is not closed back to its start");
+        assert_eq!(at(55, 97), WHITE, "details are never filled");
     }
 
     #[test]

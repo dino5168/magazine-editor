@@ -74,6 +74,22 @@ describe("geometry fields", () => {
     expect(isShapeGeometry({ kind: "star", numPoints: 5, innerRatio: 0 })).toBe(false);
     expect(isShapeGeometry({ kind: "triangle" })).toBe(false);
   });
+
+  it("checks only the format of shape-library geometry (same rules as Rust)", () => {
+    const preset = (preset: unknown, params: unknown) => isShapeGeometry({ kind: "preset", preset, params });
+    expect(preset("hexagon", { size: 0.25 })).toBe(true);
+    // 圖形庫不認得的 id 也接受（畫成虛線外框）
+    expect(preset("some-future-shape2", {})).toBe(true);
+    expect(preset("", {})).toBe(false);
+    expect(preset("a".repeat(33), {})).toBe(false);
+    expect(preset("../x", {})).toBe(false);
+    expect(preset("hexagon", undefined)).toBe(false);
+    expect(preset("hexagon", [1])).toBe(false);
+    expect(preset("hexagon", { "si ze": 1 })).toBe(false);
+    expect(preset("hexagon", { size: "1" })).toBe(false);
+    expect(preset("hexagon", { size: Number.NaN })).toBe(false);
+    expect(preset("hexagon", Object.fromEntries(Array.from({ length: 9 }, (_, n) => [`p${n}`, n])))).toBe(false);
+  });
 });
 
 describe("resizePatch", () => {

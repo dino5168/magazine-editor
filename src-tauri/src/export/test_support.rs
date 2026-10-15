@@ -2,6 +2,7 @@
 
 use super::fonts::BUNDLED_FONTS;
 use super::world;
+use super::render::{PathSegment, RenderDocument, RenderElement, RenderKind, RenderPage, RenderPath, RenderStroke};
 use super::ExportRequest;
 use crate::project::format::{parse_project, Document, Element, ASSET_DIR};
 use std::path::Path;
@@ -19,7 +20,7 @@ const PNG: &[u8] = &[
 
 /// An export request without any layout data, so the fallback in `text_layout` applies.
 pub fn request(document: Document) -> ExportRequest {
-    ExportRequest { document, text_layouts: HashMap::new() }
+    ExportRequest { document, text_layouts: HashMap::new(), shape_paths: HashMap::new() }
 }
 
 /// The document from `tests/fixtures/sample.magproj` (one page, all six element types).
@@ -82,5 +83,41 @@ pub fn preview_root() -> (Option<tempfile::TempDir>, std::path::PathBuf) {
             let path = root.path().to_path_buf();
             (Some(root), path)
         }
+    }
+}
+/// A one-page render document holding a single path shape at (10, 10) on a 200 × 120 white page:
+/// two separate red squares (0–60 and 100–160, 60 high) as the outline, and an open blue "L"
+/// detail line (0, 80) → (60, 80) → (60, 100) that must stay open and unfilled.
+pub fn path_shape_document() -> RenderDocument {
+    use PathSegment::{Close, Line, Move};
+    let path = RenderPath {
+        width: 180.0,
+        height: 100.0,
+        outline: vec![
+            Move(0.0, 0.0),
+            Line(60.0, 0.0),
+            Line(60.0, 60.0),
+            Line(0.0, 60.0),
+            Close,
+            Move(100.0, 0.0),
+            Line(160.0, 0.0),
+            Line(160.0, 60.0),
+            Line(100.0, 60.0),
+            Close,
+        ],
+        fill: "#ff0000".into(),
+        stroke: None,
+        details: vec![Move(0.0, 80.0), Line(60.0, 80.0), Line(60.0, 100.0)],
+        detail_stroke: Some(RenderStroke { color: "#0000ff".into(), width: 2.0, dash: None }),
+    };
+    RenderDocument {
+        title: "path".into(),
+        pages: vec![RenderPage {
+            name: "Page-1".into(),
+            width: 200.0,
+            height: 120.0,
+            background: "#ffffff".into(),
+            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path) }],
+        }],
     }
 }

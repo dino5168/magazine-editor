@@ -20,7 +20,7 @@ pub mod world;
 pub use epub::render_epub;
 pub use pdf::render_pdf;
 
-use crate::project::format::Document;
+use crate::project::format::{Document, Stroke};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -41,12 +41,42 @@ pub struct TextLayout {
     pub line_gaps: Vec<f64>,
 }
 
+/// One command of a shape-library outline, as the editor sends it (`PathCommand` in
+/// `src/lib/editor/shape-path.ts`): pt relative to the shape's box.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(tag = "op")]
+pub enum PathCommand {
+    M { x: f64, y: f64 },
+    L { x: f64, y: f64 },
+    C { x1: f64, y1: f64, x2: f64, y2: f64, x: f64, y: f64 },
+    Z,
+}
+
+/// The outline of one shape-library shape, computed by the editor (`ExportShapePath` in
+/// `src/lib/export/export-request.ts`). Rust does not know the library; it only draws these.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapePath {
+    /// Filled and stroked.
+    pub outline: Vec<PathCommand>,
+    /// Stroked only.
+    #[serde(default)]
+    pub details: Vec<PathCommand>,
+    /// The details' line; `None` when there are no details.
+    #[serde(default)]
+    pub detail_stroke: Option<Stroke>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportRequest {
     pub document: Document,
     /// Keyed by text element id.
     pub text_layouts: HashMap<String, TextLayout>,
+    /// Keyed by shape element id. A shape-library shape without an entry (one the editor does
+    /// not know) is skipped.
+    #[serde(default)]
+    pub shape_paths: HashMap<String, ShapePath>,
 }
 
 #[derive(Debug)]

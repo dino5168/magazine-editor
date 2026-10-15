@@ -7,9 +7,11 @@ import { selectActivePage, selectIsDirty, type EditorState } from "@/lib/editor/
 import { FONT_OPTIONS, findFontOption, projectFontOption } from "@/lib/editor/fonts";
 import { mapFontFamilies } from "@/lib/editor/project-fonts";
 import { findSheet, pagesUsingMaster } from "@/lib/editor/master-pages";
+import { SHAPE_KIND_LABELS, shapeDefaultSize, type ShapeKind } from "@/lib/editor/element-factory";
+import { SHAPE_CATEGORIES, SHAPE_LIBRARY } from "@/lib/editor/shape-presets";
 import { styledTextOf, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchUsage } from "@/lib/editor/swatches";
-import type { CanvasElement, PageId, ProjectFont, Sheet, Swatch, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
+import type { CanvasElement, PageId, ProjectFont, Sheet, Size, Swatch, TextAlign, TextShadow, TextStyleDef } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import { visibleItems } from "@/lib/library/library-selectors";
 import { folderPath } from "@/lib/library/library-tree";
@@ -165,7 +167,8 @@ function elementSummary(element: CanvasElement): string {
       return `文字「${excerpt(element.text)}」`;
     case "shape": {
       const label = element.label ? `，內文「${excerpt(element.label.text)}」` : "";
-      return `圖形 ${element.geometry.kind}，填色 ${element.fill}${label}`;
+      const kind = element.geometry.kind === "preset" ? element.geometry.preset : element.geometry.kind;
+      return `圖形 ${kind}，填色 ${element.fill}${label}`;
     }
     case "image":
       return `圖片 ${element.src}`;
@@ -377,6 +380,51 @@ export function listSwatches(state: EditorState): SwatchSummary[] {
   const document = state.history.present;
   const usage = swatchUsage(document);
   return document.swatches.map(({ id, name, color }) => ({ id, name, color, usedBy: usage.get(id) ?? 0 }));
+}
+
+/** A shape `add_shape` can make (tool `list_shapes`). */
+export interface ShapeSummary {
+  /** `add_shape`'s `shape`. */
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  /** Size (pt) of a shape created by a click in the app. */
+  readonly defaultSize: Size;
+  readonly params: readonly {
+    readonly name: string;
+    readonly label: string;
+    /** `ratio`: a fraction 0–1 of a side; `pt`: a fixed length. */
+    readonly kind: "ratio" | "pt";
+    readonly min: number;
+    readonly max: number;
+    readonly default: number;
+  }[];
+}
+
+/**
+ * Every shape the user can pick, in panel order (tool `list_shapes`).
+ *
+ * Returns:
+ *   The basic shapes and the shape library, with each library shape's parameters.
+ */
+export function listShapes(): ShapeSummary[] {
+  const [basic] = SHAPE_CATEGORIES;
+  const basics = (Object.keys(SHAPE_KIND_LABELS) as ShapeKind[]).map(
+    (kind): ShapeSummary => ({ id: kind, name: SHAPE_KIND_LABELS[kind], category: basic.label, defaultSize: shapeDefaultSize(kind), params: [] }),
+  );
+  // 和元素面板同樣的順序：基本圖形在「基本」最前面，接著每個分類的圖形庫圖形
+  const library = SHAPE_CATEGORIES.flatMap((category) =>
+    SHAPE_LIBRARY.filter((preset) => preset.category === category.id).map(
+      (preset): ShapeSummary => ({
+        id: preset.id,
+        name: preset.label,
+        category: category.label,
+        defaultSize: preset.size,
+        params: preset.params.map(({ name, label, kind, min, max, default: value }) => ({ name, label, kind, min, max, default: value })),
+      }),
+    ),
+  );
+  return [...basics, ...library];
 }
 
 /** A font the AI can pass as `font` (tool `list_fonts`). */

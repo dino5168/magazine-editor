@@ -6,7 +6,10 @@ import {
   TEXT_PRESETS,
   boundsFromPoints,
   builtInTextStyle,
+  choiceGeometry,
+  choicePreset,
   createBlankDocument,
+  createPresetShapeElement,
   createShapeElement,
   createShapeInBox,
   createStyledText,
@@ -14,10 +17,13 @@ import {
   createTextFromFile,
   createToolText,
   describeElement,
+  presetChoice,
+  shapeChoiceOf,
 } from "../element-factory";
 import { estimateTextHeight } from "../geometry";
 import { presetSize } from "../page-setup";
 import { createLabel } from "../shape-label";
+import { findShapePreset } from "../shape-presets";
 import { defaultTextStyles } from "../style-sheet";
 import { BUILT_IN_SWATCH_IDS, defaultSwatches, hasValidSwatchLinks } from "../swatches";
 import type { Bounds } from "../types";
@@ -118,7 +124,68 @@ describe("createShapeInBox", () => {
   });
 });
 
+describe("shape choices", () => {
+  it("picks shape-library shapes by `preset:<id>`", () => {
+    expect(presetChoice("cloud")).toBe("preset:cloud");
+    expect(choicePreset("preset:cloud")?.id).toBe("cloud");
+    expect(choicePreset("rect")).toBeUndefined();
+    expect(choicePreset("preset:future-shape")).toBeUndefined();
+  });
+
+  it("creates library shapes by click or drag, and a rectangle for an unknown id", () => {
+    expect(createShapeElement("preset:cloud", { x: 100, y: 100 }).geometry).toEqual({ kind: "preset", preset: "cloud", params: {} });
+    const box = { minX: 10, minY: 20, maxX: 310, maxY: 80 };
+    expect(createShapeInBox("preset:hexagon", box)).toMatchObject({
+      x: 10,
+      y: 20,
+      width: 300,
+      height: 60,
+      geometry: { kind: "preset", preset: "hexagon", params: { size: 0.25 } },
+    });
+    expect(createShapeElement("preset:future-shape", { x: 0, y: 0 }).geometry).toEqual({ kind: "rect", cornerRadius: 0 });
+    expect(createShapeInBox("preset:future-shape", box).geometry).toEqual({ kind: "rect", cornerRadius: 0 });
+  });
+});
+
+describe("shapeChoiceOf / choiceGeometry", () => {
+  it("finds the option each shape comes from", () => {
+    const at = { x: 0, y: 0 };
+    expect((["rect", "roundedRect", "ellipse", "triangle", "star", "preset:cloud"] as const).map((kind) => shapeChoiceOf(createShapeElement(kind, at)))).toEqual([
+      "rect",
+      "roundedRect",
+      "ellipse",
+      "triangle",
+      "star",
+      "preset:cloud",
+    ]);
+    // 六邊形的正多邊形不是任何選項
+    const hexagon = { ...createShapeElement("triangle", at), geometry: { kind: "polygon", sides: 6 } } as const;
+    expect(shapeChoiceOf(hexagon)).toBeNull();
+  });
+
+  it("gives the new shape's default geometry, a rounded rectangle limited to the box", () => {
+    expect(choiceGeometry("preset:cylinder", { width: 100, height: 100 })).toEqual({ kind: "preset", preset: "cylinder", params: { size: 15 } });
+    expect(choiceGeometry("star", { width: 100, height: 100 })).toMatchObject({ kind: "star", numPoints: 5 });
+    expect(choiceGeometry("roundedRect", { width: 100, height: 20 })).toEqual({ kind: "rect", cornerRadius: 10 });
+    expect(choiceGeometry("preset:future-shape", { width: 100, height: 100 })).toEqual({ kind: "rect", cornerRadius: 0 });
+  });
+});
+
+describe("createPresetShapeElement", () => {
+  it("centres the shape at its default size and stores every parameter's default", () => {
+    const shape = createPresetShapeElement(findShapePreset("cylinder")!, { x: 100, y: 200 });
+    expect(shape).toMatchObject({ x: 50, y: 140, width: 100, height: 120, stroke: null, label: null });
+    expect(shape.geometry).toEqual({ kind: "preset", preset: "cylinder", params: { size: 15 } });
+  });
+});
+
 describe("describeElement", () => {
+  it("names shape-library shapes by the library, and unknown ones generically", () => {
+    const hexagon = createPresetShapeElement(findShapePreset("hexagon")!, { x: 0, y: 0 });
+    expect(describeElement(hexagon)).toBe("六角形");
+    expect(describeElement({ ...hexagon, geometry: { kind: "preset", preset: "future-shape", params: {} } })).toBe("圖形");
+  });
+
   it("names polygons by their number of sides", () => {
     const triangle = createShapeElement("triangle", { x: 0, y: 0 });
     const withSides = (sides: number) => describeElement({ ...triangle, geometry: { kind: "polygon", sides } });

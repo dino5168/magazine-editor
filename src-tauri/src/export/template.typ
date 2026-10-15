@@ -101,6 +101,8 @@
   curve.move(xy(s, 1))
 } else if s.at(0) == "l" {
   curve.line(xy(s, 1))
+} else if s.at(0) == "z" {
+  curve.close(mode: "straight")
 } else {
   curve.cubic(xy(s, 1), xy(s, 3), xy(s, 5))
 }
@@ -127,13 +129,15 @@
     let points = el.points.map(p => (pt(p.at(0)), pt(p.at(1))))
     at-corner(el, box(width: pt(el.width), height: pt(el.height), place(top + left, polygon(fill: rgb(el.fill), stroke: stroke-of(el.stroke), ..points))))
   } else if el.kind == "path" {
-    // 有邊框的矩形 / 橢圓：路徑由 Rust 算好（起點與方向和畫布相同，虛線才會落在同樣位置）
-    at-corner(el, box(width: pt(el.width), height: pt(el.height), place(top + left, curve(
-      fill: rgb(el.fill),
-      stroke: stroke-of(el.stroke),
-      ..el.segments.map(path-segment),
-      curve.close(mode: "straight"),
-    ))))
+    // 有邊框的矩形 / 橢圓與圖形庫的圖形：路徑由 Rust / 編輯器算好（起點與方向和畫布相同，虛線才會落在同樣位置）。
+    // "z" 封閉子路徑，沒有 "z" 的子路徑不封閉；details 是畫在上面、只描邊的細節線
+    let details = el.at("details", default: ())
+    at-corner(el, box(width: pt(el.width), height: pt(el.height), {
+      place(top + left, curve(fill: rgb(el.fill), stroke: stroke-of(el.stroke), ..el.segments.map(path-segment)))
+      if details.len() > 0 and el.detailStroke != none {
+        place(top + left, curve(stroke: stroke-of(el.detailStroke), ..details.map(path-segment)))
+      }
+    }))
   }
 }
 

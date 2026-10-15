@@ -1,13 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { Scan, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CORNER_NAMES, clampCornerRadii, cornerRadii, isUniformCornerRadius, withCornerRadius, type CornerIndex } from "@/lib/editor/corner-radius";
 import { cn } from "@/lib/utils";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
-import { describeShape } from "@/lib/editor/element-factory";
+import { choiceGeometry, describeShape, shapeChoiceOf, type ShapeChoice } from "@/lib/editor/element-factory";
 import {
   clampVertexCount,
   hasEditableHeight,
@@ -17,12 +18,20 @@ import {
 } from "@/lib/editor/properties";
 import type { CanvasElement, CornerRadius, ElementPatch, ShapeElement, ShapeLabel, TextElement, TextStyle } from "@/lib/editor/types";
 import { canReorder } from "@/lib/editor/layer-order";
+import {
+  findShapePreset,
+  presetParamFromField,
+  presetParamToField,
+  presetParamUnit,
+  resolvePresetParams,
+} from "@/lib/editor/shape-presets";
 import { TEXT_VARIABLES } from "@/lib/editor/variables";
 import { ColorPicker } from "../color-picker";
 import { DocumentSwatchesProvider } from "../document-swatches";
 import { ALIGN_EDGES, defaultKeepRatio, FILL_ITEMS, REORDER_ITEMS, useContentAlign } from "../element-arrange";
 import { IconButton } from "../icon-button";
 import { NumberField } from "../number-field";
+import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
 
@@ -135,52 +144,97 @@ function CornerRadiusFields({ shape, radius, update }: { readonly shape: ShapeEl
   );
 }
 
-// 圖形自己的參數；橢圓沒有可調的參數
-function GeometrySection({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
+// 「換成」：所有可選的圖形（依圖形庫分組）。換了之後位置、大小、填色、邊框、文字都不變（一筆復原）
+function ShapeSwitch({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
+  const current = shapeChoiceOf(shape);
+  return (
+    <Row label="圖形">
+      <Select
+        // 目前的圖形不在清單裡（例如六邊形的正多邊形）時顯示它的名稱，選單裡沒有被選取的項目
+        value={current ?? ""}
+        onValueChange={(choice) => update({ geometry: choiceGeometry(choice as ShapeChoice, shape) })}
+      >
+        <SelectTrigger size="sm" className="h-7 w-40" aria-label="換成其他圖形">
+          <SelectValue placeholder={describeShape(shape)} />
+        </SelectTrigger>
+        <SelectContent>
+          {SHAPE_OPTION_GROUPS.map((group) => (
+            <SelectGroup key={group.id}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.options.map(({ kind, label, icon: Icon }) => (
+                <SelectItem key={kind} value={kind}>
+                  <Icon className="size-4" strokeWidth={1.75} />
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    </Row>
+  );
+}
+
+// 圖形自己的參數；橢圓與沒有參數的圖形庫圖形沒有欄位
+function GeometryFields({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
   const { geometry } = shape;
   const key = (name: string, value: number) => `${shape.id}-${name}-${value}`;
   switch (geometry.kind) {
     case "rect":
-      return (
-        <Section title="形狀">
-          {/* key：「分別設定」是每個矩形各自的編輯狀態，切換物件時重新判斷 */}
-          <CornerRadiusFields key={shape.id} shape={shape} radius={geometry.cornerRadius} update={update} />
-        </Section>
-      );
+      // key：「分別設定」是每個矩形各自的編輯狀態，切換物件時重新判斷
+      return <CornerRadiusFields key={shape.id} shape={shape} radius={geometry.cornerRadius} update={update} />;
     case "polygon":
       return (
-        <Section title="形狀">
-          <NumberField
-            key={key("sides", geometry.sides)}
-            label="邊數"
-            unit=""
-            value={geometry.sides}
-            onCommit={(sides) => update({ geometry: { ...geometry, sides: clampVertexCount(sides) } })}
-            className="w-1/2 pr-1.5"
-          />
-        </Section>
+        <NumberField
+          key={key("sides", geometry.sides)}
+          label="邊數"
+          unit=""
+          value={geometry.sides}
+          onCommit={(sides) => update({ geometry: { ...geometry, sides: clampVertexCount(sides) } })}
+          className="w-1/2 pr-1.5"
+        />
       );
     case "star":
       return (
-        <Section title="形狀">
-          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <NumberField
-              key={key("points", geometry.numPoints)}
-              label="角數"
-              unit=""
-              value={geometry.numPoints}
-              onCommit={(numPoints) => update({ geometry: { ...geometry, numPoints: clampVertexCount(numPoints) } })}
-            />
-            <NumberField
-              key={key("inner", geometry.innerRatio)}
-              label="內徑"
-              unit="%"
-              value={geometry.innerRatio * 100}
-              onCommit={(percent) => update({ geometry: { ...geometry, innerRatio: innerRatioFromPercent(percent) } })}
-            />
-          </div>
-        </Section>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          <NumberField
+            key={key("points", geometry.numPoints)}
+            label="角數"
+            unit=""
+            value={geometry.numPoints}
+            onCommit={(numPoints) => update({ geometry: { ...geometry, numPoints: clampVertexCount(numPoints) } })}
+          />
+          <NumberField
+            key={key("inner", geometry.innerRatio)}
+            label="內徑"
+            unit="%"
+            value={geometry.innerRatio * 100}
+            onCommit={(percent) => update({ geometry: { ...geometry, innerRatio: innerRatioFromPercent(percent) } })}
+          />
+        </div>
       );
+    case "preset": {
+      const preset = findShapePreset(geometry.preset);
+      if (!preset || preset.params.length === 0) return null;
+      // 顯示實際畫的值（缺少的參數是預設值）；寫入時存所有參數，夾在範圍內
+      const params = resolvePresetParams(preset, geometry.params);
+      return (
+        <div className="flex flex-col gap-2">
+          {preset.params.map((param) => (
+            <NumberField
+              key={key(param.name, params[param.name])}
+              label={param.label}
+              labelClassName="w-16"
+              unit={presetParamUnit(param)}
+              value={presetParamToField(param, params[param.name])}
+              onCommit={(field) =>
+                update({ geometry: { ...geometry, params: { ...params, [param.name]: presetParamFromField(param, field) } } })
+              }
+            />
+          ))}
+        </div>
+      );
+    }
     case "ellipse":
       return null;
     default: {
@@ -193,7 +247,10 @@ function GeometrySection({ shape, update }: { readonly shape: ShapeElement; read
 function StyleTab({ shape, update }: { readonly shape: ShapeElement; readonly update: Update }) {
   return (
     <>
-      <GeometrySection shape={shape} update={update} />
+      <Section title="形狀">
+        <ShapeSwitch shape={shape} update={update} />
+        <GeometryFields shape={shape} update={update} />
+      </Section>
       <Section title="填滿">
         <Row label="填色">
           <ColorPicker

@@ -23,6 +23,8 @@ interface NumberFieldProps {
   /** Shows − / ＋ buttons on both sides of the input; each click commits once (one undo step). */
   readonly step?: NumberFieldStep;
   readonly className?: string;
+  /** Width class of the label, replacing the default `w-8` (two characters, e.g. 「旋轉」); `cn` does not merge conflicting classes. */
+  readonly labelClassName?: string;
   /**
    * The field stands for several values that differ (e.g. four corner radii): it starts empty with
    * the placeholder 「混合」, and any number typed is committed (`value` is then ignored).
@@ -42,7 +44,7 @@ interface NumberFieldProps {
  * Returns:
  *   Labelled input.
  */
-export function NumberField({ label, value, unit, onCommit, step, className, mixed = false }: NumberFieldProps) {
+export function NumberField({ label, value, unit, onCommit, step, className, labelClassName, mixed = false }: NumberFieldProps) {
   const id = useId();
   const shown = mixed ? "" : formatNumber(value);
   const [draft, setDraft] = useState(shown);
@@ -72,7 +74,7 @@ export function NumberField({ label, value, unit, onCommit, step, className, mix
 
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
-      <label htmlFor={id} className="w-8 shrink-0 text-xs text-muted-foreground">
+      <label htmlFor={id} className={cn("shrink-0 text-xs text-muted-foreground", labelClassName ?? "w-8")}>
         {label}
       </label>
       {step && (

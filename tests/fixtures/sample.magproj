@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -221,6 +221,20 @@
             "src": "assets/images/fedcba9876543210fedcba9876543210.png",
             "width": 40,
             "height": 30
+          },
+          {
+            "id": "el-master-hexagon",
+            "type": "shape",
+            "x": 80,
+            "y": 780,
+            "rotation": 0,
+            "width": 48,
+            "height": 40,
+            "geometry": { "kind": "preset", "preset": "hexagon", "params": { "size": 0.25 } },
+            "fill": "#0ea5e9",
+            "fillSwatchId": null,
+            "stroke": null,
+            "label": null
           }
         ]
       }

@@ -6,10 +6,11 @@
 //! Coordinates keep the editor's definition: unit pt, origin at the page's top-left corner, y
 //! pointing down, rotation clockwise around the element's anchor.
 
-use super::{ExportRequest, TextLayout};
+use super::{ExportRequest, PathCommand, ShapePath, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
-    validate_content, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow,
+    validate_content, validate_stroke_look, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash,
+    TextDecoration, TextShadow,
     VerticalAlign,
 };
 use crate::project::shape;
@@ -67,6 +68,8 @@ pub enum RenderKind {
     Ellipse(RenderEllipse),
     /// Both polygon and star shapes: a filled shape given by its vertices.
     Polygon(RenderPolygon),
+    /// A shape from the shape library: outline paths computed by the editor.
+    Path(RenderPath),
     Image(RenderImage),
 }
 
@@ -313,13 +316,15 @@ impl RenderRect {
 /// Cubic Bézier factor for a quarter circle.
 pub const KAPPA: f64 = 0.552_284_749_830_793_4;
 
-/// One segment of an outline path, in the shape's own coordinates (pt).
+/// One segment of an outline path, in the shape's own coordinates (pt). Like SVG path data: a
+/// `Move` starts a subpath, `Close` closes the current one; a subpath without `Close` stays open.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PathSegment {
     Move(f64, f64),
     Line(f64, f64),
     /// Two control points, then the end point.
     Cubic(f64, f64, f64, f64, f64, f64),
+    Close,
 }
 
 /// Rounded-rectangle outline in Konva's order: from (top-left radius, 0) to the right, clockwise
@@ -352,7 +357,39 @@ pub fn rounded_rect_path(w: f64, h: f64, radii: [f64; 4]) -> Vec<PathSegment> {
         let k = tl * KAPPA;
         path.push(PathSegment::Cubic(0.0, tl - k, tl - k, 0.0, tl, 0.0));
     }
+    path.push(PathSegment::Close);
     path
+}
+
+/// Ellipse outline filling a `w` × `h` box, in Konva's order: from the rightmost point, clockwise
+/// (y down). PDF draws bordered ellipses with it so dashes match the canvas.
+pub fn ellipse_path(w: f64, h: f64) -> Vec<PathSegment> {
+    let (rx, ry) = (w / 2.0, h / 2.0);
+    let (kx, ky) = (rx * KAPPA, ry * KAPPA);
+    vec![
+        PathSegment::Move(w, ry),
+        PathSegment::Cubic(w, ry + ky, rx + kx, h, rx, h),
+        PathSegment::Cubic(rx - kx, h, 0.0, ry + ky, 0.0, ry),
+        PathSegment::Cubic(0.0, ry - ky, rx - kx, 0.0, rx, 0.0),
+        PathSegment::Cubic(rx + kx, 0.0, w, ry - ky, w, ry),
+        PathSegment::Close,
+    ]
+}
+
+/// A shape drawn from paths: the filled outline (closed subpaths, filled and stroked) and the
+/// details drawn on top of it (open or closed subpaths, stroked only, never filled).
+#[derive(Debug, Clone)]
+pub struct RenderPath {
+    /// The box the paths were computed for; rotation turns around its top-left corner.
+    pub width: f64,
+    pub height: f64,
+    pub outline: Vec<PathSegment>,
+    pub fill: String,
+    pub stroke: Option<RenderStroke>,
+    /// Empty when the shape has no details.
+    pub details: Vec<PathSegment>,
+    /// The editor decides it (the border's style, or a darker fill when there is no border).
+    pub detail_stroke: Option<RenderStroke>,
 }
 
 #[derive(Debug, Clone)]
@@ -396,7 +433,12 @@ fn font_families(css: &str) -> Vec<String> {
         .collect()
 }
 
-fn shape_kind(shape: &ShapeElement) -> RenderKind {
+/// The drawable kind of a shape, or `None` when there is nothing to draw: a shape-library shape the
+/// editor sent no outline for (it does not know the shape; the editor counts and reports those).
+///
+/// # Errors
+/// `AppError::InvalidInput` when the editor's outline is unusable.
+fn shape_kind(shape: &ShapeElement, paths: &HashMap<String, ShapePath>) -> AppResult<Option<RenderKind>> {
     let (width, height, fill, stroke) = (shape.width, shape.height, shape.fill.clone(), render_stroke(&shape.stroke));
     let polygon = |unit: Vec<[f64; 2]>| {
         RenderKind::Polygon(RenderPolygon {
@@ -407,7 +449,7 @@ fn shape_kind(shape: &ShapeElement) -> RenderKind {
             stroke: stroke.clone(),
         })
     };
-    match &shape.geometry {
+    let kind = match &shape.geometry {
         ShapeGeometry::Rect { corner_radius } => RenderKind::Rect(RenderRect {
             width,
             height,
@@ -419,7 +461,61 @@ fn shape_kind(shape: &ShapeElement) -> RenderKind {
         ShapeGeometry::Ellipse => RenderKind::Ellipse(RenderEllipse { width, height, fill: fill.clone(), stroke: stroke.clone() }),
         ShapeGeometry::Polygon { sides } => polygon(shape::polygon_unit_points(*sides)),
         ShapeGeometry::Star { num_points, inner_ratio } => polygon(shape::star_unit_points(*num_points, *inner_ratio)),
+        ShapeGeometry::Preset { .. } => {
+            let Some(path) = paths.get(&shape.base.id) else { return Ok(None) };
+            RenderKind::Path(render_path(width, height, fill.clone(), stroke.clone(), path)?)
+        }
+    };
+    Ok(Some(kind))
+}
+
+/// Most commands one path of a shape-library shape may have (the library's shapes use a few
+/// dozen); the paths come from the WebView, so they are bounded like any other input.
+const SHAPE_PATH_COMMANDS_MAX: usize = 2000;
+/// Largest coordinate (pt) in a shape-library path; far beyond any page (2000 mm ≈ 5669 pt).
+const SHAPE_PATH_COORD_MAX: f64 = 1.0e6;
+
+/// Checks one path from the editor and turns it into render segments.
+fn path_segments(commands: &[PathCommand]) -> AppResult<Vec<PathSegment>> {
+    let invalid = || AppError::invalid_input("匯出資料有誤：圖形的路徑不正確");
+    if commands.len() > SHAPE_PATH_COMMANDS_MAX || !matches!(commands.first(), None | Some(PathCommand::M { .. })) {
+        return Err(invalid());
     }
+    let ok = |values: &[f64]| values.iter().all(|v| v.is_finite() && v.abs() <= SHAPE_PATH_COORD_MAX);
+    commands
+        .iter()
+        .map(|command| {
+            let (segment, values) = match *command {
+                PathCommand::M { x, y } => (PathSegment::Move(x, y), vec![x, y]),
+                PathCommand::L { x, y } => (PathSegment::Line(x, y), vec![x, y]),
+                PathCommand::C { x1, y1, x2, y2, x, y } => (PathSegment::Cubic(x1, y1, x2, y2, x, y), vec![x1, y1, x2, y2, x, y]),
+                PathCommand::Z => (PathSegment::Close, vec![]),
+            };
+            if ok(&values) {
+                Ok(segment)
+            } else {
+                Err(invalid())
+            }
+        })
+        .collect()
+}
+
+/// A shape-library shape drawn from the outline the editor computed.
+///
+/// # Errors
+/// `AppError::InvalidInput` for an empty or unusable outline, or an invalid detail line.
+fn render_path(width: f64, height: f64, fill: String, stroke: Option<RenderStroke>, path: &ShapePath) -> AppResult<RenderPath> {
+    let outline = path_segments(&path.outline)?;
+    if outline.is_empty() {
+        return Err(AppError::invalid_input("匯出資料有誤：圖形的路徑不正確"));
+    }
+    let details = path_segments(&path.details)?;
+    if let Some(detail) = &path.detail_stroke {
+        validate_stroke_look(detail).map_err(|_| AppError::invalid_input("匯出資料有誤：圖形的細節線樣式不正確"))?;
+    }
+    // 細節線沒有線條樣式就不畫（編輯器只在有細節線時才給）
+    let detail_stroke = if details.is_empty() { None } else { render_stroke(&path.detail_stroke) };
+    Ok(RenderPath { width, height, outline, fill, stroke, details, detail_stroke })
 }
 
 fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size: f64, line_height: f64) -> AppResult<TextLayout> {
@@ -511,7 +607,9 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                     (&e.base, RenderKind::Text(render_text(layout, e.width, e.base.rotation, &style)))
                 }
                 Element::Shape(e) => {
-                    elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind: shape_kind(e) });
+                    if let Some(kind) = shape_kind(e, &request.shape_paths)? {
+                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind });
+                    }
                     // 圖形內文字緊接在圖形上方，z 軸順序和畫布相同（同一個 Group 裡文字畫在圖形之後）
                     if let Some(label) = shape_label(e, &request.text_layouts)? {
                         elements.push(label);
@@ -548,6 +646,95 @@ mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, project_with_image, request};
 
+    /// The fixture with its rectangle (`el-rect`) turned into a shape-library shape.
+    fn with_preset_shape() -> ExportRequest {
+        let mut document = fixture_document();
+        for element in &mut document.pages[0].elements {
+            if let Element::Shape(shape) = element {
+                if shape.base.id == "el-rect" {
+                    shape.geometry = ShapeGeometry::Preset { preset: "cylinder".into(), params: Default::default() };
+                }
+            }
+        }
+        request(document)
+    }
+
+    /// A shape path as the editor sends it (`ExportShapePath`).
+    fn shape_path(json: serde_json::Value) -> ShapePath {
+        serde_json::from_value(json).unwrap()
+    }
+
+    fn preset_render(req: &ExportRequest) -> AppResult<Option<RenderPath>> {
+        let root = project_with_image();
+        let (document, _) = build_render(root.path(), req)?;
+        Ok(document.pages[0].elements.iter().find_map(|element| match &element.kind {
+            RenderKind::Path(path) => Some(path.clone()),
+            _ => None,
+        }))
+    }
+
+    #[test]
+    fn shape_library_shapes_draw_the_editors_paths() {
+        let mut req = with_preset_shape();
+        req.shape_paths.insert(
+            "el-rect".into(),
+            shape_path(serde_json::json!({
+                "outline": [{ "op": "M", "x": 0, "y": 5 }, { "op": "C", "x1": 0, "y1": 0, "x2": 10, "y2": 0, "x": 10, "y": 5 },
+                            { "op": "L", "x": 10, "y": 20 }, { "op": "Z" }],
+                "details": [{ "op": "M", "x": 0, "y": 5 }, { "op": "L", "x": 10, "y": 5 }],
+                "detailStroke": { "color": "#37404c", "swatchId": null, "width": 1, "dash": "solid" },
+            })),
+        );
+        let path = preset_render(&req).unwrap().expect("the preset is drawn as a path");
+        assert_eq!(
+            path.outline,
+            vec![
+                PathSegment::Move(0.0, 5.0),
+                PathSegment::Cubic(0.0, 0.0, 10.0, 0.0, 10.0, 5.0),
+                PathSegment::Line(10.0, 20.0),
+                PathSegment::Close,
+            ]
+        );
+        assert_eq!(path.details, vec![PathSegment::Move(0.0, 5.0), PathSegment::Line(10.0, 5.0)]);
+        assert_eq!(path.detail_stroke.map(|s| (s.color, s.width)), Some(("#37404c".into(), 1.0)));
+    }
+
+    #[test]
+    fn shape_library_shapes_without_a_path_are_skipped() {
+        // 編輯器不認得的圖形不送路徑：不畫、不失敗
+        assert!(preset_render(&with_preset_shape()).unwrap().is_none());
+    }
+
+    #[test]
+    fn unusable_shape_paths_are_rejected() {
+        let mut too_long = vec![serde_json::json!({ "op": "M", "x": 0, "y": 0 })];
+        too_long.extend((0..SHAPE_PATH_COMMANDS_MAX).map(|n| serde_json::json!({ "op": "L", "x": n, "y": 0 })));
+        let cases = [
+            serde_json::json!({ "outline": [] }),
+            serde_json::json!({ "outline": [{ "op": "L", "x": 0, "y": 0 }] }),
+            serde_json::json!({ "outline": [{ "op": "M", "x": 0, "y": 1.0e9 }] }),
+            serde_json::json!({ "outline": too_long }),
+            serde_json::json!({
+                "outline": [{ "op": "M", "x": 0, "y": 0 }, { "op": "L", "x": 1, "y": 1 }],
+                "details": [{ "op": "M", "x": 0, "y": 0 }, { "op": "L", "x": 1, "y": 0 }],
+                "detailStroke": { "color": "red\" onload=\"x", "swatchId": null, "width": 1, "dash": "solid" },
+            }),
+        ];
+        for case in cases {
+            let mut req = with_preset_shape();
+            req.shape_paths.insert("el-rect".into(), shape_path(case.clone()));
+            let error = preset_render(&req).expect_err(&case.to_string());
+            assert!(matches!(error, AppError::InvalidInput(_)), "{case}: {error:?}");
+        }
+        // NaN 不會從 JSON 來，但也要擋
+        let mut req = with_preset_shape();
+        req.shape_paths.insert(
+            "el-rect".into(),
+            ShapePath { outline: vec![PathCommand::M { x: f64::NAN, y: 0.0 }], details: vec![], detail_stroke: None },
+        );
+        assert!(preset_render(&req).is_err());
+    }
+
     fn kinds(document: &RenderDocument) -> Vec<&'static str> {
         document.pages[0]
             .elements
@@ -557,6 +744,7 @@ mod tests {
                 RenderKind::Rect(_) => "rect",
                 RenderKind::Ellipse(_) => "ellipse",
                 RenderKind::Polygon(_) => "polygon",
+                RenderKind::Path(_) => "path",
                 RenderKind::Image(_) => "image",
             })
             .collect()

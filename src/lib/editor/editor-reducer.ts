@@ -1,4 +1,4 @@
-import { createPage, createSampleDocument, nextPageNames, type ShapeKind } from "./element-factory";
+import { createPage, createSampleDocument, nextPageNames, type ShapeChoice } from "./element-factory";
 import type { ReorderDirection } from "./layer-order";
 import { canSetParent, copyElements, deleteMaster, findSheet, isMasterId } from "./master-pages";
 import { isPageNumberRules, sortPageNumberRules } from "./page-numbers";
@@ -93,7 +93,7 @@ export interface EditorState {
   /** Active canvas tool (bottom toolbar). */
   readonly tool: ToolId;
   /** Shape the shape tool creates; also the last shape used, shown on the toolbar button. */
-  readonly shapeKind: ShapeKind;
+  readonly shapeKind: ShapeChoice;
   /** Document as last saved / loaded; null when it must be saved (e.g. opened from a backup). */
   readonly savedDocument: EditorDocument | null;
 }
@@ -234,7 +234,7 @@ export type EditorAction =
   | { readonly type: "selection/setMany"; readonly ids: readonly ElementId[]; readonly additive: boolean }
   | { readonly type: "view/setZoom"; readonly zoom: number }
   | { readonly type: "view/fit" }
-  | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeKind }
+  | { readonly type: "tool/set"; readonly tool: ToolId; readonly shape?: ShapeChoice }
   | {
       readonly type: "document/load";
       readonly document: EditorDocument;

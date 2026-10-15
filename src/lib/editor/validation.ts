@@ -34,6 +34,10 @@ const STROKE_DASHES: readonly Stroke["dash"][] = ["solid", "dashed", "dotted"];
 
 /** Most polygon sides / star points a document may contain; same as `MAX_VERTEX_COUNT` in Rust. */
 export const MAX_VERTEX_COUNT = 1000;
+/** Longest shape-library id and parameter name; same as `SHAPE_PRESET_ID_MAX_LENGTH` in Rust. */
+export const SHAPE_PRESET_ID_MAX_LENGTH = 32;
+/** Most parameters a shape-library shape may store; same as `SHAPE_PRESET_PARAMS_MAX` in Rust. */
+export const SHAPE_PRESET_PARAMS_MAX = 8;
 /** Range the property panel offers for polygon sides and star points. */
 export const VERTEX_COUNT_MIN = 3;
 export const VERTEX_COUNT_MAX = 24;
@@ -171,6 +175,30 @@ export function isCornerRadius(value: unknown): value is CornerRadius {
 }
 
 /**
+ * Whether a value is a shape-library id or parameter name: 1–32 ASCII letters, digits or `-` (same
+ * rule as Rust `is_preset_name`).
+ *
+ * Args:
+ *   value: Candidate name.
+ *
+ * Returns:
+ *   True when valid.
+ */
+export function isShapePresetName(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9-]+$/.test(value) && value.length <= SHAPE_PRESET_ID_MAX_LENGTH;
+}
+
+// 圖形庫的參數：最多 SHAPE_PRESET_PARAMS_MAX 個、名稱同 id 規則、值是有限數字（範圍由圖形庫在畫的時候夾）
+function isPresetParams(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return (
+    entries.length <= SHAPE_PRESET_PARAMS_MAX &&
+    entries.every(([name, n]) => isShapePresetName(name) && typeof n === "number" && Number.isFinite(n))
+  );
+}
+
+/**
  * Checks whether a value is drawable shape geometry. Same rules as Rust `validate_geometry`:
  * corner radius ≥ 0 (one number or four), star inner ratio in (0, 1], at most MAX_VERTEX_COUNT
  * sides / points (fewer than 3 are raised when drawing, so they are not rejected).
@@ -194,6 +222,8 @@ export function isShapeGeometry(value: unknown): value is ShapeGeometry {
       return count(g.sides);
     case "star":
       return count(g.numPoints) && typeof g.innerRatio === "number" && g.innerRatio > 0 && g.innerRatio <= 1;
+    case "preset":
+      return isShapePresetName(g.preset) && isPresetParams(g.params);
     default:
       return false;
   }

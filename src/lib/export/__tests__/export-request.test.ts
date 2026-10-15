@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MARGINS, createPage, createShapeElement, createTextElement } from "@/lib/editor/element-factory";
+import {
+  DEFAULT_MARGINS,
+  createMasterPage,
+  createPage,
+  createPresetShapeElement,
+  createShapeElement,
+  createTextElement,
+} from "@/lib/editor/element-factory";
 import { createPageNumberRule, pageNumberShapeId } from "@/lib/editor/page-numbers";
 import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
-import type { EditorDocument } from "@/lib/editor/types";
-import { buildExportRequest, masterCopyId, spilloverCopyId } from "../export-request";
+import { detailStroke, findShapePreset, presetPath } from "@/lib/editor/shape-presets";
+import type { EditorDocument, ShapeGeometry } from "@/lib/editor/types";
+import { buildExportRequest, masterCopyId, skippedShapeCount, spilloverCopyId } from "../export-request";
 
 // 假的量測：每個字寬 = 字級的一半
 const measureWidth = (text: string, style: { fontSize: number }) => Array.from(text).length * style.fontSize * 0.5;
@@ -173,5 +181,29 @@ describe("buildExportRequest", () => {
     const source: EditorDocument = { name: "測試", margins: DEFAULT_MARGINS, textStyles: [], swatches: [], fonts: [], pageNumberRules: [], masters: [], pages: [page] };
     const request = buildExportRequest(source, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
     expect(request.document).toBe(source);
+  });
+
+  it("sends the editor's paths for shape-library shapes, master copies included, and counts unknown ones", () => {
+    const master = createMasterPage("Master A", { width: 595, height: 842 }, "#ffffff", null);
+    const onMaster = createPresetShapeElement(findShapePreset("cylinder")!, { x: 100, y: 100 });
+    const hexagon = createPresetShapeElement(findShapePreset("hexagon")!, { x: 300, y: 300 });
+    const unknown = { ...hexagon, id: "unknown-shape", geometry: { kind: "preset", preset: "future-shape", params: {} } } as const;
+    const page = { ...createPage("P", { width: 595, height: 842 }, "#ffffff", master.id), elements: [hexagon, unknown] };
+    const document: EditorDocument = {
+      name: "測試", margins: DEFAULT_MARGINS, textStyles: [], swatches: [], fonts: [], pageNumberRules: [],
+      masters: [{ ...master, elements: [onMaster] }],
+      pages: [page],
+    };
+
+    const request = buildExportRequest(document, (element) => ({ lines: [element.text], baseline: 10, lineWidths: [100] }), measureWidth);
+
+    // 六角形沒有細節線；路徑和畫布用的 presetPath 相同
+    const hexagonPath = presetPath(hexagon.geometry as Extract<ShapeGeometry, { kind: "preset" }>, hexagon.width, hexagon.height)!;
+    expect(request.shapePaths[hexagon.id]).toEqual({ outline: hexagonPath.outline, details: [], detailStroke: null });
+    // 主頁上的圓柱以展開後的 id 為 key，細節線的樣式由 detailStroke 決定
+    expect(request.shapePaths[masterCopyId(0, 0)]).toMatchObject({ detailStroke: detailStroke(null, onMaster.fill) });
+    expect(request.shapePaths[masterCopyId(0, 0)].details.length).toBeGreaterThan(0);
+    expect(request.shapePaths).not.toHaveProperty(unknown.id);
+    expect(skippedShapeCount(request)).toBe(1);
   });
 });

@@ -16,21 +16,23 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement, selectSelectedElements } from "@/lib/editor/editor-reducer";
-import { type ShapeKind } from "@/lib/editor/element-factory";
+import { type ShapeChoice } from "@/lib/editor/element-factory";
 import { canReorder } from "@/lib/editor/layer-order";
 import { deleteSelection, duplicateSelection } from "@/lib/editor/selection-actions";
 import { getToolKeyLabel, getToolLabel, type ToolId } from "@/lib/editor/tools";
 import { cn } from "@/lib/utils";
 import { REORDER_ITEM_BY_DIRECTION } from "./element-arrange";
 import { IconButton } from "./icon-button";
-import { SHAPE_OPTIONS, SHAPE_OPTION_BY_KIND } from "./shape-options";
+import { SHAPE_OPTION_GROUPS, shapeOption, type ShapeIcon } from "./shape-options";
 
 // 圖形的 icon 依「最近用過的圖形」變化，所以不在這張表裡
 const TOOL_ICONS = { select: MousePointer2, hand: Hand, text: Type } as const satisfies Record<
@@ -159,10 +161,10 @@ export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) 
   const { tool, shapeKind } = useEditorState();
   const dispatch = useEditorDispatch();
   // 選了工具之後到畫布上點擊或拖曳建立（圖片除外：直接開選檔對話框）
-  const chooseTool = (id: ToolId, shape?: ShapeKind) => dispatch({ type: "tool/set", tool: id, shape });
-  const shape = SHAPE_OPTION_BY_KIND[shapeKind];
+  const chooseTool = (id: ToolId, shape?: ShapeChoice) => dispatch({ type: "tool/set", tool: id, shape });
+  const shape = shapeOption(shapeKind);
 
-  const toolButton = (id: ToolId, label: string, icon: LucideIcon, onClick: () => void, key: string | null) => {
+  const toolButton = (id: ToolId, label: string, icon: ShapeIcon, onClick: () => void, key: string | null) => {
     const Icon = icon;
     const active = tool === id;
     return (
@@ -203,17 +205,25 @@ export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) 
             label="更多圖形"
             size="icon-lg"
             menu={
-              <div className="grid grid-cols-5 gap-1">
-                {SHAPE_OPTIONS.map(({ kind, label, icon: Icon }) => (
-                  <DropdownMenuItem
-                    key={kind}
-                    aria-label={withKey(label, getToolKeyLabel("shape", kind))}
-                    title={withKey(label, getToolKeyLabel("shape", kind))}
-                    onSelect={() => chooseTool("shape", kind)}
-                    className="size-10 justify-center p-0"
-                  >
-                    <Icon className="size-5" strokeWidth={1.75} />
-                  </DropdownMenuItem>
+              // 所有圖形依圖形庫分類；選了之後到畫布上點擊或拖曳建立（和元素面板同一份清單）
+              <div className="flex max-h-[min(28rem,60vh)] flex-col gap-1 overflow-y-auto">
+                {SHAPE_OPTION_GROUPS.map((group) => (
+                  <DropdownMenuGroup key={group.id}>
+                    <DropdownMenuLabel className="px-1 py-0.5 text-xs text-muted-foreground">{group.label}</DropdownMenuLabel>
+                    <div className="grid grid-cols-6 gap-1">
+                      {group.options.map(({ kind, label, icon: Icon }) => (
+                        <DropdownMenuItem
+                          key={kind}
+                          aria-label={withKey(label, getToolKeyLabel("shape", kind))}
+                          title={withKey(label, getToolKeyLabel("shape", kind))}
+                          onSelect={() => chooseTool("shape", kind)}
+                          className="size-10 justify-center p-0"
+                        >
+                          <Icon className="size-5" strokeWidth={1.75} />
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  </DropdownMenuGroup>
                 ))}
               </div>
             }

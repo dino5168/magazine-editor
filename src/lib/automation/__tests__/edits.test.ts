@@ -199,8 +199,65 @@ describe("add_shape", () => {
   it("needs text for text styles", () => {
     const session = toolSession(createInitialState(createBlankDocument()));
     expect(session.error("add_shape", { shape: "rect", x: 0, y: 0, width: 10, height: 10, bold: true })).toContain("text");
-    expect(session.error("add_shape", { shape: "hexagon", x: 0, y: 0, width: 10, height: 10 })).toContain("參數 shape");
+    expect(session.error("add_shape", { shape: "pentagon", x: 0, y: 0, width: 10, height: 10 })).toContain("參數 shape");
     expect(session.error("add_shape", { shape: "rect", x: 0, y: 0, width: 0, height: 10 })).toContain("參數 width");
+  });
+});
+
+describe("shape-library shapes", () => {
+  const box = { x: 10, y: 20, width: 200, height: 100 };
+
+  it("add_shape makes a library shape, with its default parameters or the given ones (clamped)", () => {
+    const session = toolSession(createInitialState(createBlankDocument()));
+    const plain = session.ok("add_shape", { shape: "cylinder", ...box });
+    expect(elementOf(session, plain.id)).toMatchObject({ ...box, geometry: { kind: "preset", preset: "cylinder", params: { size: 15 } } });
+    const custom = session.ok("add_shape", { shape: "arrowRight", ...box, params: { head: 0.5, body: 3 } });
+    expect(elementOf(session, custom.id).geometry).toEqual({ kind: "preset", preset: "arrowRight", params: { head: 0.5, body: 1 } });
+    expect(session.state.history.past).toHaveLength(2);
+  });
+
+  it("rejects parameters the shape does not have", () => {
+    const session = toolSession(createInitialState(createBlankDocument()));
+    const before = session.state;
+    expect(session.error("add_shape", { shape: "hexagon", ...box, params: { depth: 1 } })).toContain("size");
+    expect(session.error("add_shape", { shape: "rect", ...box, params: { size: 1 } })).toContain("圖形庫");
+    expect(session.state).toBe(before);
+  });
+
+  it("update_element changes parameters, or changes the shape keeping its box, style and text", () => {
+    const session = toolSession(createInitialState(createBlankDocument()));
+    const { id } = session.ok("add_shape", { shape: "hexagon", ...box, fill: "#ff0000", text: "標題", stroke: { color: "#112233", width: 2, dash: "solid" } });
+    const original = elementOf(session, id) as ShapeElement;
+
+    expect(session.ok("update_element", { id, params: { size: 0.4 } }).changed).toBe(true);
+    expect(elementOf(session, id).geometry).toEqual({ kind: "preset", preset: "hexagon", params: { size: 0.4 } });
+
+    session.ok("update_element", { id, shape: "cylinder", params: { size: 30 } });
+    const cylinder = elementOf(session, id) as ShapeElement;
+    expect(cylinder.geometry).toEqual({ kind: "preset", preset: "cylinder", params: { size: 30 } });
+    expect({ ...cylinder, geometry: null }).toEqual({ ...original, geometry: null });
+
+    session.ok("update_element", { id, shape: "roundedRect", cornerRadius: 8 });
+    expect(elementOf(session, id).geometry).toEqual({ kind: "rect", cornerRadius: 8 });
+    expect(session.error("update_element", { id, params: { size: 1 } })).toContain("圖形庫");
+    expect(session.state.history.past).toHaveLength(4);
+  });
+});
+
+describe("list_shapes", () => {
+  it("lists every shape add_shape accepts, basic shapes first, with the library's parameters", () => {
+    const session = toolSession(createInitialState(createBlankDocument()));
+    const shapes = session.ok("list_shapes", {});
+    expect(shapes.slice(0, 5).map((shape: { id: string }) => shape.id)).toEqual(["rect", "roundedRect", "ellipse", "triangle", "star"]);
+    expect(new Set(shapes.map((shape: { id: string }) => shape.id)).size).toBe(shapes.length);
+    expect(shapes.find((shape: { id: string }) => shape.id === "hexagon")).toEqual({
+      id: "hexagon",
+      name: "六角形",
+      category: "基本",
+      defaultSize: { width: 140, height: 100 },
+      params: [{ name: "size", label: "斜邊寬度", kind: "ratio", min: 0, max: 0.5, default: 0.25 }],
+    });
+    for (const { id } of shapes) session.ok("add_shape", { shape: id, ...{ x: 0, y: 0, width: 50, height: 40 } });
   });
 });
 

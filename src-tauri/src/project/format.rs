@@ -5,6 +5,7 @@ use super::shape;
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 
 pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v2: element colors (`fill`) may carry alpha as `#rrggbbaa`. Page backgrounds stay `#rrggbb`.
@@ -31,13 +32,21 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v13: `document.fonts` (project fonts: TTF / OTF files in `assets/fonts/`). Texts still store a
 /// CSS `fontFamily`; a project font's family is `project-font-<id>`. Missing in older files and
 /// backups → none.
-pub const SCHEMA_VERSION: u32 = 13;
+/// v14: shape geometry `{ kind: "preset", preset, params }`, a shape from the editor's shape
+/// library; the editor computes its outline for export. Older files have none.
+pub const SCHEMA_VERSION: u32 = 14;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
 /// Most polygon sides / star points a file may contain (each is drawn as vertices); same as
 /// `MAX_VERTEX_COUNT` in `src/lib/editor/validation.ts`.
 pub const MAX_VERTEX_COUNT: u32 = 1000;
+/// Longest shape-library id and parameter name; same as `SHAPE_PRESET_ID_MAX_LENGTH` in
+/// `src/lib/editor/validation.ts`.
+pub const SHAPE_PRESET_ID_MAX_LENGTH: usize = 32;
+/// Most parameters a shape-library shape may store; same as `SHAPE_PRESET_PARAMS_MAX` in
+/// `src/lib/editor/validation.ts`.
+pub const SHAPE_PRESET_PARAMS_MAX: usize = 8;
 /// Largest page margin (pt), 2000 mm; same as `MARGIN_MAX_PT` in `src/lib/editor/validation.ts`.
 pub const MARGIN_MAX_PT: f64 = 2000.0 * 72.0 / 25.4;
 /// Font size range (pt); same as `FONT_SIZE_MIN` / `FONT_SIZE_MAX` in `src/lib/editor/validation.ts`.
@@ -507,6 +516,14 @@ pub enum ShapeGeometry {
         #[serde(rename = "innerRatio")]
         inner_ratio: f64,
     },
+    /// A shape from the editor's shape library, stretched to fill the box. The file only stores the
+    /// library id and the named parameters; the shapes themselves are defined in the editor
+    /// (`src/lib/editor/shape-presets.ts`), so the id is not checked against a list here.
+    Preset {
+        preset: String,
+        #[serde(default)]
+        params: BTreeMap<String, f64>,
+    },
 }
 
 /// Any box shape: `x` / `y` is the box's top-left corner, like every other element.
@@ -937,8 +954,14 @@ fn validate_page_number_rules(rules: &[PageNumberRule], swatches: &SwatchIds) ->
 }
 
 fn validate_stroke(stroke: &Stroke, swatches: &SwatchIds) -> AppResult<()> {
-    require_element_color(&stroke.color)?;
     require_swatch(&stroke.swatch_id, swatches)?;
+    validate_stroke_look(stroke)
+}
+
+/// The drawable part of a stroke: element color and a width in (0, STROKE_WIDTH_MAX]. The swatch
+/// link is not checked (export uses it for the details of shape-library shapes, never linked).
+pub(crate) fn validate_stroke_look(stroke: &Stroke) -> AppResult<()> {
+    require_element_color(&stroke.color)?;
     if !(stroke.width > 0.0 && stroke.width <= STROKE_WIDTH_MAX) {
         return Err(AppError::invalid_project(format!("invalid stroke width {}", stroke.width)));
     }
@@ -1009,18 +1032,30 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
 /// `src/lib/editor/validation.ts`. Fewer than 3 sides / 2 points are not rejected: drawing raises
 /// them (`project/shape.rs`), so older files keep opening.
 fn validate_geometry(geometry: &ShapeGeometry) -> AppResult<()> {
-    let valid = match *geometry {
+    let valid = match geometry {
         ShapeGeometry::Rect { corner_radius } => corner_radius.radii().iter().all(|radius| radius.is_finite() && *radius >= 0.0),
         ShapeGeometry::Ellipse => true,
-        ShapeGeometry::Polygon { sides } => sides <= MAX_VERTEX_COUNT,
+        ShapeGeometry::Polygon { sides } => *sides <= MAX_VERTEX_COUNT,
         ShapeGeometry::Star { num_points, inner_ratio } => {
-            num_points <= MAX_VERTEX_COUNT && inner_ratio > 0.0 && inner_ratio <= 1.0
+            *num_points <= MAX_VERTEX_COUNT && *inner_ratio > 0.0 && *inner_ratio <= 1.0
+        }
+        // 只檢查格式：圖形庫在編輯器裡，這裡不認得 id（不認得的圖形畫成虛線外框、匯出略過）
+        ShapeGeometry::Preset { preset, params } => {
+            is_preset_name(preset)
+                && params.len() <= SHAPE_PRESET_PARAMS_MAX
+                && params.iter().all(|(name, value)| is_preset_name(name) && value.is_finite())
         }
     };
     if !valid {
         return Err(AppError::invalid_project(format!("invalid shape geometry {geometry:?}")));
     }
     Ok(())
+}
+
+/// A shape-library id or parameter name: 1–32 ASCII letters, digits or `-`. Same rule as
+/// `isShapePresetName` in `src/lib/editor/validation.ts`.
+fn is_preset_name(name: &str) -> bool {
+    (1..=SHAPE_PRESET_ID_MAX_LENGTH).contains(&name.len()) && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
 pub(crate) fn require_id(id: &str) -> AppResult<()> {
@@ -1151,6 +1186,13 @@ mod tests {
             })
             .collect();
         assert_eq!(geometries.len(), 4);
+        // 圖形庫的圖形放在主頁（第 1 頁要和 v2 fixture 逐一比對）
+        let preset = project.document.masters.iter().flat_map(|master| &master.elements).find_map(|element| match element {
+            Element::Shape(ShapeElement { geometry: ShapeGeometry::Preset { preset, params }, .. }) => Some((preset, params)),
+            _ => None,
+        });
+        let (preset, params) = preset.expect("a master holds a shape-library shape");
+        assert_eq!((preset.as_str(), params.get("size")), ("hexagon", Some(&0.25)));
         // stroke 與 label 兩種情況（有 / 沒有）都要出現
         let shapes = || elements.iter().filter_map(|element| if let Element::Shape(s) = element { Some(s) } else { None });
         assert!(shapes().any(|s| s.stroke.is_some()) && shapes().any(|s| s.stroke.is_none()));
@@ -1509,6 +1551,17 @@ mod tests {
         assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 1.0 })).is_ok());
         assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 0.0 })).is_err());
         assert!(with(4, json!({ "kind": "star", "numPoints": 6, "innerRatio": 1.5 })).is_err());
+        // 圖形庫的圖形（v14）：只檢查格式，不認得的 id 也能開（畫成虛線外框）
+        assert!(with(1, json!({ "kind": "preset", "preset": "hexagon", "params": { "size": 0.25 } })).is_ok());
+        assert!(with(1, json!({ "kind": "preset", "preset": "some-future-shape2", "params": {} })).is_ok());
+        assert!(with(1, json!({ "kind": "preset", "preset": "cloud" })).is_ok(), "params may be missing");
+        assert!(with(1, json!({ "kind": "preset", "preset": "", "params": {} })).is_err());
+        assert!(with(1, json!({ "kind": "preset", "preset": "a".repeat(33), "params": {} })).is_err());
+        assert!(with(1, json!({ "kind": "preset", "preset": "../x", "params": {} })).is_err());
+        assert!(with(1, json!({ "kind": "preset", "preset": "hexagon", "params": { "si ze": 1 } })).is_err());
+        assert!(with(1, json!({ "kind": "preset", "preset": "hexagon", "params": { "size": "1" } })).is_err());
+        let nine: serde_json::Map<String, Value> = (0..9).map(|n| (format!("p{n}"), json!(n))).collect();
+        assert!(with(1, json!({ "kind": "preset", "preset": "hexagon", "params": nine })).is_err());
     }
 
     #[test]

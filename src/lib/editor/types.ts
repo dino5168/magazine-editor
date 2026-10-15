@@ -114,7 +114,13 @@ export type ShapeGeometry =
   | { readonly kind: "ellipse" }
   | { readonly kind: "polygon"; readonly sides: number }
   /** `innerRatio` = inner radius / outer radius. */
-  | { readonly kind: "star"; readonly numPoints: number; readonly innerRatio: number };
+  | { readonly kind: "star"; readonly numPoints: number; readonly innerRatio: number }
+  /**
+   * A shape from the shape library (v14), stretched to fill the box. Only the library id and the
+   * named parameters are stored; a missing parameter takes its default, an out-of-range one is
+   * clamped when drawing.
+   */
+  | { readonly kind: "preset"; readonly preset: string; readonly params: Readonly<Record<string, number>> };
 
 export type GeometryKind = ShapeGeometry["kind"];
 

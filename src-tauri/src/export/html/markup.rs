@@ -250,9 +250,10 @@ fn svg_path_data(path: &[PathSegment]) -> String {
             PathSegment::Cubic(x1, y1, x2, y2, x, y) => {
                 format!("C{} {} {} {} {} {}", num(x1), num(y1), num(x2), num(y2), num(x), num(y))
             }
+            PathSegment::Close => "Z".to_owned(),
         })
         .collect();
-    parts.join(" ") + " Z"
+    parts.join(" ")
 }
 
 fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages, image_prefix: &str) {
@@ -323,6 +324,15 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages
                 format!(r#"<polygon points="{}" {}{}/>"#, points.join(" "), svg_fill(&p.fill), svg_stroke(&p.stroke));
             svg_box(out, element, p.width, p.height, &shape);
         }
+        RenderKind::Path(p) => {
+            // 填色外框 + 只描邊的細節線（fill="none"）；起點與方向和畫布、PDF 是同一串路徑
+            let mut shape =
+                format!(r#"<path d="{}" {}{}/>"#, svg_path_data(&p.outline), svg_fill(&p.fill), svg_stroke(&p.stroke));
+            if !p.details.is_empty() && p.detail_stroke.is_some() {
+                let _ = write!(shape, r#"<path d="{}" fill="none"{}/>"#, svg_path_data(&p.details), svg_stroke(&p.detail_stroke));
+            }
+            svg_box(out, element, p.width, p.height, &shape);
+        }
         RenderKind::Image(i) => {
             // 圖片用產生的安全檔名（見 PageImages），不會帶入專案裡的原始檔名
             let Some(href) = images.href(&i.src) else { return };
@@ -337,7 +347,7 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages
 /// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
 pub fn has_svg(page: &RenderPage) -> bool {
     page.elements.iter().any(|element| match &element.kind {
-        RenderKind::Polygon(_) => true,
+        RenderKind::Polygon(_) | RenderKind::Path(_) => true,
         RenderKind::Rect(r) => r.stroke.is_some(),
         RenderKind::Ellipse(e) => e.stroke.is_some(),
         RenderKind::Text(_) | RenderKind::Image(_) => false,
@@ -368,6 +378,23 @@ pub fn page_div(page: &RenderPage, images: &PageImages, image_prefix: &str) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn path_shapes_are_inline_svg_with_open_details_left_open() {
+        let document = crate::export::test_support::path_shape_document();
+        let page = &document.pages[0];
+        assert!(has_svg(page));
+        let images = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
+        let markup = page_div(page, &images, "");
+        assert!(
+            markup.contains(r##"<path d="M0 0 L60 0 L60 60 L0 60 Z M100 0 L160 0 L160 60 L100 60 Z" fill="#ff0000"/>"##),
+            "outline: two closed subpaths, filled, no stroke: {markup}"
+        );
+        assert!(
+            markup.contains(r##"<path d="M0 80 L60 80 L60 100" fill="none" stroke="#0000ff" stroke-width="2""##),
+            "details: open, stroked only: {markup}"
+        );
+    }
 
     #[test]
     fn escapes_markup_and_drops_invalid_xml_characters() {

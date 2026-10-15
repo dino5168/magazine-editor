@@ -4,11 +4,13 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-14(專案字型)
+最後更新:2026-10-15(繪圖評估)
 
 ---
 
 ## 目前階段
+
+- **繪圖：圖形庫（仿 draw.io 的多樣圖形）（2026-10-15，步驟 0–9 全部完成，還沒 commit；桌面版人工驗證與 MCP 實測待做）**：任務檔 `docs/06-Plans-繪圖/01-繪圖.md`，評估 `01-繪圖-評估.md`，計畫 `01-繪圖-實作.md`（每一步的實測、決定與結果都在那裡）。27 個參數化的框型圖形（基本 8、方塊與流程 10、箭頭 4、標註與旗幟 5），加上原本 5 種共 32 個，在「元素」面板、底部工具列「更多圖形」（可在畫布拖曳建立）、屬性面板「換成」。使用者決定：圖形庫放元素面板（繪圖面板留給自由繪圖）、只做框型圖形（含細節線）、參數用屬性面板數字（調整把手另排）、定義自己寫參考 draw.io、線條 / 箭頭物件另開任務、連接線不做、第一批 27 個、細節線沒邊框時用填色加深 1 pt、要做「換成」。做法：檔案格式 v14 `ShapeGeometry` 加 `{ kind: "preset", preset, params }`（兩邊只驗證格式）；公式只寫在 TS（`shape-presets.ts` / `shape-path.ts`，`svgpath` 2.6.0 只用來把 SVG path 換成 M / L / C / Z）；匯出時前端把路徑放進 `ExportRequest.shapePaths`，Rust 驗證後畫成 `RenderKind::Path`（`PathSegment::Close`、多子路徑、細節線）；不認得的圖形畫虛線外框、匯出略過並提示；MCP `list_shapes`、`add_shape` / `update_element` 的 `shape` / `params`。和計畫不同處：略過的圖形由前端計數；工具列不加「打開元素面板」（選單列出全部圖形）；`update_element` 多了 `shape`（換成）；「資料儲存」改成不會原路折返的曲線。驗證：cargo 200、vitest 960、build 通過；無頭 Edge 各步驟實測；疊圖（一頁 27 個圖形）EPUB 和畫布只差一排反鋸齒與點線、PDF 外形相同、曲線上的點線約差 1 pt（已知限制）。橋接程式已重編（**要在 Claude Code `/mcp` 重新連線**；舊的 `src-tauri/target/debug/magazine-mcp.exe.old-20261015` 可刪）。**要 commit 的範圍**：`package.json` / `package-lock.json`（svgpath）、`src-tauri/`（`mcp-tools.json`、`src/export/{render,pdf,mod,template.typ,test_support}.rs`、`src/export/html/markup.rs`、`src/project/format.rs`）、`src/`（`lib/editor/`：`shape-path.ts` 新、`shape-presets.ts` 新、`types.ts`、`validation.ts`、`element-factory.ts`、`editor-reducer.ts`、`tools.ts`、`shape-geometry.ts` 與測試（`shape-path.test.ts` / `shape-presets.test.ts` 新）；`lib/export/`、`lib/automation/`、`lib/project/use-project-commands.ts` 與測試；`components/editor/`：`shape-preset-icon.tsx` 新、`shape-options.ts`、`canvas-elements.tsx`、`bottom-toolbar.tsx`、`number-field.tsx`、`use-canvas-create.ts`、`panels/{elements,layers,properties}-panel.tsx`）、`tests/fixtures/sample.magproj`、`CLAUDE.md`、`docs-website/types.html`、`docs/02-architecture.md`、`docs/progress.md`、`docs/06-Plans-繪圖/01-繪圖-評估.md`、`01-繪圖-實作.md`；任務檔 `01-繪圖.md` 與 `DrawIO.png` 照往例不 commit（待使用者確認）；根目錄 `README.md` 與 `docs/00-需求分析/` 的修改不在範圍內。
 
 - **專案字型(2026-10-14,八個步驟全部完成,commit `b5640d4`(已推送);桌面版驗證 2026-10-14 使用者完成)**:沒有任務檔(來自討論「加入更多字型」,使用者選方案 C)。計畫 `docs/05-Plans-字型/01-專案字型-實作.md`(每一步的實測、決定與結果都在那裡)。使用者把有授權的 TTF / OTF 匯入專案(`assets/fonts/`,檔案格式 v13 `document.fonts`),「設定 → 文件 → 字型...」對話框管理(草稿、確定一次套用),字型選單分內建 / 專案兩區;畫布、PDF、EPUB、翻頁書用同一個檔案。使用者決定:一般必要、粗體可選;`fsType` 禁止嵌入 / 只能點陣圖拒絕、其他提醒;畫布用 asset URL 載入(CSP `font-src` 加 asset);Apple 裝置基線偏移列為已知限制、匯入時提示;MCP 有 `list_fonts` 與用名稱選用,不能匯入。做法:家族名稱一律 `project-font-<id>`(Typst FontBook 與 `FontFace` 都照這個名稱登記,不改字型檔)、沒有粗體檔時一般檔也登記成 700(不登記時 Chromium 會模擬加粗)、`@font-face` 寫畫布的 ascent / descent override。驗證:cargo 195、vitest 687、build 通過;headless Edge UI 測試約 30 項、疊圖比對(Calibri)PDF / 翻頁書和畫布每行 ≤ 0.5 pt。橋接程式已重編(**要在 Claude Code `/mcp` 重新連線**)。**要 commit 的範圍**:`src-tauri/`(`Cargo.toml`、`tauri.conf.json`、`mcp-tools.json`、`src/commands/{mod,fonts}.rs`、`src/lib.rs`、`src/project/{assets,fonts,format,io,mod}.rs`、`src/export/`(`document_fonts.rs` 新、`world.rs`、`pdf.rs`、`mod.rs`、`test_support.rs`、`html/`、`epub/`、`flipbook/`))、`src/`(`lib/editor/`:`types.ts`、`validation.ts`、`fonts.ts`、`use-fonts-ready.ts`、`project-fonts.ts` 新、`font-draft.ts` 新、`editor-reducer.ts`、`element-factory.ts` 與測試;`lib/project/`、`lib/automation/`、`lib/preferences/settings-pages.ts`、`lib/menu/__tests__`、`lib/export/__tests__`;`components/`:`settings/fonts-dialog.tsx` 新、`editor/manage-fonts.tsx` 新與其他修改;`pages/home-page.tsx`)、`tests/fixtures/sample.magproj`、`fonts/README.md`、`CLAUDE.md`、`docs-website/types.html`、`docs/progress.md`、計畫 `docs/05-Plans-字型/01-專案字型-實作.md`;根目錄 `README.md` 與 `docs/00-需求分析/` 的修改不在範圍內。
 
@@ -331,6 +333,7 @@
 
 ### 使用者
 
+- [ ] 在 `npm run tauri dev` 手動驗證**圖形庫**：「工具面板 → 元素」點各種圖形、底部工具列「更多圖形」選一個到畫布拖曳、屬性面板「樣式 → 形狀」改參數與「換成」、存檔再開、匯出 PDF / 翻頁書看圖形（含虛線邊框、圓柱的細節線）；Claude Code `/mcp` 重新連線後試 `list_shapes` 與 `add_shape { shape: "cloud" }`
 - [x] ~~在 `npm run tauri dev` 手動驗證**專案字型**:「設定 → 文件 → 字型...」匯入 .ttf / .otf(也試可變字型、.ttc、禁止嵌入的字型會被拒絕)、指定粗體檔、文字選用後畫布顯示、存檔關閉再開(`assets/fonts/`)、刪除使用中的字型換成別套、匯出 PDF / 翻頁書;Claude Code `/mcp` 重新連線後 `list_fonts`~~(2026-10-14 使用者完成;`list_fonts` 列出匯入的三套:ㄅ源泉注音圓體、Magneto、Broadway)
 - [x] ~~在 `npm run tauri dev` 確認**新的程式圖示**~~(2026-10-14 使用者完成,重編之後)(視窗左上角、工作列、`src-tauri/target/debug/magazine-editor.exe` 在檔案總管的圖示;工作列還是舊的就重開 App 或清 Windows 圖示快取)
 - [ ] 在 Claude Code 執行 `/mcp` 重新連線 magazine-editor(橋接程式 2026-10-14 已重編兩次,`run_command` 不再有 `panel.photos`、多了 `file.exportFlipbook`);`list_commands` 確認。舊的 `src-tauri/target/debug/magazine-mcp.old-*.exe` 斷線後可以刪掉
@@ -429,6 +432,7 @@
 
 ### Claude(等使用者指示再做)
 
+- 圖形庫之後另排（`docs/06-Plans-繪圖/01-繪圖-實作.md` §0）：畫布上的調整把手（黃色菱形）、線條 / 箭頭物件（可拖端點，另開任務）、自由繪圖 / 鋼筆（「繪圖」面板）、有洞的圖形（fill rule）、每個圖形自己的文字區（平行四邊形、對話框的文字不壓到斜邊 / 尾巴）、SVG 轉成可改色的圖形
 - [x] commit `docs/` 和 `CLAUDE.md`(commit `45c22de`):已合併到 `main`,`main` 和 `docs/learning-path` 都已 push
 - [ ] 依序撰寫 `03` → `07`,每次一份
   - `03-document-model.md`:pt 單位、座標定義、為什麼不存 scale

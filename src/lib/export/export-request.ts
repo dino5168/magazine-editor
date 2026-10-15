@@ -2,7 +2,9 @@ import { inheritedElements } from "@/lib/editor/master-pages";
 import { spilloverInto } from "@/lib/editor/spreads";
 import { withPageNumbers, type MeasureTextWidth } from "@/lib/editor/page-numbers";
 import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
-import type { EditorDocument, Page, TextElement } from "@/lib/editor/types";
+import type { PathCommand } from "@/lib/editor/shape-path";
+import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
+import type { EditorDocument, Page, Stroke, TextElement } from "@/lib/editor/types";
 import { resolveElementsVariables, resolveElementVariables, variableValues } from "@/lib/editor/variables";
 
 /** How the editor wrapped one text element; mirrors `TextLayout` in `src-tauri/src/export/mod.rs`. */
@@ -23,11 +25,29 @@ export interface TextLayout {
   readonly lineGaps?: readonly number[];
 }
 
-/** Payload of the `export_pdf` command. */
+/**
+ * The outline of one shape-library shape, computed by the editor; mirrors `ShapePath` in
+ * `src-tauri/src/export/mod.rs`. Rust does not know the library, it only draws these paths.
+ */
+export interface ExportShapePath {
+  /** pt relative to the shape's box; filled and stroked. */
+  readonly outline: readonly PathCommand[];
+  /** Stroked only; may be empty. */
+  readonly details: readonly PathCommand[];
+  /** The details' line (`detailStroke`); null when there are no details. */
+  readonly detailStroke: Stroke | null;
+}
+
+/** Payload of the export commands. */
 export interface ExportRequest {
   readonly document: EditorDocument;
   /** Keyed by text element id. */
   readonly textLayouts: Readonly<Record<string, TextLayout>>;
+  /**
+   * Keyed by shape element id (after master pages and spread copies are expanded). A shape-library
+   * shape this version does not know has no entry; the export skips it.
+   */
+  readonly shapePaths: Readonly<Record<string, ExportShapePath>>;
 }
 
 /**
@@ -98,6 +118,7 @@ export function buildExportRequest(
   const pages = withPageNumbers(changed ? expanded : source.pages, source.pageNumberRules, source.margins, measureWidth);
   const document = pages === source.pages ? source : { ...source, pages };
   const textLayouts: Record<string, TextLayout> = {};
+  const shapePaths: Record<string, ExportShapePath> = {};
   for (const page of document.pages) {
     for (const element of page.elements) {
       if (element.type === "text") textLayouts[element.id] = measure(element);
@@ -105,7 +126,34 @@ export function buildExportRequest(
       if (element.type === "shape" && element.label && element.label.text !== "") {
         textLayouts[labelLayoutKey(element.id)] = measure(labelAsText(element, element.label, { x: 0, y: 0 }));
       }
+      // 圖形庫的圖形：路徑由編輯器算好交給 Rust（和畫布同一個 presetPath）；不認得的不放，匯出略過
+      if (element.type === "shape" && element.geometry.kind === "preset") {
+        const path = presetPath(element.geometry, element.width, element.height);
+        if (path) {
+          shapePaths[element.id] = {
+            outline: path.outline,
+            details: path.details,
+            detailStroke: path.details.length > 0 ? detailStroke(element.stroke, element.fill) : null,
+          };
+        }
+      }
     }
   }
-  return { document, textLayouts };
+  return { document, textLayouts, shapePaths };
+}
+
+/**
+ * How many shape-library shapes the export skips because this version does not know them (a file
+ * from a newer version, or a shape removed from the library).
+ *
+ * Args:
+ *   request: Export request from `buildExportRequest`.
+ *
+ * Returns:
+ *   Number of skipped shapes, counted on every page (master and spread copies included).
+ */
+export function skippedShapeCount(request: ExportRequest): number {
+  return request.document.pages
+    .flatMap((page) => page.elements)
+    .filter((element) => element.type === "shape" && element.geometry.kind === "preset" && !(element.id in request.shapePaths)).length;
 }
