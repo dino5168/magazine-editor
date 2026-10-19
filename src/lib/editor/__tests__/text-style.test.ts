@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NO_TEXT_INDENT } from "../text-indent";
 import {
   DEFAULT_TEXT_SHADOW,
   DEFAULT_TEXT_SPACING,
@@ -144,7 +145,7 @@ describe("text alignment", () => {
   });
 
   it("is checked with the rest of the text style", () => {
-    const style = { ...DEFAULT_TEXT_SPACING, ...PLAIN_TEXT_DECORATION, fontSize: 12, fontFamily: "x", fontStyle: "normal", fill: "#000000", fillSwatchId: null };
+    const style = { ...DEFAULT_TEXT_SPACING, ...PLAIN_TEXT_DECORATION, ...NO_TEXT_INDENT, fontSize: 12, fontFamily: "x", fontStyle: "normal", fill: "#000000", fillSwatchId: null };
     expect(isTextStyle({ ...style, align: "distributed" })).toBe(true);
     expect(isTextStyle({ ...style, align: "justify" })).toBe(false);
   });

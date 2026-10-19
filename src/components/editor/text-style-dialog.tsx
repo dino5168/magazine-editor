@@ -39,6 +39,10 @@ function previewStyle(style: TextStyle): CSSProperties {
     color: style.fill,
     textShadow: shadow ? `${shadow.offsetX}px ${shadow.offsetY}px 0 ${shadow.color}` : "none",
     ...cssTextAlign(style.align),
+    // 縮排（字 = em）加在預覽框原本的內距（px-3）上；預覽只有一行，首行縮排 / 突排都看得到
+    paddingLeft: `calc(0.75rem + ${style.indentLeft}em)`,
+    paddingRight: `calc(0.75rem + ${style.indentRight}em)`,
+    textIndent: `${style.indentFirstLine}em`,
   };
 }
 
@@ -119,6 +123,7 @@ function TextStyleForm({ target, onDone }: { readonly target: TextStyleDialogTar
           onChange={change}
           align={{ value: draft.align, onChange: (align) => change({ align }) }}
           spacing={{ value: draft, onChange: change }}
+          indent={{ value: draft, onChange: change }}
         />
       </div>
       <div className="truncate rounded-md border bg-white px-3 py-2" style={previewStyle(draft)} aria-label="預覽">

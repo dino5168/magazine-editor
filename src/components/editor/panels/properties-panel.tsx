@@ -296,6 +296,7 @@ function TextStyleControls({
         align={{ value: style.align, onChange: (align) => onChange({ align }) }}
         verticalAlign={verticalAlign}
         spacing={{ value: style, onChange }}
+        indent={{ value: style, onChange }}
       />
     </Section>
   );

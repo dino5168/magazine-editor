@@ -87,6 +87,17 @@ describe("estimateTextHeight", () => {
     // 行距跟著物件：3 行 × 10pt × 2
     expect(estimateTextHeight(text)).toBeCloseTo(3 * 10 * 2);
   });
+
+  it("leaves room for paragraph indents", () => {
+    const base = { ...createTextElement("body", { x: 0, y: 0 }), text: "一二三四五六七八九十", fontSize: 10, width: 100, lineHeight: 1 };
+    expect(estimateTextHeight(base)).toBeCloseTo(10);
+    // 首行縮排兩字：10 個字 + 2 = 12 字寬 → 2 行
+    expect(estimateTextHeight({ ...base, indentFirstLine: 2 })).toBeCloseTo(20);
+    // 左右各一字：每行 80pt → 2 行
+    expect(estimateTextHeight({ ...base, indentLeft: 1, indentRight: 1 })).toBeCloseTo(20);
+    // 首行突排一字（框寬 110）：其他行 100pt、首行 110pt → 1 行
+    expect(estimateTextHeight({ ...base, indentLeft: 1, indentFirstLine: -1, width: 110 })).toBeCloseTo(10);
+  });
 });
 
 describe("getContentBounds", () => {

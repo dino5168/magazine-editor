@@ -421,7 +421,7 @@ mod tests {
             text.text = tricky.to_owned();
         }
         let mut req = request(document);
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![], line_gaps: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![tricky.to_owned()], baseline: 30.0, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
     }
@@ -432,7 +432,7 @@ mod tests {
         let mut req = request(fixture_document());
         req.text_layouts.insert(
             "el-text".into(),
-            TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![141.1, 70.6], line_gaps: vec![] },
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![141.1, 70.6], line_gaps: vec![], line_boxes: vec![] },
         );
         let root = project_with_image();
         assert!(render_pdf(root.path(), &req, fonts()).is_ok());
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
         let root = project_with_image();
         assert!(matches!(render_pdf(root.path(), &req, fonts()), Err(AppError::InvalidInput(_))));
     }
@@ -650,7 +650,7 @@ mod tests {
         text.decoration = TextDecoration::default();
         edit(text);
         let mut req = request(document);
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![line.into()], baseline: 90.0, line_widths: vec![width], line_gaps: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![line.into()], baseline: 90.0, line_widths: vec![width], line_gaps: vec![], line_boxes: vec![] });
         req
     }
 

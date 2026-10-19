@@ -51,6 +51,15 @@ export interface TextStyle {
   readonly lineHeight: number;
   /** Extra space after every character, in 1/1000 of the font size (may be negative); 0 before v9. */
   readonly letterSpacing: number;
+  /**
+   * Paragraph indents (every `\n` starts a paragraph), in multiples of the font size (「字」); all 0
+   * before v16. Every line starts `indentLeft` from the box's left edge and ends `indentRight` from
+   * its right edge; the first line of a paragraph moves `indentFirstLine` more (negative = hanging,
+   * not further left than the box: ≥ −indentLeft).
+   */
+  readonly indentLeft: number;
+  readonly indentRight: number;
+  readonly indentFirstLine: number;
   readonly align: TextAlign;
   /** Text color. */
   readonly fill: string;
@@ -252,8 +261,9 @@ export interface PageNumberFace {
 }
 
 /** Look of a page number, shared by the odd and even pages of a rule. */
-/** Page numbers keep the default line height and no letter spacing (vertical ones are one character per line). */
-export interface PageNumberStyle extends Omit<TextStyle, "align" | "lineHeight" | "letterSpacing"> {
+/** Page numbers keep the default line height, no letter spacing and no indents (vertical ones are one character per line). */
+export interface PageNumberStyle
+  extends Omit<TextStyle, "align" | "lineHeight" | "letterSpacing" | "indentLeft" | "indentRight" | "indentFirstLine"> {
   /** null = no border. */
   readonly stroke: Stroke | null;
 }

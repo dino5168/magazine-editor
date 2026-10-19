@@ -110,6 +110,10 @@ export interface TextStyleSummary {
   readonly lineHeight: number;
   /** 1/1000 of the font size. */
   readonly letterSpacing: number;
+  /** Paragraph indents, in multiples of the font size (negative first line = hanging). */
+  readonly indentLeft: number;
+  readonly indentRight: number;
+  readonly indentFirstLine: number;
   /** Texts linked to it (text elements and shape labels, pages and master pages). */
   readonly usedBy: number;
 }
@@ -354,6 +358,9 @@ function styleSummary(
     shadow: style.shadow,
     lineHeight: style.lineHeight,
     letterSpacing: style.letterSpacing,
+    indentLeft: style.indentLeft,
+    indentRight: style.indentRight,
+    indentFirstLine: style.indentFirstLine,
     usedBy,
   };
 }

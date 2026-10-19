@@ -11,6 +11,7 @@ import type {
   Sheet,
   TextStyle,
 } from "./types";
+import { NO_TEXT_INDENT } from "./text-indent";
 import { DEFAULT_LINE_HEIGHT, DEFAULT_TEXT_SPACING, PLAIN_TEXT_DECORATION } from "./text-style";
 import { mmToPt } from "./units";
 import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, isStroke, isSwatchLink } from "./validation";
@@ -248,7 +249,7 @@ export function pageNumberShape(
     fill: TRANSPARENT,
     fillSwatchId: null,
     stroke,
-    label: { ...textStyle, ...DEFAULT_TEXT_SPACING, text, align, verticalAlign: "middle", styleId: null },
+    label: { ...textStyle, ...DEFAULT_TEXT_SPACING, ...NO_TEXT_INDENT, text, align, verticalAlign: "middle", styleId: null },
   };
 }
 

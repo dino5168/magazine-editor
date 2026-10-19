@@ -16,6 +16,7 @@ import type {
   TextShadow,
   TextStyle,
 } from "./types";
+import { hasValidTextIndent } from "./text-indent";
 import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
 
@@ -278,6 +279,7 @@ export function isTextStyle(value: unknown): value is TextStyle {
     (style.fontStyle === "normal" || style.fontStyle === "bold") &&
     hasValidTextDecoration(style) &&
     hasValidTextSpacing(style) &&
+    hasValidTextIndent(style) &&
     isTextAlign(style.align) &&
     typeof style.fill === "string" &&
     isElementColor(style.fill) &&

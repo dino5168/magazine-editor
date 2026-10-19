@@ -4,6 +4,7 @@ import { withPageNumbers, type MeasureTextWidth } from "@/lib/editor/page-number
 import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
 import type { PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
+import type { LineBox } from "@/lib/editor/text-indent";
 import type { EditorDocument, Page, Stroke, TextElement } from "@/lib/editor/types";
 import { resolveElementsVariables, resolveElementVariables, variableValues } from "@/lib/editor/variables";
 import { exportedLinePieces } from "./line-export";
@@ -24,6 +25,11 @@ export interface TextLayout {
    * (`distributeText`), letter spacing included.
    */
   readonly lineGaps?: readonly number[];
+  /**
+   * Indented text only (paragraph indents): where each line may go, pt from the text box's left
+   * edge (`layoutIndentedText`); the line is aligned within its box.
+   */
+  readonly lineBoxes?: readonly LineBox[];
 }
 
 /**

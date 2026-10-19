@@ -117,6 +117,11 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
         textDecorationLine: textDecorationLine(element) || "none",
         textShadow: cssTextShadow(element, zoom),
         ...cssTextAlign(element.align),
+        // 段落縮排（字 = em）。textarea 不支援 text-indent 的 each-line：只有第一段的首行縮排 / 突排，
+        // 之後的段落編輯中不縮排，放開後以畫布為準（計畫 07/01 步驟 1）
+        paddingLeft: `${element.indentLeft}em`,
+        paddingRight: `${element.indentRight}em`,
+        textIndent: `${element.indentFirstLine}em`,
         color: element.fill,
       }}
     />

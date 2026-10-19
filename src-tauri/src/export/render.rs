@@ -6,7 +6,7 @@
 //! Coordinates keep the editor's definition: unit pt, origin at the page's top-left corner, y
 //! pointing down, rotation clockwise around the element's anchor.
 
-use super::{ExportRequest, PathCommand, ShapePath, TextLayout};
+use super::{ExportRequest, LineBox, PathCommand, ShapePath, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
     validate_content, validate_stroke_look, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash,
@@ -177,6 +177,15 @@ fn line_start(width: f64, box_width: f64, align: Align) -> f64 {
     }
 }
 
+/// Where line `line` of `width` starts in the text box: its box (paragraph indents; the whole box
+/// without them) plus the alignment within that box. Same as TS `alignedLineStart`.
+fn layout_line_start(layout: &TextLayout, line: usize, width: f64, box_width: f64, align: Align) -> f64 {
+    match layout.line_boxes.get(line) {
+        Some(LineBox { start, width: room }) => start + line_start(width, *room, align),
+        None => line_start(width, box_width, align),
+    }
+}
+
 /// Underline / strikethrough segments of every line, placed like Konva places them.
 fn decoration_lines(layout: &TextLayout, box_width: f64, line_height: f64, style: &TextStyleRef) -> Vec<DecorationLine> {
     let TextDecoration { underline, strikethrough, .. } = *style.decoration;
@@ -192,7 +201,7 @@ fn decoration_lines(layout: &TextLayout, box_width: f64, line_height: f64, style
         if length <= 0.0 {
             continue;
         }
-        let x = line_start(width, box_width, style.align);
+        let x = layout_line_start(layout, line, width, box_width, style.align);
         let baseline = layout.baseline + line as f64 * line_height;
         if underline {
             out.push(DecorationLine { line, kind: DecorationKind::Underline, x, y: baseline + offset, length });
@@ -238,8 +247,11 @@ fn render_text(layout: TextLayout, box_width: f64, rotation: f64, style: &TextSt
     let distributed = style.align == Align::Distributed;
     // 首尾置中：每行字與字的距離由編輯器算好（和畫布逐字放的位置相同）；舊的 request 沒有時退回一般字距
     let line_gaps = (distributed && layout.line_gaps.len() == layout.lines.len()).then(|| layout.line_gaps.clone());
-    let line_starts = ((letter_spacing != 0.0 || distributed) && !layout.line_widths.is_empty())
-        .then(|| layout.line_widths.iter().map(|width| line_start(*width, box_width, style.align)).collect());
+    // 段落縮排：每行在自己的行框裡對齊，各格式也不能自己對齊整個文字框
+    let indented = !layout.line_boxes.is_empty();
+    let line_starts = ((letter_spacing != 0.0 || distributed || indented) && !layout.line_widths.is_empty()).then(|| {
+        layout.line_widths.iter().enumerate().map(|(line, width)| layout_line_start(&layout, line, *width, box_width, style.align)).collect()
+    });
     RenderText {
         letter_spacing,
         line_starts,
@@ -528,7 +540,9 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
             if layout.lines.len() > MAX_LINES_PER_TEXT
                 || !layout.baseline.is_finite()
                 || !(layout.line_widths.is_empty() || layout.line_widths.len() == layout.lines.len())
-                || !layout.line_widths.iter().all(|width| width.is_finite() && *width >= 0.0) =>
+                || !layout.line_widths.iter().all(|width| width.is_finite() && *width >= 0.0)
+                || !(layout.line_boxes.is_empty() || layout.line_boxes.len() == layout.lines.len())
+                || !layout.line_boxes.iter().all(|b| b.start.is_finite() && b.width.is_finite() && b.width >= 0.0) =>
         {
             Err(AppError::invalid_input("文字排版資料不正確"))
         }
@@ -539,6 +553,7 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
             baseline: size * (line_height / 2.0 + 0.35),
             line_widths: Vec::new(),
             line_gaps: Vec::new(),
+            line_boxes: Vec::new(),
         }),
     }
 }
@@ -801,7 +816,7 @@ mod tests {
         // fixture 的橢圓：外框 (120, 440) 120 × 80，文字 14 pt、置中、垂直置中
         let root = project_with_image();
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![], line_gaps: vec![] });
+        req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
         let (document, _) = build_render(root.path(), &req).unwrap();
         let (element, text) = label_of(&document);
         assert_eq!(text.lines, vec!["圖形內", "文字"], "uses the editor's line breaks");
@@ -894,7 +909,7 @@ mod tests {
         let mut req = request(document);
         req.text_layouts.insert(
             "el-text".into(),
-            TextLayout { lines: vec!["雜誌標題".into(), "副標".into(), String::new()], baseline: 30.0, line_widths: vec![144.4, 72.0, 0.0], line_gaps: vec![] },
+            TextLayout { lines: vec!["雜誌標題".into(), "副標".into(), String::new()], baseline: 30.0, line_widths: vec![144.4, 72.0, 0.0], line_gaps: vec![], line_boxes: vec![] },
         );
         let root = project_with_image();
         let (rendered, _) = build_render(root.path(), &req).unwrap();
@@ -950,7 +965,7 @@ mod tests {
             // 編輯器的結果：兩字以上行寬 = 框寬 420；單字「副」（36 寬）置中；空行
             req.text_layouts.insert(
                 "el-text".into(),
-                TextLayout { lines: vec!["雜誌標題".into(), "副".into(), String::new()], baseline: 30.0, line_widths: vec![420.0, 36.0, 0.0], line_gaps: gaps },
+                TextLayout { lines: vec!["雜誌標題".into(), "副".into(), String::new()], baseline: 30.0, line_widths: vec![420.0, 36.0, 0.0], line_gaps: gaps, line_boxes: vec![] },
             );
             let root = project_with_image();
             let (rendered, _) = build_render(root.path(), &req).unwrap();
@@ -971,6 +986,57 @@ mod tests {
         // 其他對齊不帶 line_gaps
         let (_, centred) = decorated_text(|_| {});
         assert_eq!(centred.line_gaps, None);
+    }
+
+    /// The fixture's text (420 pt wide, underline + strikethrough) laid out with paragraph indents:
+    /// first line box 72–400, the second 36–400, the empty third line 72–400.
+    fn indented_text(align: Align, letter_spacing: f64, widths: Vec<f64>, boxes: Vec<LineBox>) -> AppResult<RenderText> {
+        let mut document = fixture_document();
+        let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+        (text.align, text.spacing.letter_spacing) = (align, letter_spacing);
+        let mut req = request(document);
+        let gaps = if align == Align::Distributed { vec![50.0, 0.0, 0.0] } else { vec![] };
+        req.text_layouts.insert(
+            "el-text".into(),
+            TextLayout { lines: vec!["雜誌標題".into(), "副".into(), String::new()], baseline: 30.0, line_widths: widths, line_gaps: gaps, line_boxes: boxes },
+        );
+        let root = project_with_image();
+        let (rendered, _) = build_render(root.path(), &req)?;
+        let RenderKind::Text(text) = rendered.pages[0].elements[0].kind.clone() else { panic!("expected text") };
+        Ok(text)
+    }
+
+    #[test]
+    fn indented_lines_are_aligned_within_their_boxes() {
+        let boxes = || vec![LineBox { start: 72.0, width: 328.0 }, LineBox { start: 36.0, width: 364.0 }, LineBox { start: 72.0, width: 328.0 }];
+        let widths = || vec![144.0, 36.0, 0.0];
+        let starts = |align| indented_text(align, 0.0, widths(), boxes()).unwrap().line_starts;
+        // 沒有字距也一律帶起點（不能交給各格式對齊整個文字框）
+        assert_eq!(starts(Align::Left), Some(vec![72.0, 36.0, 72.0]));
+        assert_eq!(starts(Align::Center), Some(vec![72.0 + 92.0, 36.0 + 164.0, 72.0 + 164.0]));
+        assert_eq!(starts(Align::Right), Some(vec![400.0 - 144.0, 400.0 - 36.0, 400.0]));
+        // 首尾置中：兩字以上行寬 = 行框寬
+        let distributed = indented_text(Align::Distributed, 0.0, vec![328.0, 36.0, 0.0], boxes()).unwrap();
+        assert_eq!(distributed.line_starts, Some(vec![72.0, 36.0 + 164.0, 72.0 + 164.0]));
+        assert_eq!(distributed.line_gaps, Some(vec![50.0, 0.0, 0.0]));
+
+        // 底線 / 刪除線和文字同一個起點
+        let left = indented_text(Align::Left, 0.0, widths(), boxes()).unwrap();
+        let xs: Vec<_> = left.decorations.iter().filter(|d| d.kind == DecorationKind::Underline).map(|d| d.x).collect();
+        assert_eq!(xs, vec![72.0, 36.0]);
+        // 沒有行框：照舊（沒有字距時不帶起點）
+        assert_eq!(indented_text(Align::Left, 0.0, widths(), vec![]).unwrap().line_starts, None);
+    }
+
+    #[test]
+    fn rejects_line_boxes_that_do_not_match_the_lines() {
+        let widths = || vec![144.0, 36.0, 0.0];
+        let one = vec![LineBox { start: 0.0, width: 420.0 }];
+        assert!(indented_text(Align::Left, 0.0, widths(), one).is_err());
+        let infinite = vec![LineBox { start: f64::INFINITY, width: 1.0 }; 3];
+        assert!(indented_text(Align::Left, 0.0, widths(), infinite).is_err());
+        let negative = vec![LineBox { start: 0.0, width: -1.0 }; 3];
+        assert!(indented_text(Align::Left, 0.0, widths(), negative).is_err());
     }
 
     #[test]
@@ -1018,7 +1084,7 @@ mod tests {
         let root = project_with_image();
         for widths in [vec![10.0], vec![10.0, f64::NAN], vec![10.0, -1.0]] {
             let mut req = request(fixture_document());
-            req.text_layouts.insert("el-text".into(), TextLayout { lines: vec!["a".into(), "b".into()], baseline: 10.0, line_widths: widths, line_gaps: vec![] });
+            req.text_layouts.insert("el-text".into(), TextLayout { lines: vec!["a".into(), "b".into()], baseline: 10.0, line_widths: widths, line_gaps: vec![], line_boxes: vec![] });
             assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
         }
     }
@@ -1026,7 +1092,7 @@ mod tests {
     #[test]
     fn rejects_invalid_layout_data() {
         let mut req = request(fixture_document());
-        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![] });
+        req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![], baseline: f64::NAN, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
         let root = project_with_image();
         assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
     }

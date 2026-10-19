@@ -37,6 +37,7 @@ import { createLabel } from "@/lib/editor/shape-label";
 import { findShapePreset, resolvePresetParams } from "@/lib/editor/shape-presets";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
 import { swatchNameError, swatchUsage, type ColorSlot } from "@/lib/editor/swatches";
+import { hasValidTextIndent } from "@/lib/editor/text-indent";
 import type {
   CanvasElement,
   ElementPatch,
@@ -86,6 +87,9 @@ const STYLE_KEYS = [
   "shadow",
   "lineHeight",
   "letterSpacing",
+  "indentLeft",
+  "indentRight",
+  "indentFirstLine",
 ] as const satisfies readonly (keyof TextStyleInput)[];
 
 function pickStyle(args: TextStyleInput): TextStyleInput {
@@ -128,8 +132,14 @@ export function textStyleFields(state: EditorState, style: TextStyleInput): Resu
   }
   if (style.lineHeight !== undefined) fields.lineHeight = style.lineHeight;
   if (style.letterSpacing !== undefined) fields.letterSpacing = style.letterSpacing;
+  if (style.indentLeft !== undefined) fields.indentLeft = style.indentLeft;
+  if (style.indentRight !== undefined) fields.indentRight = style.indentRight;
+  if (style.indentFirstLine !== undefined) fields.indentFirstLine = style.indentFirstLine;
   return ok(fields);
 }
+
+/** The first line may not start left of the box; checked on the merged text, since only one indent may be given. */
+const INDENT_ERROR = "indentFirstLine 不可小於 −indentLeft（首行不能比文字框左緣更左；首行突排兩字 = indentLeft 2、indentFirstLine −2）";
 
 /**
  * The CSS family of a font named by the AI: a built-in font by its menu name, or a project font by
@@ -251,6 +261,7 @@ export function addText(state: EditorState, apply: ApplyAction, args: ToolArgs<"
     ...link.data,
     ...fields.data,
   };
+  if (!hasValidTextIndent(element)) return fail(INDENT_ERROR);
   return addElement(apply, element, sheet.data);
 }
 
@@ -373,6 +384,7 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
             ...(args.verticalAlign !== undefined && { verticalAlign: args.verticalAlign }),
           },
   };
+  if (element.label && !hasValidTextIndent(element.label)) return fail(INDENT_ERROR);
   return addElement(apply, element, sheet.data);
 }
 
@@ -460,6 +472,7 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
   const style = fields.data;
   switch (element.type) {
     case "text":
+      if (!hasValidTextIndent({ ...element, ...style })) return fail(INDENT_ERROR);
       return ok({ ...position, ...(args.text !== undefined && { text: args.text }), ...style });
     case "image":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
@@ -501,6 +514,7 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
           ...style,
           ...(args.verticalAlign !== undefined && { verticalAlign: args.verticalAlign }),
         };
+        if (!hasValidTextIndent(patch.label)) return fail(INDENT_ERROR);
       }
       return ok(patch);
     }
@@ -635,6 +649,7 @@ export function addTextStyle(state: EditorState, apply: ApplyAction, args: ToolA
     id: createId(),
     name: args.name.trim(),
   };
+  if (!hasValidTextIndent(style)) return fail(INDENT_ERROR);
   if (!apply({ type: "textStyle/add", style })) return fail("App 沒有接受這個樣式（參數不合法）");
   return ok({ id: style.id, name: style.name });
 }
@@ -648,6 +663,7 @@ export function updateTextStyle(state: EditorState, apply: ApplyAction, args: To
   if (resolved.error) return resolved;
   const fields = resolved.data;
   if (!hasKeys(fields) && args.name === undefined) return fail("沒有要修改的欄位");
+  if (!hasValidTextIndent({ ...style, ...fields })) return fail(INDENT_ERROR);
   if (args.name !== undefined) {
     const error = textStyleNameError(args.name, state.history.present.textStyles, style.id);
     if (error) return fail(error);

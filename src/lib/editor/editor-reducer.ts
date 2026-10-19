@@ -28,6 +28,7 @@ import {
   updateSwatch,
   type SwatchDeletion,
 } from "./swatches";
+import { hasValidTextIndent } from "./text-indent";
 import { isLetterSpacing, isLineHeight } from "./text-style";
 import { DEFAULT_LINE_KIND, type LineKind } from "./line-kinds";
 import { DEFAULT_SHAPE_KIND, DEFAULT_TOOL, isCreateTool, type ToolId } from "./tools";
@@ -433,9 +434,21 @@ function isValidPatch(patch: ElementPatch): boolean {
   return !Object.values(patch).some((value) => typeof value === "number" && !Number.isFinite(value));
 }
 
-/** Checks the fields a patch cannot check alone: a line's points, stroke and ends (`isValidLine`). */
+/**
+ * Checks the fields a patch cannot check alone: a line's points, stroke and ends (`isValidLine`), and
+ * a text's indents (the first line depends on the left indent, a patch may set only one of them).
+ */
 function isValidElementShape(element: CanvasElement): boolean {
-  return element.type !== "line" || isValidLine(element);
+  switch (element.type) {
+    case "line":
+      return isValidLine(element);
+    case "text":
+      return hasValidTextIndent(element);
+    case "shape":
+      return element.label === null || hasValidTextIndent(element.label);
+    case "image":
+      return true;
+  }
 }
 
 /** Applies a validated patch; returns the same element when nothing changes. */

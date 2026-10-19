@@ -1,4 +1,5 @@
 import { DEFAULT_FONT_FAMILY, DEFAULT_TEXT_FILL } from "./element-factory";
+import { NO_TEXT_INDENT } from "./text-indent";
 import { DEFAULT_TEXT_SPACING, PLAIN_TEXT_DECORATION } from "./text-style";
 import type { Point, ShapeElement, ShapeLabel, TextElement } from "./types";
 
@@ -15,6 +16,7 @@ const DEFAULT_LABEL: Omit<ShapeLabel, "text"> = {
   fontStyle: "normal",
   ...PLAIN_TEXT_DECORATION,
   ...DEFAULT_TEXT_SPACING,
+  ...NO_TEXT_INDENT,
   align: "center",
   verticalAlign: "middle",
   fill: DEFAULT_TEXT_FILL,

@@ -36,7 +36,10 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// library; the editor computes its outline for export. Older files have none.
 /// v15: stroke `dash` may be `dashDot`（點劃線）; line elements follow (`docs/06-Plans-繪圖/03-自由繪圖-實作.md`).
 /// Older files have neither.
-pub const SCHEMA_VERSION: u32 = 15;
+/// v16: paragraph indents `indentLeft` / `indentRight` / `indentFirstLine` (multiples of the font
+/// size) on text elements, shape labels and text styles (not page numbers). Missing in older files
+/// and backups → 0 (`docs/07-Plans-物件屬性與事件/01-新增文字框屬性-實作.md`).
+pub const SCHEMA_VERSION: u32 = 16;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -79,6 +82,8 @@ pub const LINE_HEIGHT_MAX: f64 = 3.0;
 /// `src/lib/editor/text-style.ts`.
 pub const LETTER_SPACING_MIN: f64 = -200.0;
 pub const LETTER_SPACING_MAX: f64 = 1000.0;
+/// Largest indent (multiples of the font size); same as `TEXT_INDENT_MAX` in `src/lib/editor/text-indent.ts`.
+pub const TEXT_INDENT_MAX: f64 = 20.0;
 /// Longest text style name (characters, after trimming); same as `TEXT_STYLE_NAME_MAX_LENGTH` in
 /// `src/lib/editor/style-sheet.ts`.
 pub const TEXT_STYLE_NAME_MAX_LENGTH: usize = 50;
@@ -358,6 +363,17 @@ impl Default for TextSpacing {
     }
 }
 
+/// Paragraph indents of a text style (TS `TextIndent`), in multiples of the font size. Every `\n`
+/// starts a paragraph; its first line moves `indent_first_line` more (negative = hanging). Missing
+/// in files before v16 → 0.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct TextIndent {
+    pub indent_left: f64,
+    pub indent_right: f64,
+    pub indent_first_line: f64,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Align {
@@ -382,6 +398,8 @@ pub struct TextElement {
     pub decoration: TextDecoration,
     #[serde(flatten)]
     pub spacing: TextSpacing,
+    #[serde(flatten)]
+    pub indent: TextIndent,
     pub align: Align,
     pub fill: String,
     /// Missing in files before v12 → not linked.
@@ -405,6 +423,8 @@ pub struct TextStyleDef {
     pub decoration: TextDecoration,
     #[serde(flatten)]
     pub spacing: TextSpacing,
+    #[serde(flatten)]
+    pub indent: TextIndent,
     pub align: Align,
     pub fill: String,
     /// Missing in files before v12 → not linked.
@@ -426,6 +446,7 @@ pub fn default_text_styles() -> Vec<TextStyleDef> {
         font_style,
         decoration: TextDecoration::default(),
         spacing: TextSpacing { line_height, letter_spacing: 0.0 },
+        indent: TextIndent::default(),
         align,
         fill: "#171717".to_owned(),
         fill_swatch_id: None,
@@ -478,6 +499,8 @@ pub struct ShapeLabel {
     pub decoration: TextDecoration,
     #[serde(flatten)]
     pub spacing: TextSpacing,
+    #[serde(flatten)]
+    pub indent: TextIndent,
     pub align: Align,
     pub vertical_align: VerticalAlign,
     pub fill: String,
@@ -922,6 +945,7 @@ fn validate_text_styles<'a>(styles: &'a [TextStyleDef], swatches: &SwatchIds) ->
         require_swatch(&style.fill_swatch_id, swatches)?;
         validate_text_decoration(&style.decoration, swatches)?;
         validate_text_spacing(&style.spacing)?;
+        validate_text_indent(&style.indent)?;
         if !ids.insert(style.id.as_str()) || !names.insert(name) {
             return Err(invalid("duplicate id or name"));
         }
@@ -1061,6 +1085,16 @@ fn validate_text_spacing(spacing: &TextSpacing) -> AppResult<()> {
     Ok(())
 }
 
+/// Same rules as TS `hasValidTextIndent`: left / right in [0, TEXT_INDENT_MAX], the first line in
+/// [−left, TEXT_INDENT_MAX] (not left of the box; NaN fails).
+fn validate_text_indent(indent: &TextIndent) -> AppResult<()> {
+    let TextIndent { indent_left: left, indent_right: right, indent_first_line: first } = *indent;
+    if !(0.0..=TEXT_INDENT_MAX).contains(&left) || !(0.0..=TEXT_INDENT_MAX).contains(&right) || !(-left..=TEXT_INDENT_MAX).contains(&first) {
+        return Err(AppError::invalid_project(format!("invalid indent {left} / {right} / {first}")));
+    }
+    Ok(())
+}
+
 fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
     match element {
         Element::Text(e) => {
@@ -1069,6 +1103,7 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
             require_swatch(&e.fill_swatch_id, &refs.swatches)?;
             require_style(&e.style_id, &refs.styles)?;
             validate_text_spacing(&e.spacing)?;
+            validate_text_indent(&e.indent)?;
             validate_text_decoration(&e.decoration, &refs.swatches)
         }
         Element::Shape(e) => {
@@ -1085,6 +1120,7 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
                 require_style(&label.style_id, &refs.styles)?;
                 validate_text_decoration(&label.decoration, &refs.swatches)?;
                 validate_text_spacing(&label.spacing)?;
+                validate_text_indent(&label.indent)?;
             }
             Ok(())
         }
@@ -1363,13 +1399,19 @@ mod tests {
                         (a, b) => assert_eq!(a, b),
                     }
                 }
-                // v6 之前沒有文字裝飾、v9 之前沒有行距與字距：讀成預設值，其他欄位不變
+                // v6 之前沒有文字裝飾、v9 之前沒有行距與字距、v16 之前沒有縮排：讀成預設值，其他欄位不變
                 (Element::Text(old), Element::Text(new)) => {
                     assert_eq!(old.decoration, TextDecoration::default());
                     assert_eq!(old.spacing, TextSpacing::default());
+                    assert_eq!(old.indent, TextIndent::default());
                     assert_eq!(
                         *old,
-                        TextElement { decoration: TextDecoration::default(), spacing: TextSpacing::default(), ..new.clone() }
+                        TextElement {
+                            decoration: TextDecoration::default(),
+                            spacing: TextSpacing::default(),
+                            indent: TextIndent::default(),
+                            ..new.clone()
+                        }
                     );
                 }
                 (old, new) => assert_eq!(old, new),
@@ -1438,6 +1480,57 @@ mod tests {
         let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
         value["document"]["pages"][0]["elements"][0]["align"] = Value::from("justify");
         assert!(parse_project(&value.to_string()).is_err());
+    }
+
+    #[test]
+    fn reads_text_indents_and_defaults_them_in_older_files() {
+        let project = parse_project(FIXTURE).unwrap();
+        let Element::Text(text) = &project.document.pages[0].elements[0] else { panic!("expected text") };
+        assert_eq!(text.indent, TextIndent { indent_left: 0.0, indent_right: 1.0, indent_first_line: 2.0 });
+        let footer = project.document.text_styles.iter().find(|style| style.id == "style-footer").unwrap();
+        assert_eq!(footer.indent, TextIndent { indent_left: 2.0, indent_right: 0.0, indent_first_line: -2.0 });
+        let saved = serde_json::to_value(footer).unwrap();
+        assert_eq!((saved["indentLeft"].as_f64(), saved["indentFirstLine"].as_f64()), (Some(2.0), Some(-2.0)));
+
+        // v15 檔案沒有這三個欄位：讀成 0
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(15);
+        let remove = |value: &mut Value, pointer: &str| {
+            let object = value.pointer_mut(pointer).unwrap().as_object_mut().unwrap();
+            for key in ["indentLeft", "indentRight", "indentFirstLine"] {
+                object.remove(key);
+            }
+        };
+        remove(&mut value, "/document/pages/0/elements/0");
+        remove(&mut value, "/document/pages/0/elements/2/label");
+        remove(&mut value, "/document/textStyles/0");
+        let document = parse_project(&value.to_string()).unwrap().document;
+        let Element::Text(text) = &document.pages[0].elements[0] else { panic!("expected text") };
+        let Element::Shape(ellipse) = &document.pages[0].elements[2] else { panic!("expected the ellipse") };
+        assert_eq!(text.indent, TextIndent::default());
+        assert_eq!(ellipse.label.as_ref().unwrap().indent, TextIndent::default());
+        assert_eq!(document.text_styles[0].indent, TextIndent::default());
+    }
+
+    #[test]
+    fn rejects_text_indents_out_of_range() {
+        let with = |pointer: &str, fields: [(&str, f64); 3]| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            for (key, number) in fields {
+                value.pointer_mut(pointer).unwrap()[key] = Value::from(number);
+            }
+            parse_project(&value.to_string())
+        };
+        let indent = |left: f64, right: f64, first: f64| [("indentLeft", left), ("indentRight", right), ("indentFirstLine", first)];
+        for pointer in ["/document/pages/0/elements/0", "/document/pages/0/elements/2/label", "/document/textStyles/0"] {
+            assert!(with(pointer, indent(TEXT_INDENT_MAX, TEXT_INDENT_MAX, TEXT_INDENT_MAX)).is_ok(), "{pointer}");
+            // 首行突排：首行 = −左縮排
+            assert!(with(pointer, indent(2.0, 0.0, -2.0)).is_ok(), "{pointer}");
+            assert!(with(pointer, indent(2.0, 0.0, -2.5)).is_err(), "{pointer}");
+            assert!(with(pointer, indent(-1.0, 0.0, 0.0)).is_err(), "{pointer}");
+            assert!(with(pointer, indent(0.0, 20.5, 0.0)).is_err(), "{pointer}");
+            assert!(with(pointer, indent(0.0, 0.0, 20.5)).is_err(), "{pointer}");
+        }
     }
 
     #[test]

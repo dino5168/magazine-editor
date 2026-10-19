@@ -118,7 +118,7 @@ fn user_text_is_data_not_markup() {
     let mut req = request(document);
     req.text_layouts.insert(
         "el-text".into(),
-        TextLayout { lines: vec![hostile.into()], baseline: 30.0, line_widths: vec![], line_gaps: vec![] },
+        TextLayout { lines: vec![hostile.into()], baseline: 30.0, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] },
     );
     let root = project_with_image();
     let output = build_flipbook(root.path(), &req).unwrap();

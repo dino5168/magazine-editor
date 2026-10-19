@@ -37,7 +37,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 - **一次呼叫 = 一筆復原紀錄**：使用者可以 Ctrl+Z，或呼叫 `undo`。
 - **頁面**：省略 `pageId` = 使用者正在看的頁面；指定別頁（或主頁）時**不切換**使用者的畫面。例外：`add_page`、`add_master` 和在 App 裡操作一樣，會切到新頁 / 新主頁。
 - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）：hex `#rrggbb` / `#rrggbbaa`（`aa` = 不透明度），或 `{ swatch: 色票名稱或 id, opacity?: 0–1 }` 連到文件色票（改色票時跟著變）。頁面 / 主頁背景只能是 `#rrggbb` 或 `{ swatch }`。
-- **文字樣式欄位**（`add_text`、`add_shape` 的圖形內文字、`update_element`、文字樣式工具共用，都可省略）：`fontSize`、`font`（內建「黑體 / 明體 / 楷體 / 圓體」或專案字型的名稱 / id）、`bold`、`italic`、`underline`、`strikethrough`、`align`（`left` / `center` / `right` / `distributed` 首尾置中）、`textColor`、`shadow`（`{ color, offsetX, offsetY }` 或 `null`）、`lineHeight`（行距倍數 0.5–3）、`letterSpacing`（字距 ‰，−200–1000）。
+- **文字樣式欄位**（`add_text`、`add_shape` 的圖形內文字、`update_element`、文字樣式工具共用，都可省略）：`fontSize`、`font`（內建「黑體 / 明體 / 楷體 / 圓體」或專案字型的名稱 / id）、`bold`、`italic`、`underline`、`strikethrough`、`align`（`left` / `center` / `right` / `distributed` 首尾置中）、`textColor`、`shadow`（`{ color, offsetX, offsetY }` 或 `null`）、`lineHeight`（行距倍數 0.5–3）、`letterSpacing`（字距 ‰，−200–1000）、`indentLeft` / `indentRight`（左 / 右縮排，單位「字」= 字級的倍數，0–20）、`indentFirstLine`（首行縮排，字；負值 = 首行突排，不可小於 −indentLeft）。
 - **參數驗證**：參數不合（型別、範圍、未知欄位）時回中文錯誤（「參數 xxx：…」），文件不會被改。
 - **安全**：只接受本機、目前 Windows 帳號的連線；**沒有工具接受檔案路徑**。匯入字型、存檔、匯出、開檔都要使用者在 App 的對話框確認。
 

@@ -40,6 +40,15 @@ import {
   clampLineHeight,
   type TextSpacing,
 } from "@/lib/editor/text-style";
+import {
+  TEXT_INDENT_MAX,
+  indentFields,
+  indentFromFields,
+  withFirstLineMode,
+  type FirstLineMode,
+  type IndentFields as IndentFieldValues,
+  type TextIndent,
+} from "@/lib/editor/text-indent";
 import type { ProjectFont, ShapeLabel, Stroke, TextAlign, TextShadow, TextStyle } from "@/lib/editor/types";
 import {
   FONT_SIZE_MAX,
@@ -191,7 +200,7 @@ function boldLooksRegular(family: string, fonts: readonly ProjectFont[]): boolea
 /** 字級的 − / ＋：每按一下 1 pt */
 const FONT_SIZE_STEP = { size: 1, min: FONT_SIZE_MIN, max: FONT_SIZE_MAX } as const;
 
-type FontStyleFields = Omit<TextStyle, "align" | "lineHeight" | "letterSpacing">;
+type FontStyleFields = Omit<TextStyle, "align" | "lineHeight" | "letterSpacing" | "indentLeft" | "indentRight" | "indentFirstLine">;
 
 interface TextStyleFieldsProps {
   /** Part of the number fields' keys, so they reset when another element is shown. */
@@ -204,6 +213,86 @@ interface TextStyleFieldsProps {
   readonly verticalAlign?: { readonly value: ShapeLabel["verticalAlign"]; readonly onChange: (value: ShapeLabel["verticalAlign"]) => void };
   /** Line height and letter spacing; omitted for page numbers (they always use the defaults). */
   readonly spacing?: { readonly value: TextSpacing; readonly onChange: (patch: Partial<TextSpacing>) => void };
+  /** Paragraph indents; omitted for page numbers (they have none). The change carries all three fields. */
+  readonly indent?: { readonly value: TextIndent; readonly onChange: (indent: TextIndent) => void };
+}
+
+/** 縮排的 − / ＋：每按一下半個字 */
+const INDENT_STEP = { size: 0.5, min: 0, max: TEXT_INDENT_MAX } as const;
+
+const FIRST_LINE_MODES: readonly { readonly value: FirstLineMode; readonly label: string }[] = [
+  { value: "none", label: "無" },
+  { value: "indent", label: "首行縮排" },
+  { value: "hanging", label: "首行突排" },
+];
+
+/**
+ * Paragraph indents as in Word's paragraph dialog: 左 / 右, and 首行 (無 / 首行縮排 / 首行突排) with
+ * its 位移. Stored as left / right / first line (negative = hanging), see `indentFromFields`.
+ *
+ * Args:
+ *   props: Field key prefix, current indents and the change callback (all three fields each time).
+ *
+ * Returns:
+ *   The controls.
+ */
+function ParagraphIndentFields({
+  id,
+  value,
+  onChange,
+}: {
+  readonly id: string;
+  readonly value: TextIndent;
+  readonly onChange: (indent: TextIndent) => void;
+}) {
+  const fields = indentFields(value);
+  const set = (patch: Partial<IndentFieldValues>) => onChange(indentFromFields({ ...fields, ...patch }));
+  return (
+    <div role="group" aria-label="段落縮排" className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted-foreground">縮排（字）</span>
+      <NumberField
+        key={`${id}-il-${fields.left}`}
+        label="左"
+        unit="字"
+        value={fields.left}
+        step={INDENT_STEP}
+        onCommit={(left) => set({ left })}
+      />
+      <NumberField
+        key={`${id}-ir-${fields.right}`}
+        label="右"
+        unit="字"
+        value={fields.right}
+        step={INDENT_STEP}
+        onCommit={(right) => set({ right })}
+      />
+      <div className="flex items-center gap-1.5">
+        <span className="w-8 shrink-0 text-xs text-muted-foreground">首行</span>
+        <Select value={fields.mode} onValueChange={(mode) => onChange(withFirstLineMode(value, mode as FirstLineMode))}>
+          <SelectTrigger size="sm" className="h-7 flex-1" aria-label="首行">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIRST_LINE_MODES.map((mode) => (
+              <SelectItem key={mode.value} value={mode.value}>
+                {mode.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {fields.mode !== "none" && (
+        <NumberField
+          key={`${id}-ib-${fields.by}`}
+          label="位移"
+          unit="字"
+          value={fields.by}
+          step={INDENT_STEP}
+          onCommit={(by) => set({ by })}
+        />
+      )}
+    </div>
+  );
 }
 
 /** 行距的 − / ＋：每按一下 0.1 倍；字距：每按一下 10‰ */
@@ -220,7 +309,7 @@ const LETTER_SPACING_STEP = { size: 10, min: LETTER_SPACING_MIN, max: LETTER_SPA
  * Returns:
  *   The controls, without a surrounding section.
  */
-export function TextStyleFields({ id, style, onChange, align, verticalAlign, spacing }: TextStyleFieldsProps) {
+export function TextStyleFields({ id, style, onChange, align, verticalAlign, spacing, indent }: TextStyleFieldsProps) {
   const fonts = useEditorState().history.present.fonts;
   const noBoldFace = boldLooksRegular(style.fontFamily, fonts);
   return (
@@ -254,6 +343,7 @@ export function TextStyleFields({ id, style, onChange, align, verticalAlign, spa
           />
         </>
       )}
+      {indent && <ParagraphIndentFields id={id} value={indent.value} onChange={indent.onChange} />}
       {/* 每組按鈕是一個單位：放不下時整組換行，不會拆開 */}
       <div className="flex flex-wrap items-center gap-1">
         <ButtonGroup>

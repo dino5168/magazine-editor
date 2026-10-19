@@ -12,6 +12,7 @@ import { MIN_ELEMENT_SIZE_PT } from "@/lib/editor/geometry";
 import { MASTER_DEPTH_MAX } from "@/lib/editor/master-pages";
 import { SHAPE_LIBRARY } from "@/lib/editor/shape-presets";
 import { TEXT_STYLE_NAME_MAX_LENGTH } from "@/lib/editor/style-sheet";
+import { TEXT_INDENT_MAX } from "@/lib/editor/text-indent";
 import { LETTER_SPACING_MAX, LETTER_SPACING_MIN, LINE_HEIGHT_MAX, LINE_HEIGHT_MIN, TEXT_ALIGNS } from "@/lib/editor/text-style";
 import {
   DOCUMENT_NAME_MAX_LENGTH,
@@ -125,6 +126,19 @@ const textStyleShape = {
     .min(LETTER_SPACING_MIN)
     .max(LETTER_SPACING_MAX)
     .describe("字距：每個字後面多加的距離，單位是字級的 1/1000（‰，例如 100 = 0.1 個字），可為負；預設 0"),
+  indentLeft: z
+    .number()
+    .min(0)
+    .max(TEXT_INDENT_MAX)
+    .describe("左縮排：每一行離文字框左緣的距離，單位是「字」（字級的倍數，例如 2 = 兩個字寬）；預設 0"),
+  indentRight: z.number().min(0).max(TEXT_INDENT_MAX).describe("右縮排：每一行離文字框右緣的距離（字）；預設 0"),
+  indentFirstLine: z
+    .number()
+    .min(-TEXT_INDENT_MAX)
+    .max(TEXT_INDENT_MAX)
+    .describe(
+      "首行縮排：每一段（以換行分段）第一行再往右移的距離（字），例如 2 = 首行縮排兩字；負值 = 首行突排，不可小於 −indentLeft（首行突排兩字 = indentLeft 2、indentFirstLine −2）；預設 0",
+    ),
 };
 
 /** Optional text style arguments (text elements, the text inside shapes). */
@@ -165,7 +179,7 @@ const STYLE_LINK_HELP =
   "style：連到文字樣式（名稱或 id），文字先取樣式的值，再套用這次給的樣式欄位（和樣式不同的欄位就是覆寫；之後改樣式時覆寫的欄位不跟著變）。";
 
 const STYLE_HELP =
-  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱 / id，見 list_fonts）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）。";
+  "文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱 / id，見 list_fonts）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）、indentLeft / indentRight / indentFirstLine（段落縮排，單位「字」；首行負值 = 首行突排）。";
 
 const COLOR_HELP =
   "顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。";

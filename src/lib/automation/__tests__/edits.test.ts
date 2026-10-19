@@ -493,6 +493,31 @@ describe("text styles", () => {
     expect(elementOf(s, linked.id)).toMatchObject({ lineHeight: 2.2, letterSpacing: 50 });
   });
 
+  it("indents: add, update, styles and the first line not left of the box", () => {
+    const s = session();
+    const { id } = s.ok("add_text", { text: "1. 條列", x: 0, y: 0, indentLeft: 2, indentFirstLine: -2 });
+    expect(elementOf(s, id)).toMatchObject({ indentLeft: 2, indentRight: 0, indentFirstLine: -2 });
+    // 只給一個欄位時以文字原本的值判斷
+    expect(s.error("update_element", { id, indentLeft: 1 })).toContain("indentFirstLine 不可小於 −indentLeft");
+    s.ok("update_element", { id, indentLeft: 0, indentFirstLine: 2, indentRight: 1.5 });
+    expect(elementOf(s, id)).toMatchObject({ indentLeft: 0, indentRight: 1.5, indentFirstLine: 2 });
+    expect(s.error("add_text", { text: "x", x: 0, y: 0, indentFirstLine: -1 })).toContain("indentFirstLine");
+    expect(s.error("update_element", { id, indentRight: 21 })).toContain("參數 indentRight");
+
+    const shape = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 50, text: "框", indentFirstLine: 1 });
+    expect(elementOf(s, shape.id).label).toMatchObject({ indentLeft: 0, indentFirstLine: 1 });
+    expect(s.error("update_element", { id: shape.id, indentFirstLine: -1 })).toContain("indentFirstLine");
+
+    const style = s.ok("add_text_style", { name: "條列", indentLeft: 1, indentFirstLine: -1 });
+    const listed = s.ok("list_text_styles").find((x: { id: string }) => x.id === style.id);
+    expect(listed).toMatchObject({ indentLeft: 1, indentRight: 0, indentFirstLine: -1 });
+    const linked = s.ok("add_text", { text: "連結", x: 0, y: 0, style: "條列" });
+    s.ok("update_text_style", { style: "條列", indentLeft: 2, indentFirstLine: -2 });
+    expect(elementOf(s, linked.id)).toMatchObject({ indentLeft: 2, indentFirstLine: -2 });
+    expect(s.error("update_text_style", { style: "條列", indentLeft: 0 })).toContain("indentFirstLine");
+    expect(s.error("add_text_style", { name: "壞", indentFirstLine: -1 })).toContain("indentFirstLine");
+  });
+
   it("add / update / delete text styles, each one undo step", () => {
     const s = session();
     const { id } = s.ok("add_text_style", { name: " 引言 ", italic: true, fontSize: 13 });

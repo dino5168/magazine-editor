@@ -3,7 +3,7 @@ use crate::export::fonts::BUNDLED_FONTS;
 use crate::export::html::markup::num;
 use crate::export::render::{build_render, RenderKind};
 use crate::export::test_support::{fixture_document, project_with_image, request};
-use crate::export::TextLayout;
+use crate::export::{LineBox, TextLayout};
 use crate::project::format::{Element, ShapeGeometry};
 use std::io::Read;
 
@@ -144,7 +144,7 @@ fn user_text_is_data_not_markup() {
     document.name = format!("{hostile}\u{0}");
     document.pages[0].name = hostile.to_owned();
     let mut req = request(document);
-    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0, line_widths: vec![], line_gaps: vec![] });
+    req.text_layouts.insert("el-text".into(), TextLayout { lines: vec![hostile.into(), "第二行".into()], baseline: 30.0, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
 
@@ -363,7 +363,7 @@ fn decorated_page(edit: impl FnOnce(&mut crate::project::format::TextElement)) -
     let mut req = request(document);
     req.text_layouts.insert(
         "el-text".into(),
-        TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![144.0, 72.0], line_gaps: vec![] },
+        TextLayout { lines: vec!["雜誌標題".into(), "副標".into()], baseline: 30.0, line_widths: vec![144.0, 72.0], line_gaps: vec![], line_boxes: vec![] },
     );
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
@@ -460,7 +460,7 @@ fn distributed_lines_use_the_editors_gaps_like_the_pdf() {
     let mut req = request(document);
     req.text_layouts.insert(
         "el-text".into(),
-        TextLayout { lines: vec!["雜誌標題".into(), "副".into()], baseline: 30.0, line_widths: vec![420.0, 36.0], line_gaps: vec![92.0, 0.0] },
+        TextLayout { lines: vec!["雜誌標題".into(), "副".into()], baseline: 30.0, line_widths: vec![420.0, 36.0], line_gaps: vec![92.0, 0.0], line_boxes: vec![] },
     );
     let root = project_with_image();
     let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
@@ -479,6 +479,39 @@ fn distributed_lines_use_the_editors_gaps_like_the_pdf() {
             "text-align:left;margin-left:192px;white-space:nowrap;letter-spacing:0px",
         ]
     );
+}
+
+#[test]
+fn indented_lines_start_at_their_boxes_like_the_pdf() {
+    // 段落縮排：沒有字距、沒有斜體也一律每行放在起點（行框起點 + 在行框裡的對齊）
+    let lines_of = |align| {
+        let mut document = fixture_document();
+        let Element::Text(text) = &mut document.pages[0].elements[0] else { panic!("expected text") };
+        text.align = align;
+        text.spacing.letter_spacing = 0.0;
+        text.decoration = crate::project::format::TextDecoration::default();
+        let mut req = request(document);
+        req.text_layouts.insert(
+            "el-text".into(),
+            TextLayout {
+                lines: vec!["雜誌標題".into(), "副標".into()],
+                baseline: 30.0,
+                line_widths: vec![144.0, 72.0],
+                line_gaps: vec![],
+                line_boxes: vec![LineBox { start: 72.0, width: 328.0 }, LineBox { start: 36.0, width: 364.0 }],
+            },
+        );
+        let root = project_with_image();
+        let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
+        let xhtml = text_of(&entries, "OEBPS/pages/page-1.xhtml").to_owned();
+        let page = parse(&xhtml);
+        let text = page.descendants().find(|n| n.attribute("class") == Some("el t")).unwrap();
+        assert!(!text.attribute("style").unwrap().contains("letter-spacing"));
+        text.children().filter(|n| n.has_tag_name("div")).map(|n| n.attribute("style").unwrap().to_owned()).collect::<Vec<_>>()
+    };
+    let line = |x: f64| format!("text-align:left;margin-left:{x}px;white-space:nowrap");
+    assert_eq!(lines_of(crate::project::format::Align::Left), vec![line(72.0), line(36.0)]);
+    assert_eq!(lines_of(crate::project::format::Align::Center), vec![line(72.0 + 92.0), line(36.0 + 146.0)]);
 }
 
 #[test]

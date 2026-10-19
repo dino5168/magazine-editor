@@ -6,6 +6,7 @@
  * 所以畫布、量測與匯出都照舊讀物件上的值。計畫：`docs/01-Plans-2026-10/09-樣式系統-實作.md`。
  */
 import { DEFAULT_FONT_OPTION } from "./fonts";
+import { NO_TEXT_INDENT } from "./text-indent";
 import { DEFAULT_LINE_HEIGHT, DEFAULT_TEXT_FILL, PLAIN_TEXT_DECORATION } from "./text-style";
 import type { CanvasElement, EditorDocument, Sheet, StyledText, TextShadow, TextStyle, TextStyleDef } from "./types";
 import { PAGE_NAME_MAX_LENGTH, isTextStyle, validateName } from "./validation";
@@ -26,6 +27,9 @@ const KEY_SET: { readonly [K in keyof TextStyle]: true } = {
   shadow: true,
   lineHeight: true,
   letterSpacing: true,
+  indentLeft: true,
+  indentRight: true,
+  indentFirstLine: true,
   align: true,
   fill: true,
   fillSwatchId: true,
@@ -46,6 +50,9 @@ export const TEXT_STYLE_KEY_LABELS: { readonly [K in TextStyleKey]: string } = {
   shadow: "陰影",
   lineHeight: "行距",
   letterSpacing: "字距",
+  indentLeft: "左縮排",
+  indentRight: "右縮排",
+  indentFirstLine: "首行縮排",
   align: "對齊",
   fill: "顏色",
   // styleOverrides 不會單獨回報它（併在「顏色」）
@@ -79,6 +86,7 @@ function builtIn(
     ...PLAIN_TEXT_DECORATION,
     lineHeight,
     letterSpacing: 0,
+    ...NO_TEXT_INDENT,
     align,
     fill: DEFAULT_TEXT_FILL,
     fillSwatchId: null,
@@ -159,6 +167,9 @@ export function pickTextStyle(source: TextStyle): TextStyle {
     shadow: source.shadow,
     lineHeight: source.lineHeight,
     letterSpacing: source.letterSpacing,
+    indentLeft: source.indentLeft,
+    indentRight: source.indentRight,
+    indentFirstLine: source.indentFirstLine,
     align: source.align,
     fill: source.fill,
     fillSwatchId: source.fillSwatchId,

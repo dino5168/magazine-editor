@@ -20,10 +20,11 @@ const NARROW_CHAR_WIDTH_EM = 0.55;
  *   Approximate height in pt.
  */
 export function estimateTextHeight(element: TextElement): number {
-  const wrapWidth = Math.max(element.width, 1);
+  // 段落縮排：每行少了左右縮排，首行另外佔掉（突排時多出）首行縮排
+  const wrapWidth = Math.max(element.width - (element.indentLeft + element.indentRight) * element.fontSize, 1);
   let lines = 0;
   for (const paragraph of element.text.split("\n")) {
-    let widthEm = 0;
+    let widthEm = element.indentFirstLine;
     for (const char of paragraph) {
       widthEm += (char.codePointAt(0) ?? 0) >= WIDE_CHAR_START ? 1 : NARROW_CHAR_WIDTH_EM;
     }

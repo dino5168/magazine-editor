@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；2026-10-15 <code>Stroke.dash</code> 加入點劃線 <code>"dashDot"</code>（<code>schemaVersion</code> 15）；2026-10-15 加入線條 <code>LineElement</code>、<code>LinePoint</code>、<code>LineEnd</code>、<code>LineArrowhead</code>（同樣是 <code>schemaVersion</code> 15）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-15
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；2026-10-15 <code>Stroke.dash</code> 加入點劃線 <code>"dashDot"</code>（<code>schemaVersion</code> 15）；2026-10-15 加入線條 <code>LineElement</code>、<code>LinePoint</code>、<code>LineEnd</code>、<code>LineArrowhead</code>（同樣是 <code>schemaVersion</code> 15）；2026-10-19 <code>TextStyle</code> 加入段落縮排 <code>indentLeft</code> / <code>indentRight</code> / <code>indentFirstLine</code>（<code>schemaVersion</code> 16）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-19
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -440,8 +440,8 @@
       <text class="field" x="25" y="854">fontSize<tspan class="ft">: number</tspan></text>
       <text class="field" x="25" y="874">fontFamily<tspan class="ft">: string</tspan></text>
       <text class="field" x="25" y="894">fontStyle<tspan class="ft">: "normal"|"bold"</tspan></text>
-      <text class="field" x="25" y="914">italic<tspan class="ft">: boolean</tspan></text>
-      <text class="field" x="25" y="934">underline / strikethrough<tspan class="ft">: boolean</tspan></text>
+      <text class="field" x="25" y="914">italic / underline / strikethrough</text>
+      <text class="field" x="25" y="934">indentLeft / Right / FirstLine</text>
       <text class="field" x="25" y="954">shadow<tspan class="ft">: TextShadow | null</tspan></text>
       <text class="field" x="25" y="974">lineHeight / letterSpacing<tspan class="ft">: number</tspan></text>
       <text class="field" x="25" y="994">align<tspan class="ft">: TextAlign</tspan></text>
@@ -810,7 +810,7 @@
 <section class="card doc" id="t-PageNumberStyle">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>PageNumberStyle</code><span class="badge">interface</span></h4>
-  <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定）與 <code>lineHeight</code> / <code>letterSpacing</code>（直書頁碼是每字一行，行距由程式決定），再加上框線。</p>
+  <p><code>TextStyle</code> 去掉 <code>align</code>（對齊由位置決定）、<code>lineHeight</code> / <code>letterSpacing</code> 與三個縮排（直書頁碼是每字一行，行距由程式決定），再加上框線。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>fontSize</code> / <code>fontFamily</code> / <code>fontStyle</code> / <code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> / <code>fill</code> / <code>fillSwatchId</code></td><td>同 <code>TextStyle</code></td><td>字級限制 6–400 pt（Rust 也檢查）；<code>fill</code> 可含透明度</td></tr>
@@ -912,12 +912,15 @@
     <tr><td><code>shadow</code></td><td><a href="#t-TextShadow"><code>TextShadow</code></a><code> | null</code></td><td>硬陰影；<code>null</code> = 沒有陰影。修改時整個取代（<code>{ shadow: { ...shadow, color } }</code>）</td></tr>
     <tr><td><code>lineHeight</code></td><td><code>number</code></td><td>行距：基線與基線的距離 ÷ 字級（倍數，同 Konva 的 <code>lineHeight</code>），0.5–3（TS 與 Rust 都檢查）。改字級時行距跟著縮放</td></tr>
     <tr><td><code>letterSpacing</code></td><td><code>number</code></td><td>字距：每個字後面多加的距離，單位是字級的 1/1000（‰，同 InDesign 的「追蹤」），−200–1000。畫布換算成 pt 交給 Konva</td></tr>
+    <tr><td><code>indentLeft</code> / <code>indentRight</code></td><td><code>number</code></td><td>左 / 右縮排：每一行離文字框左 / 右緣的距離，單位是「字」（字級的倍數），0–20。改字級時縮排跟著縮放</td></tr>
+    <tr><td><code>indentFirstLine</code></td><td><code>number</code></td><td>首行縮排：每一段（以 <code>\n</code> 分段）第一行再往右移的距離（字）；負值 = 首行突排，不可比文字框左緣更左（≥ −<code>indentLeft</code>），最大 20（TS <code>hasValidTextIndent</code> 與 Rust <code>validate_text_indent</code> 同規則）</td></tr>
     <tr><td><code>align</code></td><td><code>TextAlign</code>：<code>"left" | "center" | "right" | "distributed"</code></td><td>水平對齊；<code>distributed</code> = 首尾置中（分散對齊）</td></tr>
     <tr><td><code>fill</code></td><td><code>string</code></td><td>文字顏色，<code>#rrggbb</code> 或 <code>#rrggbbaa</code>（半透明）</td></tr>
     <tr><td><code>fillSwatchId</code></td><td><code>string | null</code></td><td>文字顏色連到的 <a href="#t-Swatch"><code>Swatch</code></a>；<code>null</code> = 沒連。也是樣式欄位：文字和樣式的連結不同就算覆寫</td></tr>
   </table></div>
   <p><code>italic</code> / <code>underline</code> / <code>strikethrough</code> / <code>shadow</code> 是 2026-10-05 加的（<code>schemaVersion</code> 6），新文字的預設值是 <code>text-style.ts</code> 的 <code>PLAIN_TEXT_DECORATION</code>；v6 之前的檔案讀成全部關閉。</p>
   <p><code>lineHeight</code> / <code>letterSpacing</code> 是 2026-10-11 加的（<code>schemaVersion</code> 9），預設值是 <code>text-style.ts</code> 的 <code>DEFAULT_TEXT_SPACING</code>（1.2 / 0，就是以前固定的值；內建「內文」樣式的行距是 1.5）；v9 之前的檔案讀成 1.2 / 0。頁碼沒有這兩個欄位。</p>
+  <p><code>indentLeft</code> / <code>indentRight</code> / <code>indentFirstLine</code> 是 2026-10-19 加的（<code>schemaVersion</code> 16），預設值是 <code>text-indent.ts</code> 的 <code>NO_TEXT_INDENT</code>（全 0，內建樣式也是 0）；v16 之前的檔案讀成 0。頁碼沒有這三個欄位。</p>
   <p><code>align</code> 的 <code>"distributed"</code>（首尾置中 / 分散對齊）是 2026-10-12 加的（<code>schemaVersion</code> 10，沒有新欄位；舊版 App 不認得這個值，所以提升版本號）：每一行（含最後一行）首字貼左緣、末字貼右緣，單字行置中，換行和靠左相同。可用的值是 <code>text-style.ts</code> 的 <code>TEXT_ALIGNS</code>。</p>
   <p class="uses">使用位置：<code>components/editor/style-controls.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/text-style.ts</code>；其他檔案都透過 <code>TextElement</code> / <code>ShapeLabel</code> / <code>PageNumberStyle</code> 使用</p>
 </section>

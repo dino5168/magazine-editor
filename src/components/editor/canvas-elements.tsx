@@ -12,6 +12,7 @@ import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import { labelAsText, labelFrame, labelTextOffset, textBlockHeight } from "@/lib/editor/shape-label";
 import { konvaStroke } from "@/lib/editor/stroke";
 import { konvaAlignAttrs } from "@/lib/editor/distributed-text";
+import { indentAttrs } from "@/lib/editor/indented-text";
 import { konvaTextStyle } from "@/lib/editor/text-style";
 import type {
   CanvasElement,
@@ -171,6 +172,7 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
       fontFamily={label.fontFamily}
       {...konvaTextStyle(label)}
       {...konvaAlignAttrs(label.align)}
+      {...indentAttrs(label, frame.width)}
       fill={label.fill}
       visible={!hidden}
     />
@@ -297,6 +299,8 @@ function textAttrs(element: TextElement) {
     fontFamily: element.fontFamily,
     ...konvaTextStyle(element),
     ...konvaAlignAttrs(element.align),
+    // 段落縮排：預先換好的文字與每行的起點（沒有縮排時是 Konva 原本的換行）
+    ...indentAttrs(element, element.width),
     fill: element.fill,
   };
 }
@@ -387,7 +391,9 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
           onTransform={(event) => {
             // 文字只調整換行寬度，不拉伸字形
             const node = event.target;
-            node.setAttrs({ width: Math.max(MIN_SIZE_PT, node.width() * node.scaleX()), scaleX: 1, scaleY: 1 });
+            const width = Math.max(MIN_SIZE_PT, node.width() * node.scaleX());
+            // 有段落縮排時文字是預先換好的：拖曳中依新寬度重新換行
+            node.setAttrs({ width, scaleX: 1, scaleY: 1, ...indentAttrs(element, width) });
           }}
         />
       );

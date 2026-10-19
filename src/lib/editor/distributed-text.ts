@@ -2,6 +2,7 @@ import type Konva from "konva";
 import type { Context } from "konva/lib/Context";
 import { konvaAlign } from "./text-style";
 import { distributeText, type DistributedLine } from "./text-distribute";
+import type { LineBox } from "./text-indent";
 import type { TextAlign } from "./types";
 
 /**
@@ -38,7 +39,13 @@ function charWidth(node: Konva.Text, char: string): number {
  */
 export function distributedTextLines(node: Konva.Text): DistributedLine[] {
   const width = node.width();
-  return node.textArr.map((line) => distributeText(line.text, (char) => charWidth(node, char), width));
+  // 有段落縮排時每行在自己的行框裡分散（indentAttrs 設的 lineBoxes），沒有時是整個文字框
+  const boxes = node.getAttr("lineBoxes") as readonly LineBox[] | undefined;
+  return node.textArr.map((line, index) => {
+    const box = boxes?.[index] ?? { start: 0, width };
+    const distributed = distributeText(line.text, (char) => charWidth(node, char), box.width);
+    return box.start === 0 ? distributed : { ...distributed, xs: distributed.xs.map((x) => x + box.start) };
+  });
 }
 
 /**

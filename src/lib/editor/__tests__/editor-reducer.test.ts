@@ -1136,6 +1136,26 @@ describe("editorReducer / text styles", () => {
     const restyled = run(spaced, { type: "textStyle/update", id: style.id, style: { ...pickTextStyle(style), lineHeight: 1.8 } });
     expect((elementsOf(restyled).find((e) => e.id === text.id) as TextElement).lineHeight).toBe(2);
   });
+
+  it("accepts indents within range only, checked on the patched text; a changed indent is an override", () => {
+    const { state, text, shape } = styledState();
+    const update = (patch: object, id = text.id) => run(state, { type: "element/update", id, patch } as EditorAction);
+    // 首行不可比框左緣更左（≥ −左縮排）：只給首行時以文字原本的左縮排（0）判斷
+    for (const patch of [{ indentLeft: -1 }, { indentRight: 21 }, { indentFirstLine: -1 }, { indentLeft: 2, indentFirstLine: -3 }, { indentFirstLine: Number.NaN }]) {
+      expect(update(patch)).toBe(state);
+    }
+    expect(update({ label: { ...shape.label, indentFirstLine: -1 } }, shape.id)).toBe(state);
+    const hanging = update({ indentLeft: 2, indentFirstLine: -2 });
+    const element = elementsOf(hanging).find((e) => e.id === text.id) as TextElement;
+    expect(element).toMatchObject({ indentLeft: 2, indentRight: 0, indentFirstLine: -2 });
+    const style = hanging.history.present.textStyles.find((s) => s.id === element.styleId)!;
+    expect(styleOverrides(element, style)).toEqual(["indentLeft", "indentFirstLine"]);
+    // 左縮排改回 0 時首行 −2 就不合法
+    expect(run(hanging, { type: "element/update", id: text.id, patch: { indentLeft: 0 } })).toBe(hanging);
+    expect(run(state, { type: "element/add", element: { ...createTextElement("body", { x: 0, y: 0 }), indentFirstLine: -1 } })).toBe(state);
+    // 樣式本身的縮排也要合法
+    expect(run(state, { type: "textStyle/update", id: style.id, style: { ...pickTextStyle(style), indentRight: -1 } })).toBe(state);
+  });
 });
 
 describe("editorReducer / swatches", () => {

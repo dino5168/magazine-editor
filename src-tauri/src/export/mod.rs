@@ -39,6 +39,20 @@ pub struct TextLayout {
     /// canvas spreads them (letter spacing included). Empty otherwise.
     #[serde(default, rename = "lineGaps")]
     pub line_gaps: Vec<f64>,
+    /// Text with paragraph indents only: where each line may go, as the editor laid it out (TS
+    /// `layoutIndentedText`); a line is aligned within its box. Empty otherwise (the box is the
+    /// whole text box).
+    #[serde(default, rename = "lineBoxes")]
+    pub line_boxes: Vec<LineBox>,
+}
+
+/// Room of one line of indented text (TS `LineBox`).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+pub struct LineBox {
+    /// pt from the text box's left edge.
+    pub start: f64,
+    /// pt.
+    pub width: f64,
 }
 
 /// One command of a shape-library outline, as the editor sends it (`PathCommand` in
