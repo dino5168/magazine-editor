@@ -16,11 +16,12 @@ import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectIsDirty } from "@/lib/editor/editor-reducer";
 import { createBlankDocument } from "@/lib/editor/element-factory";
 import type { PageSetup } from "@/lib/editor/page-setup";
-import type { EditorDocument } from "@/lib/editor/types";
+import type { EditorDocument, Margins } from "@/lib/editor/types";
 import { useLibrary, useLibraryControl } from "@/lib/library/library-context";
 import { projectAssets } from "@/lib/library/library-selectors";
 import { EMPTY_LIBRARY, type Library } from "@/lib/library/types";
 import { setFontUrlResolver } from "@/lib/editor/use-fonts-ready";
+import { templateApi } from "@/lib/templates/template-api";
 import { resolveAssetUrl } from "./asset-url";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
 import type { OpenedProject, ProjectContent, ProjectInfo, RecoveryEntry } from "./project-types";
@@ -47,6 +48,11 @@ interface ProjectContextValue {
    * portrait, 15 mm). Resolves to false (after a toast) on failure.
    */
   readonly createNew: (setup?: PageSetup) => Promise<boolean>;
+  /**
+   * Creates an untitled project from a document template (its files copied in) with the given
+   * margins. Resolves to false (after a toast) on failure.
+   */
+  readonly createFromTemplate: (id: string, margins: Margins) => Promise<boolean>;
   /** Replaces the editor content with an opened project (clears undo history). */
   readonly loadOpened: (opened: OpenedProject) => void;
   readonly markSaved: (info: ProjectInfo, document: EditorDocument) => void;
@@ -147,6 +153,21 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
     return true;
   }, [load]);
 
+  const createFromTemplate = useCallback(
+    async (id: string, margins: Margins) => {
+      const created = await templateApi.newProject(id);
+      if (created.error) {
+        toast.error(`無法用範本建立新專案：${describeCommandError(created.error)}`);
+        return false;
+      }
+      // 和空白新專案一樣不算未存檔；邊界照新增文件對話框的值（範本裡的是預設）
+      const { info: createdInfo, content, library } = created.data;
+      load(createdInfo, { ...content.document, margins }, library, true);
+      return true;
+    },
+    [load],
+  );
+
   const markSaved = useCallback(
     (nextInfo: ProjectInfo, document: EditorDocument) => {
       dispatch({ type: "document/markSaved", document });
@@ -213,8 +234,8 @@ export function ProjectProvider({ children, confirmRecovery }: ProjectProviderPr
   }, [root]);
 
   const value = useMemo<ProjectContextValue>(
-    () => ({ ready, dirty, resolveSrc, getSnapshot, createNew, loadOpened, markSaved }),
-    [ready, dirty, resolveSrc, getSnapshot, createNew, loadOpened, markSaved],
+    () => ({ ready, dirty, resolveSrc, getSnapshot, createNew, createFromTemplate, loadOpened, markSaved }),
+    [ready, dirty, resolveSrc, getSnapshot, createNew, createFromTemplate, loadOpened, markSaved],
   );
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }

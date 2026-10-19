@@ -5,3 +5,4 @@ pub mod library;
 pub mod mcp;
 pub mod project;
 pub mod recovery;
+pub mod templates;

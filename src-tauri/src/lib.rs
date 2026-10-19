@@ -31,6 +31,7 @@ pub fn run() {
             app.manage(commands::export::ExportState::default());
             app.manage(mcp::McpState::default());
             commands::project::clear_untitled(app.handle());
+            commands::templates::clean_up(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -52,6 +53,12 @@ pub fn run() {
             commands::recovery::recovery_discard,
             commands::recovery::recovery_write,
             commands::recovery::recovery_clear,
+            commands::templates::template_list,
+            commands::templates::template_create,
+            commands::templates::template_replace,
+            commands::templates::template_update_info,
+            commands::templates::template_delete,
+            commands::templates::project_new_from_template,
             commands::export::export_choose_path,
             commands::export::export_pdf,
             commands::export::export_flipbook,

@@ -46,6 +46,9 @@ async function call<T>(command: string, args?: InvokeArgs, options?: InvokeOptio
   }
 }
 
+/** `invoke` returning a `Result` with a typed `CommandError`; for other domains' API wrappers. */
+export { call as callCommand };
+
 /** True inside the Tauri window; false in browser-only dev mode (`npm run dev`). */
 export const isDesktop: boolean = isTauri();
 

@@ -26,7 +26,7 @@ import type {
   TextElement,
 } from "@/lib/editor/types";
 import { measureTextLayout } from "@/lib/export/text-layout";
-import { useProject } from "@/lib/project/project-context";
+import { useResolveSrc } from "./asset-src";
 
 export const ELEMENT_NODE_NAME = "element";
 
@@ -136,8 +136,8 @@ interface StaticNodeProps {
 }
 
 function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps | StaticNodeProps }) {
-  // react-konva 的 Stage 會橋接 React context，Konva 子樹內可以直接讀取專案 context
-  const { resolveSrc } = useProject();
+  // react-konva 的 Stage 會橋接 React context，Konva 子樹內可以直接讀取專案 context（範本縮圖另外指定資料夾）
+  const resolveSrc = useResolveSrc();
   const [image, status] = useImage(resolveSrc(element.src));
   if (status !== "loaded") {
     // 載入中或失敗時以灰框佔位，物件仍可選取與移動

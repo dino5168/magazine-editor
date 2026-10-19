@@ -18,7 +18,7 @@ export function formatBytes(bytes: number): string {
 }
 
 /** RFC 3339 → local `2026/10/08 14:30`. */
-function formatTime(iso: string): string {
+export function formatTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   const pad = (n: number) => String(n).padStart(2, "0");

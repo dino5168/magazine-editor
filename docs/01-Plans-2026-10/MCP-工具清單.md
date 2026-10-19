@@ -141,7 +141,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | 類別 | 指令 |
 |---|---|
 | 檔案 | `file.new` 新增、`file.open` 開啟、`file.save` 儲存、`file.saveAs` 另存新檔、`file.importImage` 匯入圖片、`file.exportPdf` 匯出 PDF、`file.exportFlipbook` 匯出翻頁電子書 |
-| 專案管理 | `project.library` 素材管理 |
+| 專案管理 | `project.library` 素材管理、`project.templates` 文件範本（桌面版） |
 | 設定對話框 | `settings.pageSetup` 頁面設定、`settings.pageNumbers` 頁碼管理、`settings.swatches` 色票、`settings.fonts` 字型、`settings.grid` 格線與參考線、`settings.mcp` Claude Code 連線 |
 | 視圖開關 | `view.rulers` 尺規、`view.grid` 格線、`view.contentGuides` 內容區對齊線、`view.margins` 邊界參考線、`view.snap` 吸附格線 |
 | 工具面板（打開 / 關閉） | `panel.templates` 範本、`panel.text` 文字、`panel.elements` 元素、`panel.upload` 素材、`panel.background` 背景、`panel.draw` 繪圖、`panel.properties` 屬性、`panel.styles` 樣式、`panel.pages` 頁面、`panel.layers` 圖層、`panel.resetLayout` 重設版面 |

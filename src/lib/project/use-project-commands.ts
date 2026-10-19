@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import type { PageSetup } from "@/lib/editor/page-setup";
+import type { Margins } from "@/lib/editor/types";
 import { useLibraryControl } from "@/lib/library/library-context";
 import { buildExportRequest, skippedShapeCount, type ExportRequest } from "@/lib/export/export-request";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
@@ -13,12 +14,21 @@ export type UnsavedChoice = "save" | "discard" | "cancel";
 /** Asks the user what to do with unsaved changes. */
 export type ConfirmUnsaved = () => Promise<UnsavedChoice>;
 
-/** Asks for the paper and margins of a new document; null when the user cancels. */
-export type ChooseNewSetup = () => Promise<PageSetup | null>;
+/** What 新增文件 creates: a blank document of the chosen paper, or a copy of a document template. */
+export type NewDocumentChoice =
+  | { readonly kind: "blank"; readonly setup: PageSetup }
+  | { readonly kind: "template"; readonly id: string; readonly margins: Margins };
+
+/**
+ * Shows the 新增文件 dialog; null when the user cancels. With a template id the dialog starts on
+ * that template (文件範本 window's 用這個範本新增專案).
+ */
+export type ChooseNewSetup = (templateId?: string) => Promise<NewDocumentChoice | null>;
 
 export interface ProjectCommands {
   /** Each resolves to true when the operation completed (false: cancelled or failed). */
-  readonly newProject: () => Promise<boolean>;
+  /** Optionally starts the 新增文件 dialog on a document template. */
+  readonly newProject: (templateId?: string) => Promise<boolean>;
   readonly openProject: () => Promise<boolean>;
   readonly save: () => Promise<boolean>;
   readonly saveAs: () => Promise<boolean>;
@@ -36,7 +46,7 @@ const EXPORT_FORMATS = {
   flipbook: { name: "翻頁電子書", run: projectApi.exportFlipbook },
 } as const satisfies Record<ExportFormat, { name: string; run: (request: ExportRequest) => unknown }>;
 
-const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri dev）";
+export const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri dev）";
 
 /**
  * Builds the file commands (new / open / save / save as / close / export PDF or flip book).
@@ -49,14 +59,14 @@ const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri 
  *   Command functions; they read the latest state when invoked.
  */
 export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetup: ChooseNewSetup): ProjectCommands {
-  const { ready, getSnapshot, createNew, loadOpened, markSaved } = useProject();
+  const { ready, getSnapshot, createNew, createFromTemplate, loadOpened, markSaved } = useProject();
   // 素材庫是立即寫入的：換專案（Rust 端拒絕寫到別的專案）與另存（Rust 從磁碟複製素材庫）之前先寫完
   const { flush: flushLibrary } = useLibraryControl();
   // 連按 Ctrl+S、或對話框開著時又觸發指令（包括關閉視窗），會造成兩個寫入同時進行
   const busyRef = useRef(false);
 
   const exclusive = useCallback(
-    (run: () => Promise<boolean>) => async (): Promise<boolean> => {
+    <A extends unknown[]>(run: (...args: A) => Promise<boolean>) => async (...args: A): Promise<boolean> => {
       if (!isDesktop) {
         toast.info(DESKTOP_ONLY_MESSAGE);
         return false;
@@ -64,7 +74,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       if (!ready || busyRef.current) return false;
       busyRef.current = true;
       try {
-        return await run();
+        return await run(...args);
       } finally {
         busyRef.current = false;
       }
@@ -110,13 +120,16 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
   }, [confirmUnsaved, getSnapshot, saveImpl]);
 
   // 先處理未存檔再選紙張；在紙張對話框按取消時留在目前的文件（對話框開著時 busyRef 擋住其他檔案指令）
-  const newImpl = useCallback(async (): Promise<boolean> => {
-    if (!(await resolveUnsaved())) return false;
-    const setup = await chooseNewSetup();
-    if (setup === null) return false;
-    await flushLibrary();
-    return createNew(setup);
-  }, [chooseNewSetup, createNew, flushLibrary, resolveUnsaved]);
+  const newImpl = useCallback(
+    async (templateId?: string): Promise<boolean> => {
+      if (!(await resolveUnsaved())) return false;
+      const choice = await chooseNewSetup(templateId);
+      if (choice === null) return false;
+      await flushLibrary();
+      return choice.kind === "blank" ? createNew(choice.setup) : createFromTemplate(choice.id, choice.margins);
+    },
+    [chooseNewSetup, createNew, createFromTemplate, flushLibrary, resolveUnsaved],
+  );
 
   const openImpl = useCallback(async (): Promise<boolean> => {
     if (!(await resolveUnsaved())) return false;

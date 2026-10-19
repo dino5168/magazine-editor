@@ -101,6 +101,7 @@
             "file.exportFlipbook",
             "file.exportEpub",
             "project.library",
+            "project.templates",
             "view.rulers",
             "view.grid",
             "view.contentGuides",

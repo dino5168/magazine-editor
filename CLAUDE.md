@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-19 文件範本：把專案的設計存成全域範本、新增專案時套用，見「文件範本」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -86,7 +86,7 @@ src/
     app/app-menubar.tsx           # 標題列下方的選單列（檔案(F) / 專案管理(P) / 設定(S) / 視圖(V) / 工具面板(W)），依 MENUS 渲染
     app/unsaved-changes-dialog.tsx  # 「要儲存變更嗎？」對話框（Promise 形式的 confirm）
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
-    app/new-document-dialog.tsx   # 「檔案 → 新增」的「新增文件」對話框（useNewDocumentDialog：左紙張卡片、右 PageSetupFields，回傳 PageSetup | null）
+    app/new-document-dialog.tsx   # 「檔案 → 新增」的「新增文件」對話框（useNewDocumentDialog：左上「空白 / 文件範本」、左紙張卡片或範本卡片、右 PageSetupFields（範本時 sizeLocked），回傳 NewDocumentChoice | null；可以帶範本 id 直接選好）
     app/paper-preset-grid.tsx     # 紙張卡片（依 PAGE_SIZE_GROUPS 分組、依比例的外框、跟著直橫轉、radio group 方向鍵）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（未存檔、復原、新增文件三個對話框共用）
     app/mcp-bridge.tsx            # McpBridge：不 render 的元件，依偏好開關執行 Claude Code 的 MCP 工具呼叫（見「MCP」）
@@ -110,6 +110,7 @@ src/
       dock-drag-ghost.tsx         # 拖曳時跟著游標的面板 icon + 名稱（DragGhost 的包裝）
     pointer-drag.ts               # startPointerDrag：一次按下的拖曳流程（4 px 門檻、游標（預設 grabbing，可指定）、吞掉拖曳後的 click、Esc 取消、清除），工具面板、頁籤拖曳與「頁面」面板的分區高度共用；edgeScrollDelta：拖曳靠近頁籤列邊緣時的自動捲動量（頁面頁籤列與停靠區頁籤列共用）
     drag-ghost.tsx                # DragGhost / moveDragGhost：拖曳時跟著游標的標籤（直接改 style，不走 React state）
+    templates/                    # 文件範本的 UI（見「文件範本」）：templates-dialog.tsx（TemplatesDialog 兩欄、搜尋、刪除確認）、template-card.tsx（TemplateCard / TemplateThumbnail / paperLabel）、template-info.tsx（名稱 / 說明、摘要、按鈕）、save-template-dialog.tsx（以目前專案建立 / 更新：範例頁勾選、授權提醒）
     library/                      # 素材管理的 UI（見「素材管理」）
       library-dialog.tsx          # LibraryDialogProvider / useLibraryDialog().openLibrary(view?)；三欄管理視窗（樹｜瀑布流｜資訊）、刪除資料夾 / 永久刪除的確認
       library-tree.tsx            # 左欄：全部 / 未分類 / 垃圾桶＋資料夾樹（展開、改名、新增、刪除、data-drop 拖曳提示）
@@ -126,6 +127,7 @@ src/
       canvas-drop.tsx             # CanvasDropProvider / useCanvasDrop：畫布登記「視窗座標 → 那一頁與頁面座標」（沿用 pageAt），素材面板拖到畫布時用
       canvas-ruler.tsx            # 尺規：CanvasRuler（2D canvas 刻度 + 選取範圍色帶 + 滑鼠標示線）、RulerCorner（角落 mm）、moveRulerMarker（直接改 DOM）
       canvas-sheet.tsx            # CanvasSheet：一頁畫在位移 x 的 Group 裡（背景、格線、主頁內容、對頁跨過書背的複本、物件、頁碼、參考線、頁緣）；雙頁時書背側裁切；對頁畫成靜態、按下切頁；SpreadSpine 書背線
+      asset-src.tsx               # AssetSrcProvider / useResolveSrc：覆寫圖片節點從哪個資料夾讀檔（文件範本的縮圖），沒有 provider 時用目前專案
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
       text-style-link.tsx         # 屬性面板「文字樣式」區塊：樣式下拉、覆寫提示（＋）、清除覆寫 / 以目前設定更新樣式 / 以目前設定建立新樣式（文字物件與圖形內文字共用）
       text-style-dialog.tsx       # 編輯 / 新增文字樣式的對話框（名稱 + TextStyleFields + 預覽，確定才寫入；表單只包名稱欄，見「文字樣式」）
@@ -169,6 +171,7 @@ src/
       use-close-guard.ts          # 關閉視窗前提示未存檔
       use-autosave.ts             # 每 60 秒把未存檔內容寫入備份（decideAutosave 是純函式）
       __tests__/
+    templates/                    # 文件範本（不含 UI，見「文件範本」）：types.ts（TemplateMeta / TemplateEntry / 上限常數，對應 Rust）、template-api.ts（templateApi）、template-content.ts（templateContent / templateSummary / templatePreviewSheet / restrictedFonts / 名稱與說明檢查）、__tests__/
     library/                      # 專案素材庫（library.json，見「素材管理」；不含 UI 的部分）
       types.ts                    # Library / LibraryFolder / LibraryItem（image / text / audio）/ Trashed、上限常數（對應 Rust library.rs、assets.rs）
       library-reducer.ts          # 純 reducer（item/* / folder/* / trash/empty / library/load；不合法回傳同一個參考）
@@ -258,7 +261,7 @@ src-tauri/
   src/lib.rs                      # Builder：single-instance（最先註冊）、setup DB / ProjectState、清除上次的未命名專案、註冊 commands、視窗 Destroyed 時刪除目前專案的備份
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
-  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）
+  src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）、templates.rs（文件範本：列出、建立 / 更新 / 改名 / 刪除、從範本建立未命名專案、啟動清理）
   src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、document_fonts.rs（這次匯出要用的專案字型）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
     html/                         # HTML 系列格式共用（EPUB、翻頁書）：markup.rs（一頁的 .page 標記：真文字 + 絕對定位、inline SVG、escape）、css.rs（@font-face + .page 裡的規則）、mod.rs（PageImages 圖片改名、collect_images、used_fonts、LANGUAGE）
     epub/                         # EPUB 3 固定版面（還沒接 UI）：mod.rs（build_epub）、xhtml.rs（XHTML 外框）、css.rs、package.rs（OPF / nav）、zip.rs
@@ -266,7 +269,7 @@ src-tauri/
   src/mcp/                        # MCP 的 App 端：protocol.rs（pipe 上的 ToolRequest / ToolResponse）、pipe.rs（named pipe server）、bridge.rs（McpState：開關 pipe、event 交給前端、等 mcp_respond）、client.rs（橋接程式用的 pipe 用戶端）
   src/bin/magazine-mcp.rs         # MCP 橋接程式（Claude Code 以 stdio 啟動；rmcp；工具清單內嵌 mcp-tools.json）
   mcp-tools.json                  # MCP 工具清單，由 vitest 從 tool-definitions.ts 產生，不要手改（.gitattributes 固定 LF）
-  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、export.rs、mcp.rs）
+  src/commands/                   # #[tauri::command]，每個領域一個檔案（env_vars.rs、project.rs、library.rs、recovery.rs、templates.rs、export.rs、mcp.rs）
   app-icon.svg                    # 程式圖示的來源（翻開的雜誌；計畫 docs/04-Plans-畫面顯示/01-換程式的圖示-實作.md）；icons/ 由它產生（見 Commands），public/app-icon.svg 是同一張（favicon）
   capabilities/default.json       # IPC 權限（core:default、opener:default、window set-title / destroy）
   tauri.conf.json                 # 視窗、CSP、bundle 設定、assetProtocol
@@ -676,7 +679,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 助記鍵 Alt+F / Alt+P / Alt+S / Alt+V / Alt+W（2026-10-19 起 Alt+P 是專案管理，工具面板改 Alt+W，使用者決定）：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
-- `專案管理`（主選單，2026-10-19 起）：放「這個專案擁有、可以管理的東西」。目前只有 `專案管理 → 素材管理...`（`project.library`，沒有快捷鍵；之前是 `檔案 → 素材管理...` / `file.library`）：開啟素材管理視窗，和「素材」面板的按鈕共用 `useLibraryDialog`。之後的樣式範本（`docs/08-Plans-系統全域/02-樣式管理-樣式範本.md`）也放這裡。
+- `專案管理`（主選單，2026-10-19 起）：`專案管理 → 素材管理...`（`project.library`，沒有快捷鍵；之前是 `檔案 → 素材管理...` / `file.library`）：開啟素材管理視窗，和「素材」面板的按鈕共用 `useLibraryDialog`。`專案管理 → 文件範本...`（`project.templates`，桌面版限定）：開啟文件範本視窗（見「文件範本」）。
 - `視圖`：放畫面上的輔助顯示（存這台電腦、不影響輸出）：尺規、分隔線、格線、內容區對齊線、邊界參考線、吸附格線，都是 `view.<id>` 勾選項目，由 `VIEW_TOGGLES` 產生（見「偏好設定與頁面設定」的快速切換）。勾選項目也會顯示快捷鍵（`MenubarShortcut`，勾選記號在左側不重疊）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
 - `設定` 只有文件 ▸、偏好設定 ▸、外觀 ▸。
@@ -749,6 +752,23 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - `editor-canvas.tsx` 裡的 `document` 是編輯中的文件；在那裡用 DOM API 要寫 `window.document`。
 - 不做（之後另排）：跨專案的系統素材庫、標籤 / 智慧型資料夾 / 依顏色搜尋、一個素材在多個資料夾、音訊試聽與放到頁面、Markdown 格式保留。
 
+## 文件範本（`lib/templates` + `components/templates` + `src-tauri/src/project/templates.rs`）
+
+需求、評估與使用者的決定：`docs/08-Plans-系統全域/02-樣式管理-樣式範本-評估計畫.md`；實作計畫與每一步的結果：`02-樣式管理-樣式範本-實作.md`。需求原名「樣式範本」，使用者決定叫「**文件範本**」（內容含紙張、主頁與範例頁）。
+
+- **範圍**（使用者決定）：把目前專案的設計存成範本，「檔案 → 新增」時選範本開新專案。範本內容 = 目前文件的文字樣式、色票、專案字型（含檔案）、紙張與邊界、主頁（含物件與圖片）、頁碼規則 + 建立時**勾選的範例頁**（都不勾 → 一頁空白頁，第一頁的尺寸與主頁、背景照主頁）。範本**存在這台電腦、所有專案共用**，不屬於任何專案。不做：套用到現有專案（同名衝突）、資料夾、匯出 / 匯入範本檔（換電腦）、MCP 工具（`run_command project.templates` 只開視窗）。「範本」工具面板（佔位）不動。
+- **範本 = 精簡的專案資料夾**：`app_data_dir()/templates/<UUID>/`（`%APPDATA%` 底下的 App 資料夾，同 DB）裡有 `template.json`（`TemplateMeta`：`templateVersion` 1、名稱、說明、建立 / 更新時間）、`project.magproj`（**就是專案格式**）、`assets/fonts`、`assets/images`。所以驗證、舊版升級、`.bak`、複製檔案都重用專案檔的程式（`validate_content`、`read_project`、`write_project_atomic`、`copy_assets` + `referenced_assets`），**之後新增的文件欄位不用改範本程式就會被收進去**。前端只用 id，路徑只有 Rust 知道（縮圖的 asset URL 除外：`template_list` 時開放 asset scope）。
+- **寫入**：建立 / 更新先寫 `.<id>.<uuid>.tmp` 再 rename；更新時舊的先改名 `.old`、新的放好才刪，失敗搬回來。啟動時 `clean_up`（`lib.rs` setup）刪暫存、把當機留下的 `.old` 搬回來。名稱 1–50 字、範本之間不重複；說明 ≤ 200 字（`TEMPLATE_NAME_MAX_LENGTH` / `TEMPLATE_DESCRIPTION_MAX_LENGTH`，TS `lib/templates/types.ts` / Rust `templates.rs` 同值）。**比 App 新**（`templateVersion` 或 `schemaVersion`）或**壞掉**的範本照樣列出（`problem`），只能刪除；較新的不能被「更新」蓋掉，專案檔壞掉的可以（等於修好）。
+- **立即寫入、不進復原、不算未存檔**（同素材庫）。建立範本用**編輯中的內容**（`getSnapshot()`，含未存檔的修改；圖片與字型匯入時就已寫進專案資料夾），`templateContent` 篩出範例頁、名稱重設成「未命名文件」（`UNTITLED_DOCUMENT_NAME`）、`assets` = 保留的頁面與主頁上、素材庫認得的圖片；來源少的檔案略過並回報數量。
+- **commands**（`commands/templates.rs`）：`template_list` / `template_create(name, description, content)` / `template_replace(id, content)` / `template_update_info` / `template_delete` / `project_new_from_template(id)`（`create_untitled` → 複製範本的檔案 → `library::load_or_create` 由 `assets` 建素材庫（未分類）→ `activate`，回傳 `OpenedProject`）。前端 `templateApi`（`project-api.ts` 匯出的 `callCommand`）。
+- **UI**：
+  - 「專案管理 → 文件範本...」（`project.templates`，桌面版限定；`home-page.tsx` 的 `templatesOpen`）：`TemplatesDialog` 兩欄——卡片（`TemplateCard`：第一個主頁、沒有就第一頁的 `SheetThumbnail`、名稱、紙張・主頁數；搜尋）｜資訊（`TemplateInfo`：名稱 / 說明失焦或 Enter 寫入、重複名稱提示並還原、紙張 / 樣式 / 色票 / 字型 / 主頁 / 頁碼 / 頁面 / 日期；用這個範本新增專案、以目前專案更新、刪除（確認））。打開時聚焦視窗本身；只有說明欄或有內容的輸入框擋 Esc。
+  - 「以目前專案建立範本...」/「以目前專案更新」：`SaveTemplateDialog`（`SettingsDialog` 外框；名稱預設文件名稱、說明、範例頁縮圖勾選、受限授權字型提醒 `restrictedFonts`；更新沒有名稱欄）。
+  - 「檔案 → 新增」對話框左上「空白 / 文件範本」：範本模式列出可用的範本（雙擊直接建立），右邊 `PageSetupFields sizeLocked`（**紙張照範本、邊界可改**）。`ChooseNewSetup(templateId?)` 回傳 `NewDocumentChoice`（`blank` / `template`），`ProjectProvider.createFromTemplate(id, margins)`。範本視窗的「用這個範本新增專案」= 關視窗 → `project.newProject(id)`（對話框直接選好那個範本，未存檔提示照舊）。
+- **縮圖讀範本資料夾的圖片**：`components/editor/asset-src.tsx` 的 `AssetSrcProvider` 覆寫圖片節點的 `resolveSrc`（`useResolveSrc`，沒有 provider 時用目前專案）。範本的專案字型不另外登記，縮圖用後備字型（已知限制）。
+- **字型授權**：「預覽與列印」「可編輯」的專案字型照樣存進範本，建立時提醒（使用者決定只提醒、不阻擋）。
+- 之後另排：套用到現有專案、範本資料夾與排序、匯出 / 匯入範本檔、MCP、「範本」面板列出範本的主頁 / 範例頁。
+
 ## 檔案系統（`lib/project` + `src-tauri/src/project`）
 
 - **專案 = 使用者自選位置的資料夾**：`project.magproj`（UTF-8 JSON，`schemaVersion` 16；v2 起物件顏色可為 `#rrggbbaa`，頁面背景仍只能是 `#rrggbb`；v3 起四種圖形合併成 `shape`，v1 / v2 開檔時自動升級；v4 加 `document.margins`，舊檔與備份缺這個欄位時 serde 預設全 0，不需要升級步驟；v5 加 `document.pageNumberRules`，缺少時預設空陣列；v6 的文字樣式加 `italic` / `underline` / `strikethrough` / `shadow`，Rust 以 `#[serde(flatten)] decoration: TextDecoration` 放進三個結構，缺少時全部關閉；v7 加 `document.masters` 與 `Page.masterId`，缺少時沒有主頁，驗證引用、循環與深度；v8 加 `document.textStyles` 與文字 / 圖形內文字的 `styleId`，缺少時讀成內建三個樣式（`default_text_styles`）、都不連結，v8 的空樣式表照樣保留；驗證名稱、不重複與引用；v9 的文字、圖形內文字與文字樣式加 `lineHeight` / `letterSpacing`，Rust 以 `#[serde(flatten)] spacing: TextSpacing` 放進三個結構，缺少時 1.2 / 0、不需要升級步驟，驗證範圍；v10 的 `align` 可以是 `distributed`（首尾置中），沒有新欄位，提升版本是讓舊版 App 明確說「檔案比較新」而不是解析失敗；v11 的矩形 `cornerRadius` 可以是四個數字（Rust `CornerRadius` untagged enum），四角一樣仍存數字；v12 加 `document.swatches` 與各顏色的連結欄位 `fillSwatchId` / `swatchId` / `backgroundSwatchId`，缺少時沒有色票、都不連結（serde 預設，不需要升級步驟，備份檔也一樣），驗證色票格式與引用存在；v13 加 `document.fonts`（專案字型：`id` 只能英數 `-` `_`、`name`、`generic`、`regular` / `bold`（可為 null）的 `FontFile`：`src` 在 `assets/fonts/` 的 `.ttf` / `.otf`、檔內名稱、字重、`embedding`（`installable` / `editable` / `previewAndPrint`）、`ascent` / `descent` / `appleBaselineShift`（em）），CSS / Typst 家族名稱是 `project-font-<id>`（Rust `project_font_family`），缺少時沒有專案字型；計畫 `docs/05-Plans-字型/01-專案字型-實作.md`；v14 的圖形 geometry 可以是 `{ kind: "preset", preset, params }`（圖形庫，Rust `ShapeGeometry::Preset`，`params` 缺少時讀成空的），沒有新的文件欄位，提升版本是讓舊版 App 明確說「檔案比較新」；計畫 `docs/06-Plans-繪圖/01-繪圖-實作.md`；v15 的邊框 `dash` 可以是 `dashDot`（點劃線，Rust `StrokeDash` 改成 `camelCase`），之後的線條物件也在 v15；計畫 `docs/06-Plans-繪圖/03-自由繪圖-實作.md`；v16 的文字、圖形內文字與文字樣式加段落縮排 `indentLeft` / `indentRight` / `indentFirstLine`，Rust 以 `#[serde(flatten)] indent: TextIndent` 放進三個結構，缺少時 0、不需要升級步驟，驗證範圍與「首行 ≥ −左縮排」；計畫 `docs/07-Plans-物件屬性與事件/01-新增文字框屬性-實作.md`）、`project.magproj.bak`（上一次存檔）、`assets/images/<SHA-256 前 32 碼>.<ext>`；素材庫另有 `library.json`（＋`.bak`，立即寫入）、`assets/texts/`、`assets/audio/`、`assets/thumbs/`（縮圖，見「素材管理」）、`assets/fonts/`（專案字型，`ASSET_DIRS` 之一：開檔清理與另存都包含）。一個專案 = 一份多頁文件。
@@ -762,7 +782,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **dirty 判斷**：reducer 的 `selectIsDirty`＝`history.present !== savedDocument`（比較參考）。`document/load`（清空復原歷史，`saved: false` 時 `savedDocument` 設為 null）與 `document/markSaved` 負責設定 `savedDocument`；`ProjectProvider` 只在有開啟專案時才回報 dirty。
 - 視窗標題：`● 文件名稱 — 雜誌編輯軟體`（`●` 表示未存檔），由 `ProjectProvider` 呼叫 `setTitle`。
 - 新增 / 開啟 / 關閉視窗前，有未存檔的變更時會詢問「儲存 / 不儲存 / 取消」；三者共用 `useProjectCommands` 的同一段流程（關閉視窗走 `confirmClose`）。`busyRef` 防止同時執行兩個檔案操作（包括對話框開著時關閉視窗）。
-- **新增專案**（「檔案 → 新增」，計畫：`docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`）：未存檔提示 → 「新增文件」對話框（`new-document-dialog.tsx`，`useProjectCommands` 的第二個參數 `chooseNewSetup` 注入）→ `createNew(setup)` → `createBlankDocument(setup)`。
+- **新增專案**（「檔案 → 新增」，計畫：`docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`）：未存檔提示 → 「新增文件」對話框（`new-document-dialog.tsx`，`useProjectCommands` 的第二個參數 `chooseNewSetup` 注入）→ `createNew(setup)` → `createBlankDocument(setup)`。選了文件範本時 → `createFromTemplate(id, margins)`（見「文件範本」）。
   - 對話框：左邊紙張卡片（`PaperPresetGrid`，同頁面設定的 14 種紙張與分組，卡片尺寸跟著目前方向），右邊 `PageSetupFields`（和頁面設定共用：直橫、寬高、邊界）；底部「取消 / 建立」。每次開啟都從 `DEFAULT_NEW_PAGE_SETUP`（A4 直式、邊界 15 mm）開始，**不記憶**上次的選擇。
   - 取消、Esc、點外面一律 resolve `null`（不能讓 Promise 懸著，否則 `busyRef` 一直是 busy）→ 留在目前的文件。先問未存檔再選紙張，所以選了「儲存」再取消也只是存了檔。
   - **啟動時沒有上次的專案仍直接建立 A4**（`createNew()` 不帶參數），不顯示對話框。瀏覽器模式的「新增」照舊只顯示「僅在桌面版可用」。
@@ -794,6 +814,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
     - 文字樣式：`TEXT_STYLE_NAME_MAX_LENGTH`（50）、名稱 / id 規則與引用（`style-sheet.ts` / `format.rs` 的 `validate_text_styles` / `require_style`）；內建三個樣式（`defaultTextStyles` / `default_text_styles`，共用 `tests/fixtures/default-text-styles.json`）。
     - 文件色票：`SWATCH_NAME_MAX_LENGTH`（50）、色票顏色是小寫 `#rrggbb`、id / 名稱不重複、連結引用存在（`validation.ts` 的 `isSwatchList` / `isSwatchLink` / `format.rs` 的 `validate_swatches` / `require_swatch`）。
     - 素材庫：`LIBRARY_DEPTH_MAX`（8）、資料夾 / 素材名稱上限、`TEXT_EXCERPT_MAX_CHARS` 與驗證規則（`lib/library/types.ts`、`library-validation.ts` / `project/library.rs`，共用 `sample-library.json`）；`TEXT_ASSET_MAX_BYTES`（200 KB）、`AUDIO_ASSET_MAX_BYTES`（50 MB）（`types.ts` / `assets.rs`）。
+    - 文件範本：`TEMPLATE_NAME_MAX_LENGTH`（50）、`TEMPLATE_DESCRIPTION_MAX_LENGTH`（200）與名稱規則（`lib/templates/types.ts`、`template-content.ts` / `project/templates.rs`）。
     - 底線 / 刪除線的公式與模擬斜體的斜率只在 Rust（`render.rs`），對應的是 **Konva 與瀏覽器本身的行為**，不是前端常數：升級 Konva 時重查（見「文字裝飾」）。
     - 字級範圍 `FONT_SIZE_MIN` / `FONT_SIZE_MAX`（`validation.ts`）、`PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）：`format.rs` 的頁碼驗證（`validate_page_number_rules`）。
   - 圖形內文字也由畫布量測：`textLayouts` 的 key 是 `<id>#label`，Rust 的 `shape_label` 把它變成一般的文字元素，緊接在圖形之後。
@@ -877,7 +898,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`font_import`（raw body，專案字型：檢查並存到 `assets/fonts/`，回傳 `FontFile`，見 `project/fonts.rs`）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`font_import`（raw body，專案字型：檢查並存到 `assets/fonts/`，回傳 `FontFile`，見 `project/fonts.rs`）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`template_list`、`template_create`、`template_replace`、`template_update_info`、`template_delete`、`project_new_from_template`（文件範本，見「文件範本」）；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 

@@ -97,6 +97,7 @@ export const COMMANDS = {
   "file.exportFlipbook": { label: "翻頁電子書（HTML5）...", title: "匯出為翻頁電子書" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
   "project.library": { label: "素材管理..." },
+  "project.templates": { label: "文件範本..." },
   ...VIEW_COMMANDS,
   ...SETTINGS_COMMANDS,
   "settings.themeLight": { label: "淺色", title: "外觀：淺色" },

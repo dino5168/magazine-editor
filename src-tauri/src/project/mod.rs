@@ -10,6 +10,7 @@ pub mod io;
 pub mod library;
 pub mod recovery;
 pub mod shape;
+pub mod templates;
 pub mod thumbnails;
 
 use crate::error::{AppError, AppResult};

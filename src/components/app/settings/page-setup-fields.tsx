@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { orientationOf, withOrientation, type Orientation, type PageSetup } from "@/lib/editor/page-setup";
 import type { Margins, Size } from "@/lib/editor/types";
+import { ptToMm } from "@/lib/editor/units";
 import { MARGIN_MAX_PT, PAGE_SIZE_MAX_PT, PAGE_SIZE_MIN_PT } from "@/lib/editor/validation";
 import { MmField } from "./settings-fields";
 
@@ -23,6 +24,8 @@ interface PageSetupFieldsProps {
   readonly sizeNote?: ReactNode;
   /** Messages from `validatePageSetup`. */
   readonly errors: readonly string[];
+  /** Shows the size read-only (a document template decides it); only the margins can change. */
+  readonly sizeLocked?: boolean;
 }
 
 /**
@@ -35,7 +38,7 @@ interface PageSetupFieldsProps {
  * Returns:
  *   Form sections.
  */
-export function PageSetupFields({ value, onChange, sizeHeading, paperPicker, sizeNote, errors }: PageSetupFieldsProps) {
+export function PageSetupFields({ value, onChange, sizeHeading, paperPicker, sizeNote, errors, sizeLocked = false }: PageSetupFieldsProps) {
   const { size, margins } = value;
   const orientation = orientationOf(size);
   const setSize = (next: Size) => onChange({ ...value, size: next });
@@ -56,26 +59,34 @@ export function PageSetupFields({ value, onChange, sizeHeading, paperPicker, siz
     <div className="flex flex-col gap-3">
       <section className="flex flex-col gap-2">
         <h3 className="text-xs text-muted-foreground">{sizeHeading}</h3>
-        <div className="flex items-center gap-2">
-          {paperPicker}
-          {ORIENTATIONS.map(({ value: option, label, icon: Icon }) => (
-            <Button
-              key={option}
-              variant="outline"
-              size="sm"
-              aria-pressed={orientation === option}
-              className={cn("h-7", orientation === option && "bg-muted")}
-              onClick={() => setSize(withOrientation(size, option))}
-            >
-              <Icon />
-              {label}
-            </Button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {sizeField("width", "寬")}
-          {sizeField("height", "高")}
-        </div>
+        {sizeLocked ? (
+          <p className="text-sm">
+            {Math.round(ptToMm(size.width))} × {Math.round(ptToMm(size.height))} mm（{orientation === "portrait" ? "直式" : "橫式"}）
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              {paperPicker}
+              {ORIENTATIONS.map(({ value: option, label, icon: Icon }) => (
+                <Button
+                  key={option}
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={orientation === option}
+                  className={cn("h-7", orientation === option && "bg-muted")}
+                  onClick={() => setSize(withOrientation(size, option))}
+                >
+                  <Icon />
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              {sizeField("width", "寬")}
+              {sizeField("height", "高")}
+            </div>
+          </>
+        )}
         {sizeNote}
       </section>
       <section className="flex flex-col gap-2">

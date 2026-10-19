@@ -53,11 +53,14 @@ describe("menu structure", () => {
     expect(MENUS.map((menu) => menu.label)).toEqual(["檔案", "專案管理", "設定", "視圖", "工具面板"]);
   });
 
-  it("opens 素材管理 from 專案管理, not from 檔案", () => {
+  it("opens 素材管理 and 文件範本 from 專案管理, not from 檔案", () => {
     const project = MENUS.find((menu) => menu.id === "project")!;
     const file = MENUS.find((menu) => menu.id === "file")!;
 
-    expect(project.items).toEqual([{ kind: "item", command: "project.library" }]);
+    expect(project.items).toEqual([
+      { kind: "item", command: "project.library" },
+      { kind: "item", command: "project.templates" },
+    ]);
     expect(collectCommands(file.items)).not.toContain("project.library");
   });
 

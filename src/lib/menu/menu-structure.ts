@@ -59,8 +59,11 @@ export const MENUS = [
     id: "project",
     label: "專案管理",
     mnemonic: { code: "KeyP", letter: "P" },
-    // 管理這個專案擁有的東西（素材庫…），之後的樣式範本也放這裡
-    items: [{ kind: "item", command: "project.library" }],
+    // 管理這個專案的素材庫，以及所有專案共用的文件範本
+    items: [
+      { kind: "item", command: "project.library" },
+      { kind: "item", command: "project.templates" },
+    ],
   },
   {
     id: "settings",

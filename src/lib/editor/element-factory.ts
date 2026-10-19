@@ -39,6 +39,8 @@ export const DEFAULT_LINE_STROKE: Stroke = { color: "#171717", swatchId: null, w
 export const PLAIN_LINE_END: LineEnd = { arrowhead: "none", scale: 1 };
 export { DEFAULT_TEXT_FILL };
 export const DEFAULT_PAGE_BACKGROUND = "#ffffff";
+/** Name of a new document (blank, sample or made from a document template). */
+export const UNTITLED_DOCUMENT_NAME = "未命名文件";
 /** Margins of a new document (15 mm on every side). Files without margins load as all 0 instead. */
 export const DEFAULT_MARGINS: Margins = (() => {
   const side = mmToPt(15);
@@ -602,7 +604,7 @@ function newDocumentStyles(): Pick<EditorDocument, "textStyles" | "swatches" | "
  */
 export function createBlankDocument(setup: PageSetup = DEFAULT_NEW_PAGE_SETUP): EditorDocument {
   return {
-    name: "未命名文件",
+    name: UNTITLED_DOCUMENT_NAME,
     margins: setup.margins,
     pageNumberRules: [],
     ...newDocumentStyles(),
@@ -653,7 +655,7 @@ export function createSampleDocument(): EditorDocument {
     ),
   ];
   return {
-    name: "未命名文件",
+    name: UNTITLED_DOCUMENT_NAME,
     margins: DEFAULT_MARGINS,
     pageNumberRules: [],
     ...newDocumentStyles(),

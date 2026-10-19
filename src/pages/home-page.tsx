@@ -56,10 +56,11 @@ import { isDesktop } from "@/lib/project/project-api";
 import { ProjectProvider } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
 import { LibraryDialogProvider, useLibraryDialog } from "@/components/library/library-dialog";
+import { TemplatesDialog } from "@/components/templates/templates-dialog";
 import { McpBridge } from "@/components/app/mcp-bridge";
 import { LibraryProvider } from "@/lib/library/library-context";
 import { useLibraryImport } from "@/lib/library/use-library-import";
-import { useProjectCommands } from "@/lib/project/use-project-commands";
+import { DESKTOP_ONLY_MESSAGE, useProjectCommands } from "@/lib/project/use-project-commands";
 import { cn } from "@/lib/utils";
 
 
@@ -108,6 +109,8 @@ function EditorLayout() {
   const openSwatches = useCallback(() => setOpenSettings("swatches"), []);
   const openFonts = useCallback(() => setOpenSettings("fonts"), []);
   const { openLibrary } = useLibraryDialog();
+  // 專案管理 → 文件範本...（範本在 App 資料夾，只有桌面版）
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -121,6 +124,7 @@ function EditorLayout() {
       "file.exportFlipbook": () => void project.exportFlipbook(),
       "file.importImage": importImage,
       "project.library": () => openLibrary(),
+      "project.templates": () => (isDesktop ? setTemplatesOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),
       ...Object.fromEntries(SETTINGS_PAGES.map(({ id }) => [settingsCommandId(id), () => setOpenSettings(id)])),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
@@ -197,6 +201,14 @@ function EditorLayout() {
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
       {newDocumentDialog}
+      <TemplatesDialog
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        onNewProject={(id) => {
+          setTemplatesOpen(false);
+          void project.newProject(id);
+        }}
+      />
       {SETTINGS_PAGES.map(({ id }) => {
         const SettingsPageDialog = SETTINGS_DIALOGS[id];
         return (
