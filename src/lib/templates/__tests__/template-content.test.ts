@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
 import { UNTITLED_DOCUMENT_NAME } from "@/lib/editor/element-factory";
+import { shapeImageOf } from "@/lib/editor/shape-image";
 import type { EditorDocument, ImageElement, Page } from "@/lib/editor/types";
 import { PAGE_SIZE_PRESETS } from "@/lib/editor/units";
 import { EMPTY_LIBRARY, type ImageItem, type Library } from "@/lib/library/types";
@@ -117,6 +118,15 @@ describe("templateContent", () => {
       MASTER_IMAGE,
       SECOND_IMAGE,
     ]);
+    // 圖片框（圖形裡的照片）上的照片也算
+    const framed = threePages();
+    const [first, ...rest] = framed.pages;
+    const shape = first.elements.find((element) => element.type === "shape")!;
+    const withFrame = {
+      ...framed,
+      pages: [{ ...first, elements: first.elements.map((e) => (e === shape ? { ...shape, image: shapeImageOf(SECOND_IMAGE, { width: 100, height: 50 }) } : e)) }, ...rest],
+    };
+    expect(templateContent(withFrame, LIBRARY, ["page-1"]).assets.map((item) => item.src)).toContain(SECOND_IMAGE);
     // 素材庫不認得的圖片沒有 AssetInfo（檔案仍由 Rust 依 referenced_assets 複製）
     expect(templateContent(threePages(), EMPTY_LIBRARY, ["page-1"]).assets).toEqual([]);
   });

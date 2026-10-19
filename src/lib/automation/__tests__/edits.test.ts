@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createInitialState, selectActivePage } from "@/lib/editor/editor-reducer";
 import { createBlankDocument } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS } from "@/lib/editor/fonts";
+import { shapeImageOf } from "@/lib/editor/shape-image";
 import type { EditorDocument, ImageElement, ShapeElement, TextElement } from "@/lib/editor/types";
 import type { Library } from "@/lib/library/types";
 import { DEFAULT_TEXT_WIDTH } from "../edits";
@@ -101,6 +102,52 @@ describe("add_text", () => {
     expect(session.error("add_text", { text: "x", x: 1e9, y: 0 })).toContain("參數 x");
     expect(session.error("add_text", { text: "x", x: 0, y: 0, pageId: "nope" })).toContain("list_pages");
     expect(session.state).toBe(before);
+  });
+});
+
+describe("image frames (add_shape / update_element image)", () => {
+  const library = JSON.parse(libraryJson) as Library;
+  const session = () => toolSession(twoPages().session.state, NO_COMMANDS, library);
+
+  it("adds a shape holding a library image, cover / centered by default, one undo step", () => {
+    const s = session();
+    const { id } = s.ok("add_shape", { shape: "ellipse", x: 10, y: 20, width: 200, height: 150, image: { item: "封面照片.png" } });
+    expect((elementOf(s, id) as ShapeElement).image).toEqual(
+      shapeImageOf("assets/images/0123456789abcdef0123456789abcdef.png", { width: 1600, height: 900 }),
+    );
+    expect(s.state.history.past).toHaveLength(1);
+    const detail = s.ok("get_element", { id });
+    expect(detail.photoItem).toEqual({ id: "i-cover-photo", name: "封面照片.png" });
+    // 沒有照片的圖形沒有 photoItem
+    const plain = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 50, height: 50 });
+    expect(s.ok("get_element", { id: plain.id }).photoItem).toBeUndefined();
+  });
+
+  it("changes the photo keeping the look, adjusts only the given fields, removes it with null", () => {
+    const s = session();
+    const { id } = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 100, image: { item: "i-cover-photo", fit: "contain", zoom: 2 } });
+    s.ok("update_element", { id, image: { item: "i-unsorted" } });
+    expect((elementOf(s, id) as ShapeElement).image).toMatchObject({ src: expect.stringContaining("assets/images/"), imageWidth: 800, imageHeight: 1200, fit: "contain", zoom: 2 });
+    s.ok("update_element", { id, image: { focusX: 0, focusY: 1 } });
+    expect((elementOf(s, id) as ShapeElement).image).toMatchObject({ imageWidth: 800, focusX: 0, focusY: 1, fit: "contain" });
+    s.ok("update_element", { id, image: null });
+    expect((elementOf(s, id) as ShapeElement).image).toBeNull();
+    expect(s.state.history.past).toHaveLength(4);
+  });
+
+  it("explains what cannot be used", () => {
+    const s = session();
+    const { id } = s.ok("add_shape", { shape: "rect", x: 0, y: 0, width: 100, height: 100 });
+    const before = s.state;
+    expect(s.error("update_element", { id, image: { fit: "cover" } })).toContain("還沒有照片");
+    expect(s.error("update_element", { id, image: { item: "創刊詞.md" } })).toContain("不是圖片");
+    expect(s.error("update_element", { id, image: { item: "i-old-cover" } })).toContain("垃圾桶");
+    expect(s.error("update_element", { id, image: { item: "沒有這張" } })).toContain("list_library_items");
+    expect(s.error("update_element", { id, image: { item: "i-cover-photo", zoom: 20 } })).toContain("參數 image");
+    expect(s.error("add_shape", { shape: "rect", x: 0, y: 0, width: 10, height: 10, image: {} })).toContain("還沒有照片");
+    const text = s.ok("add_text", { text: "x", x: 0, y: 0 });
+    expect(s.error("update_element", { id: text.id, image: null })).toContain("image");
+    expect(s.state.history.past).toHaveLength(before.history.past.length + 1);
   });
 });
 

@@ -6,6 +6,7 @@ import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
 import { shapePoints } from "@/lib/editor/shape-geometry";
+import { photoPatternAttrs, photoPlacement, type PhotoPlacement } from "@/lib/editor/shape-image";
 import { linePaths, lineStrokeWidth } from "@/lib/editor/line-path";
 import { pathData, type PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
@@ -184,9 +185,12 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
 function PresetShapeBody({
   shape,
   geometry,
+  photo,
 }: {
   readonly shape: ShapeElement;
   readonly geometry: Extract<ShapeGeometry, { kind: "preset" }>;
+  /** The image frame's photo, drawn over the fill inside the outline (細節線在照片之上). */
+  readonly photo: ShapePhoto | null;
 }) {
   const { width, height, fill } = shape;
   const paths = useMemo(() => {
@@ -194,9 +198,11 @@ function PresetShapeBody({
     return path && { outline: pathData(path.outline), details: path.details.length > 0 ? pathData(path.details) : null };
   }, [geometry, width, height]);
   if (!paths) return <MissingShape width={width} height={height} />;
+  const stroke = konvaStroke(shape.stroke);
   return (
     <>
-      <Path data={paths.outline} fill={fill} {...konvaStroke(shape.stroke)} />
+      <Path data={paths.outline} fill={fill} {...(photo ? konvaStroke(null) : stroke)} />
+      {photo && <Path data={paths.outline} {...paintAttrs({ photo })} {...stroke} />}
       {paths.details && <Path data={paths.details} {...konvaStroke(detailStroke(shape.stroke, fill))} />}
     </>
   );
@@ -217,25 +223,81 @@ function MissingShape({ width, height }: { readonly width: number; readonly heig
   );
 }
 
-function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
-  const { geometry, width, height, fill } = shape;
-  const stroke = konvaStroke(shape.stroke);
+/** What an outline is painted with: the fill color, or the photo of an image frame (Konva pattern). */
+type OutlinePaint = { readonly fill: string } | { readonly photo: ShapePhoto };
+
+interface ShapePhoto {
+  readonly image: HTMLImageElement;
+  readonly placement: PhotoPlacement;
+}
+
+// 照片圖樣的 Konva 屬性；origin 是節點自己的 (0, 0) 在外框座標的位置（橢圓是圓心，見 photoPatternAttrs）
+function paintAttrs(paint: OutlinePaint, origin?: { readonly x: number; readonly y: number }) {
+  if ("fill" in paint) return { fill: paint.fill };
+  const { image, placement } = paint.photo;
+  return { fillPatternImage: image, ...photoPatternAttrs(placement, image, origin) };
+}
+
+// 依 geometry 畫出外形（矩形 / 橢圓 / 多邊形與星形）；圖形庫的圖形由 PresetShapeBody 畫
+function ShapeOutline({
+  shape,
+  geometry,
+  paint,
+  stroke,
+}: {
+  readonly shape: ShapeElement;
+  readonly geometry: Exclude<ShapeGeometry, { kind: "preset" }>;
+  readonly paint: OutlinePaint;
+  readonly stroke: ReturnType<typeof konvaStroke>;
+}) {
+  const { width, height } = shape;
   switch (geometry.kind) {
     case "rect":
       // Konva 收一個數字或 [左上, 右上, 右下, 左下]，每個角各自限制在短邊的一半
-      return <Rect width={width} height={height} cornerRadius={konvaCornerRadius(geometry.cornerRadius)} fill={fill} {...stroke} />;
+      return <Rect width={width} height={height} cornerRadius={konvaCornerRadius(geometry.cornerRadius)} {...paintAttrs(paint)} {...stroke} />;
     case "ellipse":
-      return <Ellipse x={width / 2} y={height / 2} radiusX={width / 2} radiusY={height / 2} fill={fill} {...stroke} />;
+      return (
+        <Ellipse
+          x={width / 2}
+          y={height / 2}
+          radiusX={width / 2}
+          radiusY={height / 2}
+          {...paintAttrs(paint, { x: width / 2, y: height / 2 })}
+          {...stroke}
+        />
+      );
     case "polygon":
     case "star":
-      return <Line points={shapePoints(geometry, width, height) ?? []} closed fill={fill} {...stroke} />;
-    case "preset":
-      return <PresetShapeBody shape={shape} geometry={geometry} />;
+      return <Line points={shapePoints(geometry, width, height) ?? []} closed {...paintAttrs(paint)} {...stroke} />;
     default: {
       const exhaustive: never = geometry;
       return exhaustive;
     }
   }
+}
+
+// 圖片框的照片：載入完成才回傳（載入中或讀不到時只畫填色）
+function useShapePhoto(shape: ShapeElement): ShapePhoto | null {
+  const resolveSrc = useResolveSrc();
+  const { image: photo, width, height } = shape;
+  const [image, status] = useImage(photo ? resolveSrc(photo.src) : "");
+  const placement = useMemo(() => (photo ? photoPlacement(width, height, photo) : null), [photo, width, height]);
+  return photo && placement && image && status === "loaded" ? { image, placement } : null;
+}
+
+// 有照片時同一個外形畫兩次：底層是填色（「完整顯示」的留白處看得到），上層是照片並帶邊框（邊框在照片之上）
+function ShapeBody({ shape }: { readonly shape: ShapeElement }) {
+  const { geometry, fill } = shape;
+  const stroke = konvaStroke(shape.stroke);
+  const photo = useShapePhoto(shape);
+  if (geometry.kind === "preset") return <PresetShapeBody shape={shape} geometry={geometry} photo={photo} />;
+  if (!photo) return <ShapeOutline shape={shape} geometry={geometry} paint={{ fill }} stroke={stroke} />;
+  return (
+    <>
+      <ShapeOutline shape={shape} geometry={geometry} paint={{ fill }} stroke={konvaStroke(null)} />
+      <ShapeOutline shape={shape} geometry={geometry} paint={{ photo }} stroke={stroke} />
+    </>
+  );
 }
 
 /**

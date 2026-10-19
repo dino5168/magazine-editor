@@ -6,7 +6,7 @@
 //! Coordinates keep the editor's definition: unit pt, origin at the page's top-left corner, y
 //! pointing down, rotation clockwise around the element's anchor.
 
-use super::{ExportRequest, LineBox, PathCommand, ShapePath, TextLayout};
+use super::{ExportRequest, LineBox, PathCommand, PhotoPlacement, ShapePath, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
     validate_content, validate_stroke_look, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash,
@@ -59,6 +59,20 @@ pub struct RenderElement {
     /// Degrees, clockwise, around `(x, y)`.
     pub rotation: f64,
     pub kind: RenderKind,
+    /// Shapes only: the image frame's photo, clipped to the outline and drawn over the fill, under
+    /// the outline's stroke and the details.
+    pub photo: Option<RenderPhoto>,
+}
+
+/// An image frame's photo: the file and its rectangle in the shape's coordinates.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderPhoto {
+    /// Project-relative path (`assets/images/<file>`); the file is known to exist.
+    pub src: String,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -592,7 +606,32 @@ fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> A
         y: shape.base.y + local_x * sin + local_y * cos,
         rotation: shape.base.rotation,
         kind: RenderKind::Text(render_text(layout, frame_width, shape.base.rotation, &style)),
+        photo: None,
     }))
+}
+
+/// The photo of an image frame for the render model.
+///
+/// # Returns
+/// `Ok(None)` without a photo, or when its file is missing (the shape keeps its fill, like a
+/// missing image; the caller counts it).
+///
+/// # Errors
+/// `AppError::InvalidInput` when the editor sent no placement or an unusable one.
+fn render_photo(root: &Path, shape: &ShapeElement, placements: &HashMap<String, PhotoPlacement>) -> AppResult<Option<RenderPhoto>> {
+    let Some(image) = &shape.image else { return Ok(None) };
+    let Some(placement) = placements.get(&shape.base.id) else {
+        return Err(AppError::invalid_input("匯出資料有誤：圖片框沒有照片的位置"));
+    };
+    let PhotoPlacement { x, y, width, height } = *placement;
+    let usable = |v: f64| v.is_finite() && v.abs() <= SHAPE_PATH_COORD_MAX;
+    if ![x, y, width, height].into_iter().all(usable) || width <= 0.0 || height <= 0.0 {
+        return Err(AppError::invalid_input("匯出資料有誤：圖片框的照片位置不正確"));
+    }
+    if !root.join(&image.src).is_file() {
+        return Ok(None);
+    }
+    Ok(Some(RenderPhoto { src: image.src.clone(), x, y, width, height }))
 }
 
 /// Turns the editor's document and line breaks into the render model.
@@ -627,7 +666,10 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 }
                 Element::Shape(e) => {
                     if let Some(kind) = shape_kind(e, &request.shape_paths)? {
-                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind });
+                        let photo = render_photo(root, e, &request.shape_photos)?;
+                        // 照片檔被刪除時只畫填色，算進略過的圖片數（同圖片物件）
+                        skipped += usize::from(e.image.is_some() && photo.is_none());
+                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo });
                     }
                     // 圖形內文字緊接在圖形上方，z 軸順序和畫布相同（同一個 Group 裡文字畫在圖形之後）
                     if let Some(label) = shape_label(e, &request.text_layouts)? {
@@ -649,7 +691,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                     )
                 }
             };
-            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind });
+            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind, photo: None });
         }
         pages.push(RenderPage {
             name: page.name.clone(),
@@ -666,6 +708,50 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
 mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, project_with_image, request};
+
+    fn ellipse_photo(document: &RenderDocument) -> Option<RenderPhoto> {
+        document.pages[0].elements.iter().find(|e| matches!(e.kind, RenderKind::Ellipse(_))).and_then(|e| e.photo.clone())
+    }
+
+    #[test]
+    fn image_frames_carry_their_photo() {
+        let (root, req) = crate::export::test_support::photo_frame_request();
+        let (document, skipped) = build_render(root.path(), &req).unwrap();
+        assert_eq!(skipped, 0);
+        assert_eq!(
+            ellipse_photo(&document),
+            Some(RenderPhoto { src: crate::export::test_support::FRAME_PHOTO.into(), x: 0.0, y: -5.0, width: 120.0, height: 90.0 })
+        );
+        // 其他物件沒有照片
+        assert_eq!(document.pages[0].elements.iter().filter(|e| e.photo.is_some()).count(), 1);
+    }
+
+    #[test]
+    fn missing_photo_files_are_skipped_and_counted() {
+        let (root, req) = crate::export::test_support::photo_frame_request();
+        std::fs::remove_file(root.path().join(crate::export::test_support::FRAME_PHOTO)).unwrap();
+        let (document, skipped) = build_render(root.path(), &req).unwrap();
+        assert_eq!(skipped, 1);
+        assert_eq!(ellipse_photo(&document), None);
+        assert!(document.pages[0].elements.iter().any(|e| matches!(e.kind, RenderKind::Ellipse(_))), "the shape stays");
+    }
+
+    #[test]
+    fn photo_placements_must_come_from_the_editor_and_be_usable() {
+        let (root, mut req) = crate::export::test_support::photo_frame_request();
+        let good = req.shape_photos["el-ellipse"];
+        for bad in [
+            PhotoPlacement { x: f64::NAN, ..good },
+            PhotoPlacement { width: 0.0, ..good },
+            PhotoPlacement { height: -1.0, ..good },
+            PhotoPlacement { y: 2.0e6, ..good },
+        ] {
+            req.shape_photos.insert("el-ellipse".into(), bad);
+            assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))), "{bad:?}");
+        }
+        req.shape_photos.clear();
+        assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
+    }
 
     /// The fixture with its rectangle (`el-rect`) turned into a shape-library shape.
     fn with_preset_shape() -> ExportRequest {

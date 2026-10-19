@@ -26,8 +26,17 @@ function blankPage(document: EditorDocument): Page {
   );
 }
 
+// 圖片物件與圖片框（圖形裡的照片）都算
 function imageSources(sheets: readonly Sheet[]): Set<string> {
-  return new Set(sheets.flatMap((sheet) => sheet.elements.flatMap((element) => (element.type === "image" ? [element.src] : []))));
+  return new Set(
+    sheets.flatMap((sheet) =>
+      sheet.elements.flatMap((element) => {
+        if (element.type === "image") return [element.src];
+        if (element.type === "shape" && element.image) return [element.image.src];
+        return [];
+      }),
+    ),
+  );
 }
 
 /**

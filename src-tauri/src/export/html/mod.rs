@@ -92,9 +92,13 @@ fn image_type(data: &[u8]) -> Option<(&'static str, &'static str)> {
 pub fn collect_images(root: &Path, document: &RenderDocument) -> (PageImages, usize) {
     let mut images = PageImages { by_src: HashMap::new(), order: Vec::new() };
     let mut skipped = 0;
-    let sources = document.pages.iter().flat_map(|page| &page.elements).filter_map(|element| match &element.kind {
-        RenderKind::Image(image) => Some(&image.src),
-        _ => None,
+    // 圖片物件與圖片框（圖形裡的照片）
+    let sources = document.pages.iter().flat_map(|page| &page.elements).flat_map(|element| {
+        let image = match &element.kind {
+            RenderKind::Image(image) => Some(&image.src),
+            _ => None,
+        };
+        image.into_iter().chain(element.photo.as_ref().map(|photo| &photo.src))
     });
     for src in sources {
         if images.by_src.contains_key(src) {

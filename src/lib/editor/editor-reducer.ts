@@ -40,6 +40,7 @@ import {
   isMargins,
   isPageSize,
   isShapeGeometry,
+  isShapeImage,
   isValidLine,
   isShapeLabel,
   isStroke,
@@ -123,6 +124,11 @@ export type EditorAction =
   /** Adds on top and selects it (only selects when it lands on the active page). */
   | { readonly type: "element/add"; readonly element: CanvasElement; readonly pageId?: PageId }
   | { readonly type: "element/update"; readonly id: ElementId; readonly patch: ElementPatch; readonly pageId?: PageId }
+  /**
+   * Swaps an element for another one (e.g. an image into an image frame) in the same layer position,
+   * one undo step. The new element keeps the id, so the selection stays; anything invalid is a no-op.
+   */
+  | { readonly type: "element/replace"; readonly element: CanvasElement; readonly pageId?: PageId }
   /** Several elements in one undo step (moving a multi-selection); any invalid patch rejects them all. */
   | { readonly type: "element/updateMany"; readonly patches: readonly ElementPatchEntry[]; readonly pageId?: PageId }
   | { readonly type: "element/delete"; readonly ids: readonly ElementId[]; readonly pageId?: PageId }
@@ -425,6 +431,7 @@ function isValidPatch(patch: ElementPatch): boolean {
   if ("stroke" in patch && patch.stroke !== null && !isStroke(patch.stroke)) return false;
   if ("label" in patch && patch.label !== null && !isShapeLabel(patch.label)) return false;
   if ("geometry" in patch && !isShapeGeometry(patch.geometry)) return false;
+  if ("image" in patch && patch.image !== null && !isShapeImage(patch.image)) return false;
   if ("shadow" in patch && patch.shadow !== null && !isTextShadow(patch.shadow)) return false;
   const fields: Record<string, unknown> = patch;
   if (TEXT_FLAGS.some((flag) => flag in fields && typeof fields[flag] !== "boolean")) return false;
@@ -445,7 +452,11 @@ function isValidElementShape(element: CanvasElement): boolean {
     case "text":
       return hasValidTextIndent(element);
     case "shape":
-      return element.label === null || hasValidTextIndent(element.label);
+      // 新增的物件不經過 isValidPatch，照片在這裡檢查
+      return (
+        (element.label === null || hasValidTextIndent(element.label)) &&
+        (element.image === null || isShapeImage(element.image))
+      );
     case "image":
       return true;
   }
@@ -560,6 +571,18 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
   },
 
   "element/update": (state, action) => updateElements(state, [{ id: action.id, patch: action.patch }], action.pageId),
+  "element/replace": (state, action) => {
+    const { element } = action;
+    const document = state.history.present;
+    if (!isValidElementShape(element)) return state;
+    if (!hasValidStyleLinks(document, element)) return state;
+    if (!hasValidSwatchLinks(document, element)) return state;
+    return updateSheet(state, targetSheetId(state, action.pageId), (sheet) => {
+      const index = sheet.elements.findIndex((candidate) => candidate.id === element.id);
+      if (index === -1 || sheet.elements[index] === element) return sheet;
+      return { ...sheet, elements: sheet.elements.map((candidate, i) => (i === index ? element : candidate)) };
+    });
+  },
 
   "element/updateMany": (state, action) => updateElements(state, action.patches, action.pageId),
 

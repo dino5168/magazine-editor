@@ -107,33 +107,51 @@
   curve.cubic(xy(s, 1), xy(s, 3), xy(s, 5))
 }
 
+// 圖形的外形（矩形 / 橢圓 / 多邊形與星形 / 路徑），以外框左上角為原點、填色與邊框由呼叫端給
+#let shape-outline(el, fill, stroke) = if el.kind == "rect" {
+  // 圓角順序和 Konva 相同：左上、右上、右下、左下（Rust 已把每個角限制在短邊的一半）
+  let radius = (
+    top-left: pt(el.radii.at(0)),
+    top-right: pt(el.radii.at(1)),
+    bottom-right: pt(el.radii.at(2)),
+    bottom-left: pt(el.radii.at(3)),
+  )
+  rect(width: pt(el.width), height: pt(el.height), radius: radius, fill: fill, stroke: stroke)
+} else if el.kind == "ellipse" {
+  ellipse(width: pt(el.width), height: pt(el.height), fill: fill, stroke: stroke)
+} else if el.kind == "polygon" {
+  // 頂點座標以外框左上角為原點
+  polygon(fill: fill, stroke: stroke, ..el.points.map(p => (pt(p.at(0)), pt(p.at(1)))))
+} else {
+  // 有邊框的矩形 / 橢圓與圖形庫的圖形：路徑由 Rust / 編輯器算好（起點與方向和畫布相同，虛線才會落在同樣位置）。
+  // "z" 封閉子路徑，沒有 "z" 的子路徑不封閉
+  curve(fill: fill, stroke: stroke, ..el.segments.map(path-segment))
+}
+
+// 圖片框的照片當填色：tiling 一格 = 外框大小、對齊外形自己的外框（relative: "self"），照片放在 Rust 給的位置；
+// 外形的四邊都碰到外框（多邊形、圖形庫的圖形也是），所以格子剛好是外框
+#let photo-fill(el) = tiling(size: (pt(el.width), pt(el.height)), relative: "self",
+  place(top + left, dx: pt(el.photo.x), dy: pt(el.photo.y),
+    text(font: data.svgFonts, image(el.photo.src, width: pt(el.photo.width), height: pt(el.photo.height), fit: "stretch"))))
+
 #let draw(el) = {
   if el.kind == "text" {
     at-corner(el, draw-text(el))
-  } else if el.kind == "rect" {
-    // 圓角順序和 Konva 相同：左上、右上、右下、左下（Rust 已把每個角限制在短邊的一半）
-    let radius = (
-      top-left: pt(el.radii.at(0)),
-      top-right: pt(el.radii.at(1)),
-      bottom-right: pt(el.radii.at(2)),
-      bottom-left: pt(el.radii.at(3)),
-    )
-    at-corner(el, rect(width: pt(el.width), height: pt(el.height), radius: radius, fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
   } else if el.kind == "image" {
     // SVG 裡的文字用了沒內嵌的字型時退回 data.svgFonts（App 的預設黑體）；沒有這層什麼字都不畫
     at-corner(el, text(font: data.svgFonts, image(el.src, width: pt(el.width), height: pt(el.height), fit: "stretch")))
-  } else if el.kind == "ellipse" {
-    at-corner(el, ellipse(width: pt(el.width), height: pt(el.height), fill: rgb(el.fill), stroke: stroke-of(el.stroke)))
-  } else if el.kind == "polygon" {
-    // 頂點座標以外框左上角為原點；box 讓旋轉以外框為範圍
-    let points = el.points.map(p => (pt(p.at(0)), pt(p.at(1))))
-    at-corner(el, box(width: pt(el.width), height: pt(el.height), place(top + left, polygon(fill: rgb(el.fill), stroke: stroke-of(el.stroke), ..points))))
-  } else if el.kind == "path" {
-    // 有邊框的矩形 / 橢圓與圖形庫的圖形：路徑由 Rust / 編輯器算好（起點與方向和畫布相同，虛線才會落在同樣位置）。
-    // "z" 封閉子路徑，沒有 "z" 的子路徑不封閉；details 是畫在上面、只描邊的細節線
+  } else {
+    // 圖形：box 讓旋轉以外框為範圍。有照片時同一個外形畫兩次：先畫填色（「完整顯示」的留白處看得到），
+    // 再畫裁在外形裡的照片並帶邊框（邊框在照片之上）；details 是畫在最上面、只描邊的細節線
+    let photo = el.at("photo", default: none)
     let details = el.at("details", default: ())
     at-corner(el, box(width: pt(el.width), height: pt(el.height), {
-      place(top + left, curve(fill: rgb(el.fill), stroke: stroke-of(el.stroke), ..el.segments.map(path-segment)))
+      if photo == none {
+        place(top + left, shape-outline(el, rgb(el.fill), stroke-of(el.stroke)))
+      } else {
+        place(top + left, shape-outline(el, rgb(el.fill), none))
+        place(top + left, shape-outline(el, photo-fill(el), stroke-of(el.stroke)))
+      }
       if details.len() > 0 and el.detailStroke != none {
         place(top + left, curve(stroke: stroke-of(el.detailStroke), ..details.map(path-segment)))
       }

@@ -73,6 +73,7 @@ flowchart TB
 | `src/lib/editor/text-style.ts`、`src/components/editor/style-controls.tsx` | 約 500 | 文字樣式控制項(屬性面板與頁碼對話框共用)、斜體 / 底線 / 刪除線 / 陰影與行距 / 字距怎麼轉成畫布的屬性(字距存字級的 1/1000,畫布換成 pt) | 之後再看 |
 | `src/lib/editor/text-distribute.ts`、`src/lib/editor/distributed-text.ts` | 約 200 | 分散對齊(首尾置中):每一行每個字的位置(純函式)與畫在 Konva 上的自訂繪製函式(`sceneFunc`);匯出量測也用同一份結果,PDF / EPUB 照著放 | 之後再看 |
 | `src/lib/editor/text-indent.ts`、`src/lib/editor/indented-text.ts` | 約 400 | 段落縮排:每段第一行與其他行的範圍、每行的起點、屬性面板 Word 式欄位的換算(純函式);在 Konva 上每段換兩次行、每行平移後交給 Konva 畫;匯出量測帶每行的範圍(`lineBoxes`),PDF / EPUB 照著放 | 之後再看 |
+| `src/lib/editor/shape-image.ts`、`src/components/editor/shape-photo-fields.tsx` | 約 300 | 圖片框:照片在框裡的位置(填滿 / 完整顯示、對焦、縮放,一個純函式)、Konva 圖樣的屬性、圖片轉成圖片框;屬性面板的「照片」區。匯出時前端把照片位置算好交給 Rust,PDF 用 Typst 的 tiling、EPUB 用 SVG clipPath | 之後再看 |
 | `src/lib/editor/content-align.ts` | 約 100 | 屬性面板的「對齊內容區」:填滿內容區的寬 / 高、對齊內容區的邊或中線(只算出要改的位置與大小,一次寫入) | 之後再看 |
 | `src/lib/editor/layer-order.ts`、`src/components/editor/element-arrange.ts`、`element-context-menu.tsx` | 約 300 | 「圖層順序」「對齊內容區」的共用定義(項目文字、icon、什麼時候停用、量文字高度後算出要改的位置):屬性面板「調整」分頁、底部工具列的 `⋮` 與畫布的右鍵選單三處共用,結果一樣。右鍵選單靠「右鍵按下時 Konva 已經選取物件」,放開時有選取才開 | 之後再看 |
 | `src/lib/editor/corner-radius.ts` | 約 120 | 矩形的圓角:一個數字或四個角、四個一樣時存成一個數字、每個角限制在短邊的一半(屬性面板與 MCP 共用) | 之後再看 |

@@ -32,6 +32,7 @@ import { ALIGN_EDGES, defaultKeepRatio, FILL_ITEMS, REORDER_ITEMS, useContentAli
 import { IconButton } from "../icon-button";
 import { LineGeometrySection, LineTab } from "../line-controls";
 import { NumberField } from "../number-field";
+import { ShapePhotoFields } from "../shape-photo-fields";
 import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
@@ -265,6 +266,7 @@ function StyleTab({ shape, update }: { readonly shape: ShapeElement; readonly up
             onCommit={(fill, fillSwatchId) => update({ fill, fillSwatchId })}
           />
         </Row>
+        <ShapePhotoFields shape={shape} update={update} />
       </Section>
       <StrokeSection shape={shape} update={update} />
     </>

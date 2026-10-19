@@ -34,6 +34,7 @@ pub fn page(page: &RenderPage, title: &str, images: &PageImages) -> String {
         title = escape(title),
         bg = page.background,
         // 頁面在 pages/ 底下，圖片在上一層的 images/
-        page = page_div(page, images, "../"),
+        // 每頁一個 XHTML：clipPath 的 id 只要在這一頁裡不重複
+        page = page_div(page, 0, images, "../"),
     )
 }

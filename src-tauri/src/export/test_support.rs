@@ -20,7 +20,7 @@ const PNG: &[u8] = &[
 
 /// An export request without any layout data, so the fallback in `text_layout` applies.
 pub fn request(document: Document) -> ExportRequest {
-    ExportRequest { document, text_layouts: HashMap::new(), shape_paths: HashMap::new() }
+    ExportRequest { document, text_layouts: HashMap::new(), shape_paths: HashMap::new(), shape_photos: HashMap::new() }
 }
 
 /// The document from `tests/fixtures/sample.magproj` (one page, all six element types).
@@ -117,7 +117,44 @@ pub fn path_shape_document() -> RenderDocument {
             width: 200.0,
             height: 120.0,
             background: "#ffffff".into(),
-            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path) }],
+            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path), photo: None }],
         }],
     }
+}
+
+/// Where `photo_frame_request` puts its photo (`assets/images/…`).
+pub const FRAME_PHOTO: &str = "assets/images/00000000000000000000000000000f0f.png";
+
+/// A project with a 200 × 150 four-color photo (red | green over blue | yellow) and an export
+/// request whose first page's ellipse (`el-ellipse`, 120 × 80) holds it, cover, centered: the
+/// photo is drawn at (0, −5) at 120 × 90 (`photoPlacement`).
+pub fn photo_frame_request() -> (tempfile::TempDir, ExportRequest) {
+    use crate::project::format::{ShapeImage, ShapeImageFit};
+    let root = project_with_image();
+    let photo = image::RgbImage::from_fn(200, 150, |x, y| match (x < 100, y < 75) {
+        (true, true) => image::Rgb([255, 0, 0]),
+        (false, true) => image::Rgb([0, 200, 0]),
+        (true, false) => image::Rgb([0, 0, 255]),
+        (false, false) => image::Rgb([255, 220, 0]),
+    });
+    photo.save(root.path().join(FRAME_PHOTO)).unwrap();
+    let mut document = fixture_document();
+    for element in &mut document.pages[0].elements {
+        if let Element::Shape(shape) = element {
+            if shape.base.id == "el-ellipse" {
+                shape.image = Some(ShapeImage {
+                    src: FRAME_PHOTO.into(),
+                    image_width: 200.0,
+                    image_height: 150.0,
+                    fit: ShapeImageFit::Cover,
+                    focus_x: 0.5,
+                    focus_y: 0.5,
+                    zoom: 1.0,
+                });
+            }
+        }
+    }
+    let mut req = request(document);
+    req.shape_photos.insert("el-ellipse".into(), super::PhotoPlacement { x: 0.0, y: -5.0, width: 120.0, height: 90.0 });
+    (root, req)
 }

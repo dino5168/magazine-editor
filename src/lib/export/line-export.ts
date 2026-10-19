@@ -39,6 +39,7 @@ function pieceShape(line: LineElement, id: string, preset: string, commands: rea
     fillSwatchId: null,
     stroke,
     label: null,
+    image: null,
   };
 }
 

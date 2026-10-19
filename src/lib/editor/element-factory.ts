@@ -242,6 +242,7 @@ function createShape(geometry: ShapeGeometry, box: Bounds): ShapeElement {
     fillSwatchId: null,
     stroke: null,
     label: null,
+    image: null,
   };
 }
 

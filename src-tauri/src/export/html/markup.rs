@@ -8,7 +8,7 @@ use super::PageImages;
 use crate::export::document_fonts::is_project_family;
 use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{
-    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderPage, RenderRect, RenderStroke,
+    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderPage, RenderPhoto, RenderRect, RenderStroke,
     RenderText, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use crate::project::format::Align;
@@ -257,8 +257,75 @@ fn svg_path_data(path: &[PathSegment]) -> String {
     parts.join(" ")
 }
 
-fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages, image_prefix: &str) {
+/// The bare outline tag of a shape (no fill / stroke unless given in `attrs`), in the shape's
+/// coordinates: the same outline the shape is drawn with. `None` for texts and images.
+fn outline_tag(kind: &RenderKind, attrs: &str) -> Option<String> {
+    Some(match kind {
+        RenderKind::Rect(r) => match r.uniform_corner_radius() {
+            Some(radius) => format!(
+                r#"<rect x="0" y="0" width="{}" height="{}" rx="{radius}" ry="{radius}" {attrs}/>"#,
+                num(r.width),
+                num(r.height),
+                radius = num(radius),
+            ),
+            None => format!(r#"<path d="{}" {attrs}/>"#, svg_path_data(&rounded_rect_path(r.width, r.height, r.corner_radii))),
+        },
+        RenderKind::Ellipse(e) => {
+            format!(r#"<ellipse cx="{rx}" cy="{ry}" rx="{rx}" ry="{ry}" {attrs}/>"#, rx = num(e.width / 2.0), ry = num(e.height / 2.0))
+        }
+        RenderKind::Polygon(p) => {
+            let points: Vec<String> = p.points.iter().map(|[px, py]| format!("{},{}", num(*px), num(*py))).collect();
+            format!(r#"<polygon points="{}" {attrs}/>"#, points.join(" "))
+        }
+        RenderKind::Path(p) => format!(r#"<path d="{}" {attrs}/>"#, svg_path_data(&p.outline)),
+        RenderKind::Text(_) | RenderKind::Image(_) => return None,
+    })
+}
+
+/// An image frame as inline SVG: the outline filled → the photo clipped to the same outline → the
+/// outline's stroke → the details (same order as the canvas and the PDF).
+///
+/// # Returns
+/// False when the element is not a shape or its photo was not collected (draw it without the photo).
+fn photo_frame(out: &mut String, element: &RenderElement, photo: &RenderPhoto, href: &str, clip_id: &str) -> bool {
+    let (width, height, fill, stroke, details) = match &element.kind {
+        RenderKind::Rect(r) => (r.width, r.height, &r.fill, &r.stroke, None),
+        RenderKind::Ellipse(e) => (e.width, e.height, &e.fill, &e.stroke, None),
+        RenderKind::Polygon(p) => (p.width, p.height, &p.fill, &p.stroke, None),
+        RenderKind::Path(p) => (p.width, p.height, &p.fill, &p.stroke, Some(p)),
+        RenderKind::Text(_) | RenderKind::Image(_) => return false,
+    };
+    let (Some(clip), Some(filled), Some(outlined)) = (
+        outline_tag(&element.kind, ""),
+        outline_tag(&element.kind, &svg_fill(fill)),
+        outline_tag(&element.kind, &format!(r#"fill="none"{}"#, svg_stroke(stroke))),
+    ) else {
+        return false;
+    };
+    let mut shape = format!(
+        r#"<defs><clipPath id="{clip_id}">{clip}</clipPath></defs>{filled}<image href="{href}" x="{}" y="{}" width="{}" height="{}" preserveAspectRatio="none" clip-path="url(#{clip_id})"/>{outlined}"#,
+        num(photo.x),
+        num(photo.y),
+        num(photo.width),
+        num(photo.height),
+    );
+    if let Some(p) = details.filter(|p| !p.details.is_empty() && p.detail_stroke.is_some()) {
+        let _ = write!(shape, r#"<path d="{}" fill="none"{}/>"#, svg_path_data(&p.details), svg_stroke(&p.detail_stroke));
+    }
+    svg_box(out, element, width, height, &shape);
+    true
+}
+
+fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages, image_prefix: &str, clip_id: &str) {
     let (x, y) = (element.x, element.y);
+    // 圖片框：照片沒收錄（檔案讀不了）時照一般圖形畫
+    if let Some(photo) = &element.photo {
+        if let Some(href) = images.href(&photo.src) {
+            if photo_frame(out, element, photo, &format!("{image_prefix}{href}"), clip_id) {
+                return;
+            }
+        }
+    }
     match &element.kind {
         RenderKind::Text(t) => text(out, element, t),
         RenderKind::Rect(r) if r.stroke.is_some() => {
@@ -347,7 +414,7 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages
 
 /// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
 pub fn has_svg(page: &RenderPage) -> bool {
-    page.elements.iter().any(|element| match &element.kind {
+    page.elements.iter().any(|element| element.photo.is_some() || match &element.kind {
         RenderKind::Polygon(_) | RenderKind::Path(_) => true,
         RenderKind::Rect(r) => r.stroke.is_some(),
         RenderKind::Ellipse(e) => e.stroke.is_some(),
@@ -359,14 +426,16 @@ pub fn has_svg(page: &RenderPage) -> bool {
 ///
 /// # Args
 /// * `page` - The page to draw.
+/// * `page_index` - Its position in the document (makes the photo frames' clip ids unique in a flip book).
 /// * `images` - Where each project image was placed in the output; images missing from it are not
 ///   drawn.
 /// * `image_prefix` - Path from the document holding this markup to the output root, put in front
 ///   of every image href (`../` for an EPUB page in `pages/`, empty for the flip book's `index.html`).
-pub fn page_div(page: &RenderPage, images: &PageImages, image_prefix: &str) -> String {
+pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image_prefix: &str) -> String {
     let mut body = String::new();
-    for element in &page.elements {
-        element_markup(&mut body, element, images, image_prefix);
+    for (index, element) in page.elements.iter().enumerate() {
+        // 翻頁書把所有頁面放在同一份 HTML：clipPath 的 id 帶頁序，整本書不重複
+        element_markup(&mut body, element, images, image_prefix, &format!("photo-{page_index}-{index}"));
     }
     format!(
         "<div class=\"page\" style=\"width:{w}px;height:{h}px;background:{bg}\">\n{body}</div>",
@@ -381,12 +450,36 @@ mod tests {
     use super::*;
 
     #[test]
+    fn image_frames_are_inline_svg_with_the_photo_clipped_to_the_outline() {
+        let (root, req) = crate::export::test_support::photo_frame_request();
+        let (document, _) = crate::export::render::build_render(root.path(), &req).unwrap();
+        let (images, skipped) = super::super::collect_images(root.path(), &document);
+        assert_eq!(skipped, 0);
+        let page = &document.pages[0];
+        assert!(has_svg(page));
+        let markup = page_div(page, 3, &images, "");
+        let href = images.href(crate::export::test_support::FRAME_PHOTO).expect("the photo is collected");
+        let image = format!(
+            r#"<image href="{href}" x="0" y="-5" width="120" height="90" preserveAspectRatio="none" clip-path="url(#photo-3-"#
+        );
+        let clip = markup.find(r#"<clipPath id="photo-3-"#).expect("a clip path with a page-unique id");
+        let photo = markup.find(&image).unwrap_or_else(|| panic!("photo: {markup}"));
+        // 順序：clipPath → 填色的外形 → 照片 → 只有邊框的外形
+        let filled = markup[clip..].find(r##"fill="#"##).map(|i| clip + i).unwrap();
+        let outlined = markup[photo..].find(r#"fill="none" stroke="#).map(|i| photo + i).expect("stroke over the photo");
+        assert!(clip < filled && filled < photo && photo < outlined, "{markup}");
+        // 照片讀不到（沒收錄）時照一般圖形畫
+        let empty = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
+        assert!(!page_div(page, 3, &empty, "").contains("<clipPath"));
+    }
+
+    #[test]
     fn path_shapes_are_inline_svg_with_open_details_left_open() {
         let document = crate::export::test_support::path_shape_document();
         let page = &document.pages[0];
         assert!(has_svg(page));
         let images = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
-        let markup = page_div(page, &images, "");
+        let markup = page_div(page, 0, &images, "");
         assert!(
             markup.contains(r##"<path d="M0 0 L60 0 L60 60 L0 60 Z M100 0 L160 0 L160 60 L100 60 Z" fill="#ff0000"/>"##),
             "outline: two closed subpaths, filled, no stroke: {markup}"

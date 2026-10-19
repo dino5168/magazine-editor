@@ -81,6 +81,16 @@ pub struct ShapePath {
     pub detail_stroke: Option<Stroke>,
 }
 
+/// Where an image frame's photo is drawn, in the shape's coordinates (`photoPlacement` in
+/// `src/lib/editor/shape-image.ts`); may extend past the frame, the outline clips it.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+pub struct PhotoPlacement {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportRequest {
@@ -91,6 +101,10 @@ pub struct ExportRequest {
     /// not know) is skipped.
     #[serde(default)]
     pub shape_paths: HashMap<String, ShapePath>,
+    /// Keyed by shape element id: where each image frame's photo goes. Every shape with a photo
+    /// has an entry (the editor computes it, Rust does not repeat the formula).
+    #[serde(default)]
+    pub shape_photos: HashMap<String, PhotoPlacement>,
 }
 
 #[derive(Debug)]

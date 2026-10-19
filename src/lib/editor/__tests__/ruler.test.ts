@@ -93,6 +93,7 @@ describe("selectionSpans", () => {
     fillSwatchId: null,
     stroke: null,
     label: null,
+    image: null,
   };
 
   it("is null without a selection", () => {

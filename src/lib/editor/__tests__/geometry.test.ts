@@ -7,6 +7,7 @@ import {
   estimateTextHeight,
   getContentBounds,
   getElementBounds,
+  shapeAtPoint,
   snapPointToGrid,
   snapToGrid,
 } from "../geometry";
@@ -26,6 +27,7 @@ const rect: ShapeElement = {
   fillSwatchId: null,
   stroke: null,
   label: null,
+  image: null,
 };
 
 describe("elementsInBox", () => {
@@ -177,5 +179,28 @@ describe("contentGuides", () => {
     const guides = contentGuides({ width: 400, height: 200 }, { top: 0, right: 0, bottom: 0, left: 0 });
     expect(guides.area).toEqual({ minX: 0, minY: 0, maxX: 400, maxY: 200 });
     expect(guides.vertical.map((line) => line.position)).toEqual([100, 200, 300]);
+  });
+});
+
+describe("shapeAtPoint", () => {
+  // rect 外框 (10, 20)–(110, 70)
+  const text = createTextElement("body", { x: 0, y: 0 });
+  const above: ShapeElement = { ...rect, id: "above", x: 60, y: 40, width: 100, height: 50 };
+
+  it("finds the topmost shape whose box contains the point; texts and empty space do not count", () => {
+    expect(shapeAtPoint([rect], { x: 10, y: 20 })?.id).toBe("r");
+    expect(shapeAtPoint([rect], { x: 110, y: 70 })?.id).toBe("r");
+    expect(shapeAtPoint([rect], { x: 111, y: 50 })).toBeNull();
+    expect(shapeAtPoint([rect, above], { x: 80, y: 50 })?.id).toBe("above");
+    expect(shapeAtPoint([rect, above], { x: 30, y: 30 })?.id).toBe("r");
+    expect(shapeAtPoint([rect, { ...text, x: 0, y: 0, width: 500 }], { x: 30, y: 30 })?.id).toBe("r");
+    expect(shapeAtPoint([], { x: 30, y: 30 })).toBeNull();
+  });
+
+  it("follows the rotation around the box's top-left corner", () => {
+    const rotated: ShapeElement = { ...rect, x: 0, y: 0, width: 100, height: 50, rotation: 90 };
+    // 順時針 90°：外框落在 x -50–0、y 0–100
+    expect(shapeAtPoint([rotated], { x: -25, y: 80 })?.id).toBe("r");
+    expect(shapeAtPoint([rotated], { x: 25, y: 20 })).toBeNull();
   });
 });

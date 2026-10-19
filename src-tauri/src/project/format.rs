@@ -39,7 +39,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// v16: paragraph indents `indentLeft` / `indentRight` / `indentFirstLine` (multiples of the font
 /// size) on text elements, shape labels and text styles (not page numbers). Missing in older files
 /// and backups → 0 (`docs/07-Plans-物件屬性與事件/01-新增文字框屬性-實作.md`).
-pub const SCHEMA_VERSION: u32 = 16;
+/// v17: shapes may hold a photo (`image`, an image frame). Missing in older files and backups →
+/// none (`docs/07-Plans-物件屬性與事件/03-圖形照片-實作.md`).
+pub const SCHEMA_VERSION: u32 = 17;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -48,6 +50,8 @@ pub const STROKE_WIDTH_MAX: f64 = 100.0;
 pub const MAX_VERTEX_COUNT: u32 = 1000;
 /// Most points a line may have; same as `MAX_LINE_POINTS` in `src/lib/editor/validation.ts`.
 pub const MAX_LINE_POINTS: usize = 500;
+/// Largest zoom of a photo in a shape; same as `SHAPE_IMAGE_ZOOM_MAX` in `src/lib/editor/validation.ts`.
+pub const SHAPE_IMAGE_ZOOM_MAX: f64 = 10.0;
 /// Largest |coordinate| of a line point (pt); same as `LINE_COORDINATE_MAX` in TS.
 pub const LINE_COORDINATE_MAX: f64 = 1e6;
 /// Arrowhead size factor range; same as `LINE_END_SCALE_MIN` / `MAX` in TS.
@@ -574,6 +578,32 @@ pub struct ShapeElement {
     pub fill_swatch_id: Option<String>,
     pub stroke: Option<Stroke>,
     pub label: Option<ShapeLabel>,
+    /// A photo clipped to the shape's outline (image frame). Missing in files before v17 → none.
+    #[serde(default)]
+    pub image: Option<ShapeImage>,
+}
+
+/// How a photo fills its frame; same as `ShapeImageFit` in `src/lib/editor/types.ts`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ShapeImageFit {
+    Cover,
+    Contain,
+}
+
+/// A photo inside a shape; the editor places it (`shape-image.ts`), the exporters get the placement.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeImage {
+    /// Project-relative path under `assets/images/`, like `ImageElement.src`.
+    pub src: String,
+    /// Intrinsic size in pixels.
+    pub image_width: f64,
+    pub image_height: f64,
+    pub fit: ShapeImageFit,
+    pub focus_x: f64,
+    pub focus_y: f64,
+    pub zoom: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -1122,6 +1152,9 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
                 validate_text_spacing(&label.spacing)?;
                 validate_text_indent(&label.indent)?;
             }
+            if let Some(image) = &e.image {
+                validate_shape_image(image)?;
+            }
             Ok(())
         }
         Element::Image(e) => {
@@ -1134,6 +1167,24 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
             validate_line(e)
         }
     }
+}
+
+/// Same rules as `isShapeImage` in `src/lib/editor/validation.ts`, plus the path check of image
+/// elements: `src` under `assets/images/`, positive finite pixel size, focus 0–1, zoom
+/// 1–SHAPE_IMAGE_ZOOM_MAX.
+fn validate_shape_image(image: &ShapeImage) -> AppResult<()> {
+    validate_asset_path(&image.src)?;
+    let positive = |v: f64| v.is_finite() && v > 0.0;
+    let unit = |v: f64| (0.0..=1.0).contains(&v);
+    let valid = positive(image.image_width)
+        && positive(image.image_height)
+        && unit(image.focus_x)
+        && unit(image.focus_y)
+        && (1.0..=SHAPE_IMAGE_ZOOM_MAX).contains(&image.zoom);
+    if !valid {
+        return Err(AppError::invalid_project("invalid shape image"));
+    }
+    Ok(())
 }
 
 /// Same rules as `isValidLine` in `src/lib/editor/validation.ts`: 2–MAX_LINE_POINTS points with
@@ -1264,9 +1315,11 @@ pub fn validate_asset_path_in(src: &str, dir: &str) -> AppResult<()> {
 pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) -> impl Iterator<Item = &'a str> {
     // 主頁上的圖片也算：否則開檔清理會刪掉只用在主頁上的圖片
     let sheets = document.pages.iter().map(|page| &page.elements).chain(document.masters.iter().map(|master| &master.elements));
+    // 圖片框（圖形裡的照片）也算：否則開檔清理會刪掉只用在圖片框的照片
     let from_elements = sheets.flat_map(|elements| {
         elements.iter().filter_map(|element| match element {
             Element::Image(image) => Some(image.src.as_str()),
+            Element::Shape(shape) => shape.image.as_ref().map(|image| image.src.as_str()),
             _ => None,
         })
     });
@@ -1850,9 +1903,77 @@ mod tests {
         assert!(refs.len() >= 2);
         // 只用在主頁上的圖片也要算進去，開檔清理才不會刪掉它
         assert!(refs.contains(&"assets/images/fedcba9876543210fedcba9876543210.png"));
+        // 圖片框（圖形裡的照片）也是：這個檔案只有主頁 A 的色帶在用
+        assert!(refs.contains(&"assets/images/abcdef0123456789abcdef0123456789.jpg"));
         // 專案字型的一般與粗體檔（沒有粗體的那套只有一個檔）
         let fonts: Vec<_> = refs.iter().filter(|src| src.starts_with("assets/fonts/")).collect();
         assert_eq!(fonts.len(), 3);
+    }
+
+    #[test]
+    fn reads_shape_images_and_defaults_them_in_older_files() {
+        const BAND: &str = "/document/masters/0/elements/0";
+        let project = parse_project(FIXTURE).unwrap();
+        let shapes: Vec<&ShapeElement> = project
+            .document
+            .masters
+            .iter()
+            .map(|master| &master.elements)
+            .chain(project.document.pages.iter().map(|page| &page.elements))
+            .flatten()
+            .filter_map(|element| match element {
+                Element::Shape(shape) => Some(shape),
+                _ => None,
+            })
+            .collect();
+        let with_photo: Vec<_> = shapes.iter().filter_map(|shape| shape.image.as_ref()).collect();
+        assert_eq!(with_photo.len(), 1);
+        assert_eq!(
+            with_photo[0],
+            &ShapeImage {
+                src: "assets/images/abcdef0123456789abcdef0123456789.jpg".into(),
+                image_width: 1200.0,
+                image_height: 800.0,
+                fit: ShapeImageFit::Cover,
+                focus_x: 0.3,
+                focus_y: 0.6,
+                zoom: 1.5,
+            }
+        );
+
+        // v16 檔案的圖形沒有 image 欄位 → 沒有照片
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value["schemaVersion"] = Value::from(16);
+        value.pointer_mut(BAND).unwrap().as_object_mut().unwrap().remove("image");
+        let older = parse_project(&value.to_string()).unwrap();
+        let Element::Shape(band) = &older.document.masters[0].elements[0] else { panic!("expected the band") };
+        assert!(band.image.is_none());
+    }
+
+    #[test]
+    fn rejects_invalid_shape_images() {
+        use serde_json::json;
+        const IMAGE: &str = "/document/masters/0/elements/0/image";
+        let with = |key: &str, replacement: Value| {
+            let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+            value.pointer_mut(IMAGE).unwrap()[key] = replacement;
+            parse_project(&value.to_string())
+        };
+        assert!(with("zoom", json!(SHAPE_IMAGE_ZOOM_MAX)).is_ok());
+        assert!(with("focusX", json!(0)).is_ok());
+        for (key, bad) in [
+            ("src", json!("../secret.png")),
+            ("src", json!("assets/fonts/a.ttf")),
+            ("imageWidth", json!(0)),
+            ("imageHeight", json!(-5)),
+            ("fit", json!("stretch")),
+            ("focusX", json!(1.01)),
+            ("focusY", json!(-0.1)),
+            ("zoom", json!(0.99)),
+            ("zoom", json!(SHAPE_IMAGE_ZOOM_MAX + 0.1)),
+        ] {
+            assert!(with(key, bad.clone()).is_err(), "{key} = {bad}");
+        }
     }
 
     #[test]

@@ -102,7 +102,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
             r#"<div class="{class}" data-name="{name}"{toc}><div class="fb-scale"{fit}>{markup}</div></div>"#,
             name = escape(&name),
             // 頁面標記在 index.html 裡，圖片在同一層的 images/
-            markup = page_div(page, &images, ""),
+            markup = page_div(page, n, &images, ""),
         );
     }
     let index = format!(

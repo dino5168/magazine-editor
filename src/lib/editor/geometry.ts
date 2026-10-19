@@ -1,5 +1,5 @@
 import { lineLocalBounds } from "./line-path";
-import type { Bounds, CanvasElement, ElementId, Margins, Point, Sheet, Size, TextElement } from "./types";
+import type { Bounds, CanvasElement, ElementId, Margins, Point, ShapeElement, Sheet, Size, TextElement } from "./types";
 
 /** Smallest width / height (pt) an element can be resized to, on the canvas or in the property panel. */
 export const MIN_ELEMENT_SIZE_PT = 4;
@@ -183,6 +183,32 @@ export function boundsContain(outer: Bounds, inner: Bounds): boolean {
 export function elementsInBox(elements: readonly CanvasElement[], box: Bounds): ElementId[] {
   // 只碰到一角不算（PowerPoint、draw.io 的規則）
   return elements.filter((element) => boundsContain(box, getElementBounds(element))).map((element) => element.id);
+}
+
+/**
+ * Finds the topmost shape whose box (rotation included) contains a point: where a photo dropped on
+ * the canvas goes (image frame). Uses the box, not the exact outline (a star's notches count).
+ *
+ * Args:
+ *   elements: Elements of the sheet, bottom first.
+ *   point: Point in the sheet's coordinates (pt).
+ *
+ * Returns:
+ *   The shape, or null when no shape is under the point.
+ */
+export function shapeAtPoint(elements: readonly CanvasElement[], point: Point): ShapeElement | null {
+  for (let index = elements.length - 1; index >= 0; index--) {
+    const element = elements[index];
+    if (element.type !== "shape") continue;
+    // 轉回圖形自己的座標（旋轉繞外框左上角、順時針）
+    const radians = (-element.rotation * Math.PI) / 180;
+    const dx = point.x - element.x;
+    const dy = point.y - element.y;
+    const localX = dx * Math.cos(radians) - dy * Math.sin(radians);
+    const localY = dx * Math.sin(radians) + dy * Math.cos(radians);
+    if (localX >= 0 && localX <= element.width && localY >= 0 && localY <= element.height) return element;
+  }
+  return null;
 }
 
 /**

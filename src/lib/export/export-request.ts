@@ -2,6 +2,7 @@ import { inheritedElements } from "@/lib/editor/master-pages";
 import { spilloverInto } from "@/lib/editor/spreads";
 import { withPageNumbers, type MeasureTextWidth } from "@/lib/editor/page-numbers";
 import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
+import { photoPlacement, type PhotoPlacement } from "@/lib/editor/shape-image";
 import type { PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import type { LineBox } from "@/lib/editor/text-indent";
@@ -55,6 +56,11 @@ export interface ExportRequest {
    * shape this version does not know has no entry; the export skips it.
    */
   readonly shapePaths: Readonly<Record<string, ExportShapePath>>;
+  /**
+   * Keyed by shape element id (after expansion): where each image frame's photo goes, from the same
+   * `photoPlacement` the canvas uses (Rust `PhotoPlacement`; Rust does not repeat the formula).
+   */
+  readonly shapePhotos: Readonly<Record<string, PhotoPlacement>>;
 }
 
 /**
@@ -139,12 +145,17 @@ export function buildExportRequest(
   });
   const document = pages.every((page, index) => page === source.pages[index]) && pages.length === source.pages.length ? source : { ...source, pages };
   const textLayouts: Record<string, TextLayout> = {};
+  const shapePhotos: Record<string, PhotoPlacement> = {};
   for (const page of document.pages) {
     for (const element of page.elements) {
       if (element.type === "text") textLayouts[element.id] = measure(element);
       // 圖形內文字：以 `<id>#label` 為 key；位置由 Rust 依外框與垂直對齊計算，量測只需要寬度與樣式
       if (element.type === "shape" && element.label && element.label.text !== "") {
         textLayouts[labelLayoutKey(element.id)] = measure(labelAsText(element, element.label, { x: 0, y: 0 }));
+      }
+      // 圖片框的照片位置（主頁與跨頁的複本也有自己的 id）
+      if (element.type === "shape" && element.image) {
+        shapePhotos[element.id] = photoPlacement(element.width, element.height, element.image);
       }
       // 圖形庫的圖形：路徑由編輯器算好交給 Rust（和畫布同一個 presetPath）；不認得的不放，匯出略過
       if (element.type === "shape" && element.geometry.kind === "preset") {
@@ -159,7 +170,7 @@ export function buildExportRequest(
       }
     }
   }
-  return { document, textLayouts, shapePaths };
+  return { document, textLayouts, shapePaths, shapePhotos };
 }
 
 /**

@@ -11,6 +11,7 @@ import { createPageNumberRule, pageNumberShapeId } from "@/lib/editor/page-numbe
 import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
 import { detailStroke, findShapePreset, presetPath } from "@/lib/editor/shape-presets";
 import type { EditorDocument, ShapeGeometry } from "@/lib/editor/types";
+import { photoPlacement, shapeImageOf } from "@/lib/editor/shape-image";
 import { buildExportRequest, masterCopyId, skippedShapeCount, spilloverCopyId } from "../export-request";
 
 // 假的量測：每個字寬 = 字級的一半
@@ -205,5 +206,32 @@ describe("buildExportRequest", () => {
     expect(request.shapePaths[masterCopyId(0, 0)].details.length).toBeGreaterThan(0);
     expect(request.shapePaths).not.toHaveProperty(unknown.id);
     expect(skippedShapeCount(request)).toBe(1);
+  });
+});
+
+describe("buildExportRequest / image frames", () => {
+  it("places the photo of every image frame, master copies included, with the canvas formula", () => {
+    const photo = shapeImageOf("assets/images/p.png", { width: 200, height: 150 });
+    const master = createMasterPage("Master A", { width: 595, height: 842 }, "#ffffff", null);
+    const band = { ...createShapeElement("rect", { x: 0, y: 0 }), width: 595, height: 40, image: { ...photo, fit: "contain" as const } };
+    const page = createPage("封面", { width: 595, height: 842 }, "#ffffff", master.id);
+    const frame = { ...createShapeElement("ellipse", { x: 100, y: 100 }), image: { ...photo, focusX: 0, zoom: 2 } };
+    const plain = createShapeElement("star", { x: 300, y: 300 });
+    const document: EditorDocument = {
+      name: "測試",
+      margins: DEFAULT_MARGINS,
+      textStyles: [],
+      swatches: [],
+      fonts: [],
+      pageNumberRules: [],
+      masters: [{ ...master, elements: [band] }],
+      pages: [{ ...page, elements: [frame, plain] }],
+    };
+    const request = buildExportRequest(document, () => ({ lines: [], baseline: 0, lineWidths: [] }), measureWidth);
+
+    expect(request.shapePhotos).toEqual({
+      [masterCopyId(0, 0)]: photoPlacement(band.width, band.height, band.image),
+      [frame.id]: photoPlacement(frame.width, frame.height, frame.image),
+    });
   });
 });

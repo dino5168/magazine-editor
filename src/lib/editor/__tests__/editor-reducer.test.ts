@@ -20,6 +20,7 @@ import {
   type EditorState,
 } from "../editor-reducer";
 import { createPageNumberRule } from "../page-numbers";
+import { shapeImageOf } from "../shape-image";
 import { createLabel } from "../shape-label";
 import { BUILT_IN_SWATCH_IDS, defaultSwatches } from "../swatches";
 import { defaultTextStyles, nextTextStyleName, pickTextStyle, styleOverrides } from "../style-sheet";
@@ -142,6 +143,44 @@ describe("editorReducer / elements", () => {
     expect(
       editorReducer(state, { type: "element/update", id: element.id, patch: { label: { ...label, shadow: { color: "#000000" } as never } } }),
     ).toBe(state);
+  });
+
+  it("puts a photo in a shape, removes it, and rejects invalid photos", () => {
+    const element = createShapeElement("ellipse", { x: 100, y: 100 });
+    const state = run(blankState(), { type: "element/add", element });
+    const photo = shapeImageOf("assets/images/p.png", { width: 200, height: 150 });
+
+    const withPhoto = editorReducer(state, { type: "element/update", id: element.id, patch: { image: photo } });
+    expect(selectActivePage(withPhoto).elements[0]).toMatchObject({ image: photo });
+    const removed = editorReducer(withPhoto, { type: "element/update", id: element.id, patch: { image: null } });
+    expect(selectActivePage(removed).elements[0]).toMatchObject({ image: null });
+    for (const bad of [{ ...photo, zoom: 0 }, { ...photo, fit: "fill" }, { ...photo, imageWidth: -1 }]) {
+      expect(editorReducer(state, { type: "element/update", id: element.id, patch: { image: bad as never } })).toBe(state);
+    }
+    // 新增的物件也檢查
+    const badShape = { ...createShapeElement("rect", { x: 0, y: 0 }), image: { ...photo, focusX: 2 } };
+    expect(editorReducer(state, { type: "element/add", element: badShape })).toBe(state);
+  });
+
+  it("replaces an element in place (same layer, selection kept, one undo step)", () => {
+    const below = createShapeElement("rect", { x: 0, y: 0 });
+    const target = createShapeElement("ellipse", { x: 100, y: 100 });
+    const above = createShapeElement("star", { x: 200, y: 200 });
+    const state = run(blankState(), ...[below, target, above].map((element) => ({ type: "element/add", element }) as const), {
+      type: "selection/set",
+      id: target.id,
+    });
+    const frame: ShapeElement = { ...target, geometry: { kind: "rect", cornerRadius: 0 }, image: shapeImageOf("assets/images/p.png", { width: 200, height: 150 }) };
+    const next = editorReducer(state, { type: "element/replace", element: frame });
+
+    expect(selectActivePage(next).elements).toEqual([below, frame, above]);
+    expect(next.selectedIds).toEqual([target.id]);
+    expect(next.history.past).toHaveLength(state.history.past.length + 1);
+    expect(selectActivePage(editorReducer(next, { type: "history/undo" })).elements[1]).toBe(target);
+    // 沒有這個 id、內容不合法、完全相同：不動
+    expect(editorReducer(state, { type: "element/replace", element: { ...frame, id: "nope" } })).toBe(state);
+    expect(editorReducer(state, { type: "element/replace", element: { ...frame, image: { ...frame.image!, zoom: 0 } } })).toBe(state);
+    expect(editorReducer(state, { type: "element/replace", element: target })).toBe(state);
   });
 
   it("changes the geometry and ignores invalid geometry", () => {

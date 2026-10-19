@@ -219,6 +219,30 @@ mod tests {
     }
 
     #[test]
+    fn image_frame_photos_survive_save_as_and_the_cleanup_on_open() {
+        use format::Element;
+        let base = tempfile::tempdir().unwrap();
+        let untitled = create_untitled(&base.path().join("untitled")).unwrap();
+        let content = fixture_content();
+        // 主頁 A 的色帶是圖片框：照片只有它在用，不在 assets（素材庫）清單裡
+        let Element::Shape(band) = &content.document.masters[0].elements[0] else { panic!("expected the band") };
+        let photo = band.image.as_ref().expect("the fixture's band holds a photo").src.clone();
+        assert!(!content.assets.iter().any(|asset| asset.src == photo));
+        std::fs::write(untitled.root.join(&photo), b"jpg").unwrap();
+        std::fs::write(untitled.root.join(&content.assets[0].src), b"img").unwrap();
+
+        let target = base.path().join("圖片框");
+        save_as(&untitled, &target, content.clone()).unwrap();
+        assert!(target.join(&photo).is_file(), "save-as copies the photo");
+        // 沒人用的檔案會被開檔清理刪掉，圖片框的照片不會
+        std::fs::write(target.join(format::ASSET_DIR).join("orphan.png"), b"x").unwrap();
+        let (opened, _) = open(&target).unwrap();
+        assert!(target.join(&photo).is_file(), "the cleanup keeps the photo");
+        assert!(!target.join(format::ASSET_DIR).join("orphan.png").exists());
+        assert_eq!(opened.content, content);
+    }
+
+    #[test]
     fn untitled_then_save_as_then_reopen() {
         let base = tempfile::tempdir().unwrap();
         let untitled = create_untitled(&base.path().join("untitled")).unwrap();

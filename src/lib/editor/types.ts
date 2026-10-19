@@ -146,6 +146,29 @@ export interface ShapeElement extends BaseElement {
   readonly stroke: Stroke | null;
   /** null = no text. */
   readonly label: ShapeLabel | null;
+  /**
+   * A photo clipped to the shape's outline (an image frame), drawn over the fill and under the
+   * outline and the text. null = none (files before v17).
+   */
+  readonly image: ShapeImage | null;
+}
+
+/** How a photo fills its frame: crop to fill it, or show the whole photo with the fill around it. */
+export type ShapeImageFit = "cover" | "contain";
+
+/** A photo inside a shape (`shape-image.ts` places it); see `ShapeElement.image`. */
+export interface ShapeImage {
+  /** Same as `ImageElement.src` (`assets/images/<hash>.<ext>` on the desktop). */
+  readonly src: string;
+  /** Intrinsic size in pixels (from the library item), so no end has to decode the file to fit it. */
+  readonly imageWidth: number;
+  readonly imageHeight: number;
+  readonly fit: ShapeImageFit;
+  /** Which part stays in view when the photo is larger than the frame: 0 = left / top, 1 = right / bottom. */
+  readonly focusX: number;
+  readonly focusY: number;
+  /** Enlarges the photo around the focus point; 1–SHAPE_IMAGE_ZOOM_MAX. */
+  readonly zoom: number;
 }
 
 export interface ImageElement extends BaseElement {

@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactElement } from "react";
+import { ImagePlus } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +11,11 @@ import {
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { selectActivePage, selectSelectedElement } from "@/lib/editor/editor-reducer";
 import { canReorder } from "@/lib/editor/layer-order";
-import type { CanvasElement, ElementPatch } from "@/lib/editor/types";
+import { loadImageSize } from "@/lib/editor/image";
+import { imageToFrame } from "@/lib/editor/shape-image";
+import type { CanvasElement, ElementPatch, ImageElement } from "@/lib/editor/types";
+import { useLibraryControl } from "@/lib/library/library-context";
+import { useProject } from "@/lib/project/project-context";
 import { ALIGN_EDGES, defaultKeepRatio, FILL_ITEMS, REORDER_ITEMS, useContentAlign } from "./element-arrange";
 
 /** The selected element's items: 圖層順序 ─ 填滿 ─ 對齊內容區 (same results as the 屬性面板「調整」分頁). */
@@ -58,6 +63,37 @@ function ElementItems({ element }: { readonly element: CanvasElement }) {
           {label}
         </ContextMenuItem>
       ))}
+      {element.type === "image" && <ConvertToFrameItem image={element} />}
+    </>
+  );
+}
+
+/**
+ * 「轉成圖片框」: the image becomes a rectangle holding it as its photo, in the same place (one undo
+ * step); 屬性面板「圖形 → 換成」 then changes the shape. The photo's pixel size comes from the library,
+ * else from loading the image.
+ */
+function ConvertToFrameItem({ image }: { readonly image: ImageElement }) {
+  const dispatch = useEditorDispatch();
+  const { getLibrary } = useLibraryControl();
+  const { resolveSrc } = useProject();
+  const convert = async () => {
+    const item = getLibrary().items.find((candidate) => candidate.kind === "image" && candidate.src === image.src);
+    let pixels = item?.kind === "image" ? { width: item.width, height: item.height } : null;
+    if (!pixels) {
+      const loaded = await loadImageSize(resolveSrc(image.src));
+      // 讀不到時用物件的比例（照片照樣填滿外框）
+      pixels = loaded.data ?? { width: image.width, height: image.height };
+    }
+    dispatch({ type: "element/replace", element: imageToFrame(image, pixels) });
+  };
+  return (
+    <>
+      <ContextMenuSeparator />
+      <ContextMenuItem onSelect={() => void convert()}>
+        <ImagePlus />
+        轉成圖片框
+      </ContextMenuItem>
     </>
   );
 }

@@ -65,7 +65,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | 工具 | 用途 | 參數 |
 |---|---|---|
 | `add_text` | 新增文字（最上層），回傳 id | `text*`、`x*`、`y*`、`width`（換行寬，預設 280）、`rotation`、`style`（文字樣式名稱或 id：先取樣式的值再套這次的欄位）、文字樣式欄位、`pageId` |
-| `add_shape` | 新增圖形（最上層），回傳 id；圖形撐滿 `x / y / width / height` 的外框 | `shape*`、`x*`、`y*`、`width*`、`height*`、`params`、`rotation`、`fill`（預設 `#64748b`）、`stroke`（`{ color, width, dash: solid / dashed / dotted / dashDot }` 或 `null`；`dashDot` = 點劃線）、`text`（圖形內文字）、`style`、`verticalAlign`（`top` / `middle` / `bottom`）、文字樣式欄位、`pageId` |
+| `add_shape` | 新增圖形（最上層），回傳 id；圖形撐滿 `x / y / width / height` 的外框 | `shape*`、`x*`、`y*`、`width*`、`height*`、`params`、`rotation`、`fill`（預設 `#64748b`）、`stroke`（`{ color, width, dash: solid / dashed / dotted / dashDot }` 或 `null`；`dashDot` = 點劃線）、`text`（圖形內文字）、`style`、`verticalAlign`（`top` / `middle` / `bottom`）、文字樣式欄位、`image`（圖片框，見下）、`pageId` |
 | `add_line` | 新增線條或箭頭（最上層），回傳 id（2026-10-15，`../06-Plans-繪圖/03-自由繪圖-實作.md` 步驟 13） | `points*`（**頁面座標**，2–500 個 `{ x, y }`）、`path`（`straight` 直線 / 折線（預設）、`smooth` 穿過每點的曲線）、`compound`（`single` / `double` 雙線，只給 straight）、`color`（預設 `#171717` 連「文字」色票）、`width`（預設 1）、`dash`（`solid` / `dashed` / `dotted` / `dashDot`）、`start` / `end`（`{ arrowhead: none / open / triangle, scale? 0.5–5 }`，預設沒有箭頭）、`pageId` |
 | `update_element` | 修改一個物件，只改有給的欄位，回傳是否有變更 | `id*`；見下表 |
 | `delete_elements` | 刪除同一頁（或同一主頁）的物件，回傳數量 | `ids*`（1–500 個） |
@@ -83,11 +83,13 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 |---|---|
 | 全部 | `x`、`y`、`rotation`、`width`（線條沒有 `width`） |
 | 文字 | `text`、文字樣式欄位（文字顏色用 `textColor`，不是 `fill`；文字沒有 `height`） |
-| 圖形 | `height`、`fill`、`stroke`、`cornerRadius`（只有矩形：一個數字，或 `[左上, 右上, 右下, 左下]`）、`shape`（換成另一個圖形，位置 / 大小 / 樣式 / 文字不變，參數用新圖形的預設）、`params`（圖形庫圖形，只改有給的）、`text`（圖形內文字，空字串 = 移除）、`verticalAlign`、文字樣式欄位（套用在圖形內文字） |
+| 圖形 | `height`、`fill`、`stroke`、`cornerRadius`（只有矩形：一個數字，或 `[左上, 右上, 右下, 左下]`）、`shape`（換成另一個圖形，位置 / 大小 / 樣式 / 文字不變，參數用新圖形的預設）、`params`（圖形庫圖形，只改有給的）、`text`（圖形內文字，空字串 = 移除）、`verticalAlign`、文字樣式欄位（套用在圖形內文字）、`image`（圖片框的照片：給 `item` 換照片、只給其他欄位調整、`null` = 移除） |
 | 圖片 | `height` |
 | 線條 | `points`（換掉所有點，頁面座標；不能和 `x` / `y` 同時給）、`path`、`compound`、`stroke`（不能是 `null`）、`start`、`end`（箭頭；只給 `arrowhead` 時保留原本的大小） |
 
-`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。
+`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。
+
+**圖片框的 `image`**（2026-10-19）：`{ item, fit, focusX, focusY, zoom }`，把素材庫的圖片裁在圖形的外形裡（畫在填色之上、邊框與文字之下）。`item` = 素材庫圖片的 id 或名稱（`add_shape` 必填；`update_element` 省略 = 保留目前的照片）；`fit` = `cover` 填滿（預設）/ `contain` 完整顯示；`focusX` / `focusY` 0–1（照片比框大時保留哪一段，預設 0.5）；`zoom` 1–10（預設 1）。換照片時保留原本的 `fit` / 對焦 / 縮放。文字檔、音訊、垃圾桶裡的素材不能用。
 
 一次呼叫可以同時換圖形並給參數，例如 `{ id, shape: "roundedRect", cornerRadius: 8 }`、`{ id, shape: "cylinder", params: { size: 30 } }`。
 

@@ -9,8 +9,12 @@ import { startPointerDrag } from "@/components/pointer-drag";
 import { LibraryThumb } from "@/components/library/library-card";
 import { useLibraryDialog } from "@/components/library/library-dialog";
 import { usePlaceLibraryItem } from "@/components/library/use-place-library-item";
+import { useEditorDispatch } from "@/lib/editor/editor-context";
+import { shapeAtPoint } from "@/lib/editor/geometry";
 import { pickFiles } from "@/lib/editor/image";
-import type { PageId, Point } from "@/lib/editor/types";
+import { findSheet } from "@/lib/editor/master-pages";
+import { shapeImageOf } from "@/lib/editor/shape-image";
+import type { PageId, Point, ShapeElement } from "@/lib/editor/types";
 import { BUNDLED_PHOTOS, type BundledPhoto } from "@/lib/library/bundled-photos";
 import { useLibrary, useLibraryControl } from "@/lib/library/library-context";
 import type { LibraryItem } from "@/lib/library/types";
@@ -21,7 +25,7 @@ import { useLibraryImport } from "@/lib/library/use-library-import";
 import { isDesktop } from "@/lib/project/project-api";
 import { useProject } from "@/lib/project/project-context";
 import { cn } from "@/lib/utils";
-import { useCanvasDrop } from "../canvas-drop";
+import { useCanvasDrop, type CanvasDropTarget } from "../canvas-drop";
 import { IconButton } from "../icon-button";
 
 /**
@@ -47,6 +51,14 @@ interface Placeable {
   readonly name: string;
   /** Puts it on a page (default: the middle of the active page). */
   readonly place: (center?: Point, pageId?: PageId) => Promise<unknown>;
+  /** Images only: the file to put into a shape it is dropped on (an image frame); null when it fails. */
+  readonly photo?: () => Promise<{ readonly src: string; readonly width: number; readonly height: number } | null>;
+}
+
+/** Where a drag would go: the canvas point, and the shape under it when the item can fill one. */
+interface DropSpot {
+  readonly drop: CanvasDropTarget;
+  readonly frame: ShapeElement | null;
 }
 
 /**
@@ -61,7 +73,8 @@ interface Placeable {
 export function LibraryPanel() {
   const library = useLibrary();
   const { getLibrary } = useLibraryControl();
-  const { resolveSrc } = useProject();
+  const { resolveSrc, getSnapshot } = useProject();
+  const dispatch = useEditorDispatch();
   const { importFiles, importBundled } = useLibraryImport();
   const { openLibrary } = useLibraryDialog();
   const placeItem = usePlaceLibraryItem();
@@ -70,31 +83,55 @@ export function LibraryPanel() {
   const { locate } = useCanvasDrop();
   const ghostRef = useRef<HTMLDivElement>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
-  // 拖曳中的素材，以及游標是否在畫布上（標籤的文字跟著變）
-  const [dragging, setDragging] = useState<{ readonly target: Placeable; readonly overCanvas: boolean } | null>(null);
+  // 拖曳中的素材、游標在哪裡（畫布上 / 圖形上；標籤的文字跟著變）
+  const [dragging, setDragging] = useState<{ readonly target: Placeable; readonly over: "none" | "canvas" | "frame" } | null>(null);
   useEffect(() => () => cancelDragRef.current?.(), []);
 
-  // 拖到畫布上放開 = 放在那一頁的那個位置（一筆復原）；放在畫布以外 = 取消。點一下照舊放到中央
+  // 圖片拖到圖形上 = 放進圖形（圖片框）；文件用 getSnapshot 讀最新的，面板不必跟著文件重畫
+  const spotAt = (target: Placeable, clientX: number, clientY: number): DropSpot | null => {
+    const drop = locate(clientX, clientY);
+    if (!drop) return null;
+    const sheet = target.photo ? findSheet(getSnapshot().content.document, drop.pageId) : undefined;
+    return { drop, frame: sheet ? shapeAtPoint(sheet.elements, drop.point) : null };
+  };
+
+  const fillFrame = async (target: Placeable, frame: ShapeElement, pageId: PageId) => {
+    const photo = await target.photo?.();
+    if (!photo) return;
+    // 換照片時保留填滿方式、對焦與縮放（同屬性面板的「更換」）
+    const image = frame.image
+      ? { ...frame.image, src: photo.src, imageWidth: photo.width, imageHeight: photo.height }
+      : shapeImageOf(photo.src, photo);
+    dispatch({ type: "element/update", id: frame.id, pageId, patch: { image } });
+    dispatch({ type: "page/select", id: pageId });
+    dispatch({ type: "selection/set", id: frame.id });
+    toast.success(`已把「${target.name}」放進圖形`);
+  };
+
+  // 拖到畫布上放開 = 放在那一頁的那個位置（一筆復原）；圖片放在圖形上 = 放進圖形；放在畫布以外 = 取消。點一下照舊放到中央
   const startDrag = (target: Placeable, event: ReactPointerEvent) => {
     if (event.button !== 0 || cancelDragRef.current) return;
     let last = { x: event.clientX, y: event.clientY };
-    let overCanvas = false;
+    let over: "none" | "canvas" | "frame" = "none";
     cancelDragRef.current = startPointerDrag(event, {
       cursor: "no-drop",
-      onStart: () => setDragging({ target, overCanvas }),
+      onStart: () => setDragging({ target, over }),
       onMove: (e) => {
         last = { x: e.clientX, y: e.clientY };
         moveDragGhost(ghostRef.current, e.clientX, e.clientY);
-        const now = locate(e.clientX, e.clientY) !== null;
-        if (now === overCanvas) return;
-        overCanvas = now;
-        document.body.style.cursor = now ? "copy" : "no-drop";
-        setDragging({ target, overCanvas });
+        const spot = spotAt(target, e.clientX, e.clientY);
+        const now = spot === null ? "none" : spot.frame ? "frame" : "canvas";
+        if (now === over) return;
+        over = now;
+        document.body.style.cursor = now === "none" ? "no-drop" : "copy";
+        setDragging({ target, over });
       },
       onEnd: (commit) => {
         setDragging(null);
-        const drop = commit ? locate(last.x, last.y) : null;
-        if (drop) void target.place(drop.point, drop.pageId);
+        const spot = commit ? spotAt(target, last.x, last.y) : null;
+        if (!spot) return;
+        if (spot.frame) void fillFrame(target, spot.frame, spot.drop.pageId);
+        else void target.place(spot.drop.point, spot.drop.pageId);
       },
       onDone: () => {
         cancelDragRef.current = null;
@@ -102,7 +139,12 @@ export function LibraryPanel() {
     });
   };
 
-  const itemTarget = (item: LibraryItem): Placeable => ({ key: item.id, name: item.name, place: (center, pageId) => placeItem(item, center, pageId) });
+  const itemTarget = (item: LibraryItem): Placeable => ({
+    key: item.id,
+    name: item.name,
+    place: (center, pageId) => placeItem(item, center, pageId),
+    ...(item.kind === "image" && { photo: async () => ({ src: item.src, width: item.width, height: item.height }) }),
+  });
   // 內建範例：先複製進專案、加入未分類（同檔不重複），再和素材一樣放到頁面
   const photoTarget = (photo: BundledPhoto): Placeable => ({
     key: `sample:${photo.id}`,
@@ -111,6 +153,11 @@ export function LibraryPanel() {
       const image = await importBundled(photo.src, photo.label);
       const item = image && getLibrary().items.find((candidate) => candidate.src === image.src);
       return item ? placeItem(item, center, pageId) : false;
+    },
+    photo: async () => {
+      const image = await importBundled(photo.src, photo.label);
+      const item = image && getLibrary().items.find((candidate) => candidate.src === image.src);
+      return item?.kind === "image" ? { src: item.src, width: item.width, height: item.height } : null;
     },
   });
 
@@ -252,7 +299,9 @@ export function LibraryPanel() {
             <>
               <MousePointerClick className="size-4" />
               {dragging.target.name}
-              <span className="font-normal text-muted-foreground">{dragging.overCanvas ? "放開即放在這裡" : "拖到頁面上"}</span>
+              <span className="font-normal text-muted-foreground">
+                {{ none: "拖到頁面上", canvas: "放開即放在這裡", frame: "放開即放進圖形" }[dragging.over]}
+              </span>
             </>
           )}
         </DragGhost>,

@@ -33,6 +33,7 @@ import { toolLineStroke } from "@/lib/editor/line-kinds";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
 import { clampCornerRadii } from "@/lib/editor/corner-radius";
 import { withAlpha } from "@/lib/editor/palette";
+import { shapeImageOf } from "@/lib/editor/shape-image";
 import { createLabel } from "@/lib/editor/shape-label";
 import { findShapePreset, resolvePresetParams } from "@/lib/editor/shape-presets";
 import { pickTextStyle, styledTextOf, textStyleNameError, textStyleUsage } from "@/lib/editor/style-sheet";
@@ -46,6 +47,7 @@ import type {
   PageId,
   ShapeElement,
   ShapeGeometry,
+  ShapeImage,
   Stroke,
   StyledText,
   Swatch,
@@ -288,6 +290,41 @@ export function findLibraryItem(library: Library, ref: string): Result<LibraryIt
   return fail(`找不到素材「${ref}」，請先用 list_library_items 取得名稱或 id`);
 }
 
+/** `add_shape` / `update_element`'s `image` argument. */
+type ShapeImageInput = NonNullable<ToolArgs<"update_element">["image"]>;
+
+/**
+ * The photo of an image frame from a tool argument: `item` picks a library image (keeping the current
+ * fit / focus / zoom when the shape already has a photo), the other fields adjust it.
+ *
+ * Args:
+ *   library: The asset library.
+ *   current: The shape's photo now (null for a new shape or a shape without one).
+ *   input: The argument.
+ *
+ * Returns:
+ *   The photo, or a Chinese error (unknown / trashed / not an image item, or no item for a shape without a photo).
+ */
+export function resolveShapeImage(library: Library, current: ShapeImage | null, input: ShapeImageInput): Result<ShapeImage> {
+  let photo = current;
+  if (input.item !== undefined) {
+    const found = findLibraryItem(library, input.item);
+    if (found.error) return found;
+    const item = found.data;
+    if (item.trashed) return fail(`素材「${item.name}」在垃圾桶裡，請使用者先在素材管理還原`);
+    if (item.kind !== "image") return fail(`素材「${item.name}」不是圖片，只有圖片能放進圖形`);
+    photo = photo ? { ...photo, src: item.src, imageWidth: item.width, imageHeight: item.height } : shapeImageOf(item.src, item);
+  }
+  if (!photo) return fail("這個圖形還沒有照片：請給 image.item（素材庫圖片的 id 或名稱，見 list_library_items）");
+  return ok({
+    ...photo,
+    ...(input.fit !== undefined && { fit: input.fit }),
+    ...(input.focusX !== undefined && { focusX: input.focusX }),
+    ...(input.focusY !== undefined && { focusY: input.focusY }),
+    ...(input.zoom !== undefined && { zoom: input.zoom }),
+  });
+}
+
 /** Tool `place_library_item` (images only). */
 export function placeLibraryItem(
   state: EditorState,
@@ -345,9 +382,11 @@ function withParams(geometry: ShapeGeometry, params: Readonly<Record<string, num
 }
 
 /** Tool `add_shape`. */
-export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<"add_shape">) {
+export function addShape(state: EditorState, library: Library, apply: ApplyAction, args: ToolArgs<"add_shape">) {
   const sheet = targetSheet(state, args.pageId);
   if (sheet.error) return sheet;
+  const image = args.image === undefined ? null : resolveShapeImage(library, null, args.image);
+  if (image?.error) return image;
   const style = pickStyle(args);
   if (args.text === undefined && (hasKeys(style) || args.verticalAlign !== undefined || args.style !== undefined)) {
     return fail("style、文字樣式欄位與 verticalAlign 用在圖形內的文字：請同時給 text");
@@ -374,6 +413,7 @@ export function addShape(state: EditorState, apply: ApplyAction, args: ToolArgs<
     rotation: args.rotation ?? 0,
     ...fill.data,
     ...(stroke.data !== undefined && { stroke: stroke.data }),
+    image: image?.data ?? null,
     label:
       args.text === undefined
         ? null
@@ -445,7 +485,7 @@ function linePatch(state: EditorState, line: LineElement, args: ToolArgs<"update
 /** Fields of `update_element` each element type accepts (besides position and rotation). */
 const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   text: ["width", "text", ...STYLE_KEYS],
-  shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "text", "verticalAlign", ...STYLE_KEYS],
+  shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "image", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
   line: ["points", "path", "compound", "stroke", "start", "end"],
 };
@@ -453,7 +493,7 @@ const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
 const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條" };
 
 /** Builds the patch of `update_element`, or explains which argument does not fit the element. */
-function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
+function elementPatch(state: EditorState, library: Library, element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
   const { id: _id, x, y, rotation, ...rest } = args;
   const given = Object.keys(rest).filter((key) => rest[key as keyof typeof rest] !== undefined);
   const rejected = given.filter((key) => !UPDATABLE[element.type].includes(key));
@@ -501,6 +541,12 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
       if (withParamsGeometry.error) return withParamsGeometry;
       geometry = withParamsGeometry.data;
       if (geometry !== element.geometry) patch.geometry = geometry;
+      if (args.image === null) patch.image = null;
+      else if (args.image !== undefined) {
+        const image = resolveShapeImage(library, element.image, args.image);
+        if (image.error) return image;
+        patch.image = image.data;
+      }
       const labelChanges = hasKeys(style) || args.verticalAlign !== undefined;
       if (args.text === "") {
         if (labelChanges) return fail("text 是空字串會移除圖形內的文字，不能同時給文字樣式");
@@ -522,11 +568,11 @@ function elementPatch(state: EditorState, element: CanvasElement, args: ToolArgs
 }
 
 /** Tool `update_element`. */
-export function updateElement(state: EditorState, apply: ApplyAction, args: ToolArgs<"update_element">) {
+export function updateElement(state: EditorState, library: Library, apply: ApplyAction, args: ToolArgs<"update_element">) {
   const found = getElement(state, args.id);
   if (found.error) return found;
   const { element, sheet } = found.data;
-  const patch = elementPatch(state, element, args);
+  const patch = elementPatch(state, library, element, args);
   if (patch.error) return patch;
   if (!hasKeys(patch.data)) return fail("沒有要修改的欄位");
   const next = apply({ type: "element/update", id: element.id, patch: patch.data, pageId: sheet.id });

@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 16,
+  "schemaVersion": 17,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -177,6 +177,15 @@
           {
             "id": "el-master-band",
             "type": "shape",
+            "image": {
+              "src": "assets/images/abcdef0123456789abcdef0123456789.jpg",
+              "imageWidth": 1200,
+              "imageHeight": 800,
+              "fit": "cover",
+              "focusX": 0.3,
+              "focusY": 0.6,
+              "zoom": 1.5
+            },
             "x": 0,
             "y": 0,
             "rotation": 0,
@@ -237,6 +246,7 @@
           {
             "id": "el-master-hexagon",
             "type": "shape",
+            "image": null,
             "x": 80,
             "y": 780,
             "rotation": 0,
@@ -302,6 +312,7 @@
           {
             "id": "el-rect",
             "type": "shape",
+            "image": null,
             "x": 57.6,
             "y": 90,
             "rotation": 12.5,
@@ -316,6 +327,7 @@
           {
             "id": "el-ellipse",
             "type": "shape",
+            "image": null,
             "x": 120,
             "y": 440,
             "rotation": 0,
@@ -349,6 +361,7 @@
           {
             "id": "el-polygon",
             "type": "shape",
+            "image": null,
             "x": 327.78,
             "y": 459.6891108675446,
             "rotation": -30,
@@ -363,6 +376,7 @@
           {
             "id": "el-star",
             "type": "shape",
+            "image": null,
             "x": 231.06604385933923,
             "y": 410,
             "rotation": 0,

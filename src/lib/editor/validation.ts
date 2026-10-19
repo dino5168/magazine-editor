@@ -9,6 +9,8 @@ import type {
   Margins,
   ProjectFont,
   ShapeGeometry,
+  ShapeImage,
+  ShapeImageFit,
   ShapeLabel,
   Size,
   Stroke,
@@ -308,6 +310,41 @@ export function isStroke(value: unknown): value is Stroke {
     width > 0 &&
     width <= STROKE_WIDTH_MAX &&
     (STROKE_DASHES as readonly unknown[]).includes(dash)
+  );
+}
+
+/** Largest zoom of a photo in a shape; same as `SHAPE_IMAGE_ZOOM_MAX` in Rust. */
+export const SHAPE_IMAGE_ZOOM_MAX = 10;
+/** How a photo can fill its frame; same as Rust `ShapeImageFit`. */
+export const SHAPE_IMAGE_FITS = ["cover", "contain"] as const satisfies readonly ShapeImageFit[];
+
+/**
+ * Checks whether a value is a valid photo of a shape (same rules as Rust `validate_shape_image`,
+ * which also requires `src` to be `assets/images/<file>`): positive finite pixel size, known fit,
+ * focus 0–1, zoom 1–SHAPE_IMAGE_ZOOM_MAX.
+ *
+ * Args:
+ *   value: Candidate photo (e.g. from a patch).
+ *
+ * Returns:
+ *   True when the value can be stored as `ShapeElement.image`.
+ */
+export function isShapeImage(value: unknown): value is ShapeImage {
+  if (typeof value !== "object" || value === null) return false;
+  const { src, imageWidth, imageHeight, fit, focusX, focusY, zoom } = value as Record<string, unknown>;
+  const positive = (n: unknown) => typeof n === "number" && Number.isFinite(n) && n > 0;
+  const unit = (n: unknown) => typeof n === "number" && n >= 0 && n <= 1;
+  return (
+    typeof src === "string" &&
+    src.length > 0 &&
+    positive(imageWidth) &&
+    positive(imageHeight) &&
+    (SHAPE_IMAGE_FITS as readonly unknown[]).includes(fit) &&
+    unit(focusX) &&
+    unit(focusY) &&
+    typeof zoom === "number" &&
+    zoom >= 1 &&
+    zoom <= SHAPE_IMAGE_ZOOM_MAX
   );
 }
 

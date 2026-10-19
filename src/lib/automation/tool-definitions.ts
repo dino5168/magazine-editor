@@ -20,6 +20,8 @@ import {
   FONT_SIZE_MIN,
   PAGE_NAME_MAX_LENGTH,
   LINE_ARROWHEADS,
+  SHAPE_IMAGE_FITS,
+  SHAPE_IMAGE_ZOOM_MAX,
   LINE_END_SCALE_MAX,
   LINE_END_SCALE_MIN,
   MAX_LINE_POINTS,
@@ -92,6 +94,22 @@ export const SHAPE_NAMES = [...SHAPE_KINDS, ...SHAPE_LIBRARY.map((preset) => pre
 const shapeName = z
   .enum(SHAPE_NAMES)
   .describe("圖形：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形，或圖形庫的 id（hexagon、cloud、cylinder…；名稱與參數見 list_shapes）");
+// 圖片框的照片：素材庫的圖片＋填滿方式、對焦、縮放（同屬性面板的「照片」）
+const shapeImage = z
+  .strictObject({
+    item: z
+      .string()
+      .min(1)
+      .max(ITEM_NAME_MAX_CHARS)
+      .optional()
+      .describe("素材庫圖片的 id 或名稱（由 list_library_items 取得）；update_element 省略 = 保留目前的照片，只改下面的欄位"),
+    fit: z.enum(SHAPE_IMAGE_FITS).optional().describe("cover 填滿（裁掉超出的部分，預設）/ contain 完整顯示（留白處看得到填色）"),
+    focusX: z.number().min(0).max(1).optional().describe("照片比框寬時保留哪一段：0 左、0.5 置中（預設）、1 右"),
+    focusY: z.number().min(0).max(1).optional().describe("照片比框高時保留哪一段：0 上、0.5 置中（預設）、1 下"),
+    zoom: z.number().min(1).max(SHAPE_IMAGE_ZOOM_MAX).optional().describe(`以對焦點為中心放大，1–${SHAPE_IMAGE_ZOOM_MAX}（預設 1）`),
+  })
+  .describe("圖片框：把素材庫的圖片裁在圖形的外形裡（畫在填色之上、邊框與文字之下）");
+
 const shapeParams = z
   .record(z.string(), z.number())
   .describe("圖形庫圖形的參數（名稱 → 值，見 list_shapes）：ratio 參數是 0–1 的比例、pt 參數是 pt；省略的參數用預設值，超出範圍時夾回");
@@ -209,7 +227,7 @@ export const TOOL_DEFINITIONS = {
   },
   get_element: {
     title: "物件內容",
-    description: "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。線條的 points 是相對於 x / y 的座標，另外附 pagePoints（頁面座標，和 add_line / update_element 的 points 同一套）。",
+    description: "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。線條的 points 是相對於 x / y 的座標，另外附 pagePoints（頁面座標，和 add_line / update_element 的 points 同一套）。圖片框（圖形的 image）另外附 photoItem：照片是素材庫的哪一張（id、名稱；素材庫已沒有時為 null）。",
     input: z.strictObject({ id: elementId }),
     readOnly: true,
   },
@@ -246,10 +264,11 @@ export const TOOL_DEFINITIONS = {
   },
   add_shape: {
     title: "新增圖形",
-    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形，或圖形庫的圖形（六角形、雲、圓柱、箭頭、對話框…共 ${SHAPE_LIBRARY.length} 種，id 與參數用 list_shapes 查）；圖形撐滿 x / y / width / height 指定的外框（pt）。params 是圖形庫圖形的參數（只有圖形庫的圖形能給）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
+    description: `在頁面加一個圖形（放在最上層），回傳新物件的 id。shape：rect 矩形、roundedRect 圓角矩形、ellipse 橢圓、triangle 三角形、star 星形，或圖形庫的圖形（六角形、雲、圓柱、箭頭、對話框…共 ${SHAPE_LIBRARY.length} 種，id 與參數用 list_shapes 查）；圖形撐滿 x / y / width / height 指定的外框（pt）。params 是圖形庫圖形的參數（只有圖形庫的圖形能給）。預設填色 #64748b、沒有邊框。text 是圖形內的文字（預設置中、垂直置中），${STYLE_HELP.replace("文字樣式欄位", "它的樣式欄位")} style 讓圖形內文字連到文字樣式（需要同時給 text）。image 把素材庫的圖片放進圖形（圖片框；item 必填）。${COLOR_HELP}省略 pageId = 使用者正在看的頁面。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       pageId: pageId.optional(),
       shape: shapeName,
+      image: shapeImage.optional(),
       params: shapeParams.optional(),
       x: coordinate,
       y: coordinate,
@@ -283,7 +302,7 @@ export const TOOL_DEFINITIONS = {
   },
   update_element: {
     title: "修改物件",
-    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）。圖片只能改位置與尺寸。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）、image（圖片框的照片：給 item 換照片、只給 fit / focusX / focusY / zoom 調整目前的照片、null = 移除照片）。圖片只能改位置與尺寸。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       id: elementId,
       x: coordinate.optional(),
@@ -300,6 +319,7 @@ export const TOOL_DEFINITIONS = {
         .describe("矩形圓角（pt）：一個數字 = 四個角一樣；四個數字 = [左上, 右上, 右下, 左下] 分別設定。每個角超過短邊一半時取一半"),
       shape: shapeName.optional(),
       params: shapeParams.optional(),
+      image: shapeImage.nullable().optional(),
       verticalAlign: verticalAlign.optional(),
       points: linePoints.optional(),
       path: linePath.optional(),

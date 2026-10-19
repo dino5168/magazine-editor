@@ -250,6 +250,7 @@ export function pageNumberShape(
     fillSwatchId: null,
     stroke,
     label: { ...textStyle, ...DEFAULT_TEXT_SPACING, ...NO_TEXT_INDENT, text, align, verticalAlign: "middle", styleId: null },
+    image: null,
   };
 }
 

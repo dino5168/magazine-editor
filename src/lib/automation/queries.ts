@@ -147,6 +147,29 @@ export interface ElementDetail {
   readonly element: CanvasElement;
   /** Lines: the points on the page (the same coordinates as `add_line` / `update_element`). */
   readonly pagePoints?: readonly { readonly x: number; readonly y: number }[];
+  /** Image frames: the library image their photo is (null when the library no longer lists it). */
+  readonly photoItem?: { readonly id: string; readonly name: string } | null;
+}
+
+/**
+ * Tool `get_element`: `getElement` plus, for an image frame, which library image its photo is.
+ *
+ * Args:
+ *   state: Editor state.
+ *   library: The asset library.
+ *   id: Element id.
+ *
+ * Returns:
+ *   The element detail, or an error pointing to `list_elements`.
+ */
+export function getElementDetail(state: EditorState, library: Library, id: string): Result<ElementDetail> {
+  const found = getElement(state, id);
+  if (found.error) return found;
+  const { element } = found.data;
+  if (element.type !== "shape" || !element.image) return found;
+  const { src } = element.image;
+  const item = library.items.find((candidate) => candidate.kind === "image" && candidate.src === src);
+  return { data: { ...found.data, photoItem: item ? { id: item.id, name: item.name } : null }, error: null };
 }
 
 function round(value: number): number {

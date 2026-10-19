@@ -87,6 +87,15 @@ fn ellipse_path(w: f64, h: f64) -> Vec<Value> {
 }
 
 fn element_data(element: &RenderElement) -> Value {
+    let mut data = kind_data(element);
+    // 圖片框的照片：模板先畫填色、再畫裁在外形裡的照片（tiling）、最後畫邊框
+    if let Some(photo) = &element.photo {
+        data["photo"] = json!({ "src": photo.src, "x": photo.x, "y": photo.y, "width": photo.width, "height": photo.height });
+    }
+    data
+}
+
+fn kind_data(element: &RenderElement) -> Value {
     let (x, y, rotation) = (element.x, element.y, element.rotation);
     match &element.kind {
         RenderKind::Rect(e) if e.stroke.is_some() => json!({
@@ -171,7 +180,8 @@ fn svg_is_drawable(world: &ExportWorld, src: &str) -> bool {
 /// How many image elements were removed.
 fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Font]) -> usize {
     let is_svg = |element: &RenderElement| matches!(&element.kind, RenderKind::Image(image) if image.src.ends_with(".svg"));
-    if !document.pages.iter().flat_map(|page| &page.elements).any(is_svg) {
+    let has_svg_photo = |element: &RenderElement| element.photo.as_ref().is_some_and(|photo| photo.src.ends_with(".svg"));
+    if !document.pages.iter().flat_map(|page| &page.elements).any(|element| is_svg(element) || has_svg_photo(element)) {
         return 0;
     }
     // 只讀 assets/images，data.json 用不到
@@ -179,6 +189,18 @@ fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Fon
     let mut drawable: HashMap<String, bool> = HashMap::new();
     let mut skipped = 0;
     for page in &mut document.pages {
+        // 圖片框的 SVG 照片讀不了時拿掉照片、保留圖形（同一個檢查）
+        for element in &mut page.elements {
+            let Some(photo) = &element.photo else { continue };
+            if !photo.src.ends_with(".svg") {
+                continue;
+            }
+            let keep = *drawable.entry(photo.src.clone()).or_insert_with(|| svg_is_drawable(&world, &photo.src));
+            if !keep {
+                element.photo = None;
+                skipped += 1;
+            }
+        }
         page.elements.retain(|element| {
             let RenderKind::Image(image) = &element.kind else {
                 return true;
@@ -222,6 +244,32 @@ fn diagnostics(errors: &[typst::diag::SourceDiagnostic]) -> AppError {
 mod tests {
     use super::*;
     use crate::export::test_support::{fixture_document, fonts, project_with_image, request};
+
+    #[test]
+    fn image_frames_draw_their_photo_inside_the_outline() {
+        let (root, req) = crate::export::test_support::photo_frame_request();
+        let (document, _) = build_render(root.path(), &req).unwrap();
+        let project = document_fonts::load(root.path(), &req.document.fonts, &document);
+        let world = ExportWorld::new(root.path(), serde_json::to_vec(&to_data(&document)).unwrap(), fonts(), &project);
+        let compiled = compile(&world).unwrap();
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 2.0.into(), ..Default::default() });
+        // 橢圓在 (120, 440)，120 × 80；照片畫在 (0, -5) 120 × 90 → 一個照片像素 = 0.6 pt
+        let at = |x: f64, y: f64| {
+            let p = pixmap.pixel(((120.0 + x) * 2.0) as u32, ((440.0 + y) * 2.0) as u32).unwrap();
+            (p.red(), p.green(), p.blue())
+        };
+        assert_eq!(at(35.0, 25.0), (255, 0, 0), "top-left quadrant");
+        assert_eq!(at(85.0, 25.0), (0, 200, 0), "top-right quadrant");
+        assert_eq!(at(35.0, 55.0), (0, 0, 255), "bottom-left quadrant");
+        assert_eq!(at(85.0, 55.0), (255, 220, 0), "bottom-right quadrant");
+        // 橢圓外（外框的角落）沒有照片
+        assert_ne!(at(3.0, 3.0), (255, 0, 0));
+        // 照片只嵌入一次、是原圖
+        let pdf = typst_pdf::pdf(&compiled, &PdfOptions::default()).unwrap();
+        let text = String::from_utf8_lossy(&pdf);
+        assert!(text.contains("/Width 200") && text.contains("/Height 150"), "the photo keeps its pixels");
+    }
     use crate::export::TextLayout;
     use crate::project::format::{CornerRadius, Element, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow};
 
