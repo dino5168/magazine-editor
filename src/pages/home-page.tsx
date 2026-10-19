@@ -120,7 +120,7 @@ function EditorLayout() {
       "file.exportPdf": () => void project.exportPdf(),
       "file.exportFlipbook": () => void project.exportFlipbook(),
       "file.importImage": importImage,
-      "file.library": () => openLibrary(),
+      "project.library": () => openLibrary(),
       ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),
       ...Object.fromEntries(SETTINGS_PAGES.map(({ id }) => [settingsCommandId(id), () => setOpenSettings(id)])),
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),

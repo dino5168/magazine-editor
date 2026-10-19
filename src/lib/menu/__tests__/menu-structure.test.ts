@@ -48,9 +48,17 @@ describe("menu structure", () => {
     expect(shortcuts.filter((s) => EDITOR_SHORTCUTS.includes(s))).toEqual([]);
   });
 
-  it("orders the menus 檔案、設定、視圖、工具面板", () => {
-    expect(MENUS.map((menu) => menu.id)).toEqual(["file", "settings", "view", "panels"]);
-    expect(MENUS.map((menu) => menu.label)).toEqual(["檔案", "設定", "視圖", "工具面板"]);
+  it("orders the menus 檔案、專案管理、設定、視圖、工具面板", () => {
+    expect(MENUS.map((menu) => menu.id)).toEqual(["file", "project", "settings", "view", "panels"]);
+    expect(MENUS.map((menu) => menu.label)).toEqual(["檔案", "專案管理", "設定", "視圖", "工具面板"]);
+  });
+
+  it("opens 素材管理 from 專案管理, not from 檔案", () => {
+    const project = MENUS.find((menu) => menu.id === "project")!;
+    const file = MENUS.find((menu) => menu.id === "file")!;
+
+    expect(project.items).toEqual([{ kind: "item", command: "project.library" }]);
+    expect(collectCommands(file.items)).not.toContain("project.library");
   });
 
   it("lists the tool panels by category (separators between categories), then 重設版面", () => {
@@ -163,9 +171,10 @@ describe("findCommandByEvent", () => {
 describe("findMenuByMnemonic", () => {
   it("opens menus with Alt+letter only", () => {
     expect(findMenuByMnemonic(key("KeyF", { altKey: true }))).toBe("file");
+    expect(findMenuByMnemonic(key("KeyP", { altKey: true }))).toBe("project");
     expect(findMenuByMnemonic(key("KeyS", { altKey: true }))).toBe("settings");
     expect(findMenuByMnemonic(key("KeyV", { altKey: true }))).toBe("view");
-    expect(findMenuByMnemonic(key("KeyP", { altKey: true }))).toBe("panels");
+    expect(findMenuByMnemonic(key("KeyW", { altKey: true }))).toBe("panels");
     expect(findMenuByMnemonic(key("KeyF", { altKey: true, ctrlKey: true }))).toBeNull();
     expect(findMenuByMnemonic(key("KeyF"))).toBeNull();
   });

@@ -33,7 +33,6 @@ export const MENUS = [
       { kind: "item", command: "file.save" },
       { kind: "item", command: "file.saveAs" },
       separator,
-      { kind: "item", command: "file.library" },
       {
         kind: "submenu",
         label: "匯入",
@@ -55,6 +54,13 @@ export const MENUS = [
         ],
       },
     ],
+  },
+  {
+    id: "project",
+    label: "專案管理",
+    mnemonic: { code: "KeyP", letter: "P" },
+    // 管理這個專案擁有的東西（素材庫…），之後的樣式範本也放這裡
+    items: [{ kind: "item", command: "project.library" }],
   },
   {
     id: "settings",
@@ -102,7 +108,7 @@ export const MENUS = [
   {
     id: "panels",
     label: "工具面板",
-    mnemonic: { code: "KeyP", letter: "P" },
+    mnemonic: { code: "KeyW", letter: "W" },
     // 每個面板一個勾選項目（由面板定義產生），依類別分組、類別之間是分隔線；版面存在這台電腦的偏好
     items: [
       ...PANEL_CATEGORIES.flatMap((category, index) => [
