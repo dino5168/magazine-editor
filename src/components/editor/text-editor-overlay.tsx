@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { fromEditableText, toEditableText } from "@/lib/editor/editable-text";
 import { cssTextAlign, localShadowOffset, textDecorationLine } from "@/lib/editor/text-style";
 import type { Point, ShapeLabel, TextElement } from "@/lib/editor/types";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ const JUSTIFY: { readonly [K in ShapeLabel["verticalAlign"]]: CSSProperties["jus
   bottom: "flex-end",
 };
 
-// CSS 的 text-shadow 跟著 textarea 一起旋轉，偏移要先轉回物件座標，才會和畫布一樣朝頁面的方向
+// CSS 的 text-shadow 跟著編輯框一起旋轉，偏移要先轉回物件座標，才會和畫布一樣朝頁面的方向
 function cssTextShadow(element: TextElement, zoom: number): string {
   if (!element.shadow) return "none";
   const { x, y } = localShadowOffset(element.shadow, element.rotation);
@@ -32,37 +33,41 @@ function cssTextShadow(element: TextElement, zoom: number): string {
 }
 
 /**
- * In-place textarea positioned over a Konva text node for editing.
+ * In-place plain-text editor positioned over a Konva text node. A `contenteditable="plaintext-only"`
+ * element, not a textarea: only it applies the first-line indent to every paragraph
+ * (`text-indent: … each-line`), like the canvas. It holds its own content (React does not render
+ * it), so typing never moves the caret; the text is read when editing ends.
  *
  * Args:
  *   props: Element being edited, current zoom/origin and commit/cancel callbacks.
  *
  * Returns:
- *   Absolutely positioned textarea.
+ *   Absolutely positioned editor.
  */
 export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCancel }: TextEditorOverlayProps) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
   const finishedRef = useRef(false);
-  const [value, setValue] = useState(element.text);
 
+  // 開始時放進文字並全選（之後內容只由編輯框自己改）
   useLayoutEffect(() => {
-    ref.current?.focus();
-    ref.current?.select();
+    const editor = ref.current;
+    if (!editor) return;
+    editor.textContent = toEditableText(element.text);
+    editor.focus();
+    const range = window.document.createRange();
+    range.selectNodeContents(editor);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    // 只在開始編輯時放一次：之後物件重畫（例如縮放）不能蓋掉正在打的字
   }, []);
-
-  useLayoutEffect(() => {
-    const textarea = ref.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [value, zoom]);
 
   // Esc 取消後 blur 仍會觸發，用 flag 確保只結束一次
   const finish = (commit: boolean): void => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-    if (commit) onCommit(value);
+    if (commit) onCommit(fromEditableText(ref.current?.textContent ?? ""));
     else onCancel();
   };
 
@@ -73,15 +78,16 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
     transform: `rotate(${element.rotation}deg)`,
     transformOrigin: "top left",
   };
-  const textarea = (
-    <textarea
+  const editor = (
+    <div
       ref={ref}
-      value={value}
-      // textarea 預設 rows=2，自動高度（scrollHeight）不會小於兩行；單行文字的編輯框會多出一行
-      rows={1}
+      // 只收純文字：Enter 是 \n、貼上時去掉格式；高度跟著內容長
+      contentEditable="plaintext-only"
+      suppressContentEditableWarning
+      role="textbox"
+      aria-multiline
       spellCheck={false}
       aria-label="編輯文字"
-      onChange={(event) => setValue(event.target.value)}
       onCompositionStart={() => {
         composingRef.current = true;
       }}
@@ -101,11 +107,14 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
       }}
       onBlur={() => finish(true)}
       className={cn(
-        "m-0 shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-1 outline-primary outline-dashed",
+        "m-0 shrink-0 cursor-text border-0 bg-transparent p-0 outline-1 outline-primary outline-dashed",
         !frame && "absolute",
       )}
       style={{
         ...(frame ? { width: "100%" } : placement),
+        // 同 textarea：保留空白與換行、長單字折行（步驟 1 實測換行位置和 textarea 相同）
+        whiteSpace: "pre-wrap",
+        overflowWrap: "break-word",
         fontSize: element.fontSize * zoom,
         lineHeight: element.lineHeight,
         // 同畫布：字距是字級的千分之幾；有字距時 Konva 逐字畫、沒有 kerning，編輯框也關掉
@@ -117,23 +126,22 @@ export function TextEditorOverlay({ element, frame, zoom, origin, onCommit, onCa
         textDecorationLine: textDecorationLine(element) || "none",
         textShadow: cssTextShadow(element, zoom),
         ...cssTextAlign(element.align),
-        // 段落縮排（字 = em）。textarea 不支援 text-indent 的 each-line：只有第一段的首行縮排 / 突排，
-        // 之後的段落編輯中不縮排，放開後以畫布為準（計畫 07/01 步驟 1）
+        // 段落縮排（字 = em）：each-line = 每個換行之後的第一行也縮排 / 突排，和畫布一樣每段都套用
         paddingLeft: `${element.indentLeft}em`,
         paddingRight: `${element.indentRight}em`,
-        textIndent: `${element.indentFirstLine}em`,
+        textIndent: `${element.indentFirstLine}em each-line`,
         color: element.fill,
       }}
     />
   );
-  if (!frame) return textarea;
+  if (!frame) return editor;
   // 圖形內文字：外層是文字框（圖形外框內縮），用 flex 讓輸入中的文字保持垂直對齊；超出時和畫布一樣照常顯示
   return (
     <div
       className="absolute flex flex-col overflow-visible"
       style={{ ...placement, height: frame.height * zoom, justifyContent: JUSTIFY[frame.verticalAlign] }}
     >
-      {textarea}
+      {editor}
     </div>
   );
 }

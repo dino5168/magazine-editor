@@ -129,7 +129,7 @@ src/
       canvas-elements.tsx         # 物件 → Konva 節點的 renderer；bakeTransform()；snapAbsoluteToGrid()；StaticElement / StaticShape（主頁內容、頁碼、對頁物件：不能編輯的節點，預設不攔事件）
       text-style-link.tsx         # 屬性面板「文字樣式」區塊：樣式下拉、覆寫提示（＋）、清除覆寫 / 以目前設定更新樣式 / 以目前設定建立新樣式（文字物件與圖形內文字共用）
       text-style-dialog.tsx       # 編輯 / 新增文字樣式的對話框（名稱 + TextStyleFields + 預覽，確定才寫入；表單只包名稱欄，見「文字樣式」）
-      text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的 textarea（處理輸入法選字；圖形內文字用 frame 垂直對齊）
+      text-editor-overlay.tsx     # 雙擊文字 / 圖形（或文字工具新建）時疊在畫布上的純文字編輯框：`contenteditable="plaintext-only"` 的 div（不是 textarea：textarea 不支援 `text-indent … each-line`，見「段落縮排」）；內容不受 React 控制、結束時才讀；處理輸入法選字；圖形內文字用 frame 垂直對齊
       use-canvas-pan.ts           # 手形工具 / 空白鍵 / 中鍵拖曳平移（只改捲動位置）
       use-canvas-line.ts          # 線條工具（直線 / 箭頭：拖曳；折線 / 曲線：逐點點擊）與鉛筆（按住拖曳、放開簡化）在畫布上建立線條；預覽是 SVG path
       line-handles.tsx            # 單選線條時的端點把手（拖點、Shift 45°、吸附；點把手選中 + Delete 刪點）
@@ -226,6 +226,7 @@ src/
       text-distribute.ts          # 首尾置中的純邏輯：splitGraphemes（Intl.Segmenter）、distributeLine / distributeText（每個字的 x、行寬、間距；單字置中、去行尾空白）
       distributed-text.ts         # 首尾置中在 Konva 上：drawDistributedText（自訂 sceneFunc）、distributedTextLines（textArr 每行 → distributeText，有 lineBoxes 時在每行的行框裡分散；measureTextLayout 也用）、firstBaseline、konvaAlignAttrs（{ align, sceneFunc }）
       text-indent.ts              # 段落縮排的純邏輯：NO_TEXT_INDENT、TEXT_INDENT_MAX、hasTextIndent / hasValidTextIndent / clampTextIndent、indentedLineBox（首行 / 其他行的行框）、layoutIndentedText（每段換兩次，wrap 由呼叫端注入）、alignedLineStart（行框起點 + 對齊，同 Rust）、屬性面板 Word 式欄位的換算（indentFields / indentFromFields / withFirstLineMode）
+      editable-text.ts            # 文字編輯框（contenteditable）與文件文字的換算：toEditableText / fromEditableText（Chrome 結尾換行的佔位 \n）
       indented-text.ts            # 段落縮排在 Konva 上：indentedTextLayout（Konva 換一段 + WeakMap 快取）、indentAttrs（預先換好的文字、wrap none、lineBoxes / indentAlign、sceneFunc）、drawIndentedText（每行平移後交給 Konva 的 _sceneFunc）、lineBoxesOf
       properties.ts               # 屬性面板的數字換算（解析輸入、大小 / 旋轉 / 圓角 / 邊數的限制）
       corner-radius.ts            # 矩形圓角（一個數字或 [左上, 右上, 右下, 左下]）：cornerRadii、normalizeCornerRadius（四個一樣 → 數字）、clampCornerRadii / withCornerRadius（每角限制在短邊一半）、hasRoundedCorner、konvaCornerRadius、CORNER_NAMES；驗證 isCornerRadius 在 validation.ts
@@ -554,7 +555,8 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **對齊**：在「這一行的行框」裡對齊（`alignedLineStart` = 行框起點 + 在行框寬度裡的位移，Rust `layout_line_start` 同公式）。
 - **匯出**：`measureTextLayout` 用同樣的 `indentAttrs`，`TextLayout` 多 `lineBoxes`（每行 `{ start, width }`）。Rust 有行框時**一律帶 `line_starts`**（各格式不能自己對齊整個框），PDF 模板與 EPUB / 翻頁書標記不用改。疊圖比對：PDF 40 行 ≤ 0.5 pt、EPUB 左右差 0。
 - **UI**：`TextStyleFields` 的可選 `indent` prop（屬性面板、樣式對話框；頁碼不傳）：Word 式「左 / 右 / 首行（無 / 首行縮排 / 首行突排）/ 位移」（`indentFields` / `indentFromFields`：左 = 最左邊那一行；從「無」換過去位移 2 字），換算後一定合法。覆寫提示的名稱是「左縮排 / 右縮排 / 首行縮排」。
-- **已知限制**：textarea 不支援 `text-indent … each-line`，**編輯中只有第一段**的首行縮排 / 突排（放開後以畫布為準）。Konva 的 `word` 換行放不下時退回最後一個空白（中文也是：「1. 中文…」首行只剩「1.」）、沒有避頭點，這是既有行為，建議另開任務處理中文換行。
+- **文字編輯框**：textarea 不支援 `text-indent … each-line`（編輯中只有第一段的首行縮排 / 突排，使用者測試時誤以為「放開後縮排消失」），2026-10-19 改成 `contenteditable="plaintext-only"`（計畫 `02-文字編輯框改成contenteditable-實作.md`），每段都正確。Chrome 在結尾換行後多放一個 `\n` 佔位：`editable-text.ts` 的 `toEditableText` / `fromEditableText` 放進去時補、讀出來時去。
+- **已知限制**：Konva 的 `word` 換行放不下時退回最後一個空白（中文也是：「1. 中文…」首行只剩「1.」）、沒有避頭點，這是既有行為，建議另開任務處理中文換行。
 - 之後另排：段前 / 段後距（每行的 y）、左右對齊（justify）、項目符號 / 編號清單（建在首行突排上）。
 
 ### 文字樣式（`lib/editor/style-sheet.ts` + `styles-panel.tsx` / `text-style-link.tsx` / `text-style-dialog.tsx`）
