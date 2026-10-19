@@ -10,7 +10,7 @@
 
 ## 目前階段
 
-- **文字編輯框改成 contenteditable（2026-10-19，三個步驟全部完成，尚未 commit；桌面版人工驗證見「待辦 → 使用者」）**：段落縮排桌面版測試發現「編輯時有縮排、放開後消失」——畫布是對的（首行突排在每段只有一行時本來看不出來），錯的是 textarea 不支援 `text-indent each-line`，第二段之後被畫成縮排。使用者決定換成 `contenteditable="plaintext-only"`。計畫 `docs/07-Plans-物件屬性與事件/02-文字編輯框改成contenteditable-實作.md`（3 步）。
+- **文字編輯框改成 contenteditable（2026-10-19，三個步驟全部完成，commit `a777a94`（已推送）；桌面版人工驗證見「待辦 → 使用者」）**：段落縮排桌面版測試發現「編輯時有縮排、放開後消失」——畫布是對的（首行突排在每段只有一行時本來看不出來），錯的是 textarea 不支援 `text-indent each-line`，第二段之後被畫成縮排。使用者決定換成 `contenteditable="plaintext-only"`。計畫 `docs/07-Plans-物件屬性與事件/02-文字編輯框改成contenteditable-實作.md`（3 步）。
 
 - **文字縮排與首行突排（2026-10-19，8 個步驟全部完成，commit `30ff10e`（已推送）；桌面版人工驗證待做：實測、純邏輯 `lib/editor/text-indent.ts`、型別 / 驗證 / MCP 參數 / 檔案格式 v16、畫布與量測 `lib/editor/indented-text.ts`、屬性面板與樣式對話框的 Word 式欄位（左 / 右 / 首行 / 位移）、匯出 PDF（Rust `line_boxes`，疊圖 40 行 ≤ 0.5 pt）、EPUB / 翻頁書（不用改程式，疊圖左右差 0）、MCP 實測（橋接程式重編，tools/mcp_client.py 呼叫新參數；這個 session 的 Claude Code 工具清單是舊的，要 `/mcp` 重新連線）與文件（`CLAUDE.md` 新增「段落縮排」一節、docs/01 / 02）。發現 Konva word 換行在中文也退回最後一個空白（既有行為，「1. 中文…」首行只剩「1.」），建議另開任務）**：任務檔 `docs/07-Plans-物件屬性與事件/01-新增文字框屬性.md`，計畫 `01-新增文字框屬性-實作.md`（8 步）。使用者確認：左 / 右 / 首行（可負 = 突排）三個欄位、單位「字」（字級倍數）、UI 用 Word 式「指定方式」、段前 / 段後距另開任務。做法：每段用 Konva 換兩次行（首行寬 / 其他行寬），畫布收預先換好的文字 + `wrap: none`，每行平移後交給 Konva 的 `_sceneFunc` 畫（步驟 1 實測：換行 156 / 156 相同、位移 0 時逐像素相同；textarea 不支援 `text-indent each-line`，編輯中只有第一段首行縮排，已知限制）；匯出沿用 `line_starts`；檔案格式 v16。
 
