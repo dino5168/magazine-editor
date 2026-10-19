@@ -7,7 +7,9 @@ pub enum AppError {
     Sqlite(#[from] rusqlite::Error),
     #[error("state lock poisoned")]
     LockPoisoned,
-    #[error("invalid input: {0}")]
+    /// Bad input from the user or the WebView; the message is user-facing Chinese, shown as is
+    /// (no English prefix, the frontend tells it apart by `kind`).
+    #[error("{0}")]
     InvalidInput(String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -65,3 +67,20 @@ impl Serialize for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_facing_messages_are_serialized_without_a_prefix() {
+        let json = |error: AppError| serde_json::to_value(error).unwrap();
+        assert_eq!(
+            json(AppError::invalid_input("請輸入範本名稱")),
+            serde_json::json!({ "kind": "invalidInput", "message": "請輸入範本名稱" })
+        );
+        assert_eq!(json(AppError::Export("匯出失敗".into()))["message"], "匯出失敗");
+        // 內部錯誤保留英文說明，由前端的 describeCommandError 翻成中文
+        assert_eq!(json(AppError::invalid_project("bad"))["message"], "invalid project: bad");
+    }
+}
