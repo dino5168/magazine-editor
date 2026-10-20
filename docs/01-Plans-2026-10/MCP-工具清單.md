@@ -144,6 +144,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 - 查詢工具可以放進批次（看到做到那一步的文件）；`batch`、`undo`、`redo`、`run_command` 不行。
 - 成功時回傳 `{ results: [每個操作的回傳值] }`。
 - Python 腳本用 SDK（`sdk/python`）的 `with doc.batch():`，自動組出 `ops` 與 `$ref`。
+- 橋接程式連線時給 Claude Code 的伺服器說明（`magazine-mcp.rs` 的 `INSTRUCTIONS`）要求：兩個以上的修改用 `batch`、只做一個修改直接呼叫那個工具（2026-10-21）。用不用仍由 LLM 判斷。
 
 ---
 

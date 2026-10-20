@@ -20,7 +20,10 @@ const TOOLS_JSON: &str = include_str!("../../mcp-tools.json");
 
 const INSTRUCTIONS: &str = "操作使用者正在「雜誌編輯軟體」中開啟的文件（使用者的電腦上必須開著這個 App）。\
 長度單位一律是 pt（1/72 inch），座標原點是頁面左上角，x / y 是物件外框（旋轉前）的左上角。\
-先用 get_document 了解文件，再用 list_pages / list_elements 取得 id。";
+先用 get_document 了解文件，再用 list_pages / list_elements 取得 id。\
+一次要做兩個以上的修改（新增多個物件、多頁版面、新增後立刻修改）時，用 batch 一次送出：\
+後面的操作用 { \"$ref\": \"<第幾個操作>.<欄位>\" } 取得前面建立的 id，整批成功才套用、只算一筆復原，\
+比逐一呼叫少很多來回。只做一個修改時直接呼叫那個工具。";
 
 fn load_tools() -> Vec<Tool> {
     // 內容由 vitest 產生並比對，壞掉只會是開發時的錯誤
