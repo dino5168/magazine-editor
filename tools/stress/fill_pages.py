@@ -10,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 
-from mcp_client import connect, default_bridge
+from magazine.client import connect, default_bridge
 from stress.layout import fill_page
 
 

@@ -6,21 +6,22 @@ Python 用 [uv](https://docs.astral.sh/uv/)，所有指令都在 `tools/` 底下
 
 ```powershell
 cd tools
-uv sync                 # 第一次：建立 .venv、裝 pillow / pytest
-uv run pytest           # 測試（範本規格、字寬、MCP 用戶端）
+uv sync                 # 第一次：建立 .venv、裝 pillow / pytest 與 ../sdk/python（editable）
+uv run pytest           # 測試（範本規格、字寬）
 ```
+
+MCP 用戶端在 Python SDK（`../sdk/python`，套件 `magazine`），這裡的腳本用 `from magazine.client import connect, ...`。新的腳本建議用 SDK 的 `magazine.connect()` 與 `with doc.batch():`（一次呼叫、一筆復原，見 `../sdk/python/README.md`）。需要 **Python 3.13 以上**：editable 安裝的 `.pth` 檔記著含中文的 repo 路徑，3.12 以前用系統編碼（cp950）讀它會讓 Python 無法啟動。
 
 ## 前置條件
 
 - App 開著，而且在「設定 → 偏好設定 → Claude Code 連線（MCP）」打開了（每台電腦、開發版與安裝版各自一份偏好，預設關）。
 - 橋接程式已經編好。腳本預設用 release 版 `src-tauri/target/release/magazine-mcp.exe`（`npx tauri build --no-bundle` 會一起編）；用開發版時加 `--exe ../src-tauri/target/debug/magazine-mcp.exe`（`cargo build --manifest-path ../src-tauri/Cargo.toml --bin magazine-mcp`）。
-- **一次 MCP 呼叫 = 一筆復原**，復原上限 100 筆：腳本動到的文件沒辦法一路復原回去，請用新文件或先存檔。
+- **一次 MCP 呼叫 = 一筆復原**，復原上限 100 筆：這裡的腳本逐一呼叫，動到的文件沒辦法一路復原回去，請用新文件或先存檔（用 `batch` 的話整批一筆）。
 
 ## 內容
 
 | 檔案 | 用途 |
 |---|---|
-| `mcp_client.py` | 共用的 MCP stdio 用戶端：`connect()` 啟動橋接程式並完成握手，`session.call(tool, args)` 回傳結果、記錄耗時，App 回錯誤時丟 `ToolError` |
 | `stress/stress_test.py` | 壓力測試：接在目前文件後面加 N 頁（預設 200）05-Story Test 的版型，每 20 頁回報延遲與 WebView 記憶體，第一次失敗就停，最後核對保留的物件數。報告：`docs/00-需求分析/06-系統極限測試-報告.md` |
 | `stress/fill_pages.py` | 把第 4 頁之後的空白頁填上內容（profile 時的工作量） |
 | `stress/layout.py`、`stress/frames.json` | 三種頁面版型（pt）與故事文字 |

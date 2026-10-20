@@ -1,4 +1,4 @@
-"""mcp_client against a fake bridge that speaks the same line-delimited JSON-RPC."""
+"""magazine.client against a fake bridge that speaks the same line-delimited JSON-RPC."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_client import ToolError, connect, default_bridge
+from magazine.client import BRIDGE_ENV, ToolError, connect, default_bridge
 
 FAKE_BRIDGE = r'''
 import json, sys
@@ -58,3 +58,9 @@ def test_tool_error_carries_the_app_message(bridge: list[str]) -> None:
 def test_default_bridge_points_into_the_cargo_target() -> None:
     path = default_bridge("debug")
     assert path.parts[-4:] == ("src-tauri", "target", "debug", "magazine-mcp.exe")
+
+
+def test_environment_variable_overrides_the_bridge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    exe = tmp_path / "magazine-mcp.exe"
+    monkeypatch.setenv(BRIDGE_ENV, str(exe))
+    assert default_bridge("debug") == exe

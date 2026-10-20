@@ -12,7 +12,7 @@ from typing import Any
 
 from PIL import ImageFont
 
-from mcp_client import REPO_ROOT
+from magazine.client import REPO_ROOT
 from school_template import spec
 
 FONTS_DIR = REPO_ROOT / "fonts"

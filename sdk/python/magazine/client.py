@@ -1,11 +1,13 @@
 """Minimal MCP client for the magazine-mcp bridge (stdio, one JSON-RPC message per line).
 
-The scripts in this folder use it to drive the running app the same way Claude Code does.
+It drives the running app the same way Claude Code does: the bridge forwards each tool call to the
+app over a named pipe.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 from collections.abc import Iterator, Sequence
@@ -14,19 +16,27 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 PROTOCOL_VERSION = "2025-06-18"
+
+# sdk/python/magazine/client.py → repo root（SDK 以 editable 方式從 repo 安裝時才有意義）
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+BRIDGE_ENV = "MAGAZINE_MCP_EXE"
+"""Environment variable that overrides the bridge path."""
 
 
 def default_bridge(profile: str = "release") -> Path:
     """Path of the bridge built by `cargo build --bin magazine-mcp` (or `tauri build`).
 
     Args:
-        profile: Cargo profile directory, `release` or `debug`.
+        profile: Cargo profile directory, `release` or `debug`. Ignored when `MAGAZINE_MCP_EXE` is set.
 
     Returns:
         Absolute path of `magazine-mcp.exe`.
     """
+    override = os.environ.get(BRIDGE_ENV)
+    if override:
+        return Path(override)
     return REPO_ROOT / "src-tauri" / "target" / profile / "magazine-mcp.exe"
 
 
@@ -105,11 +115,11 @@ class McpSession:
 
 
 @contextmanager
-def connect(command: Sequence[str | Path] | None = None, client_name: str = "magazine-tools") -> Iterator[McpSession]:
+def connect(command: Sequence[str | Path] | None = None, client_name: str = "magazine-sdk") -> Iterator[McpSession]:
     """Starts the bridge, runs the MCP handshake and closes it afterwards.
 
     Args:
-        command: Bridge command line; defaults to the release `magazine-mcp.exe`.
+        command: Bridge command line; defaults to `default_bridge()` (release, or `MAGAZINE_MCP_EXE`).
         client_name: Name reported to the server.
 
     Yields:

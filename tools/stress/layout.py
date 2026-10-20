@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from mcp_client import McpSession
+from magazine.client import McpSession
 
 LEFT_X, RIGHT_X, COLUMN_W = 42.52, 304.73, 248.03
 TOP_Y, LOWER_Y = 42.52, 236.69

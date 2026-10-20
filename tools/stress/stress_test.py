@@ -12,7 +12,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from mcp_client import ToolError, connect, default_bridge
+from magazine.client import ToolError, connect, default_bridge
 from stress.layout import add_pages, fill_page
 
 

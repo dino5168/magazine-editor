@@ -45,7 +45,7 @@
 
 ```
 sdk/python/
-  pyproject.toml        # uv 專案，套件 magazine，Python ≥ 3.12，沒有第三方相依（測試用 pytest）
+  pyproject.toml        # uv 專案（magazine-sdk，build backend uv_build），套件 magazine，Python ≥ 3.13，沒有第三方相依（測試用 pytest）
   README.md
   magazine/
     __init__.py         # connect()
@@ -100,3 +100,8 @@ sdk/python/
   - **失敗整批退回**：第 3 個操作 `fill: "red"` → `ops[3]（update_element）：參數 fill：…整批沒有套用，文件沒有改變。`，`list_pages` 確認沒有多出頁面。
   - **時間**（`tools/mcp_client.py` 經橋接程式，開發版）：單獨呼叫 `add_text` 100 次 4526 ms（45 ms / 次）；`batch` 100 個 79 ms、200 個 25 ms（第一次較慢應是暖機），都是一次 `undo` 回到 0 個物件。批次在 App 端只重畫一次，比逐個呼叫快約 100 倍；對 LLM 來說省下的主要是來回次數。
   - 測試內容都已復原，文件回到一頁空白頁。
+- 2026-10-21：步驟 1–5 commit `d646f18`（階段 1）。
+- 2026-10-21：**步驟 6 完成**：`sdk/python/`（`pyproject.toml`（`magazine-sdk`、`uv_build`）、`magazine/client.py`（由 `tools/mcp_client.py` 搬來，測試用 `git mv`；多了環境變數 `MAGAZINE_MCP_EXE` 覆寫橋接程式路徑）、`magazine/__init__.py`、README、`.gitignore`、`uv.lock`）；`tools/mcp_client.py` 刪除，`tools/` 以 `[tool.uv.sources]` editable 依賴 SDK，5 支腳本改成 `from magazine.client import …`。**Python 改成 ≥ 3.13**：editable 安裝的 `.pth` 記著含中文的 repo 路徑，Python 3.12 用 cp950 讀 `.pth`，啟動時 `UnicodeDecodeError`；3.13 起先用 UTF-8（本機有 3.14.3，tools 的 venv 也換成 3.14）。pytest：SDK 4 項、tools 17 項；桌面版 `get_document` 13 ms。
+- 2026-10-21：**步驟 7 完成**：`scripts/generate.py` 由 `src-tauri/mcp-tools.json` 產生 `magazine/_tools.py`：`ToolMethods` 每個工具一個 keyword-only 方法（必填在前、選填預設 `UNSET` 不送出、`None` 送 `null`），型別由 JSON Schema 粗略對應（`enum` → `Literal`、`anyOf` → 聯集、物件 / 陣列 → `dict` / `list`；tuple 的 `prefixItems` → `list[Any]`），docstring = 工具標題、說明與參數說明（中文不自動換行）。`batch` 不產生（留給 `Document.batch()`）。`tests/test_tools.py` 5 項：產生結果和檔案相同、每個工具都有方法、參數和 schema 一致、呼叫只送有給的參數、型別對應；SDK pytest 共 9 項。`CLAUDE.md` 的「新增工具」流程與 Commands 加上重新產生這一步。
+- 2026-10-21：**步驟 8 完成**：`magazine/document.py`：`Document(ToolMethods)`（一般呼叫直接送；`batch()` 裡回傳 `Pending`，`pending["欄位"]` 是 `Ref`，收集時換成 `{"$ref": "N.路徑"}`，`Pending` 本身 = `"N"`；離開時一次 `batch`，結果填回 `pending.result`；失敗丟 `BatchError(index, tool)`（從 `ops[N]（工具）` 解析）；區塊例外或沒有呼叫 → 不送；不能巢狀；超過上限在收集時就丟 `ValueError`）、`magazine.connect(bridge=None, profile=…)` 回傳 `Document`。前一批的 `Ref` 之後再用時送實際的值。上限 `BATCH_OPS_MAX` 由產生器從 `batch` 的 `maxItems` 寫進 `_tools.py`（不手寫第二份）。`run_command` 等不能放進批次的工具不在 SDK 另列，交給 App 拒絕（避免重複清單）。`tests/test_document.py` 6 項，SDK pytest 共 15 項；桌面版：一批 4 個操作（新增頁面 → 標題 → 修改 → 查詢）16 ms、`x = 60`，錯誤批次 `BatchError 1 add_text`，一次 `undo` 回到原本的頁數。
+- 2026-10-21：**步驟 9 完成，全部完成**：範例 `sdk/python/examples/one_page.py`（`get_document` 取紙張寬度 → 一個 batch 5 個操作：新增頁面、標題、連「文字」色票的分隔線、帶字的圓角色塊、內文），桌面版 batch 11 ms、新頁面 4 個物件，一次 `undo` 回到原本的頁數；`tests/test_document.py` 加範例的測試（假的 session），SDK pytest 共 16 項。第一次執行遇到「App 沒有在 30 秒內回應」：`tauri dev` 下在 repo 裡新增檔案讓視窗重新載入，重跑即可（README 註明）。文件：SDK README（用法、範例）、`tools/README.md`、`MCP-工具清單.md`、`CLAUDE.md`（MCP 章節的 Python SDK、目前階段）。

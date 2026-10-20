@@ -11,7 +11,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from mcp_client import McpSession, ToolError, connect, default_bridge
+from magazine.client import McpSession, ToolError, connect, default_bridge
 from school_template import spec
 
 PX_TO_PT = 0.75  # the reference page is 794 x 1123 px = A4 595.28 x 841.89 pt
