@@ -33,6 +33,7 @@ import {
 } from "@/lib/editor/validation";
 import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
 import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
+import { BATCH_OPS_MAX } from "./batch";
 
 export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
   /** Short Chinese name shown by MCP clients. */
@@ -495,6 +496,27 @@ export const TOOL_DEFINITIONS = {
     title: "文件改名",
     description: `修改文件名稱（最多 ${DOCUMENT_NAME_MAX_LENGTH} 字）。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({ name: z.string().min(1).max(DOCUMENT_NAME_MAX_LENGTH * 2) }),
+    readOnly: false,
+  },
+  batch: {
+    title: "批次執行",
+    description:
+      `一次執行多個工具操作（最多 ${BATCH_OPS_MAX} 個），省去一個一個呼叫的來回。ops 的每一項是 { tool: 工具名稱, args: 那個工具的參數 }，參數與錯誤訊息和單獨呼叫那個工具完全相同。` +
+      "依序執行；任何一個失敗就整批退回、文件不變，錯誤訊息指出是 ops[N]（0 起算）。全部成功才套用，整批是一筆復原（使用者按一次 Ctrl+Z 全部撤銷）。" +
+      '引用前面操作的回傳值：參數值寫成 { "$ref": "<第幾個操作>.<欄位路徑>" }，例如第 0 個是 add_page 時用 { "$ref": "0.pages.0.id" }（新頁面的 id）、第 1 個是 add_text 時用 { "$ref": "1.id" }；陣列用數字，只能引用前面的操作。' +
+      "查詢工具（list_elements 等）可以放進批次，看到的是批次進行到那一步的文件。batch、undo、redo、run_command 不能放進批次。成功時回傳 { results: [每個操作的回傳值] }。",
+    input: z.strictObject({
+      ops: z
+        .array(
+          z.strictObject({
+            tool: z.string().min(1).describe("工具名稱，例如 add_text"),
+            args: z.record(z.string(), z.unknown()).optional().describe('那個工具的參數；值可以是 { "$ref": "0.id" }'),
+          }),
+        )
+        .min(1)
+        .max(BATCH_OPS_MAX)
+        .describe("依序執行的操作"),
+    }),
     readOnly: false,
   },
   undo: {

@@ -1310,3 +1310,79 @@ describe("editorReducer / swatches", () => {
     expect(run(state, { type: "document/setPageNumbering", rules: [good] }).history.present.pageNumberRules).toEqual([good]);
   });
 });
+
+describe("editorReducer / history/batch", () => {
+  const text = createTextElement("body", { x: 10, y: 10 });
+  const shape = createShapeElement("rect", { x: 50, y: 50 });
+  const steps: EditorAction[] = [
+    { type: "element/add", element: text },
+    { type: "element/add", element: shape },
+    { type: "element/update", id: shape.id, patch: { x: 80 } },
+  ];
+
+  it("gives the same result as the actions one by one, in one undo step", () => {
+    const start = blankState();
+    const batched = editorReducer(start, { type: "history/batch", actions: steps });
+
+    expect(batched.history.present).toEqual(run(start, ...steps).history.present);
+    expect(batched.history.past).toEqual([start.history.present]);
+    expect(batched.selectedIds).toEqual([shape.id]);
+    const undone = editorReducer(batched, { type: "history/undo" });
+    expect(undone.history.present).toBe(start.history.present);
+    expect(editorReducer(undone, { type: "history/redo" }).history.present).toBe(batched.history.present);
+  });
+
+  it("clears the redo history like any edit", () => {
+    const edited = run(blankState(), { type: "element/add", element: text }, { type: "history/undo" });
+    const batched = editorReducer(edited, { type: "history/batch", actions: [{ type: "element/add", element: shape }] });
+
+    expect(batched.history.future).toHaveLength(0);
+  });
+
+  it("returns the same state when nothing changes", () => {
+    const start = blankState();
+    expect(editorReducer(start, { type: "history/batch", actions: [] })).toBe(start);
+    expect(
+      editorReducer(start, { type: "history/batch", actions: [{ type: "element/update", id: "missing", patch: { x: 1 } }] }),
+    ).toBe(start);
+  });
+
+  it("keeps UI-only batches out of history", () => {
+    const start = run(blankState(), { type: "element/add", element: text });
+    const batched = editorReducer(start, {
+      type: "history/batch",
+      actions: [{ type: "selection/set", id: null }, { type: "view/setZoom", zoom: 2 }],
+    });
+
+    expect(batched.selectedIds).toEqual([]);
+    expect(batched.view.zoom).toBe(2);
+    expect(batched.history).toBe(start.history);
+  });
+
+  it("ignores the whole batch when it holds history, load, save or page/add actions", () => {
+    const start = run(blankState(), { type: "element/add", element: text });
+    const forbidden: EditorAction[] = [
+      { type: "history/undo" },
+      { type: "history/batch", actions: steps },
+      { type: "document/load", document: start.history.present, saved: true },
+      { type: "document/markSaved", document: start.history.present },
+      { type: "page/add" },
+    ];
+    for (const action of forbidden) {
+      expect(editorReducer(start, { type: "history/batch", actions: [...steps, action] })).toBe(start);
+    }
+  });
+
+  it(`keeps at most ${HISTORY_LIMIT} history entries and drops the oldest`, () => {
+    let state = run(blankState(), { type: "element/add", element: shape });
+    for (let i = 1; i < HISTORY_LIMIT; i += 1) {
+      state = editorReducer(state, { type: "element/update", id: shape.id, patch: { x: i } });
+    }
+    const before = state.history;
+    const batched = editorReducer(state, { type: "history/batch", actions: steps.slice(0, 1) });
+
+    expect(batched.history.past).toHaveLength(HISTORY_LIMIT);
+    expect(batched.history.past[batched.history.past.length - 1]).toBe(before.present);
+    expect(batched.history.past[0]).toBe(before.past[1]);
+  });
+});

@@ -1,6 +1,7 @@
 # MCP 工具清單（Claude Code 能呼叫的指令）
 
 > 整理於 2026-10-15（commit `62d02d6` 之後）。單一資料來源是 `src/lib/automation/tool-definitions.ts`（工具名稱、說明、參數 schema），`src-tauri/mcp-tools.json` 由它產生。**工具有增減或參數改了，要同步更新這份文件。**
+> 2026-10-21 加入 `batch`（計畫 `../09-Plans-Scripts/1-python-scripts-實作.md`）。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -17,7 +18,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 ## 2. 總覽
 
-共 **32 個工具**：14 個唯讀（只查詢）、18 個會改文件或執行指令。
+共 **33 個工具**：14 個唯讀（只查詢）、19 個會改文件或執行指令。
 
 | 分類 | 工具 |
 |---|---|
@@ -26,6 +27,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | 頁面與主頁 | `add_page`、`add_master`、`set_page_master`、`rename_page`、`set_page_background`、`rename_document` |
 | 文字樣式 | `add_text_style`、`update_text_style`、`delete_text_style`、`apply_text_style` |
 | 色票 | `add_swatch`、`update_swatch`、`delete_swatch` |
+| 批次 | `batch` |
 | 復原 | `undo`、`redo` |
 | 選單 | `run_command` |
 
@@ -34,7 +36,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 ## 3. 共通規則
 
 - **單位**：長度一律 pt（1/72 inch）。座標原點是頁面左上角，`x` / `y` 是物件外框（旋轉前）的左上角；`rotation` 是度數，順時針，繞外框左上角。
-- **一次呼叫 = 一筆復原紀錄**：使用者可以 Ctrl+Z，或呼叫 `undo`。
+- **一次呼叫 = 一筆復原紀錄**：使用者可以 Ctrl+Z，或呼叫 `undo`。`batch` 也是一次呼叫 = 一筆。
 - **頁面**：省略 `pageId` = 使用者正在看的頁面；指定別頁（或主頁）時**不切換**使用者的畫面。例外：`add_page`、`add_master` 和在 App 裡操作一樣，會切到新頁 / 新主頁。
 - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）：hex `#rrggbb` / `#rrggbbaa`（`aa` = 不透明度），或 `{ swatch: 色票名稱或 id, opacity?: 0–1 }` 連到文件色票（改色票時跟著變）。頁面 / 主頁背景只能是 `#rrggbb` 或 `{ swatch }`。
 - **文字樣式欄位**（`add_text`、`add_shape` 的圖形內文字、`update_element`、文字樣式工具共用，都可省略）：`fontSize`、`font`（內建「黑體 / 明體 / 楷體 / 圓體」或專案字型的名稱 / id）、`bold`、`italic`、`underline`、`strikethrough`、`align`（`left` / `center` / `right` / `distributed` 首尾置中）、`textColor`、`shadow`（`{ color, offsetX, offsetY }` 或 `null`）、`lineHeight`（行距倍數 0.5–3）、`letterSpacing`（字距 ‰，−200–1000）、`indentLeft` / `indentRight`（左 / 右縮排，單位「字」= 字級的倍數，0–20）、`indentFirstLine`（首行縮排，字；負值 = 首行突排，不可小於 −indentLeft）。
@@ -131,7 +133,20 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 ---
 
-## 9. 復原與選單指令
+## 9. 批次
+
+| 工具 | 用途 | 參數 |
+|---|---|---|
+| `batch` | 一次執行多個工具操作，省去一個一個呼叫的來回（每次來回都是一輪 LLM 生成）。依序執行；**任何一個失敗整批退回**、文件不變；全部成功才套用，**整批一筆復原** | `ops*`：1–200 個 `{ tool*, args }`，`args` 和單獨呼叫那個工具相同 |
+
+- **引用前面的結果**：參數值寫成 `{ "$ref": "<第幾個操作>.<欄位路徑>" }`（0 起算；陣列用數字）。常用：`add_page` 的新頁面 `"N.pages.0.id"`、`add_text` / `add_shape` / `add_line` 的新物件 `"N.id"`。只能引用前面的操作。
+- **錯誤訊息**：`ops[N]（工具）：<那個工具的錯誤>`，後面註明「整批沒有套用」。
+- 查詢工具可以放進批次（看到做到那一步的文件）；`batch`、`undo`、`redo`、`run_command` 不行。
+- 成功時回傳 `{ results: [每個操作的回傳值] }`。
+
+---
+
+## 10. 復原與選單指令
 
 | 工具 | 用途 |
 |---|---|
@@ -151,7 +166,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 ---
 
-## 10. 範例
+## 11. 範例
 
 ```jsonc
 // 1. 了解文件、取得頁面 id
@@ -173,4 +188,12 @@ update_element { "id": "<id>", "fill": { "swatch": "品牌紅", "opacity": 0.5 }
 
 // 5. 不滿意就復原
 undo {}
+
+// 6. 一次做好一頁：新增頁面、標題、色塊，再把色塊連到色票（一次呼叫、一筆復原）
+batch { "ops": [
+  { "tool": "add_page" },
+  { "tool": "add_text",  "args": { "pageId": { "$ref": "0.pages.0.id" }, "text": "本期焦點", "x": 40, "y": 40, "style": "標題" } },
+  { "tool": "add_shape", "args": { "pageId": { "$ref": "0.pages.0.id" }, "shape": "rect", "x": 40, "y": 100, "width": 515, "height": 8 } },
+  { "tool": "update_element", "args": { "id": { "$ref": "2.id" }, "fill": { "swatch": "文字" } } }
+] }
 ```

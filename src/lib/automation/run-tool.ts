@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { EditorState } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
 import type { Library } from "@/lib/library/types";
+import { runBatch } from "./batch";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
   addLine,
@@ -89,6 +90,7 @@ const HANDLERS: ToolHandlers = {
   rename_page: (args, { state, apply }) => renamePage(state, apply, args),
   set_page_background: (args, { state, apply }) => setPageBackground(state, apply, args),
   rename_document: (args, { apply }) => renameDocument(apply, args),
+  batch: ({ ops }, context) => runBatch(ops, context, runTool),
   undo: (_args, { apply }) => stepHistory(apply, "undo"),
   redo: (_args, { apply }) => stepHistory(apply, "redo"),
 };

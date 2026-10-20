@@ -237,6 +237,11 @@ export type EditorAction =
   | { readonly type: "document/setPageNumbering"; readonly rules: readonly PageNumberRule[] }
   | { readonly type: "history/undo" }
   | { readonly type: "history/redo" }
+  /**
+   * Applies several actions as one undo step (MCP `batch`). Only `BatchableAction`s: any history,
+   * load or save action inside makes the whole batch a no-op.
+   */
+  | { readonly type: "history/batch"; readonly actions: readonly EditorAction[] }
   /** Selects only this element; null clears the selection. */
   | { readonly type: "selection/set"; readonly id: ElementId | null }
   /** Ctrl+click: adds the element to the selection, or removes it when already selected. */
@@ -253,6 +258,30 @@ export type EditorAction =
       readonly saved: boolean;
     }
   | { readonly type: "document/markSaved"; readonly document: EditorDocument };
+
+/**
+ * Actions allowed inside `history/batch`: everything except history, loading and saving, and
+ * `page/add` (it makes its own page id, so replaying a batch would not give the same result).
+ */
+export type BatchableAction = Exclude<
+  EditorAction,
+  { readonly type: `history/${string}` | "document/load" | "document/markSaved" | "page/add" }
+>;
+
+const NOT_BATCHABLE: ReadonlySet<EditorAction["type"]> = new Set(["document/load", "document/markSaved", "page/add"]);
+
+/**
+ * Tells whether an action may go into `history/batch`.
+ *
+ * Args:
+ *   action: Any editor action.
+ *
+ * Returns:
+ *   False for history, load and save actions and `page/add`.
+ */
+export function isBatchableAction(action: EditorAction): action is BatchableAction {
+  return !action.type.startsWith("history/") && !NOT_BATCHABLE.has(action.type);
+}
 
 type ActionOf<T extends EditorAction["type"]> = Extract<EditorAction, { readonly type: T }>;
 type ActionHandler<T extends EditorAction["type"]> = (state: EditorState, action: ActionOf<T>) => EditorState;
@@ -965,6 +994,20 @@ const HANDLERS: { readonly [T in EditorAction["type"]]: ActionHandler<T> } = {
       ...state,
       history: { past: [...past, present], present: future[0], future: future.slice(1) },
     });
+  },
+
+  // 依序套用，最後把歷史收成一筆（中途每個 action 各自 commit，所以從原本的歷史重建）；
+  // 文件沒變時只保留頁面 / 選取等 UI 狀態的變化，不進歷史
+  "history/batch": (state, action) => {
+    if (action.actions.length === 0 || !action.actions.every(isBatchableAction)) return state;
+    const next = action.actions.reduce(editorReducer, state);
+    if (next === state) return state;
+    const { past, present } = state.history;
+    if (next.history.present === present) return { ...next, history: state.history };
+    return {
+      ...next,
+      history: { past: [...past, present].slice(-HISTORY_LIMIT), present: next.history.present, future: [] },
+    };
   },
 
   "selection/set": (state, action) => {
