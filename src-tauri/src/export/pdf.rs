@@ -216,18 +216,37 @@ fn drop_undrawable_svgs(root: &Path, document: &mut RenderDocument, fonts: &[Fon
     skipped
 }
 
+/// The document laid out by Typst, before it becomes a file: PDF writes it, PowerPoint draws each
+/// page as a picture.
+pub struct CompiledDocument {
+    /// What was laid out; images that could not be drawn are already removed.
+    pub render: RenderDocument,
+    /// One Typst page per `render.pages` entry, same order.
+    pub pages: PagedDocument,
+    pub skipped_images: usize,
+}
+
+/// Lays out the document with Typst.
+///
+/// # Errors
+/// `AppError::InvalidProject` for invalid content, `AppError::Export` when Typst fails.
+pub fn compile_document(root: &Path, request: &ExportRequest, fonts: Vec<Font>) -> AppResult<CompiledDocument> {
+    let (mut render, missing_images) = build_render(root, request)?;
+    let skipped_images = missing_images + drop_undrawable_svgs(root, &mut render, &fonts);
+    let project_fonts = document_fonts::load(root, &request.document.fonts, &render);
+    let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&render))?, fonts, &project_fonts);
+    let pages = compile(&world)?;
+    Ok(CompiledDocument { render, pages, skipped_images })
+}
+
 /// Renders the document to PDF bytes.
 ///
 /// # Errors
 /// `AppError::InvalidProject` for invalid content, `AppError::Export` when Typst fails.
 pub fn render_pdf(root: &Path, request: &ExportRequest, fonts: Vec<Font>) -> AppResult<ExportOutput> {
-    let (mut document, missing_images) = build_render(root, request)?;
-    let skipped_images = missing_images + drop_undrawable_svgs(root, &mut document, &fonts);
-    let project_fonts = document_fonts::load(root, &request.document.fonts, &document);
-    let world = ExportWorld::new(root, serde_json::to_vec(&to_data(&document))?, fonts, &project_fonts);
-    let compiled = compile(&world)?;
-    let pdf = typst_pdf::pdf(&compiled, &PdfOptions::default()).map_err(|errors| diagnostics(&errors))?;
-    Ok(ExportOutput { bytes: pdf, pages: compiled.pages().len(), skipped_images })
+    let compiled = compile_document(root, request, fonts)?;
+    let pdf = typst_pdf::pdf(&compiled.pages, &PdfOptions::default()).map_err(|errors| diagnostics(&errors))?;
+    Ok(ExportOutput { bytes: pdf, pages: compiled.pages.pages().len(), skipped_images: compiled.skipped_images })
 }
 
 fn compile(world: &ExportWorld) -> AppResult<PagedDocument> {

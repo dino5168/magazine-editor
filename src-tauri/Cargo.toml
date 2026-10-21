@@ -34,6 +34,8 @@ time = { version = "0.3", features = ["formatting"] }
 typst = "=0.15.1"
 typst-pdf = "=0.15.1"
 typst-layout = "=0.15.1"
+# 匯出 PowerPoint：每頁畫成圖片（原本只在 dev-dependencies，疊圖比對用它）；和 typst 同版本
+typst-render = "=0.15.1"
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
 # 素材縮圖。typst 已經依賴同一版（同樣的 jpeg / png / gif / webp），不會多編一份
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
@@ -53,7 +55,6 @@ reqwest = { version = "0.13", default-features = false, features = ["native-tls"
 
 [dev-dependencies]
 tempfile = "3"
-typst-render = "=0.15.1"
 
 
 # 開發版（tauri dev / cargo test）也最佳化解碼圖片的套件：沒有最佳化時一張 24 MP 照片的縮圖要約 8 秒
@@ -75,6 +76,13 @@ opt-level = 3
 [profile.dev.package.gif]
 opt-level = 3
 [profile.dev.package.weezl]
+opt-level = 3
+# 匯出 PowerPoint 的點陣化（每頁 2880 × 1620）：沒有最佳化時 200 頁要約 55 秒
+[profile.dev.package.typst-render]
+opt-level = 3
+[profile.dev.package.tiny-skia]
+opt-level = 3
+[profile.dev.package.tiny-skia-path]
 opt-level = 3
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
