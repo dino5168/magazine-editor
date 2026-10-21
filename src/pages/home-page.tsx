@@ -42,6 +42,7 @@ import { createInitialState } from "@/lib/editor/editor-reducer";
 import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-factory";
 import { pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
+import { commandDisabledReason, type CommandDisabledReason } from "@/lib/menu/command-availability";
 import {
   createPlaceholderHandlers,
   panelCommandId,
@@ -54,7 +55,7 @@ import { PreferencesProvider, usePreferences, useSetPreferences } from "@/lib/pr
 import { SETTINGS_PAGES, type SettingsPageId } from "@/lib/preferences/settings-pages";
 import { VIEW_TOGGLES } from "@/lib/preferences/view-toggles";
 import { isDesktop } from "@/lib/project/project-api";
-import { ProjectProvider } from "@/lib/project/project-context";
+import { ProjectProvider, useProject } from "@/lib/project/project-context";
 import { useCloseGuard } from "@/lib/project/use-close-guard";
 import { LibraryDialogProvider, useLibraryDialog } from "@/components/library/library-dialog";
 import { TemplatesDialog } from "@/components/templates/templates-dialog";
@@ -105,6 +106,14 @@ function EditorLayout() {
     [dockLayout, preferences],
   );
 
+  // 指令能不能用：有些看文件（匯出 PowerPoint 只給簡報尺寸）。選單打開時才問，讀當下的文件，
+  // 所以版面不用跟著每次編輯重畫
+  const { getSnapshot } = useProject();
+  const disabledReason = useCallback<CommandDisabledReason>(
+    (command) => commandDisabledReason(command, getSnapshot().content.document),
+    [getSnapshot],
+  );
+
   // 設定 → 文件 / 偏好設定：同時最多開一個設定對話框
   const [openSettings, setOpenSettings] = useState<SettingsPageId | null>(null);
   // 調色板的「管理色票...」
@@ -124,6 +133,7 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.exportFlipbook": () => void project.exportFlipbook(),
+      "file.exportPptx": () => void project.exportPptx(),
       "file.importImage": importImage,
       "project.library": () => openLibrary(),
       "project.templates": () => (isDesktop ? setTemplatesOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
@@ -164,7 +174,7 @@ function EditorLayout() {
     <ManageSwatchesProvider onManage={openSwatches}>
     <ManageFontsProvider onManage={openFonts}>
     <div className="grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
-      <AppMenubar handlers={menuHandlers} isChecked={isChecked} />
+      <AppMenubar handlers={menuHandlers} isChecked={isChecked} disabledReason={disabledReason} />
       {/* relative：空白側的放置區疊在這一列的左右邊緣 */}
       <div className="relative flex min-h-0 min-w-0">
         <DockArea
@@ -199,7 +209,7 @@ function EditorLayout() {
         />
       </div>
       <EditorPageBar />
-      <McpBridge handlers={menuHandlers} isChecked={isChecked} />
+      <McpBridge handlers={menuHandlers} isChecked={isChecked} disabledReason={disabledReason} />
       <DockDragGhost ref={ghostRef} id={drag?.id ?? null} />
       {unsavedDialog}
       {newDocumentDialog}

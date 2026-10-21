@@ -5,6 +5,7 @@ import type { PageSetup } from "@/lib/editor/page-setup";
 import type { Margins } from "@/lib/editor/types";
 import { useLibraryControl } from "@/lib/library/library-context";
 import { buildExportRequest, skippedShapeCount, type ExportRequest } from "@/lib/export/export-request";
+import { pptxExportProblem } from "@/lib/export/pptx-export";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
 import { describeCommandError, isDesktop, projectApi } from "./project-api";
@@ -44,12 +45,15 @@ export interface ProjectCommands {
   readonly exportPdf: () => Promise<boolean>;
   /** Exports the same content as an HTML5 flip book folder. */
   readonly exportFlipbook: () => Promise<boolean>;
+  /** Exports the same content as PowerPoint, one picture per slide (slide-size documents only). */
+  readonly exportPptx: () => Promise<boolean>;
 }
 
 /** What each export format is called in messages, and which command renders it. */
 const EXPORT_FORMATS = {
   pdf: { name: "PDF", run: projectApi.exportPdf },
   flipbook: { name: "翻頁電子書", run: projectApi.exportFlipbook },
+  pptx: { name: "PowerPoint", run: projectApi.exportPptx },
 } as const satisfies Record<ExportFormat, { name: string; run: (request: ExportRequest) => unknown }>;
 
 export const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run tauri dev）";
@@ -162,6 +166,14 @@ export function useProjectCommands(
       // 匯出的是目前畫面上的內容（包含未存檔的修改）；對話框開著時使用者無法編輯，先取快照即可
       const { document } = getSnapshot().content;
       // 翻頁書把整個字型檔放進資料夾：放上網站前要確認授權允許散布（PDF / EPUB 照嵌入的規則，不另外問）
+      // 選單已經停用；MCP 或其他入口仍可能呼叫，在選存檔位置之前就說明（Rust 也會再擋）
+      if (format === "pptx") {
+        const problem = pptxExportProblem(document);
+        if (problem !== null) {
+          toast.error(`無法匯出 PowerPoint：${problem}（設定 → 文件 → 頁面設定）`);
+          return false;
+        }
+      }
       if (format === "flipbook") {
         const fonts = fontsToCheckBeforePublishing(document);
         if (fonts.length > 0 && !(await confirmFontLicense(fonts.map((font) => font.name)))) return false;
@@ -196,6 +208,7 @@ export function useProjectCommands(
   );
   const exportPdfImpl = useCallback(() => runExport("pdf"), [runExport]);
   const exportFlipbookImpl = useCallback(() => runExport("flipbook"), [runExport]);
+  const exportPptxImpl = useCallback(() => runExport("pptx"), [runExport]);
 
   return useMemo(
     () => ({
@@ -206,8 +219,9 @@ export function useProjectCommands(
       confirmClose: exclusive(resolveUnsaved),
       exportPdf: exclusive(exportPdfImpl),
       exportFlipbook: exclusive(exportFlipbookImpl),
+      exportPptx: exclusive(exportPptxImpl),
     }),
-    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved, exportPdfImpl, exportFlipbookImpl],
+    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved, exportPdfImpl, exportFlipbookImpl, exportPptxImpl],
   );
 }
 

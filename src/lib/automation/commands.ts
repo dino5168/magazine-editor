@@ -14,12 +14,15 @@ import {
 import { MENUS, type MenuNode } from "@/lib/menu/menu-structure";
 import { formatShortcut } from "@/lib/menu/shortcut";
 import type { Result } from "@/lib/editor/validation";
+import { staticDisabledReason, type CommandDisabledReason } from "@/lib/menu/command-availability";
 
 /** What the command tools need from the app (built in `home-page.tsx`). */
 export interface CommandAccess {
   readonly handlers: CommandHandlers;
   /** Checked state of checkbox commands (視圖, 工具面板). */
   readonly isChecked: (id: CommandId) => boolean;
+  /** Why a command is disabled now (the menu bar's); absent = only the fixed reasons in `COMMANDS`. */
+  readonly disabledReason?: CommandDisabledReason;
 }
 
 export interface CommandSummary {
@@ -76,8 +79,8 @@ const MENU_ENTRIES: ReadonlyMap<CommandId, MenuEntry> = (() => {
 })();
 
 function unavailableReason(access: CommandAccess, id: CommandId): string | undefined {
-  const { disabledReason } = getCommand(id);
-  if (disabledReason !== undefined) return disabledReason;
+  const disabled = (access.disabledReason ?? staticDisabledReason)(id);
+  if (disabled !== undefined) return disabled;
   if (isPlaceholderHandler(access.handlers[id])) return "尚未實作";
   return undefined;
 }

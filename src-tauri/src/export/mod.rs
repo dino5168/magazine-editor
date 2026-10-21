@@ -3,15 +3,16 @@
 //! The editor's document first becomes a [`render::RenderDocument`]: the drawable form of one
 //! document, with the text already split into lines by the editor ([`TextLayout`], measured by
 //! Konva) so that every output wraps exactly like the canvas. Each format then draws that model —
-//! [`pdf`] hands it to the embedded Typst compiler, [`epub`] writes fixed-layout XHTML pages.
+//! [`pdf`] hands it to the embedded Typst compiler, [`epub`] writes fixed-layout XHTML pages,
+//! [`pptx`] draws each Typst page as a slide picture.
 
+pub mod archive;
 pub mod document_fonts;
 pub mod epub;
 pub mod flipbook;
 pub mod fonts;
 pub mod html;
 pub mod pdf;
-#[expect(dead_code, reason = "步驟 4 由 export_pptx command 呼叫；接上後移除這個屬性")]
 pub mod pptx;
 pub mod render;
 #[cfg(test)]

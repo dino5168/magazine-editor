@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-21 紙張加「簡報（PPT）」四種（選了自動轉橫式），見「偏好設定與頁面設定」的紙張；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-19 文件範本：把專案的設計存成全域範本、新增專案時套用，見「文件範本」；2026-10-19 圖片框：圖形填入照片（檔案格式 v17），見「圖片框（圖形照片）」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-21 MCP `batch` 工具（一次呼叫多個操作、一筆復原）與 Python SDK `sdk/python/`，見「MCP」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」；2026-10-21 字型管理：字型集合（.ttc）、從系統字型加入、多檔 / 拖放匯入、下載免費字型（精選清單）、翻頁書的字型授權提醒（檔案格式不變），見「專案字型」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-21 紙張加「簡報（PPT）」四種（選了自動轉橫式），見「偏好設定與頁面設定」的紙張；2026-10-21 匯出 PowerPoint（只給簡報尺寸的文件、每頁一張滿版圖片），見「匯出 PowerPoint」；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-19 文件範本：把專案的設計存成全域範本、新增專案時套用，見「文件範本」；2026-10-19 圖片框：圖形填入照片（檔案格式 v17），見「圖片框（圖形照片）」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-21 MCP `batch` 工具（一次呼叫多個操作、一筆復原）與 Python SDK `sdk/python/`，見「MCP」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」；2026-10-21 字型管理：字型集合（.ttc）、從系統字型加入、多檔 / 拖放匯入、下載免費字型（精選清單）、翻頁書的字型授權提醒（檔案格式不變），見「專案字型」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -34,11 +34,11 @@
 | Styling | Tailwind CSS v4（`@tailwindcss/vite`，沒有 `tailwind.config`）· `tw-animate-css` |
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
 | 自動化 / MCP | `zod` 4（MCP 工具參數的 schema 與驗證，只用在 `src/lib/automation`）· Rust `rmcp` **`=3.5.1`**（官方 MCP SDK，只用在橋接程式 `magazine-mcp.exe`）· `tokio`（named pipe） |
-| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`、`typst-render`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
+| 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
 | Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版）· `roxmltree`（匯入時確認 SVG）· `comemo`（匯出前用 typst 的 SVG 解析檢查，版本跟 typst）· `reqwest` 0.13（只用在「下載免費字型」；tauri 本來就依賴同一版；TLS 用 Windows 的 Schannel：`native-tls`，不用 rustls（0.13 預設的 aws-lc-rs 在 Windows 要 cmake / NASM）） |
 | 翻頁書 | StPageFlip（npm `page-flip` **2.0.7**，MIT，沒有相依套件）：**vendor** 在 `src-tauri/src/export/flipbook/vendor/`（`include_str!`，匯出時原樣複製進書裡，不從網路載入；版本、SHA-256 與升級方式見那裡的 `README.md`）。不在 `package.json` |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
-| PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` **`=0.15.1`**（三個版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`） |
+| PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` / `typst-render` **`=0.15.1`**（版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`；`typst-render` 把頁面畫成點陣圖：匯出 PowerPoint 與疊圖比對） |
 
 ## Commands
 
@@ -74,6 +74,9 @@ cargo test --manifest-path src-tauri/Cargo.toml export_preview -- --ignored
 # 翻頁電子書寫到 <dir>/flipbook/（可加 EXPORT_REQUEST_JSON；FLIPBOOK_PAGES 指定 fixture 複製幾頁）
 # 三個 preview（export_preview / epub_preview / flipbook_preview）都可以加 EXPORT_PROJECT_DIR=<專案資料夾>：讀那裡的圖片與專案字型，不用暫存資料夾
 cargo test --manifest-path src-tauri/Cargo.toml flipbook_preview -- --ignored
+# PowerPoint：pptx_preview 寫 <dir>/preview.pptx（沒給請求時是 fixture 改成 16:9）；slides_preview 寫每頁的圖片到 <dir>/slides/ 並印出時間
+# 兩個都收 EXPORT_REQUEST_JSON / EXPORT_PROJECT_DIR；slides_preview 另收 FLIPBOOK_PAGES（複製成幾頁，量速度）
+cargo test --manifest-path src-tauri/Cargo.toml pptx_preview -- --ignored
 ```
 
 目前沒有設定 ESLint / Prettier。
@@ -195,6 +198,7 @@ src/
       __tests__/
     menu/                         # 選單與全域指令（不含 UI）
       commands.ts                 # COMMANDS（label / shortcut / disabledReason）、CommandId、CommandHandlers、佔位 handler
+      command-availability.ts     # commandDisabledReason(id, document)：固定的 disabledReason 之外看文件決定的停用（匯出 PowerPoint 只給簡報尺寸）；選單與 MCP 共用
       menu-structure.ts           # MENUS 結構（item / checkbox / separator / submenu / radio）、助記鍵
       shortcut.ts                 # matchesShortcut / formatShortcut（以 event.code 比對）
       use-menu-shortcuts.ts       # 全域 Ctrl 快捷鍵與 Alt 助記鍵
@@ -208,7 +212,8 @@ src/
       dock-storage.ts             # 版面存取 localStorage（v3；損壞時回到預設，v2 / v1 只沿用寬度）
       __tests__/
     automation/                   # MCP 工具（見「MCP」）：tool-definitions.ts（工具名稱、說明、zod schema 的單一資料來源）、batch.ts / batch-refs.ts（batch 工具與 $ref）、queries.ts（查詢）、commands.ts（選單指令）、edits.ts（編輯 → reducer action）、run-tool.ts（找工具 → 驗證 → 執行）、mcp-tools.ts（產生 MCP 工具清單）、mcp-status.ts（連線狀態 store）、use-mcp-bridge.ts（event ↔ runTool、開關 pipe）
-    export/                       # 匯出（PDF / 翻頁電子書 / EPUB 共用）的前端部分
+    export/                       # 匯出（PDF / 翻頁電子書 / EPUB / PowerPoint 共用）的前端部分
+      pptx-export.ts              # pptxExportProblem / isSlideSize：能不能匯出 PowerPoint（每頁同一個簡報尺寸，直橫都可）
       export-request.ts           # ExportRequest / TextLayout 型別、buildExportRequest（對應 Rust；匯出前把頁碼加成每頁最上層的圖形）
       line-export.ts              # exportedLinePieces：匯出前把線條換成 x-line / x-line-heads 路徑圖形（Rust 不認識線條）
       text-layout.ts              # measureTextLayout：用離畫面的 Konva.Text 取得分行、基線與每行寬度；measureLineWidth：單行寬度（頁碼外框）
@@ -272,9 +277,10 @@ src-tauri/
   src/error.rs                    # AppError / AppResult（所有 command 共用）
   src/db/mod.rs                   # DbState、MIGRATIONS（PRAGMA user_version）、recent_projects
   src/project/                    # 專案資料夾：format.rs（serde 型別、驗證、schemaVersion、舊版升級）、shape.rs（多邊形 / 星形頂點）、io.rs（原子寫入、.bak、清理）、assets.rs（圖片 / 文字 / 音訊匯入、讀文字）、library.rs（library.json：型別、驗證、讀寫、由舊的專案圖片建立）、thumbnails.rs（素材縮圖）、recovery.rs（自動備份檔）、templates.rs（文件範本：列出、建立 / 更新 / 改名 / 刪除、從範本建立未命名專案、啟動清理）、fonts.rs（專案字型：prepare（拆集合、清 bit 7）/ analyze / import_font / collection_faces）、font_collection.rs（.ttc → 單一 sfnt、清簡單字形旗標的 bit 7）、system_fonts.rs（掃系統與使用者字型資料夾、只讀需要的表格、快取 system-fonts.json）、font_catalog.rs（精選清單、驗證下載、本機快取 font-cache/；不碰網路）
-  src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、document_fonts.rs（這次匯出要用的專案字型）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、render_pdf）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
+  src/export/                     # 匯出：mod.rs（ExportRequest / TextLayout）、document_fonts.rs（這次匯出要用的專案字型）、render.rs（文件 → RenderDocument，所有格式共用）、pdf.rs（→ data.json、compile_document（PDF 與 PowerPoint 共用的 Typst 排版）、render_pdf）、archive.rs（write_zip：EPUB 與 PowerPoint 共用，每個項目壓縮或原樣）、world.rs（typst::World、載入 fonts/ 的字型）、template.typ（Typst 模板）、fonts.rs（內嵌字型清單）
     html/                         # HTML 系列格式共用（EPUB、翻頁書）：markup.rs（一頁的 .page 標記：真文字 + 絕對定位、inline SVG、escape）、css.rs（@font-face + .page 裡的規則）、mod.rs（PageImages 圖片改名、collect_images、used_fonts、LANGUAGE）
     epub/                         # EPUB 3 固定版面（還沒接 UI）：mod.rs（build_epub）、xhtml.rs（XHTML 外框）、css.rs、package.rs（OPF / nav）、zip.rs
+    pptx/                         # PowerPoint：mod.rs（SLIDE_SIZES_PT、slide_size 尺寸檢查、page_text 替代文字、build_pptx）、raster.rs（typst-render 每頁 3 px/pt → PNG / JPEG，多執行緒）、package.rs（最小的 PresentationML：一個母片、一個空白版面配置、每頁一張滿版圖片）
     flipbook/                     # HTML5 翻頁電子書：mod.rs（build_flipbook、check_target、write_folder）、viewer/（viewer.js / viewer.css：工具列、縮圖、放大、目錄與搜尋）、vendor/（page-flip，見 README.md）、tests.rs
   src/mcp/                        # MCP 的 App 端：protocol.rs（pipe 上的 ToolRequest / ToolResponse）、pipe.rs（named pipe server）、bridge.rs（McpState：開關 pipe、event 交給前端、等 mcp_respond）、client.rs（橋接程式用的 pipe 用戶端）
   src/bin/magazine-mcp.rs         # MCP 橋接程式（Claude Code 以 stdio 啟動；rmcp；工具清單內嵌 mcp-tools.json）
@@ -717,6 +723,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 助記鍵 Alt+F / Alt+P / Alt+S / Alt+V / Alt+W（2026-10-19 起 Alt+P 是專案管理，工具面板改 Alt+W，使用者決定）：以 Menubar 受控 `value` 開啟選單。**不要**攔截事件傳遞（`stopPropagation`），Radix Menu 依賴 document 上的 keydown 判斷「鍵盤操作」，才會自動聚焦第一個項目。
 - 「外觀」單選的 `value` 固定為「跟隨系統」，而且不接 `onValueChange`，等主題切換實作後再改成受控。
 - `checkbox` 節點的勾選狀態不放在靜態的 `MENUS`，由 `AppMenubar` 的 `isChecked(commandId)` 從外部狀態讀取；不接 `onCheckedChange`，handler 負責切換。
+- **動態停用**（2026-10-21）：看文件決定的停用寫在 `lib/menu/command-availability.ts` 的 `commandDisabledReason(id, document)`（固定的 `COMMANDS.disabledReason` 優先；目前只有 `file.exportPptx`）。`AppMenubar` 的 `disabledReason` prop 與 MCP 的 `CommandAccess.disabledReason` 都用 `home-page.tsx` 同一個函式，它在**呼叫當下**讀 `useProject().getSnapshot()`：Radix 選單打開時才掛上項目，所以 `EditorLayout` 不用訂閱編輯器狀態。快捷鍵（`findCommandByEvent`）只看固定原因：有快捷鍵的指令不要做成動態停用，或一起改。
 - `專案管理`（主選單，2026-10-19 起）：`專案管理 → 素材管理...`（`project.library`，沒有快捷鍵；之前是 `檔案 → 素材管理...` / `file.library`）：開啟素材管理視窗，和「素材」面板的按鈕共用 `useLibraryDialog`。`專案管理 → 文件範本...`（`project.templates`，桌面版限定）：開啟文件範本視窗（見「文件範本」）。
 - `視圖`：放畫面上的輔助顯示（存這台電腦、不影響輸出）：尺規、分隔線、格線、內容區對齊線、邊界參考線、吸附格線，都是 `view.<id>` 勾選項目，由 `VIEW_TOGGLES` 產生（見「偏好設定與頁面設定」的快速切換）。勾選項目也會顯示快捷鍵（`MenubarShortcut`，勾選記號在左側不重疊）。
 - `設定 → 文件` / `設定 → 偏好設定`：`settings.<id>` 項目由 `SETTINGS_PAGES` 依 `SETTINGS_GROUPS` 自動產生（`settingsCommandId`），快捷鍵也宣告在清單裡。
@@ -867,7 +874,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
   - 不讀系統字型，所以 `load_fonts()` 不會失敗，匯出結果在每台機器上都一樣。字型在第一次匯出時解析並快取在 `ExportState` 的 `OnceLock`。
   - CSS 的 `font-family` 由 `font_families()` 轉成 Typst 家族名：去掉 `serif` / `sans-serif` 等泛用名稱，再套 `LEGACY_FAMILIES`（`"Geist Variable"` → `"Geist"`、`"Microsoft JhengHei"` → `"Noto Sans TC"`）。**這個對應表不能刪**：內嵌字型之前存檔的專案仍然帶著舊名稱，而且沒有 schema 遷移會改寫它。
   - `font-display` 用 `block`：讓瀏覽器先以 fallback 畫再換字，會讓 Konva 已經量好的行寬失效。
-- **兩步 command**：`export_choose_path(format, suggestedName)`（`ExportFormat` 是 `pdf` / `flipbook`；開儲存對話框，路徑與格式存進 `ExportState.pending`，只回傳檔名）→ `export_pdf` / `export_flipbook`（取出**同一格式**的路徑、排版、寫檔；格式不符視為沒選位置）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的檔案（PDF，或翻頁書的 `index.html`；成功 toast 的「開啟」按鈕）。
+- **兩步 command**：`export_choose_path(format, suggestedName)`（`ExportFormat` 是 `pdf` / `flipbook` / `pptx`；開儲存對話框，路徑與格式存進 `ExportState.pending`，只回傳檔名；檔案格式沒打副檔名才補上：`with_extension`）→ `export_pdf` / `export_flipbook` / `export_pptx`（取出**同一格式**的路徑、排版、寫檔；格式不符視為沒選位置）。延續「前端不傳路徑給 Rust」的原則，同時讓前端只在排版期間顯示 loading toast。`export_open_last` 用 opener 開啟最後一次匯出的檔案（PDF / PowerPoint，或翻頁書的 `index.html`；成功 toast 的「開啟」按鈕）。
 - 排版是 CPU 密集工作，`export_pdf` 用 `spawn_blocking` 執行，不要在 async runtime 上直接跑。PDF 一樣先寫 `.pdf.tmp` 再 rename。
 - 匯出的是**目前畫面上的內容（含未存檔的修改）**，不要求先存檔；圖片檔在專案資料夾中不存在時略過該張並回報 `skippedImages`（和畫布顯示灰框一致，不讓整份匯出失敗）。
 - **SVG 圖片**：Typst 本身會畫 SVG（usvg），但一張讀不了的 SVG（壞 XML、寬高 0、連到絕對路徑或 `assets/images/` 以外的圖片）會讓**整份**排版失敗。所以 `pdf.rs` 的 `drop_undrawable_svgs` 在排版前用 Typst 的 `SvgImage::with_fonts_images`（模板 `image()` 用的同一個函式、同一個 `ExportWorld`；所以要直接依賴 `comemo`，版本跟 typst）逐張檢查，失敗的同樣算進 `skippedImages`。SVG 文字的字型沒內嵌時 Typst 退回「圖片所在位置的字型」，模板沒有預設字型就一個字都不畫：圖片包在 `text(font: data.svgFonts)` 裡（`SVG_FALLBACK_FONTS` = 預設黑體）。EPUB 收錄成 `image/svg+xml`（`image_type` 沿用匯入的 `detect_extension`）。已知限制：SVG 連到另一個 `assets/images/` 檔案時 PDF 會畫、畫布不畫（檔名是 hash，實際碰不到）。
@@ -907,6 +914,18 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **已知限制**：字型全量內嵌（黑體＋明體約 27 MB，子集化之後和 EPUB 一起做；用到不是精選清單的專案字型時，匯出前先提醒授權，見「專案字型」）；Firefox 的 `file://` 字型未實測；全螢幕只在桌面版人工確認；搜尋標示框可能被疊在上面的物件蓋住一部分；硬頁（封面 / 最後一頁）3D 翻轉時透視會讓它上下超出書，翻封面時可能短暫蓋到工具列（page-flip 的效果）。
 - 之後另排：EPUB 接線（`ExportFormat` 加 `Epub`、`EXPORT_FORMATS` 加一筆）、字型子集化、翻頁音效、連結 / 互動元件、記住上次看到的頁。
 
+## 匯出 PowerPoint（`lib/export/pptx-export.ts` + `src-tauri/src/export/pptx`）
+
+計畫、實測與每一步的決定：`docs/03-Plans-匯出檔案/03-匯出PowerPoint 檔案-實作.md`。
+
+- **是什麼**：「檔案 → 匯出為 → PowerPoint（PPTX）...」輸出一個 `.pptx`：**一頁 = 一張投影片 = 一張滿版圖片**（同一份 Typst 排版畫成的圖，所以和 PDF、畫面一致）。代價：文字在 PowerPoint 裡**不能編輯**。圖片的替代文字（`descr`）放該頁的文字（螢幕閱讀器、搜尋用），名稱是頁名。字型畫成圖片、不嵌入，匯出前不問授權。
+- **只給簡報尺寸**（使用者決定）：每一頁同一個尺寸（PPTX 整份只有一個投影片大小），而且是「簡報（PPT）」四種之一（直、橫都可）；容許 0.5 pt（同 preset 比對）。前端 `pptxExportProblem`（選單停用並顯示「（需要簡報尺寸）」/「（各頁尺寸不同）」，見「選單列與指令」的動態停用；`runExport` 選位置前再查一次）、Rust `pptx::slide_size`（`SLIDE_SIZES_PT`，排版前就擋，`InvalidInput` 中文訊息）**規則相同、改一邊要改另一邊**。投影片大小 = 第 1 頁 × 12 700 EMU / pt（16:9 = PowerPoint 預設的 12 192 000 × 6 858 000）。
+- **點陣化**（`raster.rs`，使用者決定用 typst-render，不用 PDFium：不用附 DLL、可以平行、和疊圖比對同一個 renderer）：`PIXELS_PER_PT = 3`（16:9 = 2880 × 1620）；有非 SVG 的照片（圖片物件或圖片框）的頁 → JPEG 品質 92，其他 → PNG（RGB，文字與細線無損）。背景一定不透明，直接丟掉 alpha（`DynamicImage::to_rgb8`：在已最佳化的 `image` crate 裡）。`rasterize_pages` 以 `std::thread::scope` 分給每個 CPU 核心。開發版也最佳化 `typst-render` / `tiny-skia`（`Cargo.toml`）。
+- **封包**（`package.rs`）：固定的 XML 模板（沒有成熟的 Rust PPTX crate；同 EPUB 的 `package.rs`），使用者文字經 `escape`、屬性再經 `escape_attribute`（換行寫成 `&#10;`，否則讀回來變空白）。最小的 part 集合（PowerPoint 少了會跳「修復」）：`[Content_Types].xml`、rels、`docProps`、`presentation.xml`、`presProps` / `viewProps` / `tableStyles`、theme（Office 預設，看不到）、一個母片 + 一個空白版面配置、每頁 `slideN.xml`（一個 `p:pic`）、`ppt/media/imageN.png|jpeg`。圖片原樣存、XML 壓縮（`archive.rs` 的 `Packing`）。**改這裡要用 PowerPoint 實際開檔**（測試只檢查結構）。
+- **驗證**：PowerShell COM（`PowerPoint.Application`、`Presentations.Open(path, -1, 0, 0)`）開檔不出錯 = 沒有修復提示；`Slide.Export` 另存 PNG 和檔案內的圖片逐像素比對（五種大小含直式：平均差 ≤ 0.13 / 255）。COM 的 `Quit()` 之後行程不一定退出，腳本要結束**自己開的** POWERPNT。
+- **效能**（8 核心、200 頁、每頁一張照片）：release 4.4 秒、開發版約 21 秒（開發版的 JPEG 編碼器是泛型，在我們的 crate 以 opt-level 0 展開）；一頁照片約 0.2–0.6 MB。
+- 之後另排：可編輯的投影片（原生文字方塊與圖形，等於另一個排版引擎，所見即所得要重做）、備忘稿、投影片轉場、解析度選項。
+
 ## MCP（Claude Code 連線）（`lib/automation` + `src-tauri/src/mcp` + `src/bin/magazine-mcp.rs`）
 
 計畫與每一步的決定：`docs/01-Plans-2026-10/07-軟體增加McpServer-實作.md`；流程圖 `docs/01-Plans-2026-10/Claude-McpServer-System.html`。（取代 `docs/01-Plans/eval-mcp-server.md` 的「App 內嵌 HTTP」建議。）
@@ -939,7 +958,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - IPC 參數來自 WebView，視為不可信任：寫入前要驗證（參考 `commands/env_vars.rs` 的 `validate_key`），SQL 一律用 `params![]` binding。
 - 新增 command 的步驟：在 `commands/<domain>.rs` 實作 → 在 `commands/mod.rs` 宣告 `pub mod` → 在 `lib.rs` 的 `generate_handler!` 註冊。Rust 的 snake_case 參數在前端對應為 camelCase。
 - 使用新的 Tauri plugin 或 core API 時，要同步在 `capabilities/default.json` 加權限。
-- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`font_import`（raw body，專案字型：檢查並存到 `assets/fonts/`，回傳 `FontFile`，見 `project/fonts.rs`）、`font_collection_faces`、`system_fonts_list`、`font_import_system`、`font_catalog_download`、`font_catalog_cancel`、`font_catalog_cached`（見「專案字型」）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`template_list`、`template_create`、`template_replace`、`template_update_info`、`template_delete`、`project_new_from_template`（文件範本，見「文件範本」）；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
+- 現有 commands：`project_new`、`project_open_last`、`project_open_dialog`、`project_save`、`project_save_as_dialog`；`library_write`、`library_import`（raw binary body，種類在 header）、`library_read_text`、`library_thumbnail`；`font_import`（raw body，專案字型：檢查並存到 `assets/fonts/`，回傳 `FontFile`，見 `project/fonts.rs`）、`font_collection_faces`、`system_fonts_list`、`font_import_system`、`font_catalog_download`、`font_catalog_cancel`、`font_catalog_cached`（見「專案字型」）；`recovery_list`、`recovery_restore`、`recovery_discard`、`recovery_write`、`recovery_clear`；`template_list`、`template_create`、`template_replace`、`template_update_info`、`template_delete`、`project_new_from_template`（文件範本，見「文件範本」）；`export_choose_path`、`export_pdf`、`export_flipbook`、`export_pptx`、`export_open_last`；`mcp_set_enabled`、`mcp_respond`；`get_env_vars`、`upsert_env_var`、`delete_env_var`（前端還沒有使用）。
 - 會做檔案 I/O 或開對話框（blocking API）的 command 一律寫成 `async fn`：同步 command 在主執行緒執行，會凍結視窗。
 - `AppError::InvalidInput` 與 `AppError::Export` 的訊息**一律寫成給使用者看的中文**（前端直接顯示）；內部錯誤用其他 kind。
 

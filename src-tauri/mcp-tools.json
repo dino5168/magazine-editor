@@ -99,6 +99,7 @@
             "file.exportJpeg",
             "file.exportPdf",
             "file.exportFlipbook",
+            "file.exportPptx",
             "file.exportEpub",
             "project.library",
             "project.templates",

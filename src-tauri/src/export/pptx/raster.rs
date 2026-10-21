@@ -44,9 +44,6 @@ impl SlideImageFormat {
 pub struct SlideImage {
     pub format: SlideImageFormat,
     pub bytes: Vec<u8>,
-    /// Pixels.
-    pub width: u32,
-    pub height: u32,
 }
 
 fn image_error(error: impl std::fmt::Display) -> AppError {
@@ -93,7 +90,7 @@ pub fn rasterize(page: &Page, format: SlideImageFormat) -> AppResult<SlideImage>
         }
     }
     .map_err(image_error)?;
-    Ok(SlideImage { format, bytes, width, height })
+    Ok(SlideImage { format, bytes })
 }
 
 /// Draws every page, several at a time (one page at 3 px/pt is a ~18 MB pixmap; each worker keeps
@@ -174,10 +171,9 @@ mod tests {
         let images = rasterize_pages(&compiled).unwrap();
         assert_eq!(images.len(), compiled.render.pages.len());
         for (image, page) in images.iter().zip(&compiled.render.pages) {
-            assert_eq!(image.width, (page.width * 3.0).round() as u32);
-            assert_eq!(image.height, (page.height * 3.0).round() as u32);
             let decoded = image::load_from_memory(&image.bytes).unwrap();
-            assert_eq!((decoded.width(), decoded.height()), (image.width, image.height));
+            assert_eq!(decoded.width(), (page.width * 3.0).round() as u32);
+            assert_eq!(decoded.height(), (page.height * 3.0).round() as u32);
             let expected = if has_raster_photo(page) { image::ImageFormat::Jpeg } else { image::ImageFormat::Png };
             assert_eq!(image::guess_format(&image.bytes).unwrap(), expected);
         }

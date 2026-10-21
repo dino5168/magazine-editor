@@ -1,10 +1,10 @@
 //! Export commands, in two steps so the frontend can show progress only while rendering:
 //! `export_choose_path` asks where to save (the path stays on the Rust side), then
-//! `export_pdf` / `export_flipbook` render the document and the editor's text layout to that path.
+//! `export_pdf` / `export_flipbook` / `export_pptx` render the document and the editor's text layout to that path.
 
 use super::project::default_projects_dir;
 use crate::error::{AppError, AppResult};
-use crate::export::{self, flipbook, world, ExportRequest};
+use crate::export::{self, flipbook, pptx, world, ExportRequest};
 use crate::project::{io, ProjectState};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -24,6 +24,8 @@ pub enum ExportFormat {
     Pdf,
     /// A folder with `index.html` (HTML5 flip book).
     Flipbook,
+    /// One `.pptx` file; slide-size documents only.
+    Pptx,
 }
 
 impl ExportFormat {
@@ -31,6 +33,7 @@ impl ExportFormat {
         match self {
             Self::Pdf => "匯出 PDF",
             Self::Flipbook => "匯出翻頁電子書（輸入資料夾名稱）",
+            Self::Pptx => "匯出 PowerPoint",
         }
     }
 }
@@ -41,7 +44,7 @@ pub struct ExportState {
     fonts: OnceLock<Arc<Vec<Font>>>,
     /// Chosen by `export_choose_path`, consumed by the export of the same format.
     pending: Mutex<Option<(ExportFormat, PathBuf)>>,
-    /// What `export_open_last` opens: the PDF, or the flip book's `index.html`.
+    /// What `export_open_last` opens: the PDF / PowerPoint file, or the flip book's `index.html`.
     last_export: Mutex<Option<PathBuf>>,
 }
 
@@ -71,8 +74,11 @@ pub struct ExportResult {
     pub skipped_images: usize,
 }
 
+/// Writes the file next to its place first, then renames it over (a failed export never leaves half a file).
 fn write_atomic(path: &Path, bytes: &[u8]) -> AppResult<()> {
-    let tmp = path.with_extension("pdf.tmp");
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = PathBuf::from(tmp);
     std::fs::write(&tmp, bytes)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
@@ -89,9 +95,21 @@ fn flipbook_folder(picked: PathBuf) -> PathBuf {
     }
 }
 
+/// Adds the extension unless the user typed it (in any case). Unlike `set_extension`, a name
+/// with a dot (`v1.2`) keeps its whole name.
+fn with_extension(picked: PathBuf, extension: &str) -> PathBuf {
+    if picked.extension().is_some_and(|ext| ext.eq_ignore_ascii_case(extension)) {
+        return picked;
+    }
+    let mut path = picked.into_os_string();
+    path.push(".");
+    path.push(extension);
+    PathBuf::from(path)
+}
+
 /// Asks where to save. Returns the chosen file or folder name, or `None` when the user cancels.
 ///
-/// PDF: a file. Flip book: the name typed in the save dialog becomes a new folder (like "save
+/// PDF / PowerPoint: a file. Flip book: the name typed in the save dialog becomes a new folder (like "save
 /// as"), which must not exist yet or be empty.
 #[tauri::command]
 pub async fn export_choose_path(
@@ -111,6 +129,7 @@ pub async fn export_choose_path(
         ExportFormat::Pdf => dialog.set_file_name(format!("{file_name}.pdf")).add_filter("PDF", &["pdf"]),
         // 資料夾沒有副檔名；不加 filter，對話框才不會自己補上
         ExportFormat::Flipbook => dialog.set_file_name(format!("{file_name} 翻頁書")),
+        ExportFormat::Pptx => dialog.set_file_name(format!("{file_name}.pptx")).add_filter("PowerPoint 簡報", &["pptx"]),
     };
     if let Some(directory) = directory {
         dialog = dialog.set_directory(directory);
@@ -120,13 +139,8 @@ pub async fn export_choose_path(
     };
     let picked = picked.into_path().map_err(|_| AppError::invalid_input("無法使用選取的位置"))?;
     let path = match format {
-        ExportFormat::Pdf => {
-            let mut path = picked;
-            if !path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
-                path.set_extension("pdf");
-            }
-            path
-        }
+        ExportFormat::Pdf => with_extension(picked, "pdf"),
+        ExportFormat::Pptx => with_extension(picked, "pptx"),
         ExportFormat::Flipbook => {
             let folder = flipbook_folder(picked);
             // 先檢查，使用者不用等排版完才知道名稱不能用（寫入前會再檢查一次）
@@ -180,6 +194,26 @@ pub async fn export_flipbook(
     Ok(ExportResult { pages: output.pages, skipped_images: output.skipped_images })
 }
 
+/// Draws every page as a slide picture and writes the PowerPoint file to the path chosen by
+/// `export_choose_path`. Only documents whose pages share one slide size (`pptx::slide_size`).
+#[tauri::command]
+pub async fn export_pptx(
+    project: State<'_, ProjectState>,
+    exports: State<'_, ExportState>,
+    request: ExportRequest,
+) -> AppResult<ExportResult> {
+    let path = exports.take_pending(ExportFormat::Pptx)?;
+    let fonts = exports.fonts();
+    let root = project.current()?.root;
+    // 排版與每頁點陣化都是 CPU 密集工作（點陣化自己再分給多個執行緒）
+    let output = tauri::async_runtime::spawn_blocking(move || pptx::build_pptx(&root, &request, fonts.to_vec()))
+        .await
+        .map_err(|error| AppError::Export(format!("匯出中斷：{error}")))??;
+    write_atomic(&path, &output.bytes)?;
+    exports.set_last_export(path)?;
+    Ok(ExportResult { pages: output.pages, skipped_images: output.skipped_images })
+}
+
 /// Opens the most recent export with the default app (PDF viewer, or the browser for a flip book).
 #[tauri::command]
 pub async fn export_open_last(app: AppHandle, exports: State<'_, ExportState>) -> AppResult<()> {
@@ -202,6 +236,7 @@ mod tests {
     fn export_format_names_match_the_frontend() {
         assert_eq!(serde_json::from_str::<ExportFormat>(r#""pdf""#).unwrap(), ExportFormat::Pdf);
         assert_eq!(serde_json::from_str::<ExportFormat>(r#""flipbook""#).unwrap(), ExportFormat::Flipbook);
+        assert_eq!(serde_json::from_str::<ExportFormat>(r#""pptx""#).unwrap(), ExportFormat::Pptx);
         assert!(serde_json::from_str::<ExportFormat>(r#""epub""#).is_err());
     }
 
@@ -214,6 +249,24 @@ mod tests {
         assert!(state.take_pending(ExportFormat::Flipbook).is_err());
         *state.pending.lock().unwrap() = Some((ExportFormat::Flipbook, PathBuf::from("book")));
         assert_eq!(state.take_pending(ExportFormat::Flipbook).unwrap(), PathBuf::from("book"));
+    }
+
+    #[test]
+    fn file_exports_get_their_extension_once() {
+        assert_eq!(with_extension(PathBuf::from(r"C:\out\雜誌"), "pptx"), PathBuf::from(r"C:\out\雜誌.pptx"));
+        assert_eq!(with_extension(PathBuf::from(r"C:\out\雜誌.PPTX"), "pptx"), PathBuf::from(r"C:\out\雜誌.PPTX"));
+        assert_eq!(with_extension(PathBuf::from(r"C:\out\v1.2"), "pdf"), PathBuf::from(r"C:\out\v1.2.pdf"), "a dot is part of the name");
+        assert_eq!(with_extension(PathBuf::from(r"C:\out\雜誌.pdf"), "pptx"), PathBuf::from(r"C:\out\雜誌.pdf.pptx"));
+    }
+
+    #[test]
+    fn atomic_write_replaces_the_file_and_leaves_no_temporary() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("簡報.pptx");
+        std::fs::write(&path, b"old").unwrap();
+        write_atomic(&path, b"new").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 
     #[test]

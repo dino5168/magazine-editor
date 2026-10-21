@@ -89,9 +89,9 @@ export interface FontCatalogProgress {
 }
 
 /** Output format of `export_choose_path` (`ExportFormat` in Rust). */
-export type ExportFormat = "pdf" | "flipbook";
+export type ExportFormat = "pdf" | "flipbook" | "pptx";
 
-/** Result of `export_pdf` / `export_flipbook` (`ExportResult` in Rust). */
+/** Result of `export_pdf` / `export_flipbook` / `export_pptx` (`ExportResult` in Rust). */
 export interface ExportResult {
   readonly pages: number;
   /** Images left out because their file no longer exists in the project, or the format cannot draw it. */

@@ -42,7 +42,7 @@ flowchart TB
         subgraph Rust["src-tauri/ (Rust)"]
             Cmd["commands/<br/>前端可以呼叫的指令"]
             RP["project/<br/>專案檔格式、讀寫、備份"]
-            RE["export/<br/>PDF(Typst)、翻頁電子書、EPUB"]
+            RE["export/<br/>PDF(Typst)、翻頁電子書、EPUB、PowerPoint"]
             DB["db/<br/>SQLite:最近開啟的專案"]
             Cmd --> RP
             Cmd --> RE
@@ -222,9 +222,9 @@ sequenceDiagram
 
 | 資料夾 | 負責什麼 |
 |---|---|
-| `commands/` | 前端可以呼叫的指令:專案(新增、開啟、儲存、另存、匯入圖片)、自動備份、匯出 PDF / 翻頁電子書 |
+| `commands/` | 前端可以呼叫的指令:專案(新增、開啟、儲存、另存、匯入圖片)、自動備份、匯出 PDF / 翻頁電子書 / PowerPoint |
 | `project/` | 專案檔 `project.magproj` 的格式定義與驗證、安全寫入(先寫暫存檔再取代)、圖片複製、備份檔 |
-| `export/` | 把文件轉成匯出用的資料,再產生 PDF(內嵌 Typst)、翻頁電子書(資料夾 + 瀏覽器 viewer)或 EPUB(EPUB 還沒有按鈕);翻頁書和 EPUB 的每一頁用 `export/html/` 的同一份排版 |
+| `export/` | 把文件轉成匯出用的資料,再產生 PDF(內嵌 Typst)、翻頁電子書(資料夾 + 瀏覽器 viewer)、EPUB(還沒有按鈕)或 PowerPoint(Typst 排好的每一頁畫成圖片,一頁一張投影片);翻頁書和 EPUB 的每一頁用 `export/html/` 的同一份排版 |
 | `db/` | SQLite 資料庫 `app.db`,目前記錄最近開啟的專案 |
 | `mcp/` + `bin/magazine-mcp.rs` | 讓 Claude Code 操作文件(MCP):橋接程式經 named pipe 把工具呼叫交給 App,見下一節 |
 

@@ -79,6 +79,23 @@ describe("runCommand", () => {
   });
 });
 
+describe("commands disabled by the document", () => {
+  it("reports and refuses them like the menu does", () => {
+    const { commands, calls } = access(["file.exportPptx"]);
+    const disabled: CommandAccess = {
+      ...commands,
+      disabledReason: (id) => (id === "file.exportPptx" ? "需要簡報尺寸" : undefined),
+    };
+    const entry = listCommands(disabled).find((command) => command.id === "file.exportPptx");
+    expect(entry).toMatchObject({ available: false, unavailableReason: "需要簡報尺寸", menu: "檔案 › 匯出為 › PowerPoint（PPTX）..." });
+    expect(runCommand(disabled, "file.exportPptx").error?.message).toBe("「匯出為 PowerPoint」目前不能執行：需要簡報尺寸");
+    expect(calls).toEqual([]);
+    // 沒有給 disabledReason 時只看 COMMANDS 的固定原因
+    expect(runCommand(commands, "file.exportPptx").error).toBeNull();
+    expect(calls).toEqual(["file.exportPptx"]);
+  });
+});
+
 describe("run_command tool", () => {
   it("rejects ids that are not commands", () => {
     const { commands } = access([]);
