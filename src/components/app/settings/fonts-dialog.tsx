@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
-import { FileUp, LoaderCircle, Monitor, Plus, Trash, X } from "lucide-react";
+import { Download, FileUp, LoaderCircle, Monitor, Plus, Trash, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ import {
   startFontDraft,
   type FontDraft,
 } from "@/lib/editor/font-draft";
+import { catalogFontNaming, catalogIdsInUse } from "@/lib/editor/font-catalog";
 import { DEFAULT_FONT_OPTION, FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { pickFiles } from "@/lib/editor/image";
 import { fontUsage } from "@/lib/editor/project-fonts";
@@ -41,6 +42,7 @@ import { checkFontFileLoads, loadFontOption } from "@/lib/editor/use-fonts-ready
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
 import { cn } from "@/lib/utils";
 import { CollectionFaceDialog, type CollectionFaceQuestion } from "./collection-face-dialog";
+import { FontCatalogPicker } from "./font-catalog-picker";
 import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "./settings-dialog";
 import { SystemFontPicker } from "./system-font-picker";
 
@@ -169,6 +171,7 @@ function FontsForm({ onDone, dropRef }: FontsFormProps) {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const faceChoice = usePendingChoice<CollectionFaceQuestion, number | null>();
 
@@ -239,7 +242,7 @@ function FontsForm({ onDone, dropRef }: FontsFormProps) {
       <DialogHeader>
         <DialogTitle>字型</DialogTitle>
         <DialogDescription>
-          從這台電腦安裝的字型加入，或匯入 TrueType / OpenType 字型檔（.ttf、.otf）。字型檔會存在專案資料夾裡，畫面、PDF、EPUB 與翻頁書用同一個檔案。加入後在屬性面板的字型選單「專案字型」選用。
+          從這台電腦安裝的字型加入、下載精選的免費字型，或匯入字型檔（.ttf、.otf、.ttc）。字型檔會存在專案資料夾裡，畫面、PDF、EPUB 與翻頁書用同一個檔案。加入後在屬性面板的字型選單「專案字型」選用。
         </DialogDescription>
       </DialogHeader>
 
@@ -260,11 +263,25 @@ function FontsForm({ onDone, dropRef }: FontsFormProps) {
           <Monitor />
           從系統字型加入...
         </Button>
+        <Button variant="outline" size="sm" disabled={busy || !isDesktop} onClick={() => setCatalogOpen(true)}>
+          <Download />
+          下載免費字型...
+        </Button>
         <Button variant="outline" size="sm" disabled={busy} onClick={() => void add()}>
           {busy ? <LoaderCircle className="animate-spin" /> : <Plus />}
           匯入字型檔...
         </Button>
       </div>
+      <FontCatalogPicker
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        inUse={catalogIdsInUse(draft.fonts)}
+        onAdd={({ regular, bold }, font) => {
+          const id = crypto.randomUUID();
+          setDraft((current) => addDraftFont(current, id, regular, bold, catalogFontNaming(font)));
+          setSelectedId(id);
+        }}
+      />
       <SystemFontPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}

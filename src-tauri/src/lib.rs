@@ -31,6 +31,7 @@ pub fn run() {
             app.manage(commands::export::ExportState::default());
             app.manage(mcp::McpState::default());
             app.manage(project::system_fonts::SystemFontsState::default());
+            app.manage(commands::fonts::FontDownloadState::default());
             commands::project::clear_untitled(app.handle());
             commands::templates::clean_up(app.handle());
             Ok(())
@@ -50,6 +51,9 @@ pub fn run() {
             commands::fonts::font_collection_faces,
             commands::fonts::system_fonts_list,
             commands::fonts::font_import_system,
+            commands::fonts::font_catalog_cached,
+            commands::fonts::font_catalog_cancel,
+            commands::fonts::font_catalog_download,
             commands::library::library_read_text,
             commands::library::library_thumbnail,
             commands::recovery::recovery_list,

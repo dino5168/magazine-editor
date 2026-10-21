@@ -1,0 +1,216 @@
+{
+  "catalogVersion": 1,
+  "fonts": [
+    {
+      "id": "genyo-gothic",
+      "name": "源樣黑體",
+      "category": "黑體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/ButTaiwan/genyog-font",
+      "version": "2.100",
+      "regular": {
+        "url": "https://github.com/ButTaiwan/genyog-font/releases/download/v2.100/GenYoGothic2TW-otf.zip",
+        "archivePath": "GenYoGothic2TW-R.otf",
+        "sha256": "616be26e3448b1396b342533d046d8bb0d5b1801d80b5a8ee882811bdc625d7c",
+        "bytes": 59641637,
+        "fileSha256": "425f22fe1e7cf51d6afb5a6a0608f6c6e45b69a71ca3a1f73f13fedc5253f3c3",
+        "fileBytes": 10753852
+      },
+      "bold": {
+        "url": "https://github.com/ButTaiwan/genyog-font/releases/download/v2.100/GenYoGothic2TW-otf.zip",
+        "archivePath": "GenYoGothic2TW-B.otf",
+        "sha256": "616be26e3448b1396b342533d046d8bb0d5b1801d80b5a8ee882811bdc625d7c",
+        "bytes": 59641637,
+        "fileSha256": "3aec8c192dc49bef72875b370ff8cdffc2fd242185a43bab3db2733a24debff3",
+        "fileBytes": 10946596
+      }
+    },
+    {
+      "id": "chiron-hei-hk",
+      "name": "昭源黑體 Chiron Hei HK",
+      "category": "黑體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/chiron-fonts/chiron-hei-hk",
+      "version": "2.609",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/chiron-fonts/chiron-hei-hk/106b59c99e6164b26a11d46214a98dd68386b31a/STATIC_OTF/ChironHeiHK-R.otf",
+        "sha256": "72f68279a78a118b469bc683a1ab12364a5a3c244ee592da441d4a3cb0eda4b1",
+        "bytes": 16164592,
+        "fileSha256": "72f68279a78a118b469bc683a1ab12364a5a3c244ee592da441d4a3cb0eda4b1",
+        "fileBytes": 16164592
+      },
+      "bold": {
+        "url": "https://raw.githubusercontent.com/chiron-fonts/chiron-hei-hk/106b59c99e6164b26a11d46214a98dd68386b31a/STATIC_OTF/ChironHeiHK-B.otf",
+        "sha256": "51a6c39f8dd0a4522a7c5d366d77e9e52aebe4280d9b16ed95f03288c802e821",
+        "bytes": 17083396,
+        "fileSha256": "51a6c39f8dd0a4522a7c5d366d77e9e52aebe4280d9b16ed95f03288c802e821",
+        "fileBytes": 17083396
+      }
+    },
+    {
+      "id": "chocolate-sans",
+      "name": "朱古力黑體",
+      "category": "黑體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/MoonlitOwen/ChocolateSans",
+      "version": "2025-08-29",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/MoonlitOwen/ChocolateSans/da53f36e4d09712999369a0f62c698958e5f513c/fonts/ttf/ChocolateClassicalSans-Regular.ttf",
+        "sha256": "30c7934d8f91b6a10036d50c59c151060e0ce9804952dcf3346e3243b6ca16d3",
+        "bytes": 12183000,
+        "fileSha256": "30c7934d8f91b6a10036d50c59c151060e0ce9804952dcf3346e3243b6ca16d3",
+        "fileBytes": 12183000
+      },
+      "bold": null
+    },
+    {
+      "id": "genryu-min",
+      "name": "源流明體",
+      "category": "明體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/ButTaiwan/genryu-font",
+      "version": "2.100",
+      "regular": {
+        "url": "https://github.com/ButTaiwan/genryu-font/releases/download/v2.100/GenRyuMin2TW-otf.zip",
+        "archivePath": "GenRyuMin2TW-R.otf",
+        "sha256": "a7b5a531acb30597a7902ef74bd4fd6b606ec47c2c09326eecbaf54875791240",
+        "bytes": 71345911,
+        "fileSha256": "d244c6115431b2a18b5dfb0066e08381f56e6a33532915a0f517dd3f7063b646",
+        "fileBytes": 16449288
+      },
+      "bold": {
+        "url": "https://github.com/ButTaiwan/genryu-font/releases/download/v2.100/GenRyuMin2TW-otf.zip",
+        "archivePath": "GenRyuMin2TW-B.otf",
+        "sha256": "a7b5a531acb30597a7902ef74bd4fd6b606ec47c2c09326eecbaf54875791240",
+        "bytes": 71345911,
+        "fileSha256": "5e7d2c11cf9860c94ac7d1fba742329f6015f7042c736232e1e69eb8ab12d5da",
+        "fileBytes": 16217516
+      }
+    },
+    {
+      "id": "chiron-sung-hk",
+      "name": "昭源宋體 Chiron Sung HK",
+      "category": "明體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/chiron-fonts/chiron-sung-hk",
+      "version": "1.024",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/chiron-fonts/chiron-sung-hk/afbff1d96113607c7dab761c445604b20838ec76/STATIC_OTF/ChironSungHK-R.otf",
+        "sha256": "d53da9ffb3593a6dcce34f9e4a5d94369c7e619efa1b3d9a60717c7d72aa65d0",
+        "bytes": 24164960,
+        "fileSha256": "d53da9ffb3593a6dcce34f9e4a5d94369c7e619efa1b3d9a60717c7d72aa65d0",
+        "fileBytes": 24164960
+      },
+      "bold": {
+        "url": "https://raw.githubusercontent.com/chiron-fonts/chiron-sung-hk/afbff1d96113607c7dab761c445604b20838ec76/STATIC_OTF/ChironSungHK-B.otf",
+        "sha256": "bc3f911227c98ae45caf31147201c29dd3cf14fc2c84af72936f4ef6067b397d",
+        "bytes": 26585108,
+        "fileSha256": "bc3f911227c98ae45caf31147201c29dd3cf14fc2c84af72936f4ef6067b397d",
+        "fileBytes": 26585108
+      }
+    },
+    {
+      "id": "jf-openhuninn",
+      "name": "jf open 粉圓",
+      "category": "圓體",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/justfont/open-huninn-font",
+      "version": "2.1",
+      "regular": {
+        "url": "https://github.com/justfont/open-huninn-font/releases/download/v2.1/jf-openhuninn-2.1.ttf",
+        "sha256": "9d5bf4932d31fe94c18cd8cfddc98bc1b14ce10f4e354c682179db290a99c825",
+        "bytes": 4911464,
+        "fileSha256": "9d5bf4932d31fe94c18cd8cfddc98bc1b14ce10f4e354c682179db290a99c825",
+        "fileBytes": 4911464
+      },
+      "bold": null
+    },
+    {
+      "id": "iansui",
+      "name": "芫荽",
+      "category": "楷體・手寫",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/ButTaiwan/iansui",
+      "version": "1.020",
+      "regular": {
+        "url": "https://github.com/ButTaiwan/iansui/releases/download/v1.020/iansui.zip",
+        "archivePath": "Iansui-Regular.ttf",
+        "sha256": "28d58aef9b7a21c137945a4fd14138d6284a8573c0c1b123f6e5b708423348a6",
+        "bytes": 4803795,
+        "fileSha256": "7f1aa62e9dcbf40d0ce41a5d3f1e5ea602e66c295778ac6fefb6b84d8ed08bd5",
+        "fileBytes": 9447424
+      },
+      "bold": null
+    },
+    {
+      "id": "naikai",
+      "name": "內海字體",
+      "category": "楷體・手寫",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/max32002/naikaifont",
+      "version": "1.89",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/max32002/naikaifont/7baa43a6adad4a82eab6fd27c9612b316f69d7c9/tw/NaikaiFont-Regular.ttf",
+        "sha256": "d3320b822131540d5e3cc9737f7b458aeb1c0ca76fe89aeaa1b76001f54e503e",
+        "bytes": 26254192,
+        "fileSha256": "d3320b822131540d5e3cc9737f7b458aeb1c0ca76fe89aeaa1b76001f54e503e",
+        "fileBytes": 26254192
+      },
+      "bold": {
+        "url": "https://raw.githubusercontent.com/max32002/naikaifont/7baa43a6adad4a82eab6fd27c9612b316f69d7c9/tw/NaikaiFont-Bold.ttf",
+        "sha256": "43a3822eedd0d7d5fe464fc462c799f5ff2de8eaeabc0825ba09607b1035b621",
+        "bytes": 38622668,
+        "fileSha256": "43a3822eedd0d7d5fe464fc462c799f5ff2de8eaeabc0825ba09607b1035b621",
+        "fileBytes": 38622668
+      }
+    },
+    {
+      "id": "jason-handwriting-1",
+      "name": "清松手寫體 1",
+      "category": "楷體・手寫",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/jasonhandwriting/JasonHandwriting",
+      "version": "2025-12-28",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/jasonhandwriting/JasonHandwriting/e488583c07077850aa4a2a6280baa20374cccde2/JasonHandwriting1.ttf",
+        "sha256": "de76a15b1e2c1a7050d061485e28195f5b682d45e37499cf730c2b8554c44cf3",
+        "bytes": 8921060,
+        "fileSha256": "de76a15b1e2c1a7050d061485e28195f5b682d45e37499cf730c2b8554c44cf3",
+        "fileBytes": 8921060
+      },
+      "bold": null
+    },
+    {
+      "id": "chenyuluoyan",
+      "name": "辰宇落雁體",
+      "category": "楷體・手寫",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/Chenyu-otf/chenyuluoyan_thin",
+      "version": "2.0",
+      "regular": {
+        "url": "https://github.com/Chenyu-otf/chenyuluoyan_thin/releases/download/v2.0/ChenYuluoyan-2.0-Thin.ttf",
+        "sha256": "1289e42a6d1ec995d0cb23aee89efc69fc95749fbd54a610057a3e992dc453db",
+        "bytes": 9522140,
+        "fileSha256": "1289e42a6d1ec995d0cb23aee89efc69fc95749fbd54a610057a3e992dc453db",
+        "fileBytes": 9522140
+      },
+      "bold": null
+    },
+    {
+      "id": "cubic-11",
+      "name": "俐方體 11 號",
+      "category": "像素",
+      "license": "OFL-1.1",
+      "homepage": "https://github.com/ACh-K/Cubic-11",
+      "version": "1.500",
+      "regular": {
+        "url": "https://raw.githubusercontent.com/ACh-K/Cubic-11/4c566f7d6cc5c05ee360fe9cff56b5da1fcafd4d/fonts/ttf/Cubic_11.ttf",
+        "sha256": "0193f5f033612496df6b45ee92ac3b335bc6a5a24ff95da55ca87b33e57dcf62",
+        "bytes": 2773732,
+        "fileSha256": "0193f5f033612496df6b45ee92ac3b335bc6a5a24ff95da55ca87b33e57dcf62",
+        "fileBytes": 2773732
+      },
+      "bold": null
+    }
+  ]
+}

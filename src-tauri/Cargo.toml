@@ -47,6 +47,9 @@ roxmltree = "0.21"
 comemo = "0.5.1"
 # 匯入專案字型時讀字型檔（授權、度量、名稱）；typst 已經依賴同一版（原本只在 dev-dependencies）
 ttf-parser = "0.25"
+# 「下載免費字型」：只連精選清單（fonts-catalog.json）的網址。tauri 本來就依賴同一版（沒開 TLS）；
+# TLS 用 Windows 內建的 Schannel（native-tls）：0.13 的 rustls 預設要 aws-lc-rs，在 Windows 要 cmake / NASM 才編得起來
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
 
 [dev-dependencies]
 tempfile = "3"

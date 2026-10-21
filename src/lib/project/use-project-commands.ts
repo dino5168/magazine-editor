@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import { fontsToCheckBeforePublishing } from "@/lib/editor/font-catalog";
 import type { PageSetup } from "@/lib/editor/page-setup";
 import type { Margins } from "@/lib/editor/types";
 import { useLibraryControl } from "@/lib/library/library-context";
@@ -24,6 +25,11 @@ export type NewDocumentChoice =
  * that template (文件範本 window's 用這個範本新增專案).
  */
 export type ChooseNewSetup = (templateId?: string) => Promise<NewDocumentChoice | null>;
+
+/**
+ * Before a flip book export: the book carries these fonts' whole files; resolves true to go on.
+ */
+export type ConfirmFontLicense = (fontNames: readonly string[]) => Promise<boolean>;
 
 export interface ProjectCommands {
   /** Each resolves to true when the operation completed (false: cancelled or failed). */
@@ -54,11 +60,17 @@ export const DESKTOP_ONLY_MESSAGE = "檔案功能僅在桌面版可用（npm run
  * Args:
  *   confirmUnsaved: Shows the "save changes?" prompt; injected so this hook stays UI-free.
  *   chooseNewSetup: Shows the 新增文件 dialog (paper and margins of a new project); injected too.
+ *   confirmFontLicense: Asks whether to export a flip book with fonts whose licence the user should
+ *     check (system fonts, own files); injected too.
  *
  * Returns:
  *   Command functions; they read the latest state when invoked.
  */
-export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetup: ChooseNewSetup): ProjectCommands {
+export function useProjectCommands(
+  confirmUnsaved: ConfirmUnsaved,
+  chooseNewSetup: ChooseNewSetup,
+  confirmFontLicense: ConfirmFontLicense,
+): ProjectCommands {
   const { ready, getSnapshot, createNew, createFromTemplate, loadOpened, markSaved } = useProject();
   // 素材庫是立即寫入的：換專案（Rust 端拒絕寫到別的專案）與另存（Rust 從磁碟複製素材庫）之前先寫完
   const { flush: flushLibrary } = useLibraryControl();
@@ -149,6 +161,11 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       const { name, run } = EXPORT_FORMATS[format];
       // 匯出的是目前畫面上的內容（包含未存檔的修改）；對話框開著時使用者無法編輯，先取快照即可
       const { document } = getSnapshot().content;
+      // 翻頁書把整個字型檔放進資料夾：放上網站前要確認授權允許散布（PDF / EPUB 照嵌入的規則，不另外問）
+      if (format === "flipbook") {
+        const fonts = fontsToCheckBeforePublishing(document);
+        if (fonts.length > 0 && !(await confirmFontLicense(fonts.map((font) => font.name)))) return false;
+      }
       const chosen = await projectApi.chooseExportPath(format, document.name);
       if (chosen.error) {
         toast.error(`無法匯出${name}：${describeCommandError(chosen.error)}`);
@@ -175,7 +192,7 @@ export function useProjectCommands(confirmUnsaved: ConfirmUnsaved, chooseNewSetu
       }
       return true;
     },
-    [getSnapshot],
+    [confirmFontLicense, getSnapshot],
   );
   const exportPdfImpl = useCallback(() => runExport("pdf"), [runExport]);
   const exportFlipbookImpl = useCallback(() => runExport("flipbook"), [runExport]);

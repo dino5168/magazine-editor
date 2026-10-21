@@ -56,13 +56,43 @@ python fonts/patch_font.py <原始>/GenSenRounded2TW-B.otf   fonts/GenSenRounded
 
 ## 專案字型（使用者匯入）
 
-這裡的字型是**內建字型**：跟著程式發行，每個專案都能用，要改程式才能增減（上面的「新增一套字型」）。2026-10-14 起另有**專案字型**：使用者在「設定 → 文件 → 字型...」把自己有授權的 TTF / OTF 匯入專案，存在專案資料夾的 `assets/fonts/`，只有那個專案能用（計畫 `docs/05-Plans-字型/01-專案字型-實作.md`，CLAUDE.md「專案字型」）。
+這裡的字型是**內建字型**：跟著程式發行，每個專案都能用，要改程式才能增減（上面的「新增一套字型」）。2026-10-14 起另有**專案字型**：使用者在「設定 → 文件 → 字型...」把字型加入專案，存在專案資料夾的 `assets/fonts/`，只有那個專案能用（計畫 `docs/05-Plans-字型/01-專案字型-實作.md`、`02-字型管理問題-實作.md`，CLAUDE.md「專案字型」）。2026-10-21 起有三種來源：匯入字型檔（`.ttf` / `.otf` / `.ttc`，可多選、可拖放）、從系統字型加入、下載精選清單的免費字型（下面的「精選清單」）。
 
 | | 內建字型（`fonts/`） | 專案字型（`assets/fonts/`） |
 |---|---|---|
-| 加入方式 | 改程式（`index.css`、`FONT_OPTIONS`、`BUNDLED_FONTS`） | 使用者在 App 裡匯入 |
+| 加入方式 | 改程式（`index.css`、`FONT_OPTIONS`、`BUNDLED_FONTS`） | 使用者在 App 裡加入（匯入檔案 / 系統字型 / 下載清單的字型） |
 | 字族名稱 | 檔案裡的名稱（Typst 讀不同時用 `typst_family` 對應） | 程式決定：`project-font-<id>`，不管檔案叫什麼 |
 | 粗體 | 一定有（霞鶩文楷用 Medium） | 可選；沒有時粗體也用一般檔（不模擬加粗） |
 | 基線一致 | 用 `patch_font.py` 把 `hhea` 改成和 Windows 度量相同 | **不改檔**：`@font-face` 寫 `ascent-override` / `descent-override`；Safari / Apple Books 不支援 override，`hhea` 不同的字型在 Apple 裝置的 EPUB / 翻頁書會偏（已知限制，匯入後在對話框提示） |
 | 授權 | 都是 SIL OFL，`fsType` 0 | 匯入時讀 `fsType`：禁止嵌入 / 只能嵌入點陣圖拒絕，其他提醒；責任在使用者 |
-| 可變字型、字型集合 | 不放（見「規則」） | 匯入時拒絕 |
+| 可變字型 | 不放（見「規則」） | 加入時拒絕 |
+| 字型集合（`.ttc`） | 不放 | 選其中一個，拆成單一字型存進專案（字形不變；簡單字形旗標的保留位元 bit 7 會清掉，否則 Chrome 拒絕新細明體） |
+
+## 精選清單（「下載免費字型」）
+
+`src-tauri/fonts-catalog.json` 是 App 內建的免費字型清單（Rust `include_str!`，前端 `lib/editor/font-catalog.ts` 讀同一份）。使用者按下載時 Rust 才連網路，只連清單裡的網址；下載檔與字型檔都要符合清單的 SHA-256 與大小，存在本機快取 `%LOCALAPPDATA%\com.mycompany.magazineeditor\font-cache\` 再複製進專案。翻頁書匯出時，用到**不是**這份清單的專案字型會先提醒授權（清單的字型由存進專案的檔名＝內容雜湊認出來）。
+
+目前 11 套（2026-10-21 調查並逐一下載、匯入檢查與瀏覽器載入通過，使用者確認；授權都是 SIL OFL 1.1）：
+
+| 分類 | 字型 | 版本 | 檔案 | 下載 | 存進專案 |
+|---|---|---|---|---|---|
+| 黑體 | [源樣黑體](https://github.com/ButTaiwan/genyog-font) | 2.100 | 一般 + 粗體 | 59.6 MB（zip） | 21.7 MB |
+| 黑體 | [昭源黑體 Chiron Hei HK](https://github.com/chiron-fonts/chiron-hei-hk) | 2.609 | 一般 + 粗體 | 33.2 MB | 33.2 MB |
+| 黑體 | [朱古力黑體](https://github.com/MoonlitOwen/ChocolateSans) | 2025-08-29 | 只有一般 | 12.2 MB | 12.2 MB |
+| 明體 | [源流明體](https://github.com/ButTaiwan/genryu-font) | 2.100 | 一般 + 粗體 | 71.3 MB（zip） | 32.7 MB |
+| 明體 | [昭源宋體 Chiron Sung HK](https://github.com/chiron-fonts/chiron-sung-hk) | 1.024 | 一般 + 粗體 | 50.8 MB | 50.8 MB |
+| 圓體 | [jf open 粉圓](https://github.com/justfont/open-huninn-font) | 2.1 | 只有一般 | 4.9 MB | 4.9 MB |
+| 楷體・手寫 | [芫荽](https://github.com/ButTaiwan/iansui) | 1.020 | 只有一般 | 4.8 MB（zip） | 9.4 MB |
+| 楷體・手寫 | [內海字體](https://github.com/max32002/naikaifont) | 1.89 | 一般 + 粗體 | 64.9 MB | 64.9 MB |
+| 楷體・手寫 | [清松手寫體 1](https://github.com/jasonhandwriting/JasonHandwriting) | 2025-12-28 | 只有一般 | 8.9 MB | 8.9 MB |
+| 楷體・手寫 | [辰宇落雁體](https://github.com/Chenyu-otf/chenyuluoyan_thin) | 2.0 | 只有一般 | 9.5 MB | 9.5 MB |
+| 像素 | [俐方體 11 號](https://github.com/ACh-K/Cubic-11) | 1.500 | 只有一般 | 2.8 MB | 2.8 MB |
+
+沒收：台北黑體（只在 Google 雲端硬碟發布，沒有固定版本的網址，不能驗證）、源雲明體（zip 88 MB）、霞鶩新晰黑 / 新致宋（IPA 授權，不是 OFL）、已經內建的字型。
+
+### 新增或更新一套
+
+1. 找官方發布處：**網址要固定版本**（GitHub release 附檔，或 `raw.githubusercontent.com/<repo>/<完整 commit>/<路徑>`），內容不會再變，雜湊才有意義。授權要允許嵌入與再散布（SIL OFL）。只收靜態字型；可以有一般 + 粗體。
+2. 下載，算下載檔與字型檔各自的 SHA-256 與大小（zip 的話 `archivePath` 是 zip 裡的路徑，`sha256` / `bytes` 是 zip 的，`fileSha256` / `fileBytes` 是解出來的字型檔）。
+3. 用 App 的匯入流程檢查：`FONT_FILES=<a.ttf>;<b.otf> cargo test --manifest-path src-tauri/Cargo.toml analyze_font_files -- --ignored --nocapture`（印出家族、字重、授權、度量、存進專案的檔名）。存進專案的檔名前 32 碼必須等於 `fileSha256` 的前 32 碼（檔案原樣保存；若匯入時改了位元組，例如清 bit 7，授權判斷就認不出來）；再用瀏覽器 `FontFace` 載入確認。
+4. 寫進 `fonts-catalog.json`（`id` 發布後不改：只用小寫英數與 `-`）。`cargo test font_catalog` 檢查格式；`cargo test catalog_download_over_the_network -- --ignored --nocapture` 實際下載最小的一套。

@@ -120,17 +120,25 @@ export function guessFontGeneric(family: string): ProjectFont["generic"] {
  *   id: New id (from the caller, so this stays pure; letters, digits, `-` and `_` only).
  *   regular: The imported file (`font_import`).
  *   bold: Its bold file, when added together (from the system font list).
+ *   naming: Name and fallback to use instead of the file's (fonts from the download catalog).
  *
  * Returns:
  *   The new draft.
  */
-export function addDraftFont(draft: FontDraft, id: string, regular: FontFile, bold: FontFile | null = null): FontDraft {
+export function addDraftFont(
+  draft: FontDraft,
+  id: string,
+  regular: FontFile,
+  bold: FontFile | null = null,
+  naming?: { readonly name: string; readonly generic: ProjectFont["generic"] },
+): FontDraft {
   const trimmed = draft.fonts.map((font) => ({ ...font, name: font.name.trim() }));
+  // 斜體檔自己一套時，名稱帶上樣式（「Arial Italic」，不是「Arial 2」）
+  const fileName = ITALIC_STYLE.test(regular.fileStyle) ? `${regular.fileFamily} ${regular.fileStyle}` : regular.fileFamily;
   const font: ProjectFont = {
     id,
-    // 斜體檔自己一套時，名稱帶上樣式（「Arial Italic」，不是「Arial 2」）
-    name: defaultFontName(ITALIC_STYLE.test(regular.fileStyle) ? `${regular.fileFamily} ${regular.fileStyle}` : regular.fileFamily, trimmed),
-    generic: guessFontGeneric(regular.fileFamily),
+    name: defaultFontName(naming?.name ?? fileName, trimmed),
+    generic: naming?.generic ?? guessFontGeneric(regular.fileFamily),
     regular,
     bold,
   };

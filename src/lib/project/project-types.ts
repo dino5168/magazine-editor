@@ -78,6 +78,16 @@ export interface ImportedFonts {
   readonly bold: FontFile | null;
 }
 
+/** Event with the progress of `font_catalog_download` (Rust `commands/fonts.rs`). */
+export const FONT_CATALOG_PROGRESS_EVENT = "font-catalog://progress";
+
+/** Payload of `FONT_CATALOG_PROGRESS_EVENT`: bytes of all the files this download needs. */
+export interface FontCatalogProgress {
+  readonly id: string;
+  readonly received: number;
+  readonly total: number;
+}
+
 /** Output format of `export_choose_path` (`ExportFormat` in Rust). */
 export type ExportFormat = "pdf" | "flipbook";
 

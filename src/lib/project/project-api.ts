@@ -85,6 +85,15 @@ export const projectApi = {
   listSystemFonts: () => call<SystemFont[]>("system_fonts_list"),
   /** Adds system fonts (ids from `listSystemFonts`) to the project's `assets/fonts/`. */
   importSystemFonts: (regular: string, bold: string | null) => call<ImportedFonts>("font_import_system", { regular, bold }),
+  /**
+   * Adds a font of the download catalog (`fonts-catalog.json`) to the project: from the local cache
+   * or downloaded and checked by Rust (progress: `FONT_CATALOG_PROGRESS_EVENT`); null when cancelled.
+   */
+  downloadCatalogFont: (id: string) => call<ImportedFonts | null>("font_catalog_download", { id }),
+  /** Stops the catalog download in progress. */
+  cancelCatalogDownload: () => call<null>("font_catalog_cancel"),
+  /** Ids of the catalog fonts already in the local cache. */
+  cachedCatalogFonts: () => call<string[]>("font_catalog_cached"),
   /** Path of an image's thumbnail (made on demand), or null to show the original. */
   libraryThumbnail: (src: string) => call<string | null>("library_thumbnail", { src }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),

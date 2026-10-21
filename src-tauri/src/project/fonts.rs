@@ -336,4 +336,24 @@ pub(crate) mod tests {
         assert_eq!(std::fs::read(dir.path().join(&first.src)).unwrap(), bundled("Geist-Regular.ttf"));
         assert_eq!(std::fs::read_dir(dir.path().join(FONT_ASSET_DIR)).unwrap().count(), 1);
     }
+
+    /// Manual check (font plan step 8): `FONT_FILES=<a.ttf>;<b.otf> cargo test analyze_font_files
+    /// -- --ignored --nocapture` imports each file the way the app does and prints what a project
+    /// would store (family, weight, embedding, metrics, stored name), or why it is refused.
+    #[test]
+    #[ignore]
+    fn analyze_font_files() {
+        let files = std::env::var("FONT_FILES").expect("FONT_FILES");
+        let dir = tempfile::tempdir().unwrap();
+        for path in files.split(';').filter(|path| !path.is_empty()) {
+            let bytes = std::fs::read(path).unwrap();
+            match import_font(dir.path(), &bytes, None) {
+                Ok(file) => println!(
+                    "OK  {path}: {} / {} weight {} {:?} ascent {} descent {} apple {} -> {}",
+                    file.file_family, file.file_style, file.weight, file.embedding, file.ascent, file.descent, file.apple_baseline_shift, file.src
+                ),
+                Err(error) => println!("ERR {path}: {error}"),
+            }
+        }
+    }
 }
