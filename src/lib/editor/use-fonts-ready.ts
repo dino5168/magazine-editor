@@ -30,6 +30,26 @@ export function setFontUrlResolver(resolver: FontUrlResolver): void {
   resolveFontUrl = resolver;
 }
 
+/**
+ * Checks that the WebView can load a project font file before it is added: Chrome's sanitizer
+ * (OTS) rejects some files that Rust accepts, and the canvas would then quietly draw with the
+ * fallback font. The face is loaded under a throwaway family and not added to `document.fonts`.
+ *
+ * Args:
+ *   file: The stored file (`font_import` / `font_import_system`).
+ *
+ * Returns:
+ *   Null when it loads, otherwise a message for the user.
+ */
+export async function checkFontFileLoads(file: ProjectFont["regular"]): Promise<string | null> {
+  try {
+    await new FontFace("magazine-font-check", `url("${resolveFontUrl(file.src)}")`).load();
+    return null;
+  } catch {
+    return "畫面（瀏覽器引擎）無法載入這個字型檔，可能是檔案內容不符合規格";
+  }
+}
+
 // 同一套字型的檔案或度量變了（例如換粗體檔）就要重新登記、重新載入
 function loadKey(option: FontOption): string {
   const font = option.project;

@@ -4,8 +4,10 @@
 //! Plan: `docs/05-Plans-字型/01-專案字型-實作.md`.
 
 use super::assets::store;
+use super::font_collection;
 use super::format::{FontEmbedding, FontFile, FONT_ASSET_DIR, FONT_FILE_NAME_MAX_LENGTH, FONT_METRIC_MAX};
 use crate::error::{AppError, AppResult};
+use serde::Serialize;
 use std::path::Path;
 use ttf_parser::{name_id, Face, Language, Tag};
 
@@ -19,7 +21,8 @@ fn container(bytes: &[u8]) -> AppResult<&'static str> {
     match bytes.get(..4) {
         Some(b"OTTO") => Ok("otf"),
         Some([0, 1, 0, 0]) | Some(b"true") => Ok("ttf"),
-        Some(b"ttcf") => Err(AppError::invalid_input("不支援字型集合（.ttc）：請改用單一字型的 .ttf / .otf 檔")),
+        // 集合要先經 prepare 拆成單一字型
+        Some(b"ttcf") => Err(AppError::invalid_input("字型集合（.ttc）要指定用其中哪一個字型")),
         Some(b"wOFF") | Some(b"wOF2") => Err(AppError::invalid_input("不支援網頁字型（.woff / .woff2）：請改用 .ttf / .otf 檔")),
         _ => Err(AppError::invalid_input("不是 TrueType / OpenType 字型檔（.ttf / .otf）")),
     }
@@ -136,22 +139,97 @@ pub fn analyze(bytes: &[u8]) -> AppResult<(FontFile, &'static str)> {
     Ok((file, extension))
 }
 
+/// The bytes a project stores for a font file: face `index` of a collection rebuilt as a single
+/// font, with the reserved glyph flag cleared (Chrome rejects fonts that set it).
+///
+/// # Args
+/// * `index` — which face of a `.ttc`; `None` or `Some(0)` for a single font.
+///
+/// # Errors
+/// `AppError::InvalidInput` for a collection without an index, an index out of range, or an index
+/// on a single font.
+pub fn prepare(bytes: &[u8], index: Option<u32>) -> AppResult<Vec<u8>> {
+    let mut font = if font_collection::is_collection(bytes) {
+        let Some(index) = index else {
+            return Err(AppError::invalid_input("字型集合（.ttc）要指定用其中哪一個字型"));
+        };
+        font_collection::extract_face(bytes, index)?
+    } else {
+        if index.is_some_and(|index| index > 0) {
+            return Err(AppError::invalid_input("這不是字型集合，只有一個字型"));
+        }
+        bytes.to_vec()
+    };
+    font_collection::clear_reserved_glyph_flags(&mut font);
+    Ok(font)
+}
+
+/// One face of a collection, for choosing which one to import.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionFace {
+    pub index: u32,
+    pub family: String,
+    pub style: String,
+    pub weight: u16,
+    /// Why it cannot be imported (user-facing), or None.
+    pub problem: Option<String>,
+}
+
+/// Lists the faces of a font collection. Only the quick checks run here (variable font, embedding
+/// permission): rebuilding and checking every face of a 30 MB collection took 10 s in a debug build;
+/// the full check still runs when the chosen face is imported.
+///
+/// # Errors
+/// `AppError::InvalidInput` when it is not a readable collection or exceeds the size limit.
+pub fn collection_faces(bytes: &[u8]) -> AppResult<Vec<CollectionFace>> {
+    if bytes.len() > FONT_ASSET_MAX_BYTES {
+        return Err(AppError::invalid_input("字型檔超過 64 MB 上限"));
+    }
+    let count = font_collection::face_count(bytes)?;
+    (0..count)
+        .map(|index| {
+            let face = Face::parse(bytes, index).map_err(|_| AppError::invalid_input("字型集合檔損壞，無法讀取"))?;
+            let problem = if face.is_variable() {
+                Some("可變字型（Variable Font）不能使用".to_owned())
+            } else {
+                match embedding(&face) {
+                    Ok(_) => None,
+                    Err(AppError::InvalidInput(message)) => Some(message),
+                    Err(error) => return Err(error),
+                }
+            };
+            Ok(CollectionFace {
+                index,
+                family: name(&face, &[name_id::TYPOGRAPHIC_FAMILY, name_id::FAMILY]),
+                style: name(&face, &[name_id::TYPOGRAPHIC_SUBFAMILY, name_id::SUBFAMILY]),
+                weight: face.weight().to_number().clamp(1, 1000),
+                problem,
+            })
+        })
+        .collect()
+}
+
 /// Checks a font file and stores it in `assets/fonts/`, named by content hash (the same file is
 /// stored once; existing files are never rewritten).
+///
+/// # Args
+/// * `index` — which face of a `.ttc` (see `prepare`).
 ///
 /// # Returns
 /// What to store in `ProjectFont.regular` / `bold`, with `src` set.
 ///
 /// # Errors
-/// See `analyze`; `AppError::Io` on write failure.
-pub fn import_font(root: &Path, bytes: &[u8]) -> AppResult<FontFile> {
-    let (file, extension) = analyze(bytes)?;
-    let src = store(root, FONT_ASSET_DIR, bytes, extension)?;
+/// See `prepare` and `analyze`; `AppError::Io` on write failure.
+pub fn import_font(root: &Path, bytes: &[u8], index: Option<u32>) -> AppResult<FontFile> {
+    let font = prepare(bytes, index)?;
+    let (file, extension) = analyze(&font)?;
+    let src = store(root, FONT_ASSET_DIR, &font, extension)?;
     Ok(FontFile { src, ..file })
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::export::fonts::BUNDLED_FONTS;
 
@@ -160,7 +238,7 @@ mod tests {
     }
 
     /// A copy of a font with `OS/2.fsType` replaced (ttf-parser does not check table checksums).
-    fn with_fs_type(data: &[u8], value: u16) -> Vec<u8> {
+    pub(crate) fn with_fs_type(data: &[u8], value: u16) -> Vec<u8> {
         let mut bytes = data.to_vec();
         let tables = u16::from_be_bytes([bytes[4], bytes[5]]) as usize;
         let record = (0..tables).map(|i| 12 + 16 * i).find(|&offset| &bytes[offset..offset + 4] == b"OS/2").unwrap();
@@ -251,8 +329,8 @@ mod tests {
     #[test]
     fn stores_the_file_once_under_its_hash() {
         let dir = tempfile::tempdir().unwrap();
-        let first = import_font(dir.path(), bundled("Geist-Regular.ttf")).unwrap();
-        let again = import_font(dir.path(), bundled("Geist-Regular.ttf")).unwrap();
+        let first = import_font(dir.path(), bundled("Geist-Regular.ttf"), None).unwrap();
+        let again = import_font(dir.path(), bundled("Geist-Regular.ttf"), None).unwrap();
         assert_eq!(first, again);
         assert!(first.src.starts_with("assets/fonts/") && first.src.ends_with(".ttf"), "{}", first.src);
         assert_eq!(std::fs::read(dir.path().join(&first.src)).unwrap(), bundled("Geist-Regular.ttf"));

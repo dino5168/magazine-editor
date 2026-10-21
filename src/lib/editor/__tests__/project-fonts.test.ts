@@ -8,6 +8,10 @@ import {
   draftFontUsage,
   editDraftFont,
   finishFontDraft,
+  guessFontGeneric,
+  isFontCollection,
+  isFontFileName,
+  pairImportedFonts,
   removeDraftFont,
   startFontDraft,
 } from "../font-draft";
@@ -174,6 +178,14 @@ describe("font dialog draft", () => {
     expect(draft.fonts[2]).toMatchObject({ id: "new", name: `${DISPLAY.name} 2`, generic: "sans-serif", bold: null });
   });
 
+  it("adds a system font with its bold file and guesses a serif fallback for 明體-like names", () => {
+    const bold = { ...BOOK.regular, weight: 700 };
+    const draft = addDraftFont(startFontDraft(document), "new", { ...BOOK.regular, fileFamily: "新細明體" }, bold);
+    expect(draft.fonts[2]).toMatchObject({ name: "新細明體", generic: "serif", bold });
+    expect(["標楷體", "STSong", "Noto Serif TC", "PMingLiU", "華康仿宋"].map(guessFontGeneric)).toEqual(Array(5).fill("serif"));
+    expect(["微軟正黑體", "Noto Sans TC", "Segoe UI", "Microsoft JhengHei"].map(guessFontGeneric)).toEqual(Array(4).fill("sans-serif"));
+  });
+
   it("moves the uses of deleted fonts along a chain of replacements", () => {
     let draft = startFontDraft(document);
     // 標題黑體 → 書名明體，之後書名明體 → 明體：標題黑體的 4 處也跟到明體
@@ -232,5 +244,36 @@ describe("font dialog draft", () => {
     expect(editorReducer(state, { type: "font/applyEdits", fonts: [BOOK], deletions: bad })).toBe(state);
     const toDeleted = [{ id: DISPLAY.id, replaceWith: projectFontOption(DISPLAY).family }];
     expect(editorReducer(state, { type: "font/applyEdits", fonts: [BOOK], deletions: toDeleted })).toBe(state);
+  });
+
+  it("recognises font files and collections", () => {
+    expect(["a.ttf", "B.OTF", "msjh.ttc"].every(isFontFileName)).toBe(true);
+    expect(["a.woff2", "a.fon", "ttc"].some(isFontFileName)).toBe(false);
+    expect(isFontCollection(new TextEncoder().encode("ttcf "))).toBe(true);
+    expect(isFontCollection(new Uint8Array([0, 1, 0, 0, 0]))).toBe(false);
+    expect(isFontCollection(new Uint8Array([0x74]))).toBe(false);
+  });
+
+  it("pairs the files imported together by family and weight", () => {
+    const file = (src: string, fileFamily: string, weight: number, fileStyle = "Regular") => ({ ...BOOK.regular, src, fileFamily, weight, fileStyle });
+    const light = file("light", "Inter", 300, "Light");
+    const regular = file("regular", "Inter", 400);
+    const semibold = file("semibold", "Inter", 600, "SemiBold");
+    const bold = file("bold", " inter ", 700, "Bold");
+    const italic = file("italic", "Inter", 400, "Italic");
+    const kai = file("kai", "標楷體", 400);
+    // 粗體先選、同一個檔案兩次：照第一次出現的順序，同家族一般 + 粗體，其他各自一套
+    expect(pairImportedFonts([bold, kai, light, regular, italic, semibold, regular])).toEqual([
+      { regular, bold },
+      { regular: kai, bold: null },
+      { regular: light, bold: null },
+      { regular: italic, bold: null },
+      { regular: semibold, bold: null },
+    ]);
+    // 只有粗體檔：它就是一般
+    expect(pairImportedFonts([bold])).toEqual([{ regular: bold, bold: null }]);
+    expect(pairImportedFonts([])).toEqual([]);
+    // 斜體自己一套時名稱帶樣式
+    expect(addDraftFont(startFontDraft(document), "new", italic).fonts[2].name).toBe("Inter Italic");
   });
 });

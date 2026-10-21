@@ -30,6 +30,7 @@ pub fn run() {
             app.manage(project::ProjectState::default());
             app.manage(commands::export::ExportState::default());
             app.manage(mcp::McpState::default());
+            app.manage(project::system_fonts::SystemFontsState::default());
             commands::project::clear_untitled(app.handle());
             commands::templates::clean_up(app.handle());
             Ok(())
@@ -46,6 +47,9 @@ pub fn run() {
             commands::library::library_write,
             commands::library::library_import,
             commands::fonts::font_import,
+            commands::fonts::font_collection_faces,
+            commands::fonts::system_fonts_list,
+            commands::fonts::font_import_system,
             commands::library::library_read_text,
             commands::library::library_thumbnail,
             commands::recovery::recovery_list,

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type DragEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,11 @@ interface SettingsDialogFrameProps extends SettingsDialogProps {
    * box sits at the right edge instead of the middle of the window.
    */
   readonly seeThrough?: boolean;
+  /**
+   * Files dropped from the file manager anywhere on the box (the box is outlined while files are
+   * over it). Leave it out when the dialog takes no files.
+   */
+  readonly onDropFiles?: (files: File[]) => void;
   /** The form; it renders its own header and a `SettingsDialogFooter`. */
   readonly children: ReactNode;
 }
@@ -31,13 +36,34 @@ interface SettingsDialogFrameProps extends SettingsDialogProps {
  * Returns:
  *   Dialog element.
  */
-export function SettingsDialog({ open, onOpenChange, className, seeThrough = false, children }: SettingsDialogFrameProps) {
+export function SettingsDialog({ open, onOpenChange, className, seeThrough = false, onDropFiles, children }: SettingsDialogFrameProps) {
+  const [fileOver, setFileOver] = useState(false);
+  const acceptsFiles = (event: DragEvent) => onDropFiles !== undefined && event.dataTransfer.types.includes("Files");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         // 遮罩的樣式在 index.css（[data-see-through]）；位置用 ! 蓋過 DialogContent 置中的 left / translate
         data-see-through={seeThrough ? "" : undefined}
-        className={cn("sm:max-w-md", seeThrough && "right-4 left-auto! translate-x-0! shadow-xl", className)}
+        className={cn(
+          "sm:max-w-md",
+          seeThrough && "right-4 left-auto! translate-x-0! shadow-xl",
+          fileOver && "outline-2 -outline-offset-4 outline-primary/50 outline-dashed",
+          className,
+        )}
+        onDragOver={(event) => {
+          if (!acceptsFiles(event)) return;
+          event.preventDefault();
+          setFileOver(true);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFileOver(false);
+        }}
+        onDrop={(event) => {
+          setFileOver(false);
+          if (!acceptsFiles(event)) return;
+          event.preventDefault();
+          onDropFiles?.(Array.from(event.dataTransfer.files));
+        }}
       >
         {children}
       </DialogContent>

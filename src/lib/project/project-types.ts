@@ -1,4 +1,4 @@
-import type { AssetInfo, EditorDocument } from "@/lib/editor/types";
+import type { AssetInfo, EditorDocument, FontFile } from "@/lib/editor/types";
 import type { Library } from "@/lib/library/types";
 
 /** Mirrors `ProjectInfo` in `src-tauri/src/project/mod.rs`. */
@@ -36,6 +36,46 @@ export interface RecoveryEntry {
   readonly savedAt: string;
   readonly untitled: boolean;
   readonly projectRoot: string;
+}
+
+/** One face of a font collection (`CollectionFace` in Rust `project/fonts.rs`). */
+export interface CollectionFace {
+  readonly index: number;
+  readonly family: string;
+  readonly style: string;
+  readonly weight: number;
+  /** Why it cannot be imported (Chinese, user-facing), or null. */
+  readonly problem: string | null;
+}
+
+/** A font installed on this computer (`SystemFont` in Rust `project/system_fonts.rs`). */
+export interface SystemFont {
+  /** Opaque id for `font_import_system`. */
+  readonly id: string;
+  /** File name only. */
+  readonly file: string;
+  /** `system` = `%WINDIR%\Fonts`; `user` = installed by this user only. */
+  readonly source: "system" | "user";
+  /** Face of a collection (0 for a single font). */
+  readonly index: number;
+  /** Display family (Traditional Chinese first). */
+  readonly family: string;
+  /** Family name a CSS `font-family` finds (US English first); the preview draws with it. */
+  readonly cssFamily: string;
+  /** Every family name in the file (search). */
+  readonly aliases: readonly string[];
+  readonly style: string;
+  readonly weight: number;
+  readonly italic: boolean;
+  readonly hasChinese: boolean;
+  /** Why it cannot be added (Chinese), or null. */
+  readonly problem: string | null;
+}
+
+/** Result of `font_import_system` (`ImportedFonts` in Rust). */
+export interface ImportedFonts {
+  readonly regular: FontFile;
+  readonly bold: FontFile | null;
 }
 
 /** Output format of `export_choose_path` (`ExportFormat` in Rust). */

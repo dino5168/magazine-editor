@@ -4,12 +4,14 @@
 //! operates on the project held in `ProjectState`.
 
 pub mod assets;
+pub mod font_collection;
 pub mod fonts;
 pub mod format;
 pub mod io;
 pub mod library;
 pub mod recovery;
 pub mod shape;
+pub mod system_fonts;
 pub mod templates;
 pub mod thumbnails;
 

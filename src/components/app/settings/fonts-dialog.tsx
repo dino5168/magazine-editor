@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { FileUp, LoaderCircle, Plus, Trash, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { FileUp, LoaderCircle, Monitor, Plus, Trash, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IconButton } from "@/components/editor/icon-button";
+import { usePendingChoice } from "@/components/app/use-pending-choice";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import {
   addDraftFont,
@@ -24,6 +25,10 @@ import {
   draftFontUsage,
   editDraftFont,
   finishFontDraft,
+  FONT_FILE_ACCEPT,
+  isFontCollection,
+  isFontFileName,
+  pairImportedFonts,
   removeDraftFont,
   startFontDraft,
   type FontDraft,
@@ -32,10 +37,12 @@ import { DEFAULT_FONT_OPTION, FONT_OPTIONS, projectFontOption } from "@/lib/edit
 import { pickFiles } from "@/lib/editor/image";
 import { fontUsage } from "@/lib/editor/project-fonts";
 import type { FontFile, ProjectFont } from "@/lib/editor/types";
-import { loadFontOption } from "@/lib/editor/use-fonts-ready";
+import { checkFontFileLoads, loadFontOption } from "@/lib/editor/use-fonts-ready";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
 import { cn } from "@/lib/utils";
+import { CollectionFaceDialog, type CollectionFaceQuestion } from "./collection-face-dialog";
 import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "./settings-dialog";
+import { SystemFontPicker } from "./system-font-picker";
 
 /**
  * 設定 → 文件 → 字型...: fonts imported into the project. Importing copies the file into
@@ -49,9 +56,11 @@ import { SettingsDialog, SettingsDialogFooter, type SettingsDialogProps } from "
  *   Dialog element.
  */
 export function FontsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  // 拖放的目標是整個對話框，處理在表單裡（表單持有草稿）
+  const dropRef = useRef<((files: File[]) => void) | null>(null);
   return (
-    <SettingsDialog open={open} onOpenChange={onOpenChange} className="sm:max-w-xl">
-      <FontsForm onDone={() => onOpenChange(false)} />
+    <SettingsDialog open={open} onOpenChange={onOpenChange} className="sm:max-w-xl" onDropFiles={(files) => dropRef.current?.(files)}>
+      <FontsForm onDone={() => onOpenChange(false)} dropRef={dropRef} />
     </SettingsDialog>
   );
 }
@@ -66,25 +75,67 @@ const GENERIC_LABELS = {
   serif: "明體類（缺字用 Noto Serif TC）",
 } as const satisfies Record<ProjectFont["generic"], string>;
 
+/** Asks which face of a font collection to use; null = skip the file. */
+type ChooseFace = (question: CollectionFaceQuestion) => Promise<number | null>;
+
 /**
- * Lets the user pick one TTF / OTF and stores it in the project.
+ * Stores one font file in the project; for a collection (`.ttc`) the face is asked when more than
+ * one can be used.
+ *
+ * Args:
+ *   file: Picked or dropped file.
+ *   chooseFace: Asks the user which face of a collection to use.
  *
  * Returns:
- *   The stored file, or null when cancelled or refused (a toast says why).
+ *   The stored file, or null when skipped or refused (a toast says why).
  */
-async function importFontFile(): Promise<FontFile | null> {
+async function importFontFile(file: File, chooseFace: ChooseFace): Promise<FontFile | null> {
+  const fail = (reason: string): null => {
+    toast.error(`無法匯入「${file.name}」：${reason}`);
+    return null;
+  };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let index: number | undefined;
+  if (isFontCollection(bytes)) {
+    const faces = await projectApi.fontCollectionFaces(bytes);
+    if (faces.error) return fail(describeCommandError(faces.error));
+    const usable = faces.data.filter((face) => face.problem === null);
+    if (usable.length === 0) return fail(faces.data[0]?.problem ?? "集合裡沒有字型");
+    const chosen = usable.length === 1 ? usable[0].index : await chooseFace({ fileName: file.name, faces: faces.data });
+    if (chosen === null) return null;
+    index = chosen;
+  }
+  const result = await projectApi.importFont(bytes, index);
+  if (result.error) return fail(describeCommandError(result.error));
+  const problem = await checkFontFileLoads(result.data);
+  return problem ? fail(problem) : result.data;
+}
+
+/**
+ * Stores several font files, one after another (a collection may ask which face to use).
+ *
+ * Args:
+ *   files: Picked or dropped files; files that are not `.ttf` / `.otf` / `.ttc` are refused.
+ *   chooseFace: Asks the user which face of a collection to use.
+ *
+ * Returns:
+ *   The stored files, in the given order.
+ */
+async function importFontFiles(files: readonly File[], chooseFace: ChooseFace): Promise<FontFile[]> {
   if (!isDesktop) {
     toast.info("匯入字型僅在桌面版可用");
-    return null;
+    return [];
   }
-  const [file] = await pickFiles(".ttf,.otf");
-  if (!file) return null;
-  const result = await projectApi.importFont(new Uint8Array(await file.arrayBuffer()));
-  if (result.error) {
-    toast.error(`無法匯入「${file.name}」：${describeCommandError(result.error)}`);
-    return null;
+  const stored: FontFile[] = [];
+  for (const file of files) {
+    if (!isFontFileName(file.name)) {
+      toast.error(`「${file.name}」不是字型檔（.ttf、.otf、.ttc）`);
+      continue;
+    }
+    const result = await importFontFile(file, chooseFace);
+    if (result) stored.push(result);
   }
-  return result.data;
+  return stored;
 }
 
 /** Makes sure a font's faces are registered and loaded, so its preview draws in it. */
@@ -104,14 +155,22 @@ function usePreviewFont(font: ProjectFont): boolean {
   return ready;
 }
 
-function FontsForm({ onDone }: { readonly onDone: () => void }) {
+interface FontsFormProps {
+  readonly onDone: () => void;
+  /** Set to the handler for files dropped on the dialog. */
+  readonly dropRef: MutableRefObject<((files: File[]) => void) | null>;
+}
+
+function FontsForm({ onDone, dropRef }: FontsFormProps) {
   const document = useEditorState().history.present;
   const dispatch = useEditorDispatch();
   const [draft, setDraft] = useState<FontDraft>(() => startFontDraft(document));
   const [selectedId, setSelectedId] = useState<string | null>(document.fonts[0]?.id ?? null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
+  const faceChoice = usePendingChoice<CollectionFaceQuestion, number | null>();
 
   const documentIds = useMemo(() => new Set(document.fonts.map((font) => font.id)), [document.fonts]);
   const usage = useMemo(
@@ -122,21 +181,42 @@ function FontsForm({ onDone }: { readonly onDone: () => void }) {
   const selected = draft.fonts.find((font) => font.id === selectedId) ?? null;
 
   // 匯入時字型檔已經複製進專案；取消對話框時清單不變，檔案在下次開檔時清掉
-  const runImport = async (use: (file: FontFile) => void): Promise<void> => {
+  const runImport = async (files: readonly File[], use: (stored: FontFile[]) => void): Promise<void> => {
+    if (files.length === 0) return;
     setBusy(true);
     try {
-      const file = await importFontFile();
-      if (file) use(file);
+      const stored = await importFontFiles(files, faceChoice.ask);
+      if (stored.length > 0) use(stored);
     } finally {
       setBusy(false);
     }
   };
-  const add = (): void =>
-    void runImport((file) => {
-      const id = crypto.randomUUID();
-      setDraft((current) => addDraftFont(current, id, file));
-      setSelectedId(id);
+  // 同一家族的檔案配成一套（一般 + 粗體），其他各自一套；選取第一套新的
+  const addFiles = (files: readonly File[]): void =>
+    void runImport(files, (stored) => {
+      const added = pairImportedFonts(stored).map((pair) => ({ id: crypto.randomUUID(), ...pair }));
+      setDraft((current) => added.reduce((next, { id, regular, bold }) => addDraftFont(next, id, regular, bold), current));
+      setSelectedId(added[0].id);
     });
+  const add = async (): Promise<void> => {
+    if (!isDesktop) {
+      toast.info("匯入字型僅在桌面版可用");
+      return;
+    }
+    addFiles(await pickFiles(FONT_FILE_ACCEPT));
+  };
+  const pickBold = async (id: string): Promise<void> => {
+    const [file] = await pickFiles(FONT_FILE_ACCEPT);
+    if (file) void runImport([file], ([bold]) => setDraft((current) => editDraftFont(current, id, { bold })));
+  };
+  useEffect(() => {
+    dropRef.current = (files) => {
+      if (!busy) addFiles(files);
+    };
+    return () => {
+      dropRef.current = null;
+    };
+  });
   const remove = (id: string, replaceWith: string): void => {
     const index = draft.fonts.findIndex((font) => font.id === id);
     const next = removeDraftFont(draft, id, replaceWith, documentIds);
@@ -159,7 +239,7 @@ function FontsForm({ onDone }: { readonly onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>字型</DialogTitle>
         <DialogDescription>
-          匯入專案的 TrueType / OpenType 字型（.ttf、.otf），存在專案資料夾裡；畫面、PDF、EPUB 與翻頁書用同一個檔案。匯入後在屬性面板的字型選單「專案字型」選用。
+          從這台電腦安裝的字型加入，或匯入 TrueType / OpenType 字型檔（.ttf、.otf）。字型檔會存在專案資料夾裡，畫面、PDF、EPUB 與翻頁書用同一個檔案。加入後在屬性面板的字型選單「專案字型」選用。
         </DialogDescription>
       </DialogHeader>
 
@@ -175,10 +255,25 @@ function FontsForm({ onDone }: { readonly onDone: () => void }) {
         }}
         onRemove={requestRemove}
       />
-      <Button variant="outline" size="sm" className="self-start" disabled={busy} onClick={add}>
-        {busy ? <LoaderCircle className="animate-spin" /> : <Plus />}
-        匯入字型...
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" disabled={busy || !isDesktop} onClick={() => setPickerOpen(true)}>
+          <Monitor />
+          從系統字型加入...
+        </Button>
+        <Button variant="outline" size="sm" disabled={busy} onClick={() => void add()}>
+          {busy ? <LoaderCircle className="animate-spin" /> : <Plus />}
+          匯入字型檔...
+        </Button>
+      </div>
+      <SystemFontPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onAdd={({ regular, bold }) => {
+          const id = crypto.randomUUID();
+          setDraft((current) => addDraftFont(current, id, regular, bold));
+          setSelectedId(id);
+        }}
+      />
 
       {selected && (
         <FontEditor
@@ -188,9 +283,11 @@ function FontsForm({ onDone }: { readonly onDone: () => void }) {
           nameRef={nameRef}
           busy={busy}
           onChange={(change) => setDraft((current) => editDraftFont(current, selected.id, change))}
-          onPickBold={() => void runImport((bold) => setDraft((current) => editDraftFont(current, selected.id, { bold })))}
+          onPickBold={() => void pickBold(selected.id)}
         />
       )}
+
+      <CollectionFaceDialog question={faceChoice.pending?.payload ?? null} onChoose={faceChoice.choose} />
 
       <SettingsDialogFooter onApply={apply} applyDisabled={firstError !== null || busy} note={firstError} />
 

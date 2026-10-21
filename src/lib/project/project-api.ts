@@ -7,12 +7,15 @@ import {
   CommandError,
   ERROR_KINDS,
   type AppErrorKind,
+  type CollectionFace,
   type ExportFormat,
   type ExportResult,
+  type ImportedFonts,
   type OpenedProject,
   type ProjectContent,
   type ProjectInfo,
   type RecoveryEntry,
+  type SystemFont,
 } from "./project-types";
 
 function isErrorKind(value: string): value is AppErrorKind {
@@ -70,10 +73,18 @@ export const projectApi = {
     call<string>("library_import", bytes, { headers: { "x-asset-kind": kind, "x-asset-extension": extension } }),
   readLibraryText: (src: string) => call<string>("library_read_text", { src }),
   /**
-   * Checks a TTF / OTF file and stores it in `assets/fonts/` (raw body, like `importLibraryAsset`);
-   * resolves to what `ProjectFont.regular` / `bold` stores. Unusable files fail with `invalidInput`.
+   * Checks a TTF / OTF file (or face `index` of a TTC) and stores it in `assets/fonts/` as a single
+   * font (raw body, like `importLibraryAsset`); resolves to what `ProjectFont.regular` / `bold`
+   * stores. Unusable files fail with `invalidInput`.
    */
-  importFont: (bytes: Uint8Array) => call<FontFile>("font_import", bytes),
+  importFont: (bytes: Uint8Array, index?: number) =>
+    call<FontFile>("font_import", bytes, index === undefined ? undefined : { headers: { "x-font-index": String(index) } }),
+  /** The faces of a font collection (`.ttc`), each with why it cannot be imported (or null). */
+  fontCollectionFaces: (bytes: Uint8Array) => call<CollectionFace[]>("font_collection_faces", bytes),
+  /** The fonts installed on this computer (cached on the Rust side; the first call takes a moment). */
+  listSystemFonts: () => call<SystemFont[]>("system_fonts_list"),
+  /** Adds system fonts (ids from `listSystemFonts`) to the project's `assets/fonts/`. */
+  importSystemFonts: (regular: string, bold: string | null) => call<ImportedFonts>("font_import_system", { regular, bold }),
   /** Path of an image's thumbnail (made on demand), or null to show the original. */
   libraryThumbnail: (src: string) => call<string | null>("library_thumbnail", { src }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),
