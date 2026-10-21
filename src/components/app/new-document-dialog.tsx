@@ -4,7 +4,7 @@ import { TemplateCard } from "@/components/templates/template-card";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DEFAULT_NEW_PAGE_SETUP } from "@/lib/editor/element-factory";
-import { isPageSetupValid, orientationOf, presetSize, validatePageSetup, type PageSetup } from "@/lib/editor/page-setup";
+import { isPageSetupValid, selectPresetSize, validatePageSetup, type PageSetup } from "@/lib/editor/page-setup";
 import { describeCommandError, isDesktop } from "@/lib/project/project-api";
 import type { ChooseNewSetup, NewDocumentChoice } from "@/lib/project/use-project-commands";
 import { templateApi } from "@/lib/templates/template-api";
@@ -139,7 +139,7 @@ function NewDocumentForm({ initialTemplateId, onCreate }: NewDocumentFormProps) 
             {source === "blank" ? (
               <PaperPresetGrid
                 size={blankDraft.size}
-                onSelect={(id) => setBlankDraft({ ...blankDraft, size: presetSize(id, orientationOf(blankDraft.size)) })}
+                onSelect={(id) => setBlankDraft({ ...blankDraft, size: selectPresetSize(id, blankDraft.size) })}
               />
             ) : templateMessage !== null ? (
               <p className="py-10 text-center text-sm whitespace-pre-line text-muted-foreground">{templateMessage}</p>

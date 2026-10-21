@@ -13,17 +13,26 @@ export const PAGE_SIZE_GROUPS = [
   { id: "taiwan", label: "台灣書刊開本" },
   { id: "us", label: "美規" },
   { id: "ebook", label: "電子書（螢幕比例）" },
+  { id: "slides", label: "簡報（PPT）" },
 ] as const;
 
 export type PageSizeGroupId = (typeof PAGE_SIZE_GROUPS)[number]["id"];
 
-/** A paper size, portrait (width ≤ height); the page setup turns it landscape when asked. */
+/** A paper size, stored portrait (width ≤ height); the page setup turns it landscape when asked. */
 export interface PageSizePreset {
   readonly label: string;
   readonly widthMm: number;
   readonly heightMm: number;
   readonly group: PageSizeGroupId;
+  /**
+   * The way the paper is normally used; choosing the preset switches to it (presentation slides
+   * are landscape). Absent = portrait.
+   */
+  readonly orientation?: "landscape";
 }
+
+/** PowerPoint 寬螢幕的寬：13.333… 英吋（40 / 3），換成 pt 剛好 960。 */
+const WIDESCREEN_INCH = 40 / 3;
 
 // 紙張選項只在前端（Rust 只檢查寬高範圍），新增不必改檔案格式。id 一旦用了就不要改：「範本」面板以 id 引用。
 // 兩個尺寸不可以相同（presetIdOf 會認錯），測試會檢查。
@@ -43,6 +52,11 @@ export const PAGE_SIZE_PRESETS = {
   tabloid: { label: "Tabloid", widthMm: 279.4, heightMm: 431.8, group: "us" },
   ebook3x4: { label: "電子書 3:4", widthMm: 150, heightMm: 200, group: "ebook" },
   ebook9x16: { label: "電子書 9:16", widthMm: 112.5, heightMm: 200, group: "ebook" },
+  // 簡報軟體的投影片大小（英吋精確換算），匯出的 PDF 一頁剛好是一張投影片；平常橫著用
+  ppt16x9: { label: "PPT 16:9 寬螢幕", widthMm: 7.5 * MM_PER_INCH, heightMm: WIDESCREEN_INCH * MM_PER_INCH, group: "slides", orientation: "landscape" },
+  ppt4x3: { label: "PPT 4:3 標準", widthMm: 7.5 * MM_PER_INCH, heightMm: 10 * MM_PER_INCH, group: "slides", orientation: "landscape" },
+  ppt16x10: { label: "PPT 16:10", widthMm: 6.25 * MM_PER_INCH, heightMm: 10 * MM_PER_INCH, group: "slides", orientation: "landscape" },
+  slides16x9: { label: "Google 簡報 16:9", widthMm: 5.625 * MM_PER_INCH, heightMm: 10 * MM_PER_INCH, group: "slides", orientation: "landscape" },
 } as const satisfies Record<string, PageSizePreset>;
 
 /**

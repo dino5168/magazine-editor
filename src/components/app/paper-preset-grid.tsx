@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { orientationOf, presetIdOf, presetIdsInGroup, presetSize, type PageSizePresetId } from "@/lib/editor/page-setup";
+import { presetIdOf, presetIdsInGroup, selectPresetSize, type PageSizePresetId } from "@/lib/editor/page-setup";
 import { formatNumber } from "@/lib/editor/properties";
 import type { Size } from "@/lib/editor/types";
 import { PAGE_SIZE_GROUPS, PAGE_SIZE_PRESETS, ptToMm } from "@/lib/editor/units";
@@ -13,7 +13,10 @@ const ALL_IDS = PAGE_SIZE_GROUPS.flatMap((group) => presetIdsInGroup(group.id));
 const NEXT_KEYS: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
 interface PaperPresetGridProps {
-  /** Current page size; the matching card is selected and every card follows its orientation. */
+  /**
+   * Current page size; the matching card is selected and every card shows the size picking it
+   * would give (`selectPresetSize`: the current orientation, or the natural one of slides / paper).
+   */
   readonly size: Size;
   /** Called with the clicked preset. */
   readonly onSelect: (id: PageSizePresetId) => void;
@@ -31,7 +34,6 @@ interface PaperPresetGridProps {
  */
 export function PaperPresetGrid({ size, onSelect }: PaperPresetGridProps) {
   const selected = presetIdOf(size);
-  const orientation = orientationOf(size);
   const buttons = useRef(new Map<PageSizePresetId, HTMLButtonElement>());
   // 只有一張卡片可以用 Tab 進入（radio group 的慣例）；自訂尺寸時是第一張
   const tabStop = selected ?? ALL_IDS[0];
@@ -52,7 +54,7 @@ export function PaperPresetGrid({ size, onSelect }: PaperPresetGridProps) {
           <h3 className="text-xs text-muted-foreground">{group.label}</h3>
           <div className="grid grid-cols-3 gap-2">
             {presetIdsInGroup(group.id).map((id) => {
-              const paper = presetSize(id, orientation);
+              const paper = selectPresetSize(id, size);
               const scale = PREVIEW_MAX_PX / Math.max(paper.width, paper.height);
               const checked = id === selected;
               return (

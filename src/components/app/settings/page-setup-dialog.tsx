@@ -13,10 +13,10 @@ import {
 import { useActivePage, useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import {
   isPageSetupValid,
-  orientationOf,
   presetIdOf,
   presetIdsInGroup,
-  presetSize,
+  presetOrientation,
+  selectPresetSize,
   validatePageSetup,
   type PageSetup,
   type PageSizePresetId,
@@ -52,6 +52,13 @@ function samePageSetup(a: PageSetup, b: PageSetup): boolean {
 
 const CUSTOM_SIZE = "custom";
 
+// 選單裡的尺寸照紙張平常的方向（簡報是橫式：338.7 × 190.5 mm）
+function presetSizeLabel(id: PageSizePresetId): string {
+  const { widthMm, heightMm } = PAGE_SIZE_PRESETS[id];
+  const [width, height] = presetOrientation(id) === "landscape" ? [heightMm, widthMm] : [widthMm, heightMm];
+  return `${formatNumber(width)} × ${formatNumber(height)} mm`;
+}
+
 function PageSetupForm({ onDone }: { readonly onDone: () => void }) {
   const dispatch = useEditorDispatch();
   const page = useActivePage();
@@ -79,11 +86,11 @@ function PageSetupForm({ onDone }: { readonly onDone: () => void }) {
     <Select
       value={presetId ?? CUSTOM_SIZE}
       onValueChange={(id) =>
-        id !== CUSTOM_SIZE && setDraft({ ...draft, size: presetSize(id as PageSizePresetId, orientationOf(draft.size)) })
+        id !== CUSTOM_SIZE && setDraft({ ...draft, size: selectPresetSize(id as PageSizePresetId, draft.size) })
       }
     >
       <SelectTrigger size="sm" className="h-7 flex-1" aria-label="紙張">
-        {/* 只顯示名稱：選項裡的尺寸是直式，橫式時會和下面的寬、高對不上 */}
+        {/* 只顯示名稱：選項裡的尺寸是紙張平常的方向，按了直 / 橫之後會和下面的寬、高對不上 */}
         <SelectValue>{presetId ? PAGE_SIZE_PRESETS[presetId].label : "自訂"}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -93,9 +100,7 @@ function PageSetupForm({ onDone }: { readonly onDone: () => void }) {
             {presetIdsInGroup(group.id).map((id) => (
               <SelectItem key={id} value={id}>
                 {PAGE_SIZE_PRESETS[id].label}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {formatNumber(PAGE_SIZE_PRESETS[id].widthMm)} × {formatNumber(PAGE_SIZE_PRESETS[id].heightMm)} mm
-                </span>
+                <span className="ml-2 text-xs text-muted-foreground">{presetSizeLabel(id)}</span>
               </SelectItem>
             ))}
           </SelectGroup>

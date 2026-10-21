@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-19 文件範本：把專案的設計存成全域範本、新增專案時套用，見「文件範本」；2026-10-19 圖片框：圖形填入照片（檔案格式 v17），見「圖片框（圖形照片）」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-21 MCP `batch` 工具（一次呼叫多個操作、一筆復原）與 Python SDK `sdk/python/`，見「MCP」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」；2026-10-21 字型管理：字型集合（.ttc）、從系統字型加入、多檔 / 拖放匯入、下載免費字型（精選清單）、翻頁書的字型授權提醒（檔案格式不變），見「專案字型」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
+- 目前階段：前端編輯器 v1（含工具面板（Affinity 式頁籤群組），見「工具面板」；2026-10-01 型別重構：圖形合併成 `shape`、draw.io 式屬性面板、邊框、圖形內文字；2026-10-03 多選與框選；2026-10-04 偏好設定：紙張、邊界、格線與吸附；2026-10-04 頁碼管理，見「頁碼管理」；2026-10-05 文字的斜體 / 底線 / 刪除線 / 硬陰影，見「文字裝飾」；2026-10-05 設定選單拆成「文件 ▸ / 偏好設定 ▸」、每項一個對話框，紙張 14 種，見「設定對話框」；2026-10-06 頁面排序：拖曳頁籤、選單、快捷鍵，見「頁面排序」；2026-10-07 主頁（可階層）、動態變數、「頁面」面板、新增頁面 / 主頁對話框，見「主頁與動態變數」；2026-10-07 單頁 / 雙頁（跨頁）編輯，見「單頁 / 雙頁」；2026-10-07 視圖 → 尺規，見「尺規」；2026-10-08「檔案 → 新增」先選紙張，見「檔案系統」的新增專案；2026-10-21 紙張加「簡報（PPT）」四種（選了自動轉橫式），見「偏好設定與頁面設定」的紙張；2026-10-08「視圖」選單與 TopBar 的格線 / 邊界參考線 / 吸附格線開關，見「偏好設定與頁面設定」的快速切換；2026-10-08 格線 / 內容區對齊線 / 邊界參考線的顏色・粗細・線型、對齊線開關、對話框即時預覽與預設值，見「偏好設定與頁面設定」的線條樣式；2026-10-08 素材管理：每個專案的素材庫（資料夾、垃圾桶、管理視窗、「素材」面板、拖到畫布、Rust 縮圖），見「素材管理」；2026-10-09「工具面板」提升為主選單，選單列順序改為檔案 / 設定 / 視圖 / 工具面板，見「選單列與指令」；2026-10-09 停靠區改成 Affinity 式頁籤群組，見「工具面板」；2026-10-19 新增主選單「專案管理」（素材管理從「檔案」搬過來），見「選單列與指令」；2026-10-19 文件範本：把專案的設計存成全域範本、新增專案時套用，見「文件範本」；2026-10-19 圖片框：圖形填入照片（檔案格式 v17），見「圖片框（圖形照片）」；2026-10-09 Claude Code 透過 MCP（stdio）查詢與編輯文件、執行選單指令，見「MCP（Claude Code 連線）」；2026-10-21 MCP `batch` 工具（一次呼叫多個操作、一筆復原）與 Python SDK `sdk/python/`，見「MCP」；2026-10-10 文字樣式（樣式表、「樣式」面板、屬性面板連結 / 覆寫、檔案格式 v8），見「文字樣式」；2026-10-11 行距與字距（檔案格式 v9），見「行距與字距」；2026-10-12 文字對齊加入首尾置中（分散對齊，檔案格式 v10），見「首尾置中」；2026-10-12 屬性面板「對齊內容區」：填滿寬度 / 高度與六向對齊，見「工具面板」的屬性面板；2026-10-12 矩形四個角的圓角分開設定（檔案格式 v11），見「文件模型」的圖形與屬性面板；2026-10-12 素材支援 SVG（檔案格式不變），見「素材管理」的 SVG 與「匯出 PDF」；2026-10-12 文件色票（自訂具名顏色、連結與一起改色，檔案格式 v12），見「文件色票」；2026-10-14 畫布物件的右鍵選單（圖層順序、對齊內容區），見「右鍵選單」；2026-10-14 工具面板重構：預設只有頁面 / 屬性、選單分三類、「相片」面板併入素材的「內建範例」，見「工具面板」與「素材管理」；2026-10-14 匯出 HTML5 翻頁電子書（資料夾自帶 viewer，見「匯出翻頁電子書」；修正 01：滾輪翻頁、硬頁翻動時的位置）；2026-10-14 專案字型：使用者匯入 TTF / OTF（檔案格式 v13），見「專案字型」；2026-10-15 圖形庫：仿 draw.io 的 27 個參數化圖形（檔案格式 v14），見「圖形庫」；2026-10-15 線條、箭頭、曲線、鉛筆與點劃線（檔案格式 v15），見「線條」；2026-10-19 段落縮排：左 / 右 / 首行縮排與首行突排（檔案格式 v16），見「段落縮排」；2026-10-21 字型管理：字型集合（.ttc）、從系統字型加入、多檔 / 拖放匯入、下載免費字型（精選清單）、翻頁書的字型授權提醒（檔案格式不變），見「專案字型」）+ 檔案系統第一、二階段（專案存檔 / 開啟、自動備份與當機復原）+ Typst 匯出 PDF；正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - Bundle identifier：`com.mycompany.magazineeditor`
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
@@ -90,7 +90,7 @@ src/
     app/recovery-dialog.tsx       # 啟動時「要復原上次未儲存的內容嗎？」（只能選復原 / 捨棄，Esc 不會關閉）
     app/font-license-dialog.tsx   # 匯出翻頁書前「請確認字型授權」（用到不是精選清單的專案字型時；Promise 形式，取消 / 繼續匯出）
     app/new-document-dialog.tsx   # 「檔案 → 新增」的「新增文件」對話框（useNewDocumentDialog：左上「空白 / 文件範本」、左紙張卡片或範本卡片、右 PageSetupFields（範本時 sizeLocked），回傳 NewDocumentChoice | null；可以帶範本 id 直接選好）
-    app/paper-preset-grid.tsx     # 紙張卡片（依 PAGE_SIZE_GROUPS 分組、依比例的外框、跟著直橫轉、radio group 方向鍵）
+    app/paper-preset-grid.tsx     # 紙張卡片（依 PAGE_SIZE_GROUPS 分組、依比例的外框、每張畫「點了會得到的尺寸」（selectPresetSize）、radio group 方向鍵）
     app/use-pending-choice.ts     # 以 Promise 等待使用者選擇的對話框狀態（未存檔、復原、新增文件三個對話框共用）
     app/mcp-bridge.tsx            # McpBridge：不 render 的元件，依偏好開關執行 Claude Code 的 MCP 工具呼叫（見「MCP」）
     app/settings/                 # 設定對話框（設定 → 文件 ▸ / 偏好設定 ▸，每項一個對話框，見「設定對話框」）
@@ -220,7 +220,7 @@ src/
       editor-context.tsx          # EditorProvider、useEditorState / useEditorDispatch / useActivePage
       element-factory.ts          # 建立物件/頁面/範例文件、拖曳建立（createShapeInBox / createToolText）、describeElement
       geometry.ts                 # 物件外框（含旋轉；rotatedBoxBounds：任一外框旋轉後的外接框）、內容範圍、框選判斷（elementsInBox）、文字高度估算、MIN_ELEMENT_SIZE_PT、格線吸附 / 抽稀、邊界框
-      page-setup.ts               # 紙張 preset（不分直橫比對、presetIdsInGroup 分組）、直式 / 橫式、頁面設定的錯誤檢查（頁面設定對話框用）
+      page-setup.ts               # 紙張 preset（不分直橫比對、presetIdsInGroup 分組、presetOrientation 自然方向、selectPresetSize 選紙張時的方向）、直式 / 橫式、頁面設定的錯誤檢查（頁面設定對話框用）
       page-numbers.ts             # 頁碼：規則 → 虛擬圖形（pageNumberShape / withPageNumbers）、驗證（isPageNumberRules，和 Rust 同規則）、對話框的說明與錯誤訊息
       shape-geometry.ts           # 多邊形 / 星形頂點（和 Rust project/shape.rs 同公式）
       shape-path.ts               # 路徑工具（不認得任何圖形）：PathCommand（M / L / C / Z）、PathBuilder（含 arc：每段 ≤ 90°、90° 倍數端點精確）、svgPathCommands（svgpath 正規化）、pathBounds（曲線真正的極值）、fitPaths、pathData
@@ -244,7 +244,7 @@ src/
       layer-order.ts              # 圖層順序：REORDER_DIRECTIONS / ReorderDirection（element/reorder 的方向）、canReorder（停用判斷，和 reducer 一致，測試守著）
       content-align.ts            # 對齊內容區：contentArea（= contentGuides().area）、fillContentPatch（填滿寬 / 高，旋轉歸零、照限制寬高比）、alignContentPatch（旋轉後外框對齊邊 / 中線）、fillContentDisabledReason
       viewport.ts                 # 縮放、捲動版面與錨點換算（pt ↔ 螢幕像素）
-      units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，14 種，依 PAGE_SIZE_GROUPS 分組）
+      units.ts                    # mm ↔ pt、紙張 preset（PAGE_SIZE_PRESETS，18 種，依 PAGE_SIZE_GROUPS 分組；簡報有 orientation: "landscape"）
       validation.ts               # Result type、上傳檔案/名稱/字級/顏色驗證，以及 stroke / label / geometry 的執行時驗證（規則和 Rust format.rs 相同）
       palette.ts                  # Tailwind 色票（oklch → hex）、findPaletteColor、colorAlpha / withAlpha
       swatches.ts                 # 文件色票的純邏輯：內建色票（BUILT_IN_SWATCH_IDS / defaultSwatches）、名稱 / hex（swatchNameError、nextSwatchName、parseSwatchHex）、走過每個顏色欄位 mapColorSlots、swatchUsage、swatchColor（色票 RGB + 使用處透明度）、hasValidSwatchLinks、applySwatchEdits / updateSwatch / deleteSwatch
@@ -512,7 +512,9 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - **頁面設定**（「設定 → 文件 → 頁面設定...」）：按「確定」才寫入，「取消」/ Esc 放棄。
   - **沒有改動時「確定」不 dispatch `document/setPageSetup`**：否則頁面尺寸不一致的文件會被統一成目前頁的尺寸，還多一筆復原。
   - 寬高 10–2000 mm、邊界 0–2000 mm，超出時夾回範圍；只有「邊界合計 ≥ 頁寬 / 頁高」會顯示錯誤並停用「確定」（`page-setup.ts` 的 `validatePageSetup`）。
-  - **紙張**：`units.ts` 的 `PAGE_SIZE_PRESETS`（一律直式存，直 / 橫由按鈕切換，比對時不分直橫）依 `PAGE_SIZE_GROUPS` 分組：ISO A（A3–A6）、JIS B（B4–B6，標示「（JIS）」）、台灣書刊開本（16 開、32 開；25 開和 A5 同尺寸不另列）、美規（Letter、Legal、Tabloid）、電子書（3:4、9:16）。下拉選單分組並附尺寸，觸發鈕只顯示名稱（選項的尺寸是直式）。**兩個 preset 不可同尺寸**（`presetIdOf` 會認錯，測試守著）；id 不要改名（「範本」面板以 id 引用）。紙張清單只在前端，不改檔案格式。
+  - **紙張**：`units.ts` 的 `PAGE_SIZE_PRESETS`（一律直式存，直 / 橫由按鈕切換，比對時不分直橫）依 `PAGE_SIZE_GROUPS` 分組：ISO A（A3–A6）、JIS B（B4–B6，標示「（JIS）」）、台灣書刊開本（16 開、32 開；25 開和 A5 同尺寸不另列）、美規（Letter、Legal、Tabloid）、電子書（3:4、9:16）、**簡報（PPT）**（2026-10-21，計畫 `docs/10-Plans-PaperSize/01-增加PPT尺寸-實作.md`：PPT 16:9 寬螢幕 960 × 540 pt、PPT 4:3 720 × 540、PPT 16:10 720 × 450、Google 簡報 16:9 720 × 405；照簡報軟體的英吋精確換算，匯出的 PDF 一頁剛好是一張投影片）。
+    - **自然方向**：簡報的 preset 有 `orientation: "landscape"`（照樣直式存）。選紙張一律走 `selectPresetSize(id, 目前尺寸)`：紙張 ↔ 簡報互換時用新 preset 的自然方向（直式 A4 點 PPT 16:9 → 960 × 540），同類之間保留目前方向（橫式 A4 → 橫式 A5），自訂尺寸當成紙張；新增文件的卡片、頁面設定的下拉、卡片的外框都用它。
+    - 下拉選單分組並附尺寸（照自然方向，`presetSizeLabel`），觸發鈕只顯示名稱（按了直 / 橫之後選項的尺寸會和寬高對不上）。**兩個 preset 不可同尺寸**（`presetIdOf` 會認錯，測試守著）；id 不要改名（「範本」面板以 id 引用）。紙張清單只在前端，不改檔案格式。
 - **格線與參考線**（「設定 → 偏好設定 → 格線與參考線...」或 Ctrl+,，計畫：`docs/01-Plans-2026-10/03-增加格線邊界線的設定-實作.md`）：格線（顯示、間距、吸附）/ 內容區對齊線 / 邊界參考線三區，各有顯示開關與線條樣式；內容區自己捲動、頁尾固定。按「確定」才寫入 localStorage，不進復原歷史。
   - **即時預覽**：`PreferencesProvider` 有一個**不存檔的預覽值**（`useSetPreviewPreferences`），設定時 `usePreferences()` 回傳它（畫布、TopBar 都跟著變），`savePreferences` 只存正式的值。對話框的草稿每次變更就設預覽，卸載時清除，所以「取消」/ Esc / ✕ / 點外面都會還原；「確定」同一批先寫入偏好再清預覽。不用「邊改邊存、取消時寫回」：那樣對話框開著時關掉視窗，沒確定的修改會留下來。
   - 預覽要看得到畫布：`SettingsDialog` 的 `seeThrough` 讓對話框靠右（`right-4 left-auto! translate-x-0!`），並加 `data-see-through`；遮罩透明、不模糊的規則在 `index.css`（`[data-slot="dialog-overlay"]:has(+ [data-see-through])`，不放在 `@layer` 才蓋得過 utilities），因為 shadcn 的 `DialogContent` 自己畫遮罩、不收 className（`components/ui/` 不改）。其他設定對話框照舊置中、模糊。
@@ -819,7 +821,7 @@ tests/fixtures/sample-library.json  # Rust 與 vitest 共用的素材庫 fixture
 - 視窗標題：`● 文件名稱 — 雜誌編輯軟體`（`●` 表示未存檔），由 `ProjectProvider` 呼叫 `setTitle`。
 - 新增 / 開啟 / 關閉視窗前，有未存檔的變更時會詢問「儲存 / 不儲存 / 取消」；三者共用 `useProjectCommands` 的同一段流程（關閉視窗走 `confirmClose`）。`busyRef` 防止同時執行兩個檔案操作（包括對話框開著時關閉視窗）。
 - **新增專案**（「檔案 → 新增」，計畫：`docs/01-Plans-2026-10/01-修改新增專案流程-實作.md`）：未存檔提示 → 「新增文件」對話框（`new-document-dialog.tsx`，`useProjectCommands` 的第二個參數 `chooseNewSetup` 注入）→ `createNew(setup)` → `createBlankDocument(setup)`。選了文件範本時 → `createFromTemplate(id, margins)`（見「文件範本」）。
-  - 對話框：左邊紙張卡片（`PaperPresetGrid`，同頁面設定的 14 種紙張與分組，卡片尺寸跟著目前方向），右邊 `PageSetupFields`（和頁面設定共用：直橫、寬高、邊界）；底部「取消 / 建立」。每次開啟都從 `DEFAULT_NEW_PAGE_SETUP`（A4 直式、邊界 15 mm）開始，**不記憶**上次的選擇。
+  - 對話框：左邊紙張卡片（`PaperPresetGrid`，同頁面設定的 18 種紙張與分組，每張卡片畫「點了會得到的尺寸」：方向照 `selectPresetSize`），右邊 `PageSetupFields`（和頁面設定共用：直橫、寬高、邊界）；底部「取消 / 建立」。每次開啟都從 `DEFAULT_NEW_PAGE_SETUP`（A4 直式、邊界 15 mm）開始，**不記憶**上次的選擇。
   - 取消、Esc、點外面一律 resolve `null`（不能讓 Promise 懸著，否則 `busyRef` 一直是 busy）→ 留在目前的文件。先問未存檔再選紙張，所以選了「儲存」再取消也只是存了檔。
   - **啟動時沒有上次的專案仍直接建立 A4**（`createNew()` 不帶參數），不顯示對話框。瀏覽器模式的「新增」照舊只顯示「僅在桌面版可用」。
   - 只改前端，Rust `project_new` 只建立資料夾、檔案格式不變。

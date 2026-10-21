@@ -5,7 +5,9 @@ import {
   orientationOf,
   presetIdOf,
   presetIdsInGroup,
+  presetOrientation,
   presetSize,
+  selectPresetSize,
   validatePageSetup,
   withOrientation,
 } from "../page-setup";
@@ -59,6 +61,50 @@ describe("presets", () => {
     expect(presetIdsInGroup("iso")).toEqual(["a3", "a4", "a5", "a6"]);
     // 範本面板以 id 引用，既有的 id 不能消失
     expect(PAGE_SIZE_PRESET_IDS).toEqual(expect.arrayContaining(["a4", "b5", "letter"]));
+  });
+
+  it("has the presentation slide sizes, landscape, in whole points (one PDF page = one slide)", () => {
+    expect(PAGE_SIZE_GROUPS[PAGE_SIZE_GROUPS.length - 1].id).toBe("slides");
+    const slides = Object.fromEntries(
+      presetIdsInGroup("slides").map((id) => {
+        const { width, height } = presetSize(id, "landscape");
+        return [id, [Math.round(width * 1e6) / 1e6, Math.round(height * 1e6) / 1e6]];
+      }),
+    );
+    expect(slides).toEqual({ ppt16x9: [960, 540], ppt4x3: [720, 540], ppt16x10: [720, 450], slides16x9: [720, 405] });
+    for (const id of PAGE_SIZE_PRESET_IDS) {
+      const preset: { readonly orientation?: string; readonly group: string } = PAGE_SIZE_PRESETS[id];
+      expect(preset.orientation, id).toBe(preset.group === "slides" ? "landscape" : undefined);
+    }
+  });
+});
+
+describe("selectPresetSize", () => {
+  const landscapeA4 = withOrientation(A4, "landscape");
+
+  it("knows which presets are normally landscape", () => {
+    expect(presetOrientation("a4")).toBe("portrait");
+    expect(presetOrientation("ppt16x9")).toBe("landscape");
+  });
+
+  it("turns slides landscape when coming from paper or a custom size", () => {
+    expect(selectPresetSize("ppt16x9", A4)).toEqual(presetSize("ppt16x9", "landscape"));
+    expect(selectPresetSize("ppt4x3", landscapeA4)).toEqual(presetSize("ppt4x3", "landscape"));
+    expect(selectPresetSize("slides16x9", { width: 500, height: 700 })).toEqual(presetSize("slides16x9", "landscape"));
+  });
+
+  it("turns paper portrait when coming from slides, even from a portrait slide", () => {
+    expect(selectPresetSize("a4", presetSize("ppt16x9", "landscape"))).toEqual(A4);
+    expect(selectPresetSize("a5", presetSize("ppt16x9", "portrait"))).toEqual(presetSize("a5", "portrait"));
+  });
+
+  it("keeps the current orientation within the same kind", () => {
+    expect(selectPresetSize("a5", landscapeA4)).toEqual(presetSize("a5", "landscape"));
+    expect(selectPresetSize("b5", A4)).toEqual(presetSize("b5", "portrait"));
+    // 使用者把簡報轉成直式後換另一種簡報：照樣直式
+    expect(selectPresetSize("ppt4x3", presetSize("ppt16x9", "portrait"))).toEqual(presetSize("ppt4x3", "portrait"));
+    // 自訂的橫式尺寸當成紙張：換紙張保留橫式
+    expect(selectPresetSize("a4", { width: 700, height: 500 })).toEqual(landscapeA4);
   });
 });
 

@@ -1,5 +1,5 @@
 import type { Margins, Size } from "./types";
-import { PAGE_SIZE_PRESETS, findPageSizePreset, presetToPt, type PageSizeGroupId } from "./units";
+import { PAGE_SIZE_PRESETS, findPageSizePreset, presetToPt, type PageSizeGroupId, type PageSizePreset } from "./units";
 import { isMargins, isPageSize } from "./validation";
 
 export type PageSizePresetId = keyof typeof PAGE_SIZE_PRESETS;
@@ -87,6 +87,40 @@ export function presetIdOf(size: Size): PageSizePresetId | null {
  */
 export function presetSize(id: PageSizePresetId, orientation: Orientation): Size {
   return withOrientation(presetToPt(PAGE_SIZE_PRESETS[id]), orientation);
+}
+
+/**
+ * The way a preset is normally used: presentation slides are landscape, paper is portrait.
+ *
+ * Args:
+ *   id: Preset id.
+ *
+ * Returns:
+ *   The preset's natural orientation.
+ */
+export function presetOrientation(id: PageSizePresetId): Orientation {
+  const preset: PageSizePreset = PAGE_SIZE_PRESETS[id];
+  return preset.orientation ?? "portrait";
+}
+
+/**
+ * The page size to use when the user picks a preset (新增文件 cards, 頁面設定 menu). Switching
+ * between paper and slides takes the new preset's natural orientation (picking「PPT 16:9」on a
+ * portrait A4 gives 960 × 540, not 540 × 960); switching within the same kind keeps the current
+ * orientation (landscape A4 → landscape A5). A custom size counts as paper.
+ *
+ * Args:
+ *   id: The chosen preset.
+ *   current: The page size before the choice.
+ *
+ * Returns:
+ *   The preset's size in pt, in the orientation to use.
+ */
+export function selectPresetSize(id: PageSizePresetId, current: Size): Size {
+  const previous = presetIdOf(current);
+  const previousKind = previous === null ? "portrait" : presetOrientation(previous);
+  const orientation = previousKind === presetOrientation(id) ? orientationOf(current) : presetOrientation(id);
+  return presetSize(id, orientation);
 }
 
 /**
