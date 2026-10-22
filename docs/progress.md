@@ -10,7 +10,7 @@
 
 ## 目前階段
 
-- **MCP 匯入圖片到素材庫（2026-10-22，6 個步驟全部完成；還沒 commit）**：任務檔 `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能.md`，計畫與每一步的結果 `1-McpServer沒有匯入圖片功能-實作.md`。新工具 `import_library_item { path, folderId?, name? }`：本機絕對路徑由 App 的 Rust 讀（WebView 只拿得到這次呼叫的附件 token），沿用 `useLibraryImport` 的匯入流程；只收圖片、只匯入（放到頁面用 `place_library_item`）、不另外確認（toast）。
+- **MCP 匯入圖片到素材庫（2026-10-22，6 個步驟全部完成，commit `e3ca24d`（沒有 push））**：任務檔 `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能.md`，計畫與每一步的結果 `1-McpServer沒有匯入圖片功能-實作.md`。新工具 `import_library_item { path, folderId?, name? }`：本機絕對路徑由 App 的 Rust 讀（WebView 只拿得到這次呼叫的附件 token），沿用 `useLibraryImport` 的匯入流程；只收圖片、只匯入（放到頁面用 `place_library_item`）、不另外確認（toast）。
   - 步驟 1（完成，畫面不變）：`use-library-import.ts` 的 `prepare` / `store` 改成回傳 `Result`（訊息不變），新增 `importFile(file, { folderId, accept?, name? })` 回傳 `{ item, outcome }` 或錯誤（不 toast；先檢查資料夾與名稱）；`importFiles` 照舊 toast。
   - 步驟 2（完成，畫面不變）：Rust `mcp/attachment.rs`（讀 `path`：絕對路徑、圖片副檔名、≤ 20 MB；token 一次性）、`bridge.rs` 在交給前端前讀檔、`FrontendRequest.attachment`、command `mcp_take_attachment`；cargo 264 個通過。
   - 步驟 3（完成，畫面不變）：`runToolAsync` / `ASYNC_HANDLERS`（`runTool` 不變）、`ToolContext.attachedFile` / `importFile`、MCP 呼叫改成依序處理的佇列、`NOT_IN_BATCH` 加 `import_library_item`；vitest 1133 個通過。
