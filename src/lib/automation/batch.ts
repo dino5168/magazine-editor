@@ -14,8 +14,12 @@ import type { ToolContext } from "./run-tool";
 /** Most operations in one batch. */
 export const BATCH_OPS_MAX = 200;
 
-/** Tools that cannot go into a batch: nested batches, history, and menu commands (side effects outside the document). */
-export const NOT_IN_BATCH: ReadonlySet<string> = new Set(["batch", "undo", "redo", "run_command"]);
+/**
+ * Tools that cannot go into a batch: nested batches, history, menu commands and importing into the
+ * asset library (side effects outside the document that a failed batch cannot take back; importing
+ * is also asynchronous).
+ */
+export const NOT_IN_BATCH: ReadonlySet<string> = new Set(["batch", "undo", "redo", "run_command", "import_library_item"]);
 
 /** One operation: a tool name and its arguments (may hold `$ref`). */
 export interface BatchOp {
@@ -60,7 +64,7 @@ export function runBatch(ops: readonly BatchOp[], context: ToolContext, run: Run
   });
 
   for (const [index, op] of ops.entries()) {
-    if (NOT_IN_BATCH.has(op.tool)) return fail(index, "不能放進 batch（batch、undo、redo、run_command 要單獨呼叫）");
+    if (NOT_IN_BATCH.has(op.tool)) return fail(index, `不能放進 batch（${[...NOT_IN_BATCH].join("、")} 要單獨呼叫）`);
     const args = resolveRefs(op.args ?? {}, results);
     if (args.error) return fail(index, args.error.message);
     const result = run(op.tool, args.data, { ...context, state, apply: record });

@@ -5,7 +5,9 @@ import { z } from "zod";
 import type { EditorState } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
 import type { Library } from "@/lib/library/types";
+import type { ImportFileOptions, ImportedItem } from "@/lib/library/use-library-import";
 import { runBatch } from "./batch";
+import { importLibraryItem } from "./imports";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
   addLine,
@@ -51,9 +53,25 @@ export interface ToolContext {
   readonly commands: CommandAccess;
   /** Dispatches one action (= one undo step) and reports the resulting state. */
   readonly apply: ApplyAction;
+  /**
+   * The file this call names, read by Rust (`mcp_take_attachment`); only `import_library_item`
+   * calls have one. Absent in tests and batches.
+   */
+  readonly attachedFile?: (() => Promise<Result<File>>) | null;
+  readonly importFile?: ImportFileFn;
 }
 
-type ToolHandlers = { readonly [Name in ToolName]: (args: ToolArgs<Name>, context: ToolContext) => Result<unknown> };
+/** Imports one file into the asset library (`useLibraryImport().importFile`). */
+export type ImportFileFn = (file: File, options: ImportFileOptions) => Promise<Result<ImportedItem>>;
+
+/** Tools that wait for the app (file I/O); they run through `runToolAsync` only, never in a batch. */
+type AsyncToolName = Extract<ToolName, "import_library_item">;
+type SyncToolName = Exclude<ToolName, AsyncToolName>;
+
+type ToolHandlers = { readonly [Name in SyncToolName]: (args: ToolArgs<Name>, context: ToolContext) => Result<unknown> };
+type AsyncToolHandlers = {
+  readonly [Name in AsyncToolName]: (args: ToolArgs<Name>, context: ToolContext) => Promise<Result<unknown>>;
+};
 
 function ok<T>(data: T): Result<T> {
   return { data, error: null };
@@ -95,6 +113,14 @@ const HANDLERS: ToolHandlers = {
   redo: (_args, { apply }) => stepHistory(apply, "redo"),
 };
 
+const ASYNC_HANDLERS: AsyncToolHandlers = {
+  import_library_item: (args, context) => importLibraryItem(context.library, context, args),
+};
+
+function isAsyncToolName(name: ToolName): name is AsyncToolName {
+  return Object.prototype.hasOwnProperty.call(ASYNC_HANDLERS, name);
+}
+
 const localeError = z.locales.zhTW().localeError;
 
 /**
@@ -125,9 +151,35 @@ function describeIssues(error: z.ZodError): string {
  */
 export function runTool(name: string, args: unknown, context: ToolContext): Result<unknown> {
   if (!isToolName(name)) return { data: null, error: new Error(`沒有名為「${name}」的工具`) };
-  const parsed = TOOL_DEFINITIONS[name].input.safeParse(args ?? {}, { error: localeError });
-  if (!parsed.success) return { data: null, error: new Error(describeIssues(parsed.error)) };
+  if (isAsyncToolName(name)) return { data: null, error: new Error(`「${name}」要單獨呼叫，不能放進 batch`) };
+  const parsed = parseArgs(name, args);
+  if (parsed.error) return parsed;
   // name 與 parsed.data 來自同一個工具；TypeScript 無法把兩者關聯起來
   const handler = HANDLERS[name] as (args: unknown, context: ToolContext) => Result<unknown>;
   return handler(parsed.data, context);
+}
+
+/**
+ * Runs one tool call from the MCP bridge: tools that wait for the app (`import_library_item`) are
+ * awaited, all others run like `runTool`.
+ *
+ * Args:
+ *   name: Tool name from the MCP client (untrusted).
+ *   args: Arguments from the MCP client (untrusted); `undefined` counts as `{}`.
+ *   context: Editor state and app hooks.
+ *
+ * Returns:
+ *   The tool's JSON result, or an error explaining what to fix.
+ */
+export async function runToolAsync(name: string, args: unknown, context: ToolContext): Promise<Result<unknown>> {
+  if (!isToolName(name) || !isAsyncToolName(name)) return runTool(name, args, context);
+  const parsed = parseArgs(name, args);
+  if (parsed.error) return parsed;
+  const handler = ASYNC_HANDLERS[name] as (args: unknown, context: ToolContext) => Promise<Result<unknown>>;
+  return handler(parsed.data, context);
+}
+
+function parseArgs(name: ToolName, args: unknown): Result<unknown> {
+  const parsed = TOOL_DEFINITIONS[name].input.safeParse(args ?? {}, { error: localeError });
+  return parsed.success ? { data: parsed.data, error: null } : { data: null, error: new Error(describeIssues(parsed.error)) };
 }

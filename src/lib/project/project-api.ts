@@ -115,6 +115,8 @@ export const projectApi = {
   mcpSetEnabled: (enabled: boolean) => call<null>("mcp_set_enabled", { enabled }),
   /** Answers the MCP tool call `id` from the `mcp://request` event. */
   mcpRespond: (id: number, response: McpToolResponse) => call<null>("mcp_respond", { id, response }),
+  /** The file an MCP call names (`attachment.token` of its `mcp://request`); each token works once. */
+  mcpTakeAttachment: (token: string) => call<ArrayBuffer>("mcp_take_attachment", { token }),
 };
 
 /** `ToolResponse` in Rust `mcp/protocol.rs`; `error` is Chinese and meant for the model. */

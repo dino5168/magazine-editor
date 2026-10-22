@@ -48,6 +48,29 @@ export function kindOfFile(name: string): LibraryItemKind | null {
   return KIND_OF_EXTENSION[fileExtension(name)] ?? null;
 }
 
+const IMAGE_TYPE_OF_EXTENSION: Readonly<Record<string, string>> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+};
+
+/**
+ * MIME type of an image by its extension, the way the browser fills `File.type` for a picked file.
+ * For a `File` built from bytes (MCP import), which otherwise has an empty type.
+ *
+ * Args:
+ *   name: File name.
+ *
+ * Returns:
+ *   The image MIME type, or `""` for anything else.
+ */
+export function imageTypeOfFile(name: string): string {
+  return IMAGE_TYPE_OF_EXTENSION[fileExtension(name)] ?? "";
+}
+
 /**
  * A valid item name from a file name: one line, trimmed, at most `ITEM_NAME_MAX_CHARS` characters.
  *

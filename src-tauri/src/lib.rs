@@ -74,6 +74,7 @@ pub fn run() {
             commands::export::export_open_last,
             commands::mcp::mcp_set_enabled,
             commands::mcp::mcp_respond,
+            commands::mcp::mcp_take_attachment,
         ])
         // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
         .on_window_event(|window, event| {

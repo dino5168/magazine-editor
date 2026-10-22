@@ -678,7 +678,7 @@ class ToolMethods:
     ) -> Any:
         """素材清單
 
-        列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。素材只能由使用者在 App 裡匯入，這裡不能新增或刪除。
+        列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。
 
         Args:
             kind: 只列這一種素材（可省略）
@@ -690,6 +690,27 @@ class ToolMethods:
             The tool's JSON result.
         """
         return self._call("list_library_items", _args({"kind": kind, "query": query, "folderId": folderId, "includeTrashed": includeTrashed}))
+
+    def import_library_item(
+        self,
+        *,
+        path: str,
+        folderId: str | _Unset = UNSET,
+        name: str | _Unset = UNSET,
+    ) -> Any:
+        """匯入圖片到素材庫
+
+        把這台電腦上的圖片檔匯入專案的素材庫（和使用者在 App 裡匯入相同：檔案複製進專案資料夾），回傳素材的 itemId、名稱、所在資料夾路徑、像素尺寸 width / height 與 status。之後用 place_library_item 放到頁面，或用 add_shape / update_element 的 image 放進圖形。path 是圖片檔的絕對路徑（例如其他工具產生或下載的圖片）；支援 PNG、JPEG、WebP、GIF、SVG，單檔 20 MB 以內，內容必須是能顯示的圖片。folderId 省略 = 未分類（id 由 list_library_items 的 folders 取得）；name 省略 = 檔名（含副檔名，和使用者在 App 匯入相同）。內容相同的檔案已經在素材庫時不會重複加入：status 是 duplicate，回傳原本那一筆（資料夾與名稱不變）；它在垃圾桶時還原到 folderId，status 是 restored；其他情況 status 是 new。素材庫的變更立即存檔，不能用 undo 復原；這個工具不能放進 batch（先單獨匯入，再把放到頁面的操作放進 batch）。
+
+        Args:
+            path: 圖片檔的絕對路徑，例如 C:\\Users\\me\\Pictures\\cover.png
+            folderId: 放進這個資料夾；省略 = 未分類（可省略）
+            name: 素材名稱（最多 255 字）；省略 = 檔名（含副檔名）（可省略）
+
+        Returns:
+            The tool's JSON result.
+        """
+        return self._call("import_library_item", _args({"path": path, "folderId": folderId, "name": name}))
 
     def place_library_item(
         self,
@@ -806,6 +827,7 @@ TOOL_NAMES: Final = frozenset({
     "delete_text_style",
     "get_document",
     "get_element",
+    "import_library_item",
     "list_commands",
     "list_elements",
     "list_fonts",

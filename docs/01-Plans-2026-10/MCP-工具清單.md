@@ -2,6 +2,7 @@
 
 > 整理於 2026-10-15（commit `62d02d6` 之後）。單一資料來源是 `src/lib/automation/tool-definitions.ts`（工具名稱、說明、參數 schema），`src-tauri/mcp-tools.json` 由它產生。**工具有增減或參數改了，要同步更新這份文件。**
 > 2026-10-21 加入 `batch`（計畫 `../09-Plans-Scripts/1-python-scripts-實作.md`）。
+> 2026-10-22 加入 `import_library_item`（匯入本機圖片到素材庫，計畫 `../11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md`）。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -18,12 +19,13 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 ## 2. 總覽
 
-共 **33 個工具**：14 個唯讀（只查詢）、19 個會改文件或執行指令。
+共 **34 個工具**：14 個唯讀（只查詢）、20 個會改文件、素材庫或執行指令。
 
 | 分類 | 工具 |
 |---|---|
 | 查詢 | `get_document`、`list_pages`、`list_elements`、`get_element`、`list_text_styles`、`list_shapes`、`list_fonts`、`list_swatches`、`list_library_items`、`list_commands` |
 | 物件 | `add_text`、`add_shape`、`add_line`、`update_element`、`delete_elements`、`place_library_item` |
+| 素材庫 | `import_library_item` |
 | 頁面與主頁 | `add_page`、`add_master`、`set_page_master`、`rename_page`、`set_page_background`、`rename_document` |
 | 文字樣式 | `add_text_style`、`update_text_style`、`delete_text_style`、`apply_text_style` |
 | 色票 | `add_swatch`、`update_swatch`、`delete_swatch` |
@@ -41,7 +43,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 - **顏色參數**（`textColor`、`shadow.color`、`fill`、`stroke.color`）：hex `#rrggbb` / `#rrggbbaa`（`aa` = 不透明度），或 `{ swatch: 色票名稱或 id, opacity?: 0–1 }` 連到文件色票（改色票時跟著變）。頁面 / 主頁背景只能是 `#rrggbb` 或 `{ swatch }`。
 - **文字樣式欄位**（`add_text`、`add_shape` 的圖形內文字、`update_element`、文字樣式工具共用，都可省略）：`fontSize`、`font`（內建「黑體 / 明體 / 楷體 / 圓體」或專案字型的名稱 / id）、`bold`、`italic`、`underline`、`strikethrough`、`align`（`left` / `center` / `right` / `distributed` 首尾置中）、`textColor`、`shadow`（`{ color, offsetX, offsetY }` 或 `null`）、`lineHeight`（行距倍數 0.5–3）、`letterSpacing`（字距 ‰，−200–1000）、`indentLeft` / `indentRight`（左 / 右縮排，單位「字」= 字級的倍數，0–20）、`indentFirstLine`（首行縮排，字；負值 = 首行突排，不可小於 −indentLeft）。
 - **參數驗證**：參數不合（型別、範圍、未知欄位）時回中文錯誤（「參數 xxx：…」），文件不會被改。
-- **安全**：只接受本機、目前 Windows 帳號的連線；**沒有工具接受檔案路徑**。匯入字型、存檔、匯出、開檔都要使用者在 App 的對話框確認。
+- **安全**：只接受本機、目前 Windows 帳號的連線；**只有 `import_library_item` 接受檔案路徑**（只讀、必須是圖片、不回傳內容；由 App 的 Rust 讀檔，畫面端拿不到路徑），其他工具都不收路徑。匯入字型、存檔、匯出、開檔都要使用者在 App 的對話框確認。
 
 ---
 
@@ -72,6 +74,10 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | `update_element` | 修改一個物件，只改有給的欄位，回傳是否有變更 | `id*`；見下表 |
 | `delete_elements` | 刪除同一頁（或同一主頁）的物件，回傳數量 | `ids*`（1–500 個） |
 | `place_library_item` | 把素材庫的**圖片**放到頁面（最上層），回傳 id 與尺寸 | `item*`（素材 id 或完全相符的名稱）、`x`、`y`（省略的那一軸置中）、`width`（省略 = 和素材面板相同的大小；給了時高度依原圖比例）、`pageId` |
+| `import_library_item` | 把這台電腦上的**圖片檔**匯入素材庫（和使用者在 App 匯入相同），回傳 `itemId`、名稱、資料夾路徑、像素寬高與 `status`（`new` / `duplicate`：已經在素材庫，資料夾與名稱不變 / `restored`：從垃圾桶還原）；之後用 `place_library_item` 或 `image` 放到頁面 | `path*`（**絕對路徑**；PNG / JPEG / WebP / GIF / SVG，≤ 20 MB）、`folderId`（省略 = 未分類）、`name`（省略 = 檔名，含副檔名） |
+
+`import_library_item` 不改文件（不能 `undo`；素材庫立即存檔）、不能放進 `batch`；App 會顯示「Claude Code 匯入了素材…」。常見流程：匯入 → 用回傳的 `itemId` 呼叫 `place_library_item`（或放進 `batch` 一起排版）。
+
 
 **`add_shape` 的 `shape`**（完整清單與參數用 `list_shapes` 查）：
 
@@ -141,7 +147,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 - **引用前面的結果**：參數值寫成 `{ "$ref": "<第幾個操作>.<欄位路徑>" }`（0 起算；陣列用數字）。常用：`add_page` 的新頁面 `"N.pages.0.id"`、`add_text` / `add_shape` / `add_line` 的新物件 `"N.id"`。只能引用前面的操作。
 - **錯誤訊息**：`ops[N]（工具）：<那個工具的錯誤>`，後面註明「整批沒有套用」。
-- 查詢工具可以放進批次（看到做到那一步的文件）；`batch`、`undo`、`redo`、`run_command` 不行。
+- 查詢工具可以放進批次（看到做到那一步的文件）；`batch`、`undo`、`redo`、`run_command`、`import_library_item` 不行。
 - 成功時回傳 `{ results: [每個操作的回傳值] }`。
 - Python 腳本用 SDK（`sdk/python`）的 `with doc.batch():`，自動組出 `ops` 與 `$ref`。
 - 橋接程式連線時給 Claude Code 的伺服器說明（`magazine-mcp.rs` 的 `INSTRUCTIONS`）要求：兩個以上的修改用 `batch`、只做一個修改直接呼叫那個工具（2026-10-21）。用不用仍由 LLM 判斷。

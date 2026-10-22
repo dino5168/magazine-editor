@@ -528,7 +528,8 @@ function folderPathText(library: Library, id: string): string {
   return folderPath(library.folders, id).join(" / ");
 }
 
-function itemSummary(library: Library, item: LibraryItem): LibraryItemSummary {
+/** One item as `list_library_items` reports it (no `src`: tools refer to items by id). */
+export function itemSummary(library: Library, item: LibraryItem): LibraryItemSummary {
   const base = {
     id: item.id,
     name: item.name,
@@ -545,6 +546,11 @@ function itemSummary(library: Library, item: LibraryItem): LibraryItemSummary {
     case "audio":
       return base;
   }
+}
+
+/** Error for a library folder id that does not exist. */
+export function unknownFolderError(folderId: string): Error {
+  return new Error(`找不到資料夾「${folderId}」，請用 list_library_items 回傳的 folders 取得 id`);
 }
 
 /**
@@ -564,7 +570,7 @@ export function listLibraryItems(
 ): Result<{ folders: LibraryFolderSummary[]; items: LibraryItemSummary[] }> {
   const { kind, query = "", folderId, includeTrashed = false } = args;
   if (folderId !== undefined && !library.folders.some((folder) => folder.id === folderId)) {
-    return { data: null, error: new Error(`找不到資料夾「${folderId}」，請用 list_library_items 回傳的 folders 取得 id`) };
+    return { data: null, error: unknownFolderError(folderId) };
   }
   // 垃圾桶裡的素材沒有資料夾，所以指定資料夾時不會有垃圾桶的素材
   const items = [

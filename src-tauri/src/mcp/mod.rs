@@ -9,6 +9,7 @@
 //! MCP 協定本身（initialize、tools/list）在橋接程式（`src/bin/magazine-mcp.rs`）；App 只處理「執行
 //! 一個工具」。橋接程式只用得到 `client`、`protocol` 與 `pipe_name`，所以只有它們是 `pub`。
 
+pub(crate) mod attachment;
 pub(crate) mod bridge;
 pub mod client;
 pub(crate) mod pipe;

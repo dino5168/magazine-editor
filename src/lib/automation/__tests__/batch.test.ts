@@ -78,7 +78,7 @@ describe("batch", () => {
       "ops[0]（add_text）：$ref「0.id」",
     );
     expect(session.error("batch", { ops: [{ tool: "add_page" }, { tool: "make_coffee" }] })).toContain("make_coffee");
-    for (const tool of ["batch", "undo", "redo", "run_command"]) {
+    for (const tool of ["batch", "undo", "redo", "run_command", "import_library_item"]) {
       expect(session.error("batch", { ops: [{ tool: "add_page" }, { tool, args: {} }] })).toContain(`ops[1]（${tool}）：不能放進 batch`);
     }
     expect(session.state).toBe(before);

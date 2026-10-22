@@ -33,7 +33,7 @@ import {
 } from "@/lib/editor/validation";
 import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
 import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
-import { BATCH_OPS_MAX } from "./batch";
+import { BATCH_OPS_MAX, NOT_IN_BATCH } from "./batch";
 
 export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
   /** Short Chinese name shown by MCP clients. */
@@ -457,7 +457,7 @@ export const TOOL_DEFINITIONS = {
   list_library_items: {
     title: "素材清單",
     description:
-      "列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。素材只能由使用者在 App 裡匯入，這裡不能新增或刪除。",
+      "列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。",
     input: z.strictObject({
       kind: z.enum(["image", "text", "audio"]).optional().describe("只列這一種素材"),
       query: z.string().max(ITEM_NAME_MAX_CHARS).optional().describe("名稱包含這段文字（不分大小寫）"),
@@ -465,6 +465,27 @@ export const TOOL_DEFINITIONS = {
       includeTrashed: z.boolean().optional().describe("也列出垃圾桶裡的素材（預設 false）"),
     }),
     readOnly: true,
+  },
+  import_library_item: {
+    title: "匯入圖片到素材庫",
+    description:
+      "把這台電腦上的圖片檔匯入專案的素材庫（和使用者在 App 裡匯入相同：檔案複製進專案資料夾），回傳素材的 itemId、名稱、所在資料夾路徑、像素尺寸 width / height 與 status。" +
+      "之後用 place_library_item 放到頁面，或用 add_shape / update_element 的 image 放進圖形。" +
+      "path 是圖片檔的絕對路徑（例如其他工具產生或下載的圖片）；支援 PNG、JPEG、WebP、GIF、SVG，單檔 20 MB 以內，內容必須是能顯示的圖片。" +
+      "folderId 省略 = 未分類（id 由 list_library_items 的 folders 取得）；name 省略 = 檔名（含副檔名，和使用者在 App 匯入相同）。" +
+      "內容相同的檔案已經在素材庫時不會重複加入：status 是 duplicate，回傳原本那一筆（資料夾與名稱不變）；它在垃圾桶時還原到 folderId，status 是 restored；其他情況 status 是 new。" +
+      "素材庫的變更立即存檔，不能用 undo 復原；這個工具不能放進 batch（先單獨匯入，再把放到頁面的操作放進 batch）。",
+    input: z.strictObject({
+      path: z.string().min(1).max(4096).describe("圖片檔的絕對路徑，例如 C:\\Users\\me\\Pictures\\cover.png"),
+      folderId: z.string().min(1).optional().describe("放進這個資料夾；省略 = 未分類"),
+      name: z
+        .string()
+        .min(1)
+        .max(ITEM_NAME_MAX_CHARS * 2)
+        .optional()
+        .describe(`素材名稱（最多 ${ITEM_NAME_MAX_CHARS} 字）；省略 = 檔名（含副檔名）`),
+    }),
+    readOnly: false,
   },
   place_library_item: {
     title: "把素材放到頁面",
@@ -504,7 +525,7 @@ export const TOOL_DEFINITIONS = {
       `一次執行多個工具操作（最多 ${BATCH_OPS_MAX} 個），省去一個一個呼叫的來回。ops 的每一項是 { tool: 工具名稱, args: 那個工具的參數 }，參數與錯誤訊息和單獨呼叫那個工具完全相同。` +
       "依序執行；任何一個失敗就整批退回、文件不變，錯誤訊息指出是 ops[N]（0 起算）。全部成功才套用，整批是一筆復原（使用者按一次 Ctrl+Z 全部撤銷）。" +
       '引用前面操作的回傳值：參數值寫成 { "$ref": "<第幾個操作>.<欄位路徑>" }，例如第 0 個是 add_page 時用 { "$ref": "0.pages.0.id" }（新頁面的 id）、第 1 個是 add_text 時用 { "$ref": "1.id" }；陣列用數字，只能引用前面的操作。' +
-      "查詢工具（list_elements 等）可以放進批次，看到的是批次進行到那一步的文件。batch、undo、redo、run_command 不能放進批次。成功時回傳 { results: [每個操作的回傳值] }。",
+      `查詢工具（list_elements 等）可以放進批次，看到的是批次進行到那一步的文件。${[...NOT_IN_BATCH].join("、")} 不能放進批次。成功時回傳 { results: [每個操作的回傳值] }。`,
     input: z.strictObject({
       ops: z
         .array(

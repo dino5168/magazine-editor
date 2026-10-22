@@ -3,7 +3,7 @@ import { editorReducer, type EditorState } from "@/lib/editor/editor-reducer";
 import { EMPTY_LIBRARY, type Library } from "@/lib/library/types";
 import { createPlaceholderHandlers } from "@/lib/menu/commands";
 import type { CommandAccess } from "../commands";
-import { runTool } from "../run-tool";
+import { runTool, runToolAsync, type ToolContext } from "../run-tool";
 
 /** Placeholder handlers everywhere; command tests build their own. */
 export const NO_COMMANDS: CommandAccess = { handlers: createPlaceholderHandlers(() => {}), isChecked: () => false };
@@ -15,11 +15,18 @@ export const NO_COMMANDS: CommandAccess = { handlers: createPlaceholderHandlers(
  *   initial: Starting editor state.
  *   commands: Menu commands seen by the tools.
  *   library: Asset library seen by the tools (tools only read it).
+ *   hooks: The call's attached file and the asset-library importer (`import_library_item`).
  *
  * Returns:
- *   Helpers to call tools and read the current state.
+ *   Helpers to call tools (`call` like `runTool`, `callAsync` like the MCP bridge) and read the
+ *   current state.
  */
-export function toolSession(initial: EditorState, commands: CommandAccess = NO_COMMANDS, library: Library = EMPTY_LIBRARY) {
+export function toolSession(
+  initial: EditorState,
+  commands: CommandAccess = NO_COMMANDS,
+  library: Library = EMPTY_LIBRARY,
+  hooks: Pick<ToolContext, "attachedFile" | "importFile"> = {},
+) {
   let state = initial;
   const apply = (action: Parameters<typeof editorReducer>[1]) => {
     const next = editorReducer(state, action);
@@ -27,12 +34,15 @@ export function toolSession(initial: EditorState, commands: CommandAccess = NO_C
     state = next;
     return next;
   };
-  const call = (name: string, args?: unknown) => runTool(name, args, { state, library, commands, apply });
+  const context = (): ToolContext => ({ state, library, commands, apply, ...hooks });
+  const call = (name: string, args?: unknown) => runTool(name, args, context());
+  const callAsync = (name: string, args?: unknown) => runToolAsync(name, args, context());
   return {
     get state() {
       return state;
     },
     call,
+    callAsync,
     /** Calls a tool that must succeed; returns its data. */
     ok(name: string, args?: unknown): any {
       const result = call(name, args);

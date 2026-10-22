@@ -32,6 +32,12 @@ describe("runTool: arguments", () => {
   it("rejects arguments that are not an object", () => {
     expect(error("list_pages", "all")).not.toBe("");
   });
+
+  it("runToolAsync runs the other tools like runTool", async () => {
+    expect(await session.callAsync("get_document")).toEqual(session.call("get_document"));
+    expect((await session.callAsync("delete_everything")).error?.message).toContain("delete_everything");
+    expect((await session.callAsync("get_element", { id: 3 })).error?.message).toContain("參數 id");
+  });
 });
 
 describe("runTool: queries", () => {

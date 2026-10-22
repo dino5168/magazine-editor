@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fileExtension, kindOfFile, libraryItemName, normalizeText, textExcerpt } from "../library-files";
+import { fileExtension, imageTypeOfFile, kindOfFile, libraryItemName, normalizeText, textExcerpt } from "../library-files";
+import { ALLOWED_IMAGE_TYPES } from "@/lib/editor/validation";
 import { itemNameError } from "../library-validation";
 import { MASONRY_MAX_ASPECT, masonryLayout } from "../masonry";
 import { ITEM_NAME_MAX_CHARS, TEXT_EXCERPT_MAX_CHARS } from "../types";
@@ -34,6 +35,15 @@ describe("masonryLayout", () => {
 });
 
 describe("library files", () => {
+  it("gives every library image extension an allowed MIME type", () => {
+    for (const name of ["a.png", "b.JPG", "c.jpeg", "d.webp", "e.gif", "封面.Svg"]) {
+      expect(kindOfFile(name)).toBe("image");
+      expect(ALLOWED_IMAGE_TYPES).toContain(imageTypeOfFile(name));
+    }
+    expect(imageTypeOfFile("note.txt")).toBe("");
+    expect(imageTypeOfFile("photo")).toBe("");
+  });
+
   it("routes files by extension", () => {
     expect(kindOfFile("Photo.JPEG")).toBe("image");
     expect(kindOfFile("Logo.SVG")).toBe("image");

@@ -4,12 +4,19 @@
 > **更新時機:** 每段工作結束前(或 `/clear` 之前),請 Claude 更新這份檔案。
 > **注意:** repo 是 public,不要在這裡寫個人資訊、本機路徑或金鑰。
 
-最後更新:2026-10-19(文字縮排計畫)
+最後更新:2026-10-22(MCP 匯入圖片)
 
 ---
 
 ## 目前階段
 
+- **MCP 匯入圖片到素材庫（2026-10-22，6 個步驟全部完成；還沒 commit）**：任務檔 `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能.md`，計畫與每一步的結果 `1-McpServer沒有匯入圖片功能-實作.md`。新工具 `import_library_item { path, folderId?, name? }`：本機絕對路徑由 App 的 Rust 讀（WebView 只拿得到這次呼叫的附件 token），沿用 `useLibraryImport` 的匯入流程；只收圖片、只匯入（放到頁面用 `place_library_item`）、不另外確認（toast）。
+  - 步驟 1（完成，畫面不變）：`use-library-import.ts` 的 `prepare` / `store` 改成回傳 `Result`（訊息不變），新增 `importFile(file, { folderId, accept?, name? })` 回傳 `{ item, outcome }` 或錯誤（不 toast；先檢查資料夾與名稱）；`importFiles` 照舊 toast。
+  - 步驟 2（完成，畫面不變）：Rust `mcp/attachment.rs`（讀 `path`：絕對路徑、圖片副檔名、≤ 20 MB；token 一次性）、`bridge.rs` 在交給前端前讀檔、`FrontendRequest.attachment`、command `mcp_take_attachment`；cargo 264 個通過。
+  - 步驟 3（完成，畫面不變）：`runToolAsync` / `ASYNC_HANDLERS`（`runTool` 不變）、`ToolContext.attachedFile` / `importFile`、MCP 呼叫改成依序處理的佇列、`NOT_IN_BATCH` 加 `import_library_item`；vitest 1133 個通過。
+  - 步驟 4（完成）：工具 `import_library_item`（`lib/automation/imports.ts`，回傳 `itemId` + `list_library_items` 的欄位 + `status`）、toast 在 `mcp-bridge.tsx`、`mcp-tools.json` 更新；vitest 1138 個通過。
+  - 步驟 5（完成）：橋接程式重編、SDK 重新產生；桌面版 stdio 腳本實測 PNG / SVG 匯入、重複、各種錯誤、放到頁面都正確。實測抓到 MCP 建的 `File` 沒有 MIME（每張都被擋），加 `imageTypeOfFile` 修正；名稱保留副檔名（說明更正）。
+  - 步驟 6（完成）：`CLAUDE.md`（MCP 的匯入素材、安全原則、目錄結構、IPC）、`MCP-工具清單.md`、`07` / `11` 兩份 MCP 計畫的連結。
 - **匯出 PowerPoint（2026-10-21，7 個步驟全部完成；步驟 1–2 commit `c5df28a`、步驟 3–7 commit `d480b91`（都沒有 push）；桌面版從選單匯出待使用者確認）**：任務檔 `docs/03-Plans-匯出檔案/03-匯出PowerPoint 檔案.md`，計畫與每一步的結果 `03-匯出PowerPoint 檔案-實作.md`。只有簡報尺寸（四種、直橫都可、各頁同尺寸）的文件能匯出；一頁 = 一張滿版圖片投影片。使用者決定：typst-render 點陣化（不用 PDFium，畫質不行再換）、替代文字放該頁文字、3 px/pt、有照片的頁 JPEG 其他 PNG、不能匯出時選單停用並顯示原因。**步驟 1 完成**（`lib/export/pptx-export.ts` 的 `pptxExportProblem` / `isSlideSize`，vitest 6 項）。**步驟 2 完成**（`pdf.rs` 拆出 `compile_document`；`typst-render` 移到 dependencies；`export/pptx/raster.rs` 每頁 3 px/pt、照片頁 JPEG 92 其他 PNG、多執行緒；200 頁 release 4.4 秒 / 開發版 21 秒；樣張畫質可以，不換 PDFium；cargo 245）。**步驟 3 完成**（`export/archive.rs` 共用 zip（EPUB 改用）；`export/pptx/package.rs` 最小的 PresentationML、替代文字；`build_pptx` 與 Rust 端尺寸檢查；cargo 256；PowerPoint 以 COM 開兩個樣本都沒有修復提示）。**步驟 4 完成**（`ExportFormat::Pptx`、`export_pptx` command；`with_extension` 共用，順便修正 PDF 檔名 `v1.2` 變成 `v1.pdf`；暫存檔改成原檔名 + `.tmp`；cargo 258）。**步驟 5 完成**（選單「檔案 → 匯出為 → PowerPoint（PPTX）...」；`lib/menu/command-availability.ts` 動態停用，選單與 MCP 共用，非簡報尺寸顯示「（需要簡報尺寸）」；`mcp-tools.json`、Python SDK、橋接程式已更新（要 `/mcp` 重新連線）；vitest 1132；無頭 Edge 確認停用 / 可用）。**步驟 6 完成**（真前端產生五種投影片大小（含直式）的請求 → `.pptx`；PowerPoint 以 COM 開五個都沒有修復提示、尺寸 / 滿版圖片 / 頁名 / 替代文字含頁碼都對；PowerPoint 畫出的和檔案內圖片平均差 ≤ 0.13/255；桌面版從選單匯出待使用者確認）。**步驟 7 完成**（`CLAUDE.md` 新增「匯出 PowerPoint」一節與相關處、`docs/01` / `02`）。
 - **增加 PPT 尺寸（2026-10-21，4 個步驟全部完成，已 commit 並推送）**：任務檔 `docs/10-Plans-PaperSize/01-增加PPT尺寸.md`，評估 `01-增加PPT尺寸-評估計畫.md`，實作計畫 `01-增加PPT尺寸-實作.md`。紙張新分組「簡報（PPT）」（最後）：PPT 16:9 寬螢幕（960 × 540 pt）、PPT 4:3（720 × 540）、PPT 16:10（720 × 450）、Google 簡報 16:9（720 × 405），照英吋精確換算，匯出的 PDF 一頁剛好是一張投影片。選簡報自動轉橫式（`selectPresetSize`：紙張 ↔ 簡報用新紙張的自然方向，同類保留方向），新增文件、頁面設定、卡片外框共用；邊界照樣 15 mm；檔案格式、Rust、匯出不改。測試：vitest 1123；桌面版驗證（新增文件、頁面設定、PDF 頁面 960 × 540 pt）。之後另排：簡報用的文件範本、翻頁書單頁模式。
 

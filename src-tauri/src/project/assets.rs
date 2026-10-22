@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 
 /// Same limit as the frontend upload validation.
-const MAX_ASSET_BYTES: usize = 20 * 1024 * 1024;
+pub(crate) const MAX_ASSET_BYTES: usize = 20 * 1024 * 1024;
 /// Text assets are placed on a page as one text element; larger files make the canvas slow.
 /// Same as `TEXT_ASSET_MAX_BYTES` in `src/lib/library/types.ts`.
 pub const TEXT_ASSET_MAX_BYTES: usize = 200 * 1024;
