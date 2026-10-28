@@ -13,9 +13,9 @@
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，各迭代的內容與 commit 見 `1-專案重構-實作.md` §8。迭代 0–5 已 commit（最後一個 `aa7a1dc`；根 CLAUDE.md 102.5k → 6.1k token，規則檔在 `.claude/rules/`，原文封存 `docs/progress-archive/rules-2026-10/`）；迭代 6（四個 skills：`iteration-end`、`add-mcp-tool`、`bump-file-format`、`ui-verify` + `cdp.mjs`）完成、**未 commit**；下一步：新工作階段確認 skills 有列出並可呼叫，之後重構計畫結束（迭代 7 另開任務）。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，各迭代的內容與 commit 見 `1-專案重構-實作.md` §8。迭代 0–5 已 commit（最後一個 `aa7a1dc`；根 CLAUDE.md 102.5k → 6.1k token，規則檔在 `.claude/rules/`，原文封存 `docs/progress-archive/rules-2026-10/`）；迭代 6（四個 skills：`iteration-end`、`add-mcp-tool`、`bump-file-format`、`ui-verify` + `cdp.mjs`）commit `670707f`，建立後就列在可用 skills 中。**重構計畫完成**（迭代 7 大檔拆分另開任務）。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 6 個 commit，沒有 push）
+## 最近完成（全部已 commit；`main` 比 origin 多 7 個 commit，沒有 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
