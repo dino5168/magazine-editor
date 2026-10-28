@@ -26,7 +26,7 @@ paths:
 ## 檔案系統（`lib/project` / `src-tauri/src/project`）
 
 - 專案 = 使用者選的資料夾：`project.magproj`（JSON）+ `.bak` + `assets/images|texts|audio|thumbs|fonts/`（`ASSET_DIRS`）+ `library.json`。圖片檔名 = SHA-256 前 32 碼，寫入後不再修改（復原歷史可以引用）。
-- **Rust `format.rs` 是格式的權威定義**：讀取與存檔都驗證。**改 `types.ts` 的文件模型 = 同步改 `format.rs` 與 `tests/fixtures/sample.magproj`**，提升 `SCHEMA_VERSION`（目前 17），更新 `docs-website/types.html`。新欄位能用 serde 預設就不寫升級步驟；要改寫舊內容時在 `parse_project` 依版本升級 `serde_json::Value`（備份檔也要套用）。比 App 新的版本拒絕開啟；只有最上層的未知欄位存檔時保留。
+- **Rust `format.rs` 是格式的權威定義**：讀取與存檔都驗證。**改 `types.ts` 的文件模型 = 同步改 `format.rs` 與 `tests/fixtures/sample.magproj`**，提升 `SCHEMA_VERSION`（目前 17），更新 `docs-website/types.html`。新欄位能用 serde 預設就不寫升級步驟；要改寫舊內容時在 `parse_project` 依版本升級 `serde_json::Value`（備份檔也要套用）。比 App 新的版本拒絕開啟；只有最上層的未知欄位存檔時保留。完整步驟：skill `bump-file-format`。
 - 各版：v2 物件顏色可 `#rrggbbaa`・v3 四種圖形合併成 `shape`（`upgrade_shapes_to_v3`）・v4 `margins`・v5 `pageNumberRules`・v6 文字裝飾（`#[serde(flatten)] decoration`）・v7 `masters` / `masterId`・v8 `textStyles` / `styleId`（缺少時 `default_text_styles`）・v9 `lineHeight` / `letterSpacing`（`spacing`）・v10 `align: distributed`・v11 四角圓角・v12 `swatches` 與 `*SwatchId`・v13 `fonts`・v14 preset geometry・v15 `dashDot` / 線條・v16 段落縮排（`indent`）・v17 圖片框 `image`。**v10、v14 沒有新欄位**：提升版本是讓舊版 App 說「檔案比較新」而不是解析失敗。
 - **前端不傳路徑給 Rust**：開啟 / 另存對話框由 Rust 呼叫 `tauri-plugin-dialog`，其他 commands 只操作 `ProjectState` 的目前專案。`src` 存專案相對路徑，顯示時 `resolveSrc`（`resolveAssetUrl` + `convertFileSrc`）。asset scope 在開專案時由 Rust `allow_directory()` 開放。
 - 寫入：`.tmp` → flush → 舊檔 copy 成 `.bak` → rename。主檔壞了改用 `.bak` 並標記未存檔。

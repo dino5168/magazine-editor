@@ -7,23 +7,21 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-28（重構迭代 5）
+最後更新：2026-10-28（重構迭代 6）
 
 ---
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與各迭代紀錄 `1-專案重構-實作.md` §8。迭代 0 `501f2b4`、1 `639b69d`、2 `78a7e56`（根 CLAUDE.md 102.5k → 6.1k token；hook 在 `settings.local.json`，不進 repo）、3 `c8727d3`；迭代 4（canvas-ui、app-shell、editor-color-fonts、project-files 合計 98 K → 31 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）commit `3493a96`；迭代 5（export、mcp、cross-language、ipc 合計 46 K → 19 K）commit `aa7a1dc`；下一步：迭代 6（四個 skills）。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，各迭代的內容與 commit 見 `1-專案重構-實作.md` §8。迭代 0–5 已 commit（最後一個 `aa7a1dc`；根 CLAUDE.md 102.5k → 6.1k token，規則檔在 `.claude/rules/`，原文封存 `docs/progress-archive/rules-2026-10/`）；迭代 6（四個 skills：`iteration-end`、`add-mcp-tool`、`bump-file-format`、`ui-verify` + `cdp.mjs`）完成、**未 commit**；下一步：新工作階段確認 skills 有列出並可呼叫，之後重構計畫結束（迭代 7 另開任務）。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 4 個 commit，沒有 push）
+## 最近完成（全部已 commit；`main` 比 origin 多 6 個 commit，沒有 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
 | 10-22 | MCP `import_library_item`（匯入本機圖片到素材庫） | `e3ca24d` | `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md` |
 | 10-21 | 匯出 PowerPoint（簡報尺寸、每頁一張滿版圖片） | `c5df28a` `d480b91` | `docs/03-Plans-匯出檔案/03-匯出PowerPoint 檔案-實作.md` |
 | 10-21 | 紙張加簡報（PPT）四種 | `86a1ff4` | `docs/10-Plans-PaperSize/01-增加PPT尺寸-實作.md` |
-| 10-21 | 字型管理（.ttc、系統字型、下載精選清單、授權提醒） | `7f552f3` `6e75583` | `docs/05-Plans-字型/02-字型管理問題-實作.md` |
-| 10-21 | MCP `batch` 與 Python SDK | `d646f18` `4d18261` `eb9f50e` | `docs/09-Plans-Scripts/1-python-scripts-實作.md` |
 更早的（圖片框 v17、文件範本、段落縮排 v16…）、完整的決定表與逐項驗證清單：`docs/progress-archive/2026-10.md`。
 
 ## 待辦

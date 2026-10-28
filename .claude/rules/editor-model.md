@@ -39,7 +39,7 @@ paths:
 
 - 新物件類型：`types.ts` 的 union、`geometry.localBounds`、`canvas-elements`（renderer + `StaticElement` + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`；Rust `format.rs` 的 `Element`、`export/render.rs` 的 `build_render`；`template.typ` 的 `draw`、`export/html/markup.rs` 的 `element_markup`。**`template.typ` 漏改只會靜默不畫**，其他漏改會編譯失敗。
 - 新 geometry（圖形庫的圖形不用）：`ShapeGeometry`、`shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`shapeChoiceOf`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometryFields`、`validation.ts` 的 `isShapeGeometry`；Rust `format.rs` 的 `ShapeGeometry` / `validate_geometry`、`render.rs` 的 `shape_kind`。
-- 舊檔升級在 Rust（例如 `upgrade_shapes_to_v3`）。`recovery::read` 也要呼叫：備份檔沒有版本號，可能是舊格式。
+- 舊檔升級在 Rust（例如 `upgrade_shapes_to_v3`）。`recovery::read` 也要呼叫：備份檔沒有版本號，可能是舊格式。提升版本的完整步驟：skill `bump-file-format`。
 
 ## 狀態（`editor-reducer.ts`）
 

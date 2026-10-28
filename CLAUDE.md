@@ -10,7 +10,7 @@
 - 視窗標題：`雜誌編輯軟體`（設定在 `src-tauri/tauri.conf.json`，預設最大化，最小尺寸 1024×640）
 - 給人閱讀的說明文件在 `docs/`（依編號分批撰寫，進度見 `docs/README.md`）。修改架構或資料流程時，同步更新對應的文件。
   - 各計畫資料夾的內容：見 `.claude/rules/docs-layout.md`。
-- **開始工作前先讀 `docs/progress.md`**（目前在做什麼、待辦、仍有效的決定、已知問題）；完成工作或做出決定後更新它（照檔頭的維護規則：一行摘要、上限 6 000 字元）。**不要讀 `docs/progress-archive/`**（已完成的逐步紀錄），除非需要查歷史。
+- **開始工作前先讀 `docs/progress.md`**（目前在做什麼、待辦、仍有效的決定、已知問題）；完成工作或做出決定後更新它（照檔頭的維護規則：一行摘要、上限 6 000 字元；收尾流程見 skill `iteration-end`）。**不要讀 `docs/progress-archive/`**（已完成的逐步紀錄），除非需要查歷史。
 - `docs/00-需求分析/`：需求分析與可行性報告。**這裡的進度記在各報告自己的「進度紀錄」，不寫進 `docs/progress.md`**。
   - 各報告：見 `.claude/rules/docs-layout.md`。
 - `docs-website/` 是 HTML 版說明（入口 `index.html`），負責「結構與關係」這類適合用圖說明的內容；`docs/` 負責「為什麼這樣設計」，兩邊互相連結、不重複撰寫。
@@ -115,6 +115,15 @@ docs/ · docs-website/   # 給人看的說明（見上）
 | MCP 與 Python SDK | `mcp.md` |
 | Rust ↔ Frontend IPC、DB、CSP | `ipc.md` |
 | docs/ 資料夾與需求分析報告 | `docs-layout.md` |
+
+## Skills（`.claude/skills/`，多步驟流程）
+
+| 什麼時候 | skill |
+|---|---|
+| 改會存進專案檔的欄位（提升 `SCHEMA_VERSION`） | `bump-file-format` |
+| 新增 / 修改 MCP 工具（名稱、說明、參數） | `add-mcp-tool` |
+| 在瀏覽器 / 桌面版實際操作驗證 UI（無頭 Edge + CDP，驅動程式 `cdp.mjs`） | `ui-verify` |
+| 結束工作階段：更新 progress.md 與計畫文件、檢查大小、提醒 `/clear` | `iteration-end` |
 
 ## 不可移除的設定
 

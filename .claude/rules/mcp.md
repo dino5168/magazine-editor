@@ -28,7 +28,7 @@ paths:
 ## 工具定義（單一資料來源）
 
 - `tool-definitions.ts` 的 `TOOL_DEFINITIONS`（名稱、給 AI 的中文說明、zod strict schema、`readOnly`）；`run-tool.ts` 的 `HANDLERS` 是 mapped type，漏實作編譯失敗。`src-tauri/mcp-tools.json` 由 `mcp-tools.test.ts` 產生（**不要手改**），橋接程式 `include_str!` 內嵌。
-- **新增 / 修改工具**：`TOOL_DEFINITIONS` → `HANDLERS`（邏輯放 `queries.ts` / `commands.ts` / `edits.ts`，測試用 `__tests__/tool-session.ts`）→ `npx vitest run mcp-tools -u` → `cargo build --bin magazine-mcp` → `sdk/python` 的 `scripts/generate.py`（`tests/test_tools.py` 守著）→ 更新 `MCP-工具清單.md`（參數改了也要）。
+- **新增 / 修改工具**：照 skill `add-mcp-tool`（`TOOL_DEFINITIONS` → `HANDLERS` → 測試 → `npx vitest run mcp-tools -u` → 重編 `magazine-mcp` → `scripts/generate.py` → `MCP-工具清單.md`），一步都不能省。
 - 驗證失敗回中文（`z.locales.zhTW()`，前面加「參數 xxx：」），不 dispatch。顏色寫成 regex 才會進 JSON Schema（和 `isElementColor` / `isHexColor` 同規則）；**不用 ajv**（`new Function` 被 CSP 擋）。
 - 顏色參數是 `hex | { swatch, opacity? }`（`colorInput`；背景 `pageColorInput`）：給 hex = 不連色票。
 - `run_command` 和選單呼叫**同一個 handler**；佔位 handler 由 `isPlaceholderHandler` 認出，回「尚未實作」不執行。
