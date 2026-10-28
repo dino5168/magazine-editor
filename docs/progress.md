@@ -7,13 +7,13 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-28（重構迭代 4）
+最後更新：2026-10-28（重構迭代 5）
 
 ---
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與各迭代紀錄 `1-專案重構-實作.md` §8。迭代 0 `501f2b4`、1 `639b69d`、2 `78a7e56`（根 CLAUDE.md 102.5k → 6.1k token；hook 在 `settings.local.json`，不進 repo）、3 `c8727d3`；迭代 4（canvas-ui、app-shell、editor-color-fonts、project-files 合計 98 K → 31 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）commit `3493a96`；下一步：迭代 5（export、mcp、cross-language、ipc）。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與各迭代紀錄 `1-專案重構-實作.md` §8。迭代 0 `501f2b4`、1 `639b69d`、2 `78a7e56`（根 CLAUDE.md 102.5k → 6.1k token；hook 在 `settings.local.json`，不進 repo）、3 `c8727d3`；迭代 4（canvas-ui、app-shell、editor-color-fonts、project-files 合計 98 K → 31 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）commit `3493a96`；迭代 5（export、mcp、cross-language、ipc 合計 46 K → 19 K）完成、未 commit；下一步：迭代 6（四個 skills）。
 
 ## 最近完成（全部已 commit；`main` 比 origin 多 4 個 commit，沒有 push）
 
