@@ -7,13 +7,13 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-28（重構迭代 3）
+最後更新：2026-10-28（重構迭代 4）
 
 ---
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`。迭代 0（基準 102.5k token、定案 `.claude/rules/`、檢查腳本 `check-moved.mjs`）commit `501f2b4`；迭代 1（progress.md 瘦身）commit `639b69d`；迭代 2（拆 CLAUDE.md 到 `.claude/rules/`）commit `78a7e56`（`.claude/` 只 commit `rules/` 與 `settings.json`；hook 在 `settings.local.json`，不進 repo）；`/context` 量得根 CLAUDE.md 6.1k token（基準 102.5k）；迭代 3（四個 editor 規則檔 42 K → 14 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）commit `c8727d3`；下一步：迭代 4。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與各迭代紀錄 `1-專案重構-實作.md` §8。迭代 0 `501f2b4`、1 `639b69d`、2 `78a7e56`（根 CLAUDE.md 102.5k → 6.1k token；hook 在 `settings.local.json`，不進 repo）、3 `c8727d3`；迭代 4（canvas-ui、app-shell、editor-color-fonts、project-files 合計 98 K → 31 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）未 commit；下一步：迭代 5（export、mcp、cross-language、ipc）。
 
 ## 最近完成（全部已 commit；`main` 比 origin 多 2 個 commit，沒有 push）
 
