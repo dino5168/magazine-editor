@@ -1,5 +1,6 @@
 // 「資訊沒遺失檢查」：舊版文件裡的每個 `反引號識別字`，在新的配置裡還找得到嗎？
-// 用法（repo 根目錄）：node docs/12-Plans-重構/check-moved.mjs [基準 commit，預設 5d546a5]
+// 用法（repo 根目錄）：node docs/12-Plans-重構/check-moved.mjs [基準 commit，預設 5d546a5] [要比對的舊檔…，預設 CLAUDE.md docs/progress.md]
+// 例：迭代 3 比對精簡前的規則檔：node docs/12-Plans-重構/check-moved.mjs 8959b47 .claude/rules/editor-model.md
 // 嚴格範圍 = 根 CLAUDE.md + .claude/rules + .claude/skills（Claude 會自動 / 依需要載入的）
 // 寬鬆範圍 = 嚴格範圍 + docs/**/*.md（計畫文件、progress、archive）
 import { execFileSync } from "node:child_process"
@@ -7,6 +8,7 @@ import { readFileSync, readdirSync, existsSync } from "node:fs"
 import { join } from "node:path"
 
 const base = process.argv[2] ?? "5d546a5"
+const sources = process.argv.length > 3 ? process.argv.slice(3) : ["CLAUDE.md", "docs/progress.md"]
 const show = (path) => execFileSync("git", ["show", `${base}:${path}`], { encoding: "utf8", maxBuffer: 1 << 26 })
 
 function walk(dir, ext, out = []) {
@@ -32,7 +34,7 @@ function identifiers(text) {
 const strict = read(["CLAUDE.md", ...walk(".claude/rules", ".md"), ...walk(".claude/skills", ".md")])
 const loose = strict + "\n" + read(walk("docs", ".md"))
 
-for (const source of ["CLAUDE.md", "docs/progress.md"]) {
+for (const source of sources) {
   const ids = [...identifiers(show(source))]
   const missingStrict = ids.filter((id) => !strict.includes(id))
   const missingLoose = ids.filter((id) => !loose.includes(id))
