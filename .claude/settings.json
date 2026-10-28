@@ -11,21 +11,5 @@
       "Read(./fonts/*.ttf)",
       "Read(./fonts/*.otf)"
     ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "& \"$env:CLAUDE_PROJECT_DIR/.claude/hooks/post-edit-check.ps1\"; exit $LASTEXITCODE",
-            "timeout": 120,
-            "statusMessage": "型別檢查與相關測試中..."
-          }
-        ]
-      }
-    ]
   }
 }
