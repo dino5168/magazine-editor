@@ -7,13 +7,13 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-28（重構迭代 1）
+最後更新：2026-10-28（重構迭代 2）
 
 ---
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`。迭代 0（基準 102.5k token、定案 `.claude/rules/`、檢查腳本 `check-moved.mjs`）commit `501f2b4`；**迭代 1（progress.md 瘦身）完成，還沒 commit**；下一步迭代 2（拆 CLAUDE.md）。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`。迭代 0（基準 102.5k token、定案 `.claude/rules/`、檢查腳本 `check-moved.mjs`）commit `501f2b4`；迭代 1（progress.md 瘦身）commit `639b69d`；**迭代 2（拆 CLAUDE.md 到 `.claude/rules/`）完成，還沒 commit**（`.claude/` 目前不在 git 裡，要先決定是否 commit）；下一步：新工作階段量 `/context`，再做迭代 3。
 
 ## 最近完成（全部已 commit；`main` 比 origin 多 1 個 commit，沒有 push）
 
