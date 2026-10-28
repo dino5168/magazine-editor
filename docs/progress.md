@@ -13,9 +13,9 @@
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`。迭代 0（基準 102.5k token、定案 `.claude/rules/`、檢查腳本 `check-moved.mjs`）commit `501f2b4`；迭代 1（progress.md 瘦身）commit `639b69d`；迭代 2（拆 CLAUDE.md 到 `.claude/rules/`）commit `78a7e56`（`.claude/` 只 commit `rules/` 與 `settings.json`；hook 在 `settings.local.json`，不進 repo）；`/context` 量得根 CLAUDE.md 6.1k token（基準 102.5k）；迭代 3（四個 editor 規則檔 42 K → 14 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）完成、未 commit；下一步：迭代 4。
+- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`。迭代 0（基準 102.5k token、定案 `.claude/rules/`、檢查腳本 `check-moved.mjs`）commit `501f2b4`；迭代 1（progress.md 瘦身）commit `639b69d`；迭代 2（拆 CLAUDE.md 到 `.claude/rules/`）commit `78a7e56`（`.claude/` 只 commit `rules/` 與 `settings.json`；hook 在 `settings.local.json`，不進 repo）；`/context` 量得根 CLAUDE.md 6.1k token（基準 102.5k）；迭代 3（四個 editor 規則檔 42 K → 14 K 字元，原文封存 `docs/progress-archive/rules-2026-10/`）commit `c8727d3`；下一步：迭代 4。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 1 個 commit，沒有 push）
+## 最近完成（全部已 commit；`main` 比 origin 多 2 個 commit，沒有 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
