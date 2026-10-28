@@ -10,6 +10,8 @@
 
 ## 目前階段
 
+- **專案重構：降低 Claude Code 的 context 用量（2026-10-28，迭代 0 完成並 commit；下一步迭代 1 progress.md 瘦身）**：任務檔 `docs/12-Plans-重構/1-專案重構.md`，計畫與迭代狀態 `1-專案重構-實作.md`（迭代 0–6；拆大檔另開任務）。迭代 0：`/context` 基準是根 CLAUDE.md **102.5k token**（Memory files 合計 103.4k）；實測 `.claude/rules/*.md` 的 `paths:` 與子目錄 `CLAUDE.md` 都是讀到符合的檔案時才載入（啟動時掃描）→ 定案用 `.claude/rules/`，探測檔已刪。識別字比對腳本 `docs/12-Plans-重構/check-moved.mjs`。
+
 - **MCP 匯入圖片到素材庫（2026-10-22，6 個步驟全部完成，commit `e3ca24d`（沒有 push））**：任務檔 `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能.md`，計畫與每一步的結果 `1-McpServer沒有匯入圖片功能-實作.md`。新工具 `import_library_item { path, folderId?, name? }`：本機絕對路徑由 App 的 Rust 讀（WebView 只拿得到這次呼叫的附件 token），沿用 `useLibraryImport` 的匯入流程；只收圖片、只匯入（放到頁面用 `place_library_item`）、不另外確認（toast）。
   - 步驟 1（完成，畫面不變）：`use-library-import.ts` 的 `prepare` / `store` 改成回傳 `Result`（訊息不變），新增 `importFile(file, { folderId, accept?, name? })` 回傳 `{ item, outcome }` 或錯誤（不 toast；先檢查資料夾與名稱）；`importFiles` 照舊 toast。
   - 步驟 2（完成，畫面不變）：Rust `mcp/attachment.rs`（讀 `path`：絕對路徑、圖片副檔名、≤ 20 MB；token 一次性）、`bridge.rs` 在交給前端前讀檔、`FrontendRequest.attachment`、command `mcp_take_attachment`；cargo 264 個通過。
