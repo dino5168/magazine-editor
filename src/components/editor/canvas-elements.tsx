@@ -172,7 +172,6 @@ function ShapeLabelText({ shape, label, hidden }: { readonly shape: ShapeElement
       x={frame.x}
       y={y}
       width={frame.width}
-      text={label.text}
       fontSize={label.fontSize}
       fontFamily={label.fontFamily}
       {...konvaTextStyle(label)}
@@ -359,13 +358,12 @@ export function LineBody({ line, zoom }: { readonly line: LineElement; readonly 
 // 文字節點的內容與樣式；可編輯的 ElementNode 與靜態的 StaticElement 共用，兩邊才不會畫得不一樣
 function textAttrs(element: TextElement) {
   return {
-    text: element.text,
     width: element.width,
     fontSize: element.fontSize,
     fontFamily: element.fontFamily,
     ...konvaTextStyle(element),
     ...konvaAlignAttrs(element.align),
-    // 段落縮排：預先換好的文字與每行的起點（沒有縮排時是 Konva 原本的換行）
+    // 預先換好行的文字（避頭點）；有段落縮排時再加每行的起點
     ...indentAttrs(element, element.width),
     fill: element.fill,
   };

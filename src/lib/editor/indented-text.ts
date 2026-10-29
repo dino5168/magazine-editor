@@ -3,6 +3,7 @@ import type { Context } from "konva/lib/Context";
 import { drawDistributedText } from "./distributed-text";
 import { alignedLineStart, hasTextIndent, layoutIndentedText, type IndentedLayout, type LineBox } from "./text-indent";
 import { konvaTextStyle } from "./text-style";
+import { wrapParagraph } from "./text-wrap";
 import type { TextAlign, TextStyle } from "./types";
 
 /**
@@ -31,27 +32,52 @@ export type WrappedText = Pick<
   | "align"
 > & { readonly text: string };
 
-// 換一段用的離畫面節點（共用一個；設定屬性只會重新換行，不會畫）
-let wrapper: Konva.Text | null = null;
+// 量字用的離畫面節點（共用一個；設定屬性只會重新算行寬，不會畫）
+let measurer: Konva.Text | null = null;
 
+// 換行由 `wrapParagraph` 決定（避頭點，計畫 `docs/05-Plans-字型/04-避頭點換行-實作.md`），
+// 行寬照 Konva 量：`wrap: "none"` 時 `textArr[0].width` 就是 Konva 自己的行寬（含字距）
 function konvaWrap(style: WrappedText): (paragraph: string, width: number) => string[] {
   return (paragraph, width) => {
-    wrapper ??= new Konva.Text();
-    wrapper.setAttrs({
+    measurer ??= new Konva.Text();
+    const node = measurer;
+    node.setAttrs({
       fontSize: style.fontSize,
       fontFamily: style.fontFamily,
       ...konvaTextStyle(style),
       align: "left",
-      wrap: "word",
-      width,
-      text: paragraph,
+      wrap: "none",
+      width: undefined,
     });
-    return wrapper.textArr.map((line) => line.text);
+    return wrapParagraph(paragraph, width, (text) => {
+      node.text(text);
+      return node.textArr[0]?.width ?? 0;
+    });
   };
 }
 
 // 同一個物件（文件裡的物件不可變）、同樣的文字與寬度只換一次行：每次重畫都會呼叫
 const layoutCache = new WeakMap<object, { readonly text: string; readonly width: number; readonly layout: IndentedLayout }>();
+const linesCache = new WeakMap<object, { readonly text: string; readonly width: number; readonly lines: readonly string[] }>();
+
+/**
+ * Lines of text without indents as the canvas wraps them (fonts must be loaded).
+ *
+ * Args:
+ *   style: Text element, shape label (as a text) or style with its text.
+ *   width: Width (pt) of the text box.
+ *
+ * Returns:
+ *   Every line, paragraphs in order.
+ */
+export function wrappedTextLines(style: WrappedText, width: number): readonly string[] {
+  const cached = linesCache.get(style);
+  if (cached && cached.text === style.text && cached.width === width) return cached.lines;
+  const wrap = konvaWrap(style);
+  const lines = style.text.split("\n").flatMap((paragraph) => wrap(paragraph, width));
+  linesCache.set(style, { text: style.text, width, lines });
+  return lines;
+}
 
 /**
  * Lines of indented text as the canvas wraps them (fonts must be loaded).
@@ -127,9 +153,10 @@ export function drawIndentedText(context: Context, shape: Konva.Shape): void {
 }
 
 /**
- * Attributes that make a Konva text draw paragraph indents: the text wrapped beforehand, no
- * wrapping of its own, each line drawn at its start. Without indents, the defaults (Konva wraps
- * and aligns as usual); spread them after `konvaAlignAttrs` so they win.
+ * Attributes that make a Konva text draw our line breaks (avoiding punctuation at line starts and
+ * ends) and paragraph indents: the text wrapped beforehand, no wrapping of its own, each indented
+ * line drawn at its start. Without indents Konva still aligns the lines (and `konvaAlignAttrs`
+ * draws distributed ones); spread them after `konvaAlignAttrs` so they win.
  *
  * Args:
  *   style: Text element or shape label (as a text) with its text.
@@ -139,7 +166,9 @@ export function drawIndentedText(context: Context, shape: Konva.Shape): void {
  *   Attributes to spread onto a Konva `Text`.
  */
 export function indentAttrs(style: WrappedText, width: number) {
-  if (!hasTextIndent(style)) return { wrap: "word", lineBoxes: undefined, indentAlign: undefined };
+  if (!hasTextIndent(style)) {
+    return { text: wrappedTextLines(style, width).join("\n"), wrap: "none", lineBoxes: undefined, indentAlign: undefined };
+  }
   const layout = indentedTextLayout(style, width);
   const boxes = layout.lines.map((_, index) => ({ start: layout.lineStarts[index], width: layout.lineBoxWidths[index] }));
   return {

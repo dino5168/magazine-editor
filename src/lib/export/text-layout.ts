@@ -17,13 +17,12 @@ import type { TextLayout } from "./export-request";
  */
 export function measureTextLayout(element: TextElement): TextLayout {
   const node = new Konva.Text({
-    text: element.text,
     width: element.width,
     fontSize: element.fontSize,
     fontFamily: element.fontFamily,
     ...konvaTextStyle(element),
     align: konvaAlign(element.align),
-    // 段落縮排：和畫布相同的預先換好的文字與行框
+    // 和畫布相同的預先換好的文字（避頭點）；段落縮排時再加行框
     ...indentAttrs(element, element.width),
   });
   try {

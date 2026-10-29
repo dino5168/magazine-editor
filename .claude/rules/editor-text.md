@@ -23,6 +23,7 @@ paths:
 - 首尾置中、段落縮排、底線位置**依賴 Konva 10.5.0 內部**（`textArr`、`_partialText`、`_sceneFunc`、基線公式）：**升級 Konva 時重測**。
 - 行寬、行框、每行間距由前端量好放進 `TextLayout`（`lineWidths` / `lineGaps` / `lineBoxes`），Rust 不自己量；有 `line_starts` 的行，PDF / EPUB 都靠左放在起點，不交給 Typst / CSS 對齊。
 - 有 `lineStarts` 的行**不能被格式再折斷**：PDF 的 `box` 寬度給框寬 + 1000 pt（`no-wrap-width`）、EPUB 每行 `white-space:nowrap`。
+- **換行是自己做的，不是 Konva `word`**（避頭點，`docs/05-Plans-字型/04-避頭點換行-實作.md`）：規則在 `text-wrap.ts`（`canBreakBefore`：中日韓字元之間可斷、行首禁則「，。」）…」、行尾禁則「（「“」、`……` / `——` 不拆、英文在空白與 `-` 斷；放不下就**推出**，不懸掛、不推入）。`indentAttrs` 對**每個**文字（含圖形內文字、`measureTextLayout`）都給預先換好的 `text` + `wrap: "none"`，所以**節點的 `text` ≠ 文件原文**，呼叫端不要自己再給 `text`。量字用離畫面的 `Konva.Text`（`textArr[0].width`，含字距）。改禁則字集 = 舊文件重新換行，要重做疊圖比對。
 - 套用 / 新增樣式的文字前先 `loadFontFamily`，否則畫布用替代字型量換行。
 - **全形標點一律不擠**（三端一致，`docs/05-Plans-字型/03-全形標點擠壓-實作.md`）：`index.css` 的 `html { text-spacing-trim: space-all }`。canvas 只吃 **DOM 裡**的 computed style，所以 `main.tsx` 一開始呼叫 `attachKonvaMeasureCanvas()`（`konva-measure-canvas.ts`）把 Konva 的量字 canvas 放進隱藏容器。依賴 Konva 10.5.0 內部（量字 canvas 由 `Util.createCanvasElement` 建立、全 App 共用）：**升級 Konva 時重測**（console 的 `[text]` 警告）。
 - `stage.toDataURL()` / `toCanvas()` / `node.cache()` 在**不在 DOM** 的 canvas 重畫，那裡又會擠標點（字疊在一起）：做「匯出 PNG」時要處理（見計畫 03 步驟 3）。
@@ -49,11 +50,9 @@ paths:
 ## 段落縮排（`text-indent.ts` / `indented-text.ts`）
 
 - 三個數字（字級的倍數）：`indentLeft` / `indentRight` / `indentFirstLine`；首行 ≥ −左（`hasValidTextIndent` / Rust `validate_text_indent`）。reducer 檢查**套用後**的文字（patch 可能只給首行）。
-- Konva 只能用一個寬度換行，所以 `layoutIndentedText` 每段換兩次；縮排全 0 時完全不走這條路。
-- 畫布節點拿**預先換好行的文字** + `wrap: "none"`（`indentAttrs`），所以**節點的 `text` ≠ 文件原文**；文字編輯框編輯原文。對齊在每行的行框裡（`alignedLineStart`，Rust `layout_line_start` 同公式）。
+- 首行寬度不同，所以 `layoutIndentedText` 每段換兩次；縮排全 0 時不走這條路（`wrappedTextLines`，沒有 `lineBoxes`，Konva 自己對齊）。
+- 有縮排時每行由 `sceneFunc` 畫在自己的行框裡（`alignedLineStart`，Rust `layout_line_start` 同公式）；文字編輯框編輯原文。
 - 文字編輯框是 `contenteditable="plaintext-only"`（textarea 不支援每段首行縮排）；Chrome 結尾換行的佔位 `\n` 由 `toEditableText` / `fromEditableText` 處理。
-- 已知限制：Konva `word` 換行放不下時退回最後一個空白、沒有避頭點（建議另開任務）。
-
 ## 文字樣式（`style-sheet.ts` / `styles-panel.tsx` / `text-style-link.tsx` / `text-style-dialog.tsx`）
 
 - 欄位 = `TEXT_STYLE_KEYS`（mapped type 守著）。**覆寫由比對得出**（`styleOverrides`），不另外存；改樣式時 `restyle` 只改「和舊樣式相同」的欄位。
