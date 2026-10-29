@@ -6,7 +6,7 @@
 //! Coordinates keep the editor's definition: unit pt, origin at the page's top-left corner, y
 //! pointing down, rotation clockwise around the element's anchor.
 
-use super::{ExportRequest, LineBox, PathCommand, PhotoPlacement, ShapePath, TextLayout};
+use super::{ExportRequest, LabelFrame, LineBox, PathCommand, PhotoPlacement, ShapePath, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
     validate_content, validate_stroke_look, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash,
@@ -17,8 +17,8 @@ use crate::project::shape;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Inset between a shape's box and its text; same value as `LABEL_PADDING_PT` in
-/// `src/lib/editor/shape-label.ts`.
+/// Inset between a shape's box and its text when the export request has no frame for the shape;
+/// same value as `LABEL_PADDING_PT` in `src/lib/editor/shape-label.ts`.
 pub const LABEL_PADDING_PT: f64 = 4.0;
 const MAX_LINES_PER_TEXT: usize = 10_000;
 const GENERIC_FAMILIES: &[&str] = &["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"];
@@ -574,9 +574,14 @@ fn text_layout(layouts: &HashMap<String, TextLayout>, id: &str, text: &str, size
 
 /// The text inside a shape as an ordinary text element, or `None` when the shape has no text.
 ///
-/// Same layout as `src/lib/editor/shape-label.ts`: the shape's box inset by `LABEL_PADDING_PT`,
-/// the text block placed by its vertical alignment (overflowing freely), all rotated with the shape.
-fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> AppResult<Option<RenderElement>> {
+/// Same layout as `src/lib/editor/shape-label.ts`: the text is laid out in the frame the editor
+/// sent (`labelFrame`; without one, the box inset by `LABEL_PADDING_PT`), the block placed by its
+/// vertical alignment (overflowing freely), all rotated with the shape.
+fn shape_label(
+    shape: &ShapeElement,
+    layouts: &HashMap<String, TextLayout>,
+    frames: &HashMap<String, LabelFrame>,
+) -> AppResult<Option<RenderElement>> {
     let Some(label) = shape.label.as_ref().filter(|label| !label.text.is_empty()) else { return Ok(None) };
     let layout = text_layout(layouts, &format!("{}#label", shape.base.id), &label.text, label.font_size, label.spacing.line_height)?;
     let line_height = label.font_size * label.spacing.line_height;
@@ -590,8 +595,22 @@ fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> A
         align: label.align,
         fill: &label.fill,
     };
-    let frame_width = (shape.width - 2.0 * LABEL_PADDING_PT).max(1.0);
-    let frame_height = (shape.height - 2.0 * LABEL_PADDING_PT).max(0.0);
+    let frame = match frames.get(&shape.base.id) {
+        Some(frame) => {
+            let usable = |v: f64| v.is_finite() && v.abs() <= SHAPE_PATH_COORD_MAX;
+            if ![frame.x, frame.y, frame.width, frame.height].into_iter().all(usable) || frame.width <= 0.0 || frame.height < 0.0 {
+                return Err(AppError::invalid_input("匯出資料有誤：圖形內文字的文字框不正確"));
+            }
+            *frame
+        }
+        None => LabelFrame {
+            x: LABEL_PADDING_PT,
+            y: LABEL_PADDING_PT,
+            width: (shape.width - 2.0 * LABEL_PADDING_PT).max(1.0),
+            height: (shape.height - 2.0 * LABEL_PADDING_PT).max(0.0),
+        },
+    };
+    let (frame_width, frame_height) = (frame.width, frame.height);
     let text_height = layout.lines.len() as f64 * line_height;
     let offset = match label.vertical_align {
         VerticalAlign::Top => 0.0,
@@ -599,7 +618,7 @@ fn shape_label(shape: &ShapeElement, layouts: &HashMap<String, TextLayout>) -> A
         VerticalAlign::Bottom => frame_height - text_height,
     };
     // 文字左上角在圖形內的位置，隨圖形一起繞圖形的定位點旋轉
-    let (local_x, local_y) = (LABEL_PADDING_PT, LABEL_PADDING_PT + offset);
+    let (local_x, local_y) = (frame.x, frame.y + offset);
     let (sin, cos) = shape.base.rotation.to_radians().sin_cos();
     Ok(Some(RenderElement {
         x: shape.base.x + local_x * cos - local_y * sin,
@@ -672,7 +691,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                         elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo });
                     }
                     // 圖形內文字緊接在圖形上方，z 軸順序和畫布相同（同一個 Group 裡文字畫在圖形之後）
-                    if let Some(label) = shape_label(e, &request.text_layouts)? {
+                    if let Some(label) = shape_label(e, &request.text_layouts, &request.label_frames)? {
                         elements.push(label);
                     }
                     continue;

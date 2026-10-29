@@ -1,7 +1,7 @@
 import { inheritedElements } from "@/lib/editor/master-pages";
 import { spilloverInto } from "@/lib/editor/spreads";
 import { withPageNumbers, type MeasureTextWidth } from "@/lib/editor/page-numbers";
-import { labelAsText, labelLayoutKey } from "@/lib/editor/shape-label";
+import { labelAsText, labelFrame, labelLayoutKey, type LabelFrame } from "@/lib/editor/shape-label";
 import { photoPlacement, type PhotoPlacement } from "@/lib/editor/shape-image";
 import type { PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
@@ -61,6 +61,11 @@ export interface ExportRequest {
    * `photoPlacement` the canvas uses (Rust `PhotoPlacement`; Rust does not repeat the formula).
    */
   readonly shapePhotos: Readonly<Record<string, PhotoPlacement>>;
+  /**
+   * Keyed by shape element id (after expansion): the frame each shape's text is laid out in, from
+   * the same `labelFrame` the canvas uses (Rust `LabelFrame`; Rust does not repeat the formula).
+   */
+  readonly labelFrames: Readonly<Record<string, LabelFrame>>;
 }
 
 /**
@@ -146,12 +151,14 @@ export function buildExportRequest(
   const document = pages.every((page, index) => page === source.pages[index]) && pages.length === source.pages.length ? source : { ...source, pages };
   const textLayouts: Record<string, TextLayout> = {};
   const shapePhotos: Record<string, PhotoPlacement> = {};
+  const labelFrames: Record<string, LabelFrame> = {};
   for (const page of document.pages) {
     for (const element of page.elements) {
       if (element.type === "text") textLayouts[element.id] = measure(element);
-      // 圖形內文字：以 `<id>#label` 為 key；位置由 Rust 依外框與垂直對齊計算，量測只需要寬度與樣式
+      // 圖形內文字：以 `<id>#label` 為 key；文字框和畫布同一個 labelFrame，Rust 依它與垂直對齊放文字，量測只需要寬度與樣式
       if (element.type === "shape" && element.label && element.label.text !== "") {
         textLayouts[labelLayoutKey(element.id)] = measure(labelAsText(element, element.label, { x: 0, y: 0 }));
+        labelFrames[element.id] = labelFrame(element);
       }
       // 圖片框的照片位置（主頁與跨頁的複本也有自己的 id）
       if (element.type === "shape" && element.image) {
@@ -170,7 +177,7 @@ export function buildExportRequest(
       }
     }
   }
-  return { document, textLayouts, shapePaths, shapePhotos };
+  return { document, textLayouts, shapePaths, shapePhotos, labelFrames };
 }
 
 /**

@@ -27,7 +27,7 @@ paths:
 - 圖形 = 外框 + `geometry` + `fill` + `stroke | null` + `label | null` + `image | null`。**新增框型圖形 = 在 `SHAPE_LIBRARY` 加一筆**，不改 `ShapeGeometry`、檔案格式、Rust。
 - `element-factory.ts` 的 `ShapeKind` 是 UI 的圖形選項（`SHAPE_PRESETS` 對應 geometry）；文件存的是 `GeometryKind`。
 - 圓角 `CornerRadius`：四角一樣存一個數字、不同才存 `[左上, 右上, 右下, 左下]`（`normalizeCornerRadius`）；每角各自限制在短邊一半（不是 CSS 的等比例縮小）。
-- 圖形內文字排在外框內縮 `LABEL_PADDING_PT` 的框裡；它的 Konva `Text` 的 `getClientRect` 回報空外框，否則超出的文字撐大 Transformer、縮放換算錯。清空文字 = `label: null`。
+- 圖形內文字排在 `labelFrame` 裡（橢圓 / 多邊形 / 星形取形狀內最大的同比例矩形，矩形與圖形庫用外框，再內縮 `LABEL_PADDING_PT`）；它的 Konva `Text` 的 `getClientRect` 回報空外框，否則超出的文字撐大 Transformer、縮放換算錯。清空文字 = `label: null`。
 - 邊框畫在外框線中心；Transformer 設 `ignoreStroke`。
 - **模型不存 scale**：`bakeTransform()` 把 scale 換進 width / height 再把節點 scale 設回 1；文字只改 width，不改字級。
 - 文字樣式與色票都**照存實際值**，`styleId` / `*SwatchId` 只記連結；畫布、量測、匯出（含 Rust）不讀樣式表與色票表。見 `editor-text.md`、`editor-color-fonts.md`。

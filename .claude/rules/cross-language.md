@@ -16,7 +16,7 @@ paths:
 - 對齊的值：`text-style.ts` 的 `TEXT_ALIGNS` / `format/elements.rs` 的 `Align`（`distributed` 見 `editor-text.md`）。
 - 行距 / 字距：`DEFAULT_LINE_HEIGHT = 1.2`（舊檔的行距）、`LINE_HEIGHT_MIN/MAX`（0.5–3）、`LETTER_SPACING_MIN/MAX`（−200–1000 ‰）：`text-style.ts` / `format/mod.rs`（驗證 `format/validate.rs` 的 `validate_text_spacing`）。
 - 段落縮排：`TEXT_INDENT_MAX`（20 字）與「首行 ≥ −左縮排」：`hasValidTextIndent` / `validate_text_indent`；每行起點 `alignedLineStart` / `render.rs` 的 `layout_line_start`。
-- `LABEL_PADDING_PT = 4`：`shape-label.ts` / `render.rs`。
+- 圖形內文字框：公式只在前端（`labelFrame`），匯出放進 `ExportRequest.labelFrames`；`render.rs` 的 `LABEL_PADDING_PT = 4` 只在缺文字框時退回用（同 `shape-label.ts`）。
 - 虛線樣式：`stroke.ts` 的 `dashPattern` / `render.rs` 的 `dash_pattern`（虛線 3w + 3w；點線 0 + 2w 圓頭；點劃線 4w + 2w + w + 2w 平頭）。樣式清單 `validation.ts` 的 `STROKE_DASHES`（選單、MCP schema、偏好都讀它）。
 - 多邊形 / 星形頂點：`shape-geometry.ts` / `project/shape.rs`。四分之一圓的 `KAPPA`：`shape-path.ts` / `render.rs`。
 - 上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、`MARGIN_MAX_PT`、`TEXT_SHADOW_OFFSET_MAX`、`FONT_SIZE_MIN` / `FONT_SIZE_MAX`：`validation.ts` / `format/mod.rs`（驗證在 `format/validate.rs`）。頁碼 `PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）/ `validate_page_number_rules`。

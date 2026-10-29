@@ -20,7 +20,13 @@ const PNG: &[u8] = &[
 
 /// An export request without any layout data, so the fallback in `text_layout` applies.
 pub fn request(document: Document) -> ExportRequest {
-    ExportRequest { document, text_layouts: HashMap::new(), shape_paths: HashMap::new(), shape_photos: HashMap::new() }
+    ExportRequest {
+        document,
+        text_layouts: HashMap::new(),
+        shape_paths: HashMap::new(),
+        shape_photos: HashMap::new(),
+        label_frames: HashMap::new(),
+    }
 }
 
 /// The document from `tests/fixtures/sample.magproj` (one page, all six element types).

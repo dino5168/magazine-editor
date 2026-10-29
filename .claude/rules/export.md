@@ -15,6 +15,7 @@ paths:
 - **換行由編輯器決定，Typst 只定位**：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 的節點完全相同）量 `lines` / `baseline` / `lineWidths`，放進 `ExportRequest.textLayouts`（key = element id；圖形內文字是 `<id>#label`，Rust `shape_label` 轉成一般文字元素）。模板逐行 `place`，不讓 Typst 再斷行。**必須在字型載入後呼叫**。Rust 缺 layout 時的退回只是保險。
 - **使用者文字絕不進 Typst 程式碼**：模板 `template.typ` 固定，資料走 `data.json`（`pdf.rs` 的 `to_data()`）+ `json()`。不要改成字串拼接 .typ（測試 `user_text_is_data_not_typst_code`）。
 - **`ExportWorld` 是沙箱**：只能讀 `main.typ`、`data.json`、`assets/images/*`（再過 `validate_asset_path`），其他一律 `AccessDenied`。
+- **圖形內文字框也由前端算**：`labelFrames[id] = labelFrame(shape)`（有文字的圖形才放）；`shape_label` 驗證（有限、寬 > 0、高 ≥ 0），缺的退回外框內縮。
 - **圖形庫：前端算路徑，Rust 只畫**：`buildExportRequest` 放 `shapePaths[id] = { outline, details, detailStroke }`；`render.rs` 的 `render_path` 驗證（來自 WebView：≤ 2000 指令、M 開頭、|v| ≤ 1e6…不合 → `InvalidInput`）。不要在 Rust 再寫一份公式。
 - **線條：匯出前換成路徑圖形**（`line-export.ts` 的 `exportedLinePieces`：`x-line` + `x-line-heads`，不在 `SHAPE_LIBRARY`）。Rust render / 模板 / EPUB 都不認識線條（`build_render` 遇到回 `InvalidInput`）。
 - **有邊框的矩形 / 橢圓畫成路徑**（PDF：`rounded_rect_path` / `ellipse_path`；EPUB：inline SVG）：虛線位置由路徑起點決定，要和 Konva 相同；CSS border 畫在框內會差半個線寬。沒有邊框的照舊。

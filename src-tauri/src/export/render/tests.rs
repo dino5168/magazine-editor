@@ -205,6 +205,27 @@ fn shape_labels_are_placed_in_the_inset_box() {
 }
 
 #[test]
+fn shape_labels_use_the_frame_from_the_editor() {
+    // 橢圓 120 × 80 的內切矩形（÷ √2）再內縮 4 pt：編輯器算好放進 labelFrames，Rust 照用
+    let root = project_with_image();
+    let mut req = request(fixture_document());
+    let frame = LabelFrame { x: 21.57, y: 15.72, width: 76.85, height: 48.57 };
+    req.label_frames.insert("el-ellipse".into(), frame);
+    req.text_layouts.insert("el-ellipse#label".into(), TextLayout { lines: vec!["圖形內".into(), "文字".into()], baseline: 12.0, line_widths: vec![], line_gaps: vec![], line_boxes: vec![] });
+    let (document, _) = build_render(root.path(), &req).unwrap();
+    let (element, text) = label_of(&document);
+    assert_eq!(text.width, frame.width);
+    assert!((element.x - (120.0 + frame.x)).abs() < 1e-9, "{}", element.x);
+    // 兩行共 42，置中：(48.57 − 42) / 2
+    assert!((element.y - (440.0 + frame.y + (frame.height - 42.0) / 2.0)).abs() < 1e-9, "{}", element.y);
+
+    for bad in [LabelFrame { width: 0.0, ..frame }, LabelFrame { y: f64::NAN, ..frame }, LabelFrame { height: -1.0, ..frame }] {
+        req.label_frames.insert("el-ellipse".into(), bad);
+        assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))), "{bad:?}");
+    }
+}
+
+#[test]
 fn shape_labels_rotate_with_the_shape_and_skip_empty_text() {
     let mut document = fixture_document();
     let Element::Shape(ellipse) = &mut document.pages[0].elements[2] else { panic!("expected the ellipse") };

@@ -8,7 +8,7 @@ import {
   createTextElement,
 } from "@/lib/editor/element-factory";
 import { createPageNumberRule, pageNumberShapeId } from "@/lib/editor/page-numbers";
-import { LABEL_PADDING_PT, createLabel } from "@/lib/editor/shape-label";
+import { LABEL_PADDING_PT, createLabel, labelFrame } from "@/lib/editor/shape-label";
 import { detailStroke, findShapePreset, presetPath } from "@/lib/editor/shape-presets";
 import type { EditorDocument, ShapeGeometry } from "@/lib/editor/types";
 import { photoPlacement, shapeImageOf } from "@/lib/editor/shape-image";
@@ -72,6 +72,8 @@ describe("buildExportRequest", () => {
     expect(Object.keys(request.textLayouts)).toEqual([`${labelled.id}#label`]);
     expect(request.textLayouts[`${labelled.id}#label`].lines).toEqual(["圖形內文字"]);
     expect(widths).toEqual([labelled.width - 2 * LABEL_PADDING_PT]);
+    // 文字框和畫布同一個 labelFrame；沒有文字的圖形不放
+    expect(request.labelFrames).toEqual({ [labelled.id]: labelFrame(labelled) });
   });
 
   it("adds each page's number as a shape on top and measures it like any label", () => {

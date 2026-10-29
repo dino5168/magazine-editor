@@ -1068,7 +1068,7 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
 
 <section class="card doc" id="t-ShapeLabel">  <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>ShapeLabel</code><span class="badge">interface · extends StyledText</span></h4>
-  <p>圖形內文字（draw.io 的 label）。排在「外框往內縮 4 pt」的文字框裡（<code>shape-label.ts</code> 的 <code>labelFrame</code>），換行寬度是文字框寬度；文字比框高時<strong>照常顯示超出的部分</strong>。</p>
+  <p>圖形內文字（draw.io 的 label）。排在文字框裡（<code>shape-label.ts</code> 的 <code>labelFrame</code>）：矩形與圖形庫的圖形是外框，橢圓、多邊形、星形是形狀裡放得下的最大同比例矩形，再往內縮 4 pt；匯出時由前端把文字框放進 <code>ExportRequest.labelFrames</code>，換行寬度是文字框寬度；文字比框高時<strong>照常顯示超出的部分</strong>。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>text</code></td><td><code>string</code></td><td>內容。清空後確定會把整個 <code>label</code> 設為 <code>null</code></td></tr>

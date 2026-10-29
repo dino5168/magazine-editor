@@ -56,5 +56,5 @@ paths:
 ## 檔案（看檔名猜不到的）
 
 - `line-kinds.ts`：線條工具的種類與 `toolLineStroke`；`line-presets.ts`：「繪圖」面板的常用線條。
-- `shape-label.ts`：圖形內文字的框、垂直對齊、轉成 `TextElement`（量測 / 編輯 / 匯出共用）。
+- `shape-label.ts`：圖形內文字的框（`labelFrame`：橢圓 / 多邊形 / 星形取形狀內最大的同比例矩形，結果以 geometry 快取；圖形庫的圖形還是用外框）、垂直對齊、轉成 `TextElement`（量測 / 編輯 / 匯出共用）。
 - `stroke.ts` 也有畫布參考線屬性 `guideLineAttrs`（螢幕 px ÷ zoom）。`corner-radius.ts` 的驗證 `isCornerRadius` 在 `validation.ts`。

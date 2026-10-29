@@ -96,6 +96,16 @@ pub struct PhotoPlacement {
     pub height: f64,
 }
 
+/// The frame a shape's text is laid out in, in the shape's coordinates (`labelFrame` in
+/// `src/lib/editor/shape-label.ts`: inside an ellipse, polygon or star, not just the box).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+pub struct LabelFrame {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportRequest {
@@ -110,6 +120,11 @@ pub struct ExportRequest {
     /// has an entry (the editor computes it, Rust does not repeat the formula).
     #[serde(default)]
     pub shape_photos: HashMap<String, PhotoPlacement>,
+    /// Keyed by shape element id: the frame each shape's text is laid out in (the editor computes
+    /// it, Rust does not repeat the formula). A shape without an entry uses its box inset by
+    /// `LABEL_PADDING_PT`, like a rectangle.
+    #[serde(default)]
+    pub label_frames: HashMap<String, LabelFrame>,
 }
 
 #[derive(Debug)]
