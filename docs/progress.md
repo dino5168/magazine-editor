@@ -15,7 +15,7 @@
 
 - **上傳翻頁書到網站**：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。剩下步驟 0（另開 web-magazine 工作階段：上傳白名單加 `gif`、`txt`，同步改 `桌面上傳API.md` 與測試；沒做之前 GIF 圖片與 `page-flip.LICENSE.txt` 上傳後會被網站略過）與步驟 6（使用者的人工驗證，見下方待辦）。規則：`.claude/rules/upload.md`。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 20 個以上 commit，沒有 push）
+## 最近完成（全部已 commit 並 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
