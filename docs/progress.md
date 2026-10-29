@@ -19,7 +19,7 @@
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
-| 10-29 | 全形標點三端都不擠（畫布 `space-all` + 量字 canvas 放進 DOM、PDF 行首 / 行尾 `edge-guard`；疊圖 ≤ 1 px） | （待 commit） | `docs/05-Plans-字型/03-全形標點擠壓-實作.md` |
+| 10-29 | 全形標點三端都不擠（畫布 `space-all` + 量字 canvas 放進 DOM、PDF 行首 / 行尾 `edge-guard`；疊圖 ≤ 1 px） | `b54a3e4` | `docs/05-Plans-字型/03-全形標點擠壓-實作.md` |
 | 10-29 | 上傳翻頁書到 web-magazine 網站（檔案 → 上傳到網站...）、匯出翻頁電子書（Zip） | `602ed9f`…`e1d382c` | `docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` |
 更早的（圖片框 v17、文件範本、段落縮排 v16…）、完整的決定表與逐項驗證清單：`docs/progress-archive/2026-10.md`。
 
