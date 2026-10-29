@@ -35,9 +35,9 @@ export const FONT_SIZE_MAX = 400;
 
 /** Thinnest stroke the property panel offers (pt). The file format only requires > 0. */
 export const STROKE_WIDTH_MIN = 0.25;
-/** Thickest stroke (pt); same as `STROKE_WIDTH_MAX` in Rust `format.rs`. */
+/** Thickest stroke (pt); same as `STROKE_WIDTH_MAX` in Rust `project/format/`. */
 export const STROKE_WIDTH_MAX = 100;
-/** Every stroke style, in menu order; same as `StrokeDash` in Rust `format.rs`. */
+/** Every stroke style, in menu order; same as `StrokeDash` in Rust `project/format/`. */
 export const STROKE_DASHES = ["solid", "dashed", "dotted", "dashDot"] as const satisfies readonly Stroke["dash"][];
 // 型別多了一種樣式、這裡卻沒列時編譯失敗
 const ALL_DASHES_LISTED: readonly (typeof STROKE_DASHES)[number][] = [] as Stroke["dash"][];
@@ -59,7 +59,7 @@ export const STAR_INNER_PERCENT_MAX = 90;
 /** Page width / height range (pt) the page setup accepts: 10–2000 mm. The file format only requires > 0. */
 export const PAGE_SIZE_MIN_PT = mmToPt(10);
 export const PAGE_SIZE_MAX_PT = mmToPt(2000);
-/** Largest margin (pt): 2000 mm; same as `MARGIN_MAX_PT` in Rust `format.rs`. */
+/** Largest margin (pt): 2000 mm; same as `MARGIN_MAX_PT` in Rust `project/format/`. */
 export const MARGIN_MAX_PT = mmToPt(2000);
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -158,7 +158,7 @@ export function isHexColor(value: string): boolean {
 
 /**
  * Checks whether a string is a valid element color: `#rrggbb` or `#rrggbbaa`.
- * 和 Rust `format.rs` 的 `require_element_color` 規則相同。
+ * 和 Rust `project/format/` 的 `require_element_color` 規則相同。
  *
  * Args:
  *   value: Candidate color string.
@@ -355,7 +355,7 @@ export const LINE_COORDINATE_MAX = 1e6;
 /** Arrowhead size factor range; same as `LINE_END_SCALE_MIN` / `MAX` in Rust. */
 export const LINE_END_SCALE_MIN = 0.5;
 export const LINE_END_SCALE_MAX = 5;
-/** Every arrowhead, in menu order; same as `LineArrowhead` in Rust `format.rs`. */
+/** Every arrowhead, in menu order; same as `LineArrowhead` in Rust `project/format/`. */
 export const LINE_ARROWHEADS = ["none", "open", "triangle"] as const satisfies readonly LineArrowhead[];
 const LINE_PATHS: readonly LineElement["path"][] = ["straight", "smooth"];
 const LINE_COMPOUNDS: readonly LineElement["compound"][] = ["single", "double"];
@@ -423,7 +423,7 @@ export function isValidLine(line: LineElement): boolean {
   );
 }
 
-/** Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in Rust `format.rs`. */
+/** Largest text shadow offset either way (pt); same as `TEXT_SHADOW_OFFSET_MAX` in Rust `project/format/`. */
 export const TEXT_SHADOW_OFFSET_MAX = 50;
 
 /**
@@ -462,7 +462,7 @@ export function hasValidTextDecoration(style: Record<string, unknown>): boolean 
   );
 }
 
-/** Longest swatch name (code points, after trimming); same as `SWATCH_NAME_MAX_LENGTH` in Rust `format.rs`. */
+/** Longest swatch name (code points, after trimming); same as `SWATCH_NAME_MAX_LENGTH` in Rust `project/format/`. */
 export const SWATCH_NAME_MAX_LENGTH = PAGE_NAME_MAX_LENGTH;
 
 /** Longest id (UTF-16 units; ids are ASCII), same as Rust `require_id`. */
@@ -535,11 +535,11 @@ export function isSwatchList(value: unknown): value is readonly Swatch[] {
   return new Set(swatches.map((s) => s.id)).size === swatches.length && new Set(swatches.map((s) => s.name)).size === swatches.length;
 }
 
-/** Longest project font name (code points, after trimming); same as `FONT_NAME_MAX_LENGTH` in Rust `format.rs`. */
+/** Longest project font name (code points, after trimming); same as `FONT_NAME_MAX_LENGTH` in Rust `project/format/`. */
 export const FONT_NAME_MAX_LENGTH = 50;
-/** Longest name read from a font file; same as `FONT_FILE_NAME_MAX_LENGTH` in Rust `format.rs`. */
+/** Longest name read from a font file; same as `FONT_FILE_NAME_MAX_LENGTH` in Rust `project/format/`. */
 export const FONT_FILE_NAME_MAX_LENGTH = 200;
-/** Largest ascent / descent / Apple baseline shift (em); same as `FONT_METRIC_MAX` in Rust `format.rs`. */
+/** Largest ascent / descent / Apple baseline shift (em); same as `FONT_METRIC_MAX` in Rust `project/format/`. */
 export const FONT_METRIC_MAX = 4;
 
 const FONT_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;

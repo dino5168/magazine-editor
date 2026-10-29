@@ -33,7 +33,7 @@ paths:
 
 ## 文件色票（`swatches.ts` / `swatch-draft.ts` / `document-swatches.tsx` / `settings/swatches-dialog.tsx`）
 
-- 只做具名 sRGB；**色票不透明**，透明度存在使用處（`swatchColor`）。名稱上限 `SWATCH_NAME_MAX_LENGTH`（`validation.ts` / `format.rs`）。格線 / 參考線偏好不能連色票。
+- 只做具名 sRGB；**色票不透明**，透明度存在使用處（`swatchColor`）。名稱上限 `SWATCH_NAME_MAX_LENGTH`（`validation.ts` / `format/mod.rs`）。格線 / 參考線偏好不能連色票。
 - 檔案驗證（`isSwatchList` / Rust `validate_swatches`、`require_swatch`）只查格式與引用存在；reducer 另要求連結的 RGB = 色票（`hasValidSwatchLinks`）。
 - **`mapColorSlots(document, update)` 是唯一走過所有顏色欄位的地方**（`swatchUsage`、`applySwatchEdits` 建在它上面）：**新增帶顏色的欄位要在這裡補**（fixture 的連結數測試守著）。
 - 改色票 = 所有連結處一起變（一筆復原）；刪除時換成另一個色票或取消連結。

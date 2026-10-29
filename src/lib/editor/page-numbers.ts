@@ -19,7 +19,7 @@ import { FONT_SIZE_MAX, FONT_SIZE_MIN, hasValidTextDecoration, isElementColor, i
 /**
  * 頁碼管理的純邏輯。頁碼不是文件裡的物件：畫布與匯出時，由規則算出一個「虛擬圖形」
  * （透明矩形 + 框線 + 圖形內文字），沿用既有的圖形繪製與匯出路徑。
- * 驗證規則和 Rust `format.rs` 的 `validate_page_number_rules` 相同。
+ * 驗證規則和 Rust `project/format/` 的 `validate_page_number_rules` 相同。
  */
 
 export const PAGE_NUMBER_POSITIONS = [

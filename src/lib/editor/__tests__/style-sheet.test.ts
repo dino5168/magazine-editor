@@ -23,7 +23,7 @@ import {
 } from "../style-sheet";
 import type { EditorDocument, ShapeLabel } from "../types";
 import fixtureJson from "../../../../tests/fixtures/sample.magproj?raw";
-// Rust 讀 v7 以前的檔案時加上同一組樣式（format.rs 的測試也讀這份）
+// Rust 讀 v7 以前的檔案時加上同一組樣式（format/tests.rs 也讀這份）
 import defaultStylesJson from "../../../../tests/fixtures/default-text-styles.json?raw";
 
 const [heading, subheading, body] = defaultTextStyles();

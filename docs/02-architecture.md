@@ -187,7 +187,7 @@ sequenceDiagram
 
 | 位置 | 檢查什麼 |
 |---|---|
-| `editor-reducer.ts` 的 `HANDLERS` | 每一種 action 都必須有對應的處理函式 |
+| `editor-reducer.ts` 的 `HANDLERS` | 每一種 action 都必須有對應的處理函式(處理函式依領域分在 `lib/editor/reducer/*-handlers.ts`) |
 | `panels/index.ts` 的 `PANELS` | 每個工具面板都必須有對應的內容 |
 | `canvas-elements.tsx` 的 `switch` | 每一種物件類型都必須有繪製方式;`ShapeBody` 的 `switch` 對每一種 geometry(矩形、橢圓、多邊形、星形、圖形庫)也一樣;圖形庫裡的 27 個圖形是資料(`shape-presets.ts`),新增圖形不用改這裡 |
 | `editor-canvas.tsx` 的 `TRANSFORMER_OPTIONS` | 每一種物件類型都必須設定縮放控制點 |
@@ -255,7 +255,7 @@ Claude Code ─stdio─▶ magazine-mcp.exe ─named pipe─▶ Rust(src/mcp)─
 | 順序 | 檔案 | 行數 | 讀的時候注意 |
 |---|---|---|---|
 | 1 | `src/lib/editor/types.ts` | 約 120 | 文件、頁面、物件長什麼樣子;配合 `docs-website/types.html` 的關係圖看 |
-| 2 | `src/lib/editor/editor-reducer.ts` | 約 370 | 所有 action 的清單、`commit` 如何記錄歷史 |
+| 2 | `src/lib/editor/editor-reducer.ts` | 約 410 | 所有 action 的清單;`commit` 如何記錄歷史在 `reducer/helpers.ts`,各 action 的處理在 `reducer/*-handlers.ts` |
 | 3 | `src/lib/editor/editor-context.tsx` | 約 80 | reducer 怎麼接到 React |
 | 4 | `src/pages/home-page.tsx` | 約 160 | 版面怎麼組合、`dockLayout` 在哪、選單指令接到哪些函式 |
 | 5 | `src/components/editor/panels/text-panel.tsx` | 約 50 | 最簡單的「按按鈕 → dispatch」例子(範例 A) |

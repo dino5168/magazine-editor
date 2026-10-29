@@ -17,17 +17,17 @@ export type TextSpacing = Pick<TextStyle, "lineHeight" | "letterSpacing">;
 
 /**
  * Line height of new text, of page numbers and of files before v9; same value as
- * `DEFAULT_LINE_HEIGHT` in Rust `format.rs`.
+ * `DEFAULT_LINE_HEIGHT` in Rust `project/format/`.
  */
 export const DEFAULT_LINE_HEIGHT = 1.2;
 
 /** Spacing of new text (text elements, shape labels, page numbers): default line height, no letter spacing. */
 export const DEFAULT_TEXT_SPACING: TextSpacing = { lineHeight: DEFAULT_LINE_HEIGHT, letterSpacing: 0 };
 
-/** Line height range (× font size); same as `LINE_HEIGHT_MIN` / `_MAX` in Rust `format.rs`. */
+/** Line height range (× font size); same as `LINE_HEIGHT_MIN` / `_MAX` in Rust `project/format/`. */
 export const LINE_HEIGHT_MIN = 0.5;
 export const LINE_HEIGHT_MAX = 3;
-/** Letter spacing range (1/1000 of the font size); same as `LETTER_SPACING_MIN` / `_MAX` in Rust `format.rs`. */
+/** Letter spacing range (1/1000 of the font size); same as `LETTER_SPACING_MIN` / `_MAX` in Rust `project/format/`. */
 export const LETTER_SPACING_MIN = -200;
 export const LETTER_SPACING_MAX = 1000;
 
@@ -70,7 +70,7 @@ export function clampLetterSpacing(value: number): number {
   return Math.round(Math.min(LETTER_SPACING_MAX, Math.max(LETTER_SPACING_MIN, value)));
 }
 
-/** Every text alignment, in the order of the property panel's buttons; same as `Align` in Rust `format.rs`. */
+/** Every text alignment, in the order of the property panel's buttons; same as `Align` in Rust `project/format/`. */
 export const TEXT_ALIGNS = ["left", "center", "right", "distributed"] as const satisfies readonly TextAlign[];
 
 export function isTextAlign(value: unknown): value is TextAlign {

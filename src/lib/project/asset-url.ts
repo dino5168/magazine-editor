@@ -1,6 +1,6 @@
-/** Folder of project images; same as `ASSET_DIR` in `src-tauri/src/project/format.rs`. */
+/** Folder of project images; same as `ASSET_DIR` in `src-tauri/src/project/format/mod.rs`. */
 export const PROJECT_ASSET_PREFIX = "assets/images/";
-/** Folder of project fonts; same as `FONT_ASSET_DIR` in `src-tauri/src/project/format.rs`. */
+/** Folder of project fonts; same as `FONT_ASSET_DIR` in `src-tauri/src/project/format/mod.rs`. */
 export const PROJECT_FONT_PREFIX = "assets/fonts/";
 
 /**

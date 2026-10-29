@@ -43,7 +43,7 @@ npm run tauri dev      # 開發（Vite dev server :1420 + Tauri 視窗）
 npm run dev            # 只跑前端（瀏覽器，沒有 Tauri IPC；編輯器可完整操作）
 npm run build          # tsc + vite build（前端型別檢查 + 打包）
 npm test               # vitest run（src/**/__tests__/*.test.ts）
-npx vitest run src/lib/editor/__tests__/editor-reducer.test.ts   # 只跑單一測試檔
+npx vitest run src/lib/editor/__tests__/editor-reducer-pages.test.ts   # 只跑單一測試檔（`npx vitest run editor-reducer` 跑檔名含它的全部）
 npm run tauri build    # 打包 Windows installer / .exe
 cargo check --manifest-path src-tauri/Cargo.toml    # Rust 型別檢查
 cargo test --manifest-path src-tauri/Cargo.toml     # Rust 測試

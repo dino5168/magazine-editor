@@ -2,6 +2,7 @@
 paths:
   - "src/lib/editor/types.ts"
   - "src/lib/editor/editor-reducer.ts"
+  - "src/lib/editor/reducer/**"
   - "src/lib/editor/editor-context.tsx"
   - "src/lib/editor/element-factory.ts"
   - "src/lib/editor/validation.ts"
@@ -9,7 +10,7 @@ paths:
   - "src/lib/editor/properties.ts"
   - "src/lib/editor/selection-actions.ts"
   - "src/lib/editor/__tests__/**"
-  - "src-tauri/src/project/format.rs"
+  - "src-tauri/src/project/format/**"
   - "tests/fixtures/**"
   - "docs-website/types.html"
 ---
@@ -37,13 +38,13 @@ paths:
 
 ## 新增物件類型 / geometry 要改的地方
 
-- 新物件類型：`types.ts` 的 union、`geometry.localBounds`、`canvas-elements`（renderer + `StaticElement` + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`；Rust `format.rs` 的 `Element`、`export/render.rs` 的 `build_render`；`template.typ` 的 `draw`、`export/html/markup.rs` 的 `element_markup`。**`template.typ` 漏改只會靜默不畫**，其他漏改會編譯失敗。
-- 新 geometry（圖形庫的圖形不用）：`ShapeGeometry`、`shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`shapeChoiceOf`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometryFields`、`validation.ts` 的 `isShapeGeometry`；Rust `format.rs` 的 `ShapeGeometry` / `validate_geometry`、`render.rs` 的 `shape_kind`。
+- 新物件類型：`types.ts` 的 union、`geometry.localBounds`、`canvas-elements`（renderer + `StaticElement` + `bakeTransform`）、`editor-canvas` 的 `TRANSFORMER_OPTIONS`、`describeElement`、`layers-panel` 的 `elementIcon`、`properties-panel` 的 `tabsOf` / `elementName`；Rust `format/elements.rs` 的 `Element`、`export/render.rs` 的 `build_render`；`template.typ` 的 `draw`、`export/html/markup.rs` 的 `element_markup`。**`template.typ` 漏改只會靜默不畫**，其他漏改會編譯失敗。
+- 新 geometry（圖形庫的圖形不用）：`ShapeGeometry`、`shape-geometry.ts` 的 `unitVertices`、`canvas-elements` 的 `ShapeBody`、`describeShape`、`shapeChoiceOf`、`layers-panel` 的 `GEOMETRY_ICONS`、`properties-panel` 的 `GeometryFields`、`validation.ts` 的 `isShapeGeometry`；Rust `format/elements.rs` 的 `ShapeGeometry` / `format/validate.rs` 的 `validate_geometry`、`render.rs` 的 `shape_kind`。
 - 舊檔升級在 Rust（例如 `upgrade_shapes_to_v3`）。`recovery::read` 也要呼叫：備份檔沒有版本號，可能是舊格式。提升版本的完整步驟：skill `bump-file-format`。
 
-## 狀態（`editor-reducer.ts`）
+## 狀態（`editor-reducer.ts` + `reducer/`）
 
-- `useReducer` + 兩個 Context（state / dispatch 分開），不用 zustand / redux。`HANDLERS` 是 mapped type：新增 action 必須同時加 handler。
+- `useReducer` + 兩個 Context（state / dispatch 分開），不用 zustand / redux。`HANDLERS` 是 mapped type `HandlerMap`，由 `reducer/` 的 `element-` / `page-`（含主頁）/ `style-`（文字樣式、色票、字型）/ `document-handlers.ts`（文件、歷史、選取、檢視、工具）組成：新增 action 必須在對應的檔加 handler（各檔 `satisfies Partial<HandlerMap>`，漏了入口編譯失敗）。共用的 `commit`、`updateSheet`、patch 驗證在 `reducer/helpers.ts`。
 - 進復原：`history.present`（上限 `HISTORY_LIMIT` 100）。不進：`activePageId`（可以是主頁 id）、`lastPageId`、`selectedIds`、`view`、`tool` / `shapeKind`、`savedDocument`。素材在 `LibraryProvider`；`dockLayout` 在 `home-page.tsx`；App 偏好在 `PreferencesProvider`。
 - `selectActivePage` 回傳 `Sheet`：`element/*`、`page/rename`、`page/setBackground` 對頁面與主頁都有效；只要頁面的地方自己查 `pages`。
 - 新 id 一律由呼叫端帶入。`element/*` 可帶 `pageId`：改那一頁而不切頁、不改選取；未知 `pageId` = no-op。

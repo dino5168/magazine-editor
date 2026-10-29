@@ -779,7 +779,7 @@
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>top</code> / <code>right</code> / <code>bottom</code> / <code>left</code></td><td><code>number</code></td><td>0 到 2000 mm（<code>MARGIN_MAX_PT</code>，TS 與 Rust 相同）。不檢查「左 + 右 &lt; 頁寬」：縮小紙張不能讓檔案變成不合法，這個限制只在偏好設定對話框檢查</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code>（<code>document/setPageSetup</code>）· <code>lib/editor/validation.ts</code>（<code>isMargins</code>）· <code>lib/editor/page-numbers.ts</code>（頁碼位置）· Rust <code>project/format.rs</code></p>
+  <p class="uses">使用位置：<code>lib/editor/editor-reducer.ts</code>（<code>document/setPageSetup</code>）· <code>lib/editor/validation.ts</code>（<code>isMargins</code>）· <code>lib/editor/page-numbers.ts</code>（頁碼位置）· Rust <code>project/format/</code></p>
 </section>
 
 <section class="card doc" id="t-PageNumberRule">
@@ -794,7 +794,7 @@
     <tr><td><code>odd</code> / <code>even</code></td><td><code>PageNumberFace</code></td><td>奇數頁、偶數頁各自的位置與前後置文字</td></tr>
     <tr><td><code>style</code></td><td><code>PageNumberStyle</code></td><td>字型、顏色、框線，整段共用</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/page-numbers.ts</code>（<code>isPageNumberRules</code> 驗證，規則和 Rust 相同）· <code>lib/editor/editor-reducer.ts</code>（<code>document/setPageNumbering</code>）· Rust <code>project/format.rs</code></p>
+  <p class="uses">使用位置：<code>lib/editor/page-numbers.ts</code>（<code>isPageNumberRules</code> 驗證，規則和 Rust 相同）· <code>lib/editor/editor-reducer.ts</code>（<code>document/setPageNumbering</code>）· Rust <code>project/format/</code></p>
 </section>
 
 <section class="card doc" id="t-PageNumberFace">
@@ -860,7 +860,7 @@
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>parentId</code></td><td><code>PageId | null</code></td><td>以哪個主頁為基礎（子主頁）；<code>null</code> = 最上層。父主頁的物件畫在這個主頁的物件底下。不可循環，一條鏈最多 8 層（<code>MASTER_DEPTH_MAX</code>，TS <code>isMasterGraphValid</code> 與 Rust <code>validate_master_graph</code> 規則相同）。刪除主頁時，套用它的頁面與子主頁改接到它的父主頁</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/master-pages.ts</code> · <code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code> · Rust <code>project/format.rs</code></p>
+  <p class="uses">使用位置：<code>lib/editor/master-pages.ts</code> · <code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code> · Rust <code>project/format/</code></p>
 </section>
 
 <section class="card doc" id="t-CanvasElement">
@@ -1101,7 +1101,7 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
     <tr><td><code>stroke</code></td><td><code>Stroke</code></td><td>線的顏色（可連色票）、粗細、虛線樣式；<strong>不可為 <code>null</code></strong></td></tr>
     <tr><td><code>start</code> / <code>end</code></td><td><code>LineEnd</code>（<code>{ arrowhead, scale }</code>）</td><td>第一個 / 最後一個點那一端。<code>arrowhead</code> 是 <code>"none" | "open" | "triangle"</code>（<code>LineArrowhead</code>），<code>scale</code> 是大小倍數 0.5–5；箭頭永遠是實線</td></tr>
   </table></div>
-  <p class="uses">使用位置：<code>lib/editor/line-geometry.ts</code> · <code>lib/editor/element-factory.ts</code>（<code>createLineElement</code>、<code>describeLine</code>）· <code>lib/editor/validation.ts</code>（<code>isValidLine</code>）· <code>lib/editor/editor-reducer.ts</code> · Rust <code>project/format.rs</code></p>
+  <p class="uses">使用位置：<code>lib/editor/line-geometry.ts</code> · <code>lib/editor/element-factory.ts</code>（<code>createLineElement</code>、<code>describeLine</code>）· <code>lib/editor/validation.ts</code>（<code>isValidLine</code>）· <code>lib/editor/editor-reducer.ts</code> · Rust <code>project/format/</code></p>
 </section>
 
 <h3 class="group-title">UI 狀態（不進入復原歷史）</h3>

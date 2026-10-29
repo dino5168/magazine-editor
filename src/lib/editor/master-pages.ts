@@ -138,7 +138,7 @@ export function canSetParent(masters: readonly MasterPage[], id: PageId, parentI
 /**
  * Checks the master page references of a document (file data is untrusted): page and master ids
  * unique across both lists, every `masterId` / `parentId` exists, no cycles, depth within
- * `MASTER_DEPTH_MAX`. Same rules as Rust `format.rs`.
+ * `MASTER_DEPTH_MAX`. Same rules as Rust `project/format/`.
  *
  * Args:
  *   document: Document to check.

@@ -1,11 +1,11 @@
 ---
 name: bump-file-format
-description: 改文件模型（types.ts 的 EditorDocument / Page / 物件欄位）時，提升專案檔 schemaVersion 的完整步驟：TS 型別與驗證、Rust format.rs、升級舊檔、fixture、匯出、types.html、規則檔。新增或修改會存進 project.magproj 的欄位時使用。
+description: 改文件模型（types.ts 的 EditorDocument / Page / 物件欄位）時，提升專案檔 schemaVersion 的完整步驟：TS 型別與驗證、Rust project/format/、升級舊檔、fixture、匯出、types.html、規則檔。新增或修改會存進 project.magproj 的欄位時使用。
 ---
 
 # 提升檔案格式版本（`SCHEMA_VERSION`）
 
-**Rust `src-tauri/src/project/format.rs` 是格式的權威定義**（讀取與存檔都驗證）。TS 沒有版本號，只有型別與 reducer 的驗證。開始前讀 `.claude/rules/editor-model.md` 與 `project-files.md`。
+**Rust `src-tauri/src/project/format/` 是格式的權威定義**（讀取與存檔都驗證）。TS 沒有版本號，只有型別與 reducer 的驗證。開始前讀 `.claude/rules/editor-model.md` 與 `project-files.md`。
 
 ## 先決定
 
@@ -14,8 +14,8 @@ description: 改文件模型（types.ts 的 EditorDocument / Page / 物件欄位
 
 ## 步驟（照順序，一個 commit）
 
-1. **TS 型別** `src/lib/editor/types.ts`；reducer 收得到的值要在 `src/lib/editor/validation.ts` 驗證（`isTextStyle`、`isStroke`、`isShapeImage`…），並在 `editor-reducer.ts` 的對應 action 用上。新常數（上限、清單）放 `validation.ts` 或該領域的檔案。
-2. **Rust** `format.rs`：
+1. **TS 型別** `src/lib/editor/types.ts`；reducer 收得到的值要在 `src/lib/editor/validation.ts` 驗證（`isTextStyle`、`isStroke`、`isShapeImage`…），並在 `lib/editor/reducer/*-handlers.ts` 的對應 action 用上。新常數（上限、清單）放 `validation.ts` 或該領域的檔案。
+2. **Rust** `project/format/`（型別 `document.rs` / `elements.rs`、驗證 `validate.rs`、常數與 `parse_project` 在 `mod.rs`、升級 `upgrade.rs`、測試 `tests.rs`）：
    - 對應的 struct / enum 欄位（`#[serde(rename_all = "camelCase")]`、預設值）與 `validate_*`（和 TS 同一套規則與上限）。
    - `pub const SCHEMA_VERSION` + 1。
    - 需要升級時：在 `parse_project` 的 `Some(1..SCHEMA_VERSION)` 分支對 `serde_json::Value` 套用升級函式（照 `upgrade_shapes_to_v3` 的寫法，只動舊版有的形狀），**`recovery.rs` 的 `read` 也呼叫同一個函式**（備份檔沒有版本號）。

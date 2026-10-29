@@ -34,7 +34,7 @@ paths:
 
 ## 行距與字距
 
-- `lineHeight` = 基線距離 ÷ 字級；`letterSpacing` = 字級的 1/1000。範圍常數在 `text-style.ts`，**Rust `format.rs` 同值**。頁碼沒有這兩個欄位。
+- `lineHeight` = 基線距離 ÷ 字級；`letterSpacing` = 字級的 1/1000。範圍常數在 `text-style.ts`，**Rust `format/mod.rs` 同值**。頁碼沒有這兩個欄位。
 - 字距 ≠ 0 時 Konva 逐字畫（kerning / 連字消失），行寬 = 整行寬 + 字數 × 字距（含行尾）。
 - PDF 每行拆成字元叢集中間放 `h(字距)`；**不用 Typst `tracking`**（換字型處少加一個字距）。EPUB 用 `letter-spacing` + 關 kerning / 連字，每行 `margin-left` 定位（起點可能是負的，不能用 padding）。
 

@@ -39,7 +39,7 @@ describe("konvaFontStyle / textDecorationLine", () => {
 });
 
 describe("hasValidTextSpacing", () => {
-  it("accepts the range Rust accepts (format.rs validate_text_spacing)", () => {
+  it("accepts the range Rust accepts (format/validate.rs validate_text_spacing)", () => {
     expect(hasValidTextSpacing({ ...DEFAULT_TEXT_SPACING })).toBe(true);
     expect(hasValidTextSpacing({ lineHeight: LINE_HEIGHT_MIN, letterSpacing: LETTER_SPACING_MIN })).toBe(true);
     expect(hasValidTextSpacing({ lineHeight: LINE_HEIGHT_MAX, letterSpacing: LETTER_SPACING_MAX })).toBe(true);

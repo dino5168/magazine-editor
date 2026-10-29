@@ -7,21 +7,20 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-28（重構迭代 6）
+最後更新：2026-10-29（重構迭代 7 大檔拆分）
 
 ---
 
 ## 目前在做什麼
 
-- **專案重構：降低 Claude Code 的 context 用量**（2026-10-28 起）：任務檔 `docs/12-Plans-重構/1-專案重構.md`，各迭代的內容與 commit 見 `1-專案重構-實作.md` §8。迭代 0–5 已 commit（最後一個 `aa7a1dc`；根 CLAUDE.md 102.5k → 6.1k token，規則檔在 `.claude/rules/`，原文封存 `docs/progress-archive/rules-2026-10/`）；迭代 6（四個 skills：`iteration-end`、`add-mcp-tool`、`bump-file-format`、`ui-verify` + `cdp.mjs`）commit `670707f`，建立後就列在可用 skills 中。**重構計畫完成**（迭代 7 大檔拆分另開任務）。
+- **專案重構（降低 context 用量）全部完成**（2026-10-28～29）：迭代 0–6 見 `docs/12-Plans-重構/1-專案重構-實作.md` §8（根 CLAUDE.md 102.5k → 6.1k token、`.claude/rules/`、四個 skills）。迭代 7 大檔拆分見 `2-大檔拆分-實作.md`：`project/format/`、`export/render/tests.rs`、`lib/editor/reducer/`、`editor-reducer-*.test.ts`（`f059640`…`e024bee`），只搬程式、對外路徑不變、測試數不變。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 7 個 commit，沒有 push）
+## 最近完成（全部已 commit；`main` 比 origin 多 12 個 commit，沒有 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
 | 10-22 | MCP `import_library_item`（匯入本機圖片到素材庫） | `e3ca24d` | `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md` |
 | 10-21 | 匯出 PowerPoint（簡報尺寸、每頁一張滿版圖片） | `c5df28a` `d480b91` | `docs/03-Plans-匯出檔案/03-匯出PowerPoint 檔案-實作.md` |
-| 10-21 | 紙張加簡報（PPT）四種 | `86a1ff4` | `docs/10-Plans-PaperSize/01-增加PPT尺寸-實作.md` |
 更早的（圖片框 v17、文件範本、段落縮排 v16…）、完整的決定表與逐項驗證清單：`docs/progress-archive/2026-10.md`。
 
 ## 待辦
