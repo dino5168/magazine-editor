@@ -1,11 +1,16 @@
 //! The GraphQL calls of the contract (`login`, `myBooks`, `createBook`), query strings word for
 //! word as in web-magazine `A01-Magazine-Server/docs/桌面上傳API.md`.
 
-use super::response::{graphql_data, redirect, timeout, Call, UploadCode, UploadFailure};
-use super::server_url::ServerUrl;
+use super::response::{classify_http, graphql_data, redirect, timeout, Call, UploadCode, UploadFailure};
+use super::server_url::{is_openable_reader_url, ServerUrl};
+use crate::export::pptx::raster::SlideImage;
+use futures_util::StreamExt;
 use reqwest::header::{CONTENT_TYPE, RETRY_AFTER};
+use reqwest::multipart::{Form, Part};
 use serde::Serialize;
 use serde_json::{json, Value};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -20,6 +25,14 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const GRAPHQL_TIMEOUT: Duration = Duration::from_secs(30);
 /// GraphQL answers are small (50 books at most); a bigger body is not the contract's server.
 const GRAPHQL_MAX_BYTES: usize = 2 * 1024 * 1024;
+/// The whole upload; longer than the server's 15 minutes, so its 408 arrives first.
+const UPLOAD_TIMEOUT: Duration = Duration::from_secs(16 * 60);
+/// The zip goes out in pieces of this size; progress and cancel are checked per piece.
+const UPLOAD_CHUNK_BYTES: usize = 64 * 1024;
+/// The upload answer is three fields.
+const UPLOAD_ANSWER_MAX_BYTES: usize = 64 * 1024;
+/// How often a waiting upload looks at the cancel flag (before the first piece is sent).
+const CANCEL_POLL: Duration = Duration::from_millis(200);
 /// Treat the token as expired this long before `expiresAt` (clocks differ a little).
 const EXPIRY_MARGIN: time::Duration = time::Duration::seconds(30);
 /// `createBook` accepts 1–200 characters after trimming.
@@ -267,6 +280,117 @@ pub async fn create_book(client: &reqwest::Client, session: &Session, title: &st
     created_book_from(&data)
 }
 
+/// What the server answers to a successful upload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadedBook {
+    pub page_count: u32,
+    /// The book on the server's flip book domain; checked with `is_openable_reader_url`.
+    pub reader_url: String,
+}
+
+/// The upload answer (`{ pageCount, readerUrl, coverUrl }`).
+pub fn uploaded_from(body: &[u8]) -> Result<UploadedBook, UploadFailure> {
+    let json: Value = serde_json::from_slice(body).map_err(|_| unexpected("上傳結果"))?;
+    let page_count = json.get("pageCount").and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).ok_or_else(|| unexpected("頁數"))?;
+    let reader_url = text(&json, "readerUrl").filter(|url| is_openable_reader_url(url)).ok_or_else(|| unexpected("可以開啟的閱讀網址"))?;
+    Ok(UploadedBook { page_count, reader_url })
+}
+
+/// Lets the caller follow and stop an upload.
+pub struct UploadControl {
+    /// Set to stop: the request is dropped and `upload_package` returns `Ok(None)`. Ignored once
+    /// every byte is sent (the server is then replacing the book; stopping would only hide the
+    /// result).
+    pub cancel: Arc<AtomicBool>,
+    /// Called with (bytes handed to the connection, zip size) as the zip goes out.
+    pub on_sent: Arc<dyn Fn(u64, u64) + Send + Sync>,
+}
+
+/// Resolves when the user cancels while bytes are still to be sent.
+async fn cancelled(cancel: &AtomicBool, all_sent: &AtomicBool) {
+    while !cancel.load(Ordering::SeqCst) || all_sent.load(Ordering::SeqCst) {
+        tokio::time::sleep(CANCEL_POLL).await;
+    }
+}
+
+/// Uploads the flip book and its cover (`POST {origin}/api/books/{book_id}/package`, multipart
+/// `package` + `cover`). The zip is streamed in pieces so progress can be shown and the upload
+/// stopped.
+///
+/// # Args
+/// * `book_id` - From `my_books` / `create_book` (checked again: it goes into the URL).
+/// * `zip` - `upload::package::prepare`.
+/// * `cover` - `export::cover::render_cover`; `None` keeps the book's current cover.
+///
+/// # Returns
+/// The result, or `None` when cancelled.
+pub async fn upload_package(
+    client: &reqwest::Client,
+    session: &Session,
+    book_id: &str,
+    zip: Vec<u8>,
+    cover: Option<SlideImage>,
+    control: &UploadControl,
+) -> Result<Option<UploadedBook>, UploadFailure> {
+    if !is_valid_book_id(book_id) {
+        return Err(UploadFailure::new(UploadCode::BadInput, "書本 id 不正確"));
+    }
+    let total = zip.len();
+    let all_sent = Arc::new(AtomicBool::new(total == 0));
+    let pieces = {
+        let zip = Arc::new(zip);
+        let (cancel, on_sent, all_sent) = (Arc::clone(&control.cancel), Arc::clone(&control.on_sent), Arc::clone(&all_sent));
+        futures_util::stream::iter((0..total).step_by(UPLOAD_CHUNK_BYTES)).map(move |start| {
+            // 回傳錯誤會讓 reqwest 中止請求：伺服器收到不完整的內容，不會換掉原本的書
+            if cancel.load(Ordering::SeqCst) {
+                return Err(std::io::Error::other("cancelled"));
+            }
+            let end = (start + UPLOAD_CHUNK_BYTES).min(total);
+            if end == total {
+                all_sent.store(true, Ordering::SeqCst);
+            }
+            on_sent(end as u64, total as u64);
+            Ok(zip[start..end].to_vec())
+        })
+    };
+    let part_error = |_| unexpected("上傳格式");
+    let package = Part::stream_with_length(reqwest::Body::wrap_stream(pieces), total as u64)
+        .file_name("book.zip")
+        .mime_str("application/zip")
+        .map_err(part_error)?;
+    let mut form = Form::new().part("package", package);
+    if let Some(cover) = cover {
+        let part = Part::bytes(cover.bytes)
+            .file_name(format!("cover.{}", cover.format.extension()))
+            .mime_str(cover.format.content_type())
+            .map_err(part_error)?;
+        form = form.part("cover", part);
+    }
+    let request = client
+        .post(format!("{}/api/books/{book_id}/package", session.server.origin))
+        .bearer_auth(&session.token)
+        .timeout(UPLOAD_TIMEOUT)
+        .multipart(form)
+        .send();
+    let response = tokio::select! {
+        response = request => response,
+        () = cancelled(&control.cancel, &all_sent) => return Ok(None),
+    };
+    let response = match response {
+        Ok(response) => response,
+        Err(_) if control.cancel.load(Ordering::SeqCst) && !all_sent.load(Ordering::SeqCst) => return Ok(None),
+        Err(error) => return Err(network_failure(&error, Call::Upload)),
+    };
+    let status = response.status().as_u16();
+    let retry_after = response.headers().get(RETRY_AFTER).and_then(|value| value.to_str().ok()).map(str::to_owned);
+    let body = read_body(response, UPLOAD_ANSWER_MAX_BYTES, Call::Upload).await?;
+    if status != 200 {
+        return Err(classify_http(status, retry_after.as_deref(), &body, Call::Upload));
+    }
+    uploaded_from(&body).map(Some)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -358,6 +482,15 @@ mod tests {
     }
 
     #[test]
+    fn upload_answers_need_a_page_count_and_an_openable_reader_url() {
+        let ok = br#"{"pageCount":2,"readerUrl":"https://books.example.com/b/1/index.html","coverUrl":"https://books.example.com/b/cover-1.png"}"#;
+        assert_eq!(uploaded_from(ok).unwrap(), UploadedBook { page_count: 2, reader_url: "https://books.example.com/b/1/index.html".into() });
+        for bad in [&br#"{"readerUrl":"https://books.example.com/b/1/index.html"}"#[..], br#"{"pageCount":2,"readerUrl":"file:///C:/x.exe"}"#, br#"{"pageCount":2,"readerUrl":"http://books.example.com/x"}"#, b"<html>"] {
+            assert_eq!(uploaded_from(bad).unwrap_err().code, UploadCode::Server, "{}", String::from_utf8_lossy(bad));
+        }
+    }
+
+    #[test]
     fn book_titles_are_trimmed_and_limited() {
         assert_eq!(book_title("  我的雜誌 2026 秋季號 ").unwrap(), "我的雜誌 2026 秋季號");
         assert_eq!(book_title("   ").unwrap_err().message, "請輸入書名");
@@ -417,6 +550,67 @@ mod tests {
             let mut expired = session.clone();
             expired.token = "not-a-token".into();
             assert_eq!(my_books(&client, &expired, None).await.unwrap_err().code, UploadCode::Unauthenticated);
+        });
+    }
+
+    /// Uploads the fixture flip book to a running web-magazine server (plan step 4). Same
+    /// environment variables as `login_and_books_over_the_network`:
+    ///
+    /// ```powershell
+    /// cargo test --manifest-path src-tauri/Cargo.toml --lib -j 2 upload_over_the_network -- --ignored --nocapture
+    /// ```
+    ///
+    /// Creates a draft 「magazine-editor 上傳測試 …」 (or, for ADMIN, overwrites the newest book:
+    /// set `UPLOAD_BOOK_ID` to choose one), uploads twice (new content, then overwrite without a
+    /// cover) and checks that a cancelled upload sends nothing.
+    #[test]
+    #[ignore]
+    fn upload_over_the_network() {
+        use crate::export::cover::render_cover;
+        use crate::export::flipbook::build_flipbook;
+        use crate::export::test_support::{fixture_document, fonts, project_with_image, request};
+        use crate::upload::package::prepare;
+
+        let env = |name: &str| std::env::var(name).unwrap_or_else(|_| panic!("set {name}"));
+        let server = parse_server_url(&env("UPLOAD_SERVER")).unwrap();
+        let root = project_with_image();
+        let output = build_flipbook(root.path(), &request(fixture_document())).unwrap();
+        let zip = prepare(&output.files).unwrap();
+        let cover = render_cover(root.path(), request(fixture_document()), fonts()).unwrap();
+        assert!(cover.is_some());
+
+        tauri::async_runtime::block_on(async {
+            let client = http_client().unwrap();
+            let session = login(&client, server, &env("UPLOAD_EMAIL"), &env("UPLOAD_PASSWORD")).await.unwrap();
+            let book_id = match std::env::var("UPLOAD_BOOK_ID") {
+                Ok(id) => id,
+                Err(_) if session.can_create_books() => {
+                    let title = format!("magazine-editor 上傳測試 {}", OffsetDateTime::now_utc().unix_timestamp());
+                    create_book(&client, &session, &title).await.unwrap().id
+                }
+                Err(_) => my_books(&client, &session, None).await.unwrap().books.first().expect("no book to overwrite").id.clone(),
+            };
+            println!("book {book_id}");
+
+            let sent = Arc::new(std::sync::atomic::AtomicU64::new(0));
+            let seen = Arc::clone(&sent);
+            let control = UploadControl {
+                cancel: Arc::new(AtomicBool::new(false)),
+                on_sent: Arc::new(move |bytes, _| seen.store(bytes, Ordering::SeqCst)),
+            };
+            let uploaded = upload_package(&client, &session, &book_id, zip.clone(), cover, &control).await.unwrap().unwrap();
+            assert_eq!(uploaded.page_count, u32::try_from(output.pages).unwrap());
+            assert_eq!(sent.load(Ordering::SeqCst), zip.len() as u64, "progress reached the end");
+            println!("reader: {}", uploaded.reader_url);
+
+            let again = upload_package(&client, &session, &book_id, zip.clone(), None, &control).await.unwrap().unwrap();
+            assert_eq!(again.page_count, uploaded.page_count, "overwriting works, the cover stays");
+
+            let cancelled = UploadControl { cancel: Arc::new(AtomicBool::new(true)), on_sent: Arc::new(|_, _| {}) };
+            assert_eq!(upload_package(&client, &session, &book_id, zip.clone(), None, &cancelled).await.unwrap(), None);
+
+            let missing = upload_package(&client, &session, "00000000-0000-7000-8000-000000000000", zip, None, &control).await.unwrap_err();
+            assert_eq!(missing.code, UploadCode::NotFound);
         });
     }
 }

@@ -53,7 +53,7 @@ pub struct ExportState {
 }
 
 impl ExportState {
-    fn fonts(&self) -> Arc<Vec<Font>> {
+    pub(crate) fn fonts(&self) -> Arc<Vec<Font>> {
         Arc::clone(self.fonts.get_or_init(|| Arc::new(world::load_fonts())))
     }
 

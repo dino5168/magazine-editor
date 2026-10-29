@@ -52,7 +52,10 @@ comemo = "0.5.1"
 ttf-parser = "0.25"
 # 「下載免費字型」：只連精選清單（fonts-catalog.json）的網址。tauri 本來就依賴同一版（沒開 TLS）；
 # TLS 用 Windows 內建的 Schannel（native-tls）：0.13 的 rustls 預設要 aws-lc-rs，在 Windows 要 cmake / NASM 才編得起來
-reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
+# 上傳翻頁書（upload/）：multipart 送 zip 與封面、stream 讓 zip 分段送出（進度與取消）
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy", "multipart", "stream"] }
+# 把 zip 切成串流（只用 stream::iter / StreamExt）；tauri 本來就依賴同一版
+futures-util = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 tempfile = "3"

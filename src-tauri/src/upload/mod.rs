@@ -13,15 +13,32 @@ use crate::error::{AppError, AppResult};
 use client::Session;
 use response::UploadCode;
 pub use response::UploadFailure;
-use std::sync::{Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use time::OffsetDateTime;
 
-/// The logged-in account (only in memory: closing the app logs out) and the HTTP client.
+/// The logged-in account (only in memory: closing the app logs out), the HTTP client and the
+/// upload in progress.
 #[derive(Default)]
 pub struct UploadState {
     /// Built on first use (loading the Windows certificate store takes a moment).
     client: OnceLock<reqwest::Client>,
     session: Mutex<Option<Session>>,
+    /// One upload at a time (the server allows one per account anyway).
+    busy: AtomicBool,
+    /// Set by `upload_cancel`; shared with the upload stream.
+    pub cancel: Arc<AtomicBool>,
+    /// What `upload_open_reader` opens: the last upload's `readerUrl`.
+    last_reader_url: Mutex<Option<String>>,
+}
+
+/// Marks an upload as running until dropped.
+pub struct UploadRun<'a>(&'a AtomicBool);
+
+impl Drop for UploadRun<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
 }
 
 impl UploadState {
@@ -51,6 +68,27 @@ impl UploadState {
     pub fn require(&self) -> AppResult<Session> {
         self.current()?
             .ok_or_else(|| UploadFailure::new(UploadCode::Unauthenticated, "登入已過期，請重新輸入密碼").into())
+    }
+
+    /// Starts an upload: clears an old cancel request.
+    ///
+    /// # Errors
+    /// `UploadCode::UploadInProgress` when another upload of this app is running.
+    pub fn begin_upload(&self) -> AppResult<UploadRun<'_>> {
+        if self.busy.swap(true, Ordering::SeqCst) {
+            return Err(UploadFailure::new(UploadCode::UploadInProgress, "正在上傳另一本書，請等它完成").into());
+        }
+        self.cancel.store(false, Ordering::SeqCst);
+        Ok(UploadRun(&self.busy))
+    }
+
+    pub fn last_reader_url(&self) -> AppResult<Option<String>> {
+        Ok(self.last_reader_url.lock().map_err(|_| AppError::LockPoisoned)?.clone())
+    }
+
+    pub fn set_last_reader_url(&self, url: String) -> AppResult<()> {
+        *self.last_reader_url.lock().map_err(|_| AppError::LockPoisoned)? = Some(url);
+        Ok(())
     }
 
     pub fn set(&self, session: Option<Session>) -> AppResult<()> {

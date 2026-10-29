@@ -83,6 +83,9 @@ pub fn run() {
             commands::upload::upload_session,
             commands::upload::upload_list_books,
             commands::upload::upload_create_book,
+            commands::upload::upload_flipbook,
+            commands::upload::upload_cancel,
+            commands::upload::upload_open_reader,
         ])
         // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
         .on_window_event(|window, event| {

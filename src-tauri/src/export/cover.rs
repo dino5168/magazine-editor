@@ -1,9 +1,6 @@
 //! The cover picture sent with an upload: the first page, drawn by typst-render like a PowerPoint
 //! slide (the same layout as the PDF), 600 px wide. Plan: `docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` §4.4.
 
-// 步驟 4 的 upload_flipbook 才呼叫；接上後移除
-#![cfg_attr(not(test), allow(dead_code))]
-
 use super::pdf::compile_document;
 use super::pptx::raster::{has_raster_photo, rasterize_at, SlideImage, SlideImageFormat};
 use super::ExportRequest;

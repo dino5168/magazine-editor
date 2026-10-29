@@ -2,9 +2,6 @@
 //! the zip export), checked against the server's rules before anything is sent
 //! (web-magazine contract,「4. 上傳翻頁書與封面」).
 
-// 步驟 4 的 upload_flipbook 才呼叫；接上後移除
-#![cfg_attr(not(test), allow(dead_code))]
-
 use super::response::{UploadCode, UploadFailure};
 use crate::error::{AppError, AppResult};
 use crate::export::flipbook::zip_book;

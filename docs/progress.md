@@ -13,7 +13,7 @@
 
 ## 目前在做什麼
 
-- **上傳翻頁書到網站＋匯出翻頁書 zip**（2026-10-29 起）：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。步驟 1（網址驗證、回應分類、`AppError::Upload`，`602ed9f`）完成；步驟 2（登入與書單，`51e8c68`）完成；步驟 3（打包、封面、匯出翻頁書 zip）程式完成，等使用者在桌面版試匯出 zip。步驟 0（web-magazine 白名單加 `gif`、`txt`）還沒做。步驟 3 之前要先在 web-magazine 做步驟 0（白名單加 `gif`、`txt`）。
+- **上傳翻頁書到網站＋匯出翻頁書 zip**（2026-10-29 起）：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。步驟 1（網址驗證、回應分類、`AppError::Upload`，`602ed9f`）完成；步驟 2（登入與書單，`51e8c68`）完成；步驟 3（打包、封面、匯出翻頁書 zip，`ee75ba0`）完成；步驟 4（上傳 command）程式完成，等使用者跑連網測試。步驟 0（web-magazine 白名單加 `gif`、`txt`）還沒做。步驟 3 之前要先在 web-magazine 做步驟 0（白名單加 `gif`、`txt`）。
 - **專案重構（降低 context 用量）全部完成**（2026-10-28～29）：迭代 0–6 見 `docs/12-Plans-重構/1-專案重構-實作.md` §8（根 CLAUDE.md 102.5k → 6.1k token、`.claude/rules/`、四個 skills）。迭代 7 大檔拆分見 `2-大檔拆分-實作.md`：`project/format/`、`export/render/tests.rs`、`lib/editor/reducer/`、`editor-reducer-*.test.ts`（`f059640`…`e024bee`），只搬程式、對外路徑不變、測試數不變。
 
 ## 最近完成（全部已 commit；`main` 比 origin 多 12 個 commit，沒有 push）

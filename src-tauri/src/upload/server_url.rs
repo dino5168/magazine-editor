@@ -29,6 +29,19 @@ fn allows_plain_http(host: &str) -> bool {
     }
 }
 
+/// Whether the app may open `url` in the browser: the `readerUrl` an upload returns lives on the
+/// server's flip book domain (not the API host), so only the scheme rules apply: https, or http to
+/// this computer or a private address.
+pub fn is_openable_reader_url(url: &str) -> bool {
+    let Ok(url) = Url::parse(url) else { return false };
+    let host = url.host_str().unwrap_or_default().trim_start_matches('[').trim_end_matches(']');
+    match url.scheme() {
+        "https" => !host.is_empty(),
+        "http" => allows_plain_http(host),
+        _ => false,
+    }
+}
+
 /// Checks the address the user typed.
 ///
 /// # Args
@@ -117,6 +130,16 @@ mod tests {
         assert!(refused("ftp://x.com").contains("https://"));
         assert!(refused("   ").contains("請輸入"));
         assert!(refused("https://").contains("格式"));
+    }
+
+    #[test]
+    fn reader_urls_open_only_over_https_or_on_a_private_network() {
+        assert!(is_openable_reader_url("https://books.example.com/0192/3/index.html"));
+        assert!(is_openable_reader_url("http://localhost:8082/0192/3/index.html"));
+        assert!(is_openable_reader_url("http://192.168.1.10:8082/b/index.html"));
+        for url in ["http://books.example.com/b/index.html", "file:///C:/Windows/notepad.exe", "javascript:alert(1)", "ms-settings:", "not a url"] {
+            assert!(!is_openable_reader_url(url), "{url}");
+        }
     }
 
     #[test]
