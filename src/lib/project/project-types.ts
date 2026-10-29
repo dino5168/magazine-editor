@@ -1,5 +1,6 @@
 import type { AssetInfo, EditorDocument, FontFile } from "@/lib/editor/types";
 import type { Library } from "@/lib/library/types";
+import type { UploadErrorDetails } from "@/lib/upload/upload-flow";
 
 /** Mirrors `ProjectInfo` in `src-tauri/src/project/mod.rs`. */
 export interface ProjectInfo {
@@ -118,10 +119,13 @@ export type AppErrorKind = (typeof ERROR_KINDS)[number];
 /** Error returned by a Tauri command, narrowed by `kind`. */
 export class CommandError extends Error {
   readonly kind: AppErrorKind;
+  /** Only for kind `upload`: what went wrong (the upload dialog decides the next step from it). */
+  readonly upload: UploadErrorDetails | undefined;
 
-  constructor(kind: AppErrorKind, message: string) {
+  constructor(kind: AppErrorKind, message: string, upload?: UploadErrorDetails) {
     super(message);
     this.name = "CommandError";
     this.kind = kind;
+    this.upload = upload;
   }
 }

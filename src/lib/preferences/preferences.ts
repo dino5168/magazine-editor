@@ -1,6 +1,7 @@
 import { getPaletteHex, withAlpha } from "@/lib/editor/palette";
 import type { Stroke } from "@/lib/editor/types";
 import { mmToPt } from "@/lib/editor/units";
+import { CONFIRMED_HOSTS_MAX } from "@/lib/upload/upload-flow";
 import { clamp, isElementColor, STROKE_DASHES } from "@/lib/editor/validation";
 
 /** Look of one kind of canvas guide line. Width is in screen px, so zooming does not change it. */
@@ -44,7 +45,20 @@ export interface Preferences {
   readonly lineStyleDefaults: GuideLineStyles | null;
   /** Let Claude Code read and edit the open document through MCP (`magazine-mcp.exe`); off by default. */
   readonly mcpEnabled: boolean;
+  /** 「上傳到網站」記住的伺服器與 email（密碼不存）。 */
+  readonly upload: UploadPreferences;
 }
+
+/** What the upload dialog remembers between uses. */
+export interface UploadPreferences {
+  readonly server: string;
+  readonly email: string;
+  /** Hosts the user agreed to send the password to (asked once per host), newest first. */
+  readonly confirmedHosts: readonly string[];
+}
+
+/** Longest server address / email kept (a corrupted value must not fill the dialog). */
+const UPLOAD_TEXT_MAX_LENGTH = 320;
 
 export type PageView = "single" | "spread";
 
@@ -72,6 +86,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   lineStyles: FACTORY_LINE_STYLES,
   lineStyleDefaults: null,
   mcpEnabled: false,
+  upload: { server: "", email: "", confirmedHosts: [] },
 };
 
 const LINE_KINDS = ["grid", "contentGuides", "margins"] as const satisfies readonly (keyof GuideLineStyles)[];
@@ -145,6 +160,22 @@ function parseBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function parseUploadText(value: unknown): string {
+  return typeof value === "string" && value.length <= UPLOAD_TEXT_MAX_LENGTH ? value : "";
+}
+
+function parseUploadPreferences(value: unknown): UploadPreferences {
+  if (!isRecord(value)) return DEFAULT_PREFERENCES.upload;
+  const hosts = Array.isArray(value.confirmedHosts) ? value.confirmedHosts : [];
+  return {
+    server: parseUploadText(value.server),
+    email: parseUploadText(value.email),
+    confirmedHosts: hosts
+      .filter((host): host is string => typeof host === "string" && host !== "" && host.length <= UPLOAD_TEXT_MAX_LENGTH)
+      .slice(0, CONFIRMED_HOSTS_MAX),
+  };
+}
+
 /**
  * Parses stored preferences. Each field is checked on its own: a broken field falls back to its
  * default without discarding the others; an out-of-range grid spacing is clamped.
@@ -176,5 +207,6 @@ export function parsePreferences(value: unknown): Preferences {
     lineStyleDefaults: isRecord(value.lineStyleDefaults) ? parseLineStyles(value.lineStyleDefaults, FACTORY_LINE_STYLES) : null,
     // 只有明確存成 true 才開：壞掉或缺少都當成關（外部程式能改文件，預設關）
     mcpEnabled: value.mcpEnabled === true,
+    upload: parseUploadPreferences(value.upload),
   };
 }

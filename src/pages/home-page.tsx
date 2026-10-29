@@ -7,6 +7,7 @@ import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
 import { SETTINGS_DIALOGS } from "@/components/app/settings";
 import { useFontLicenseDialog } from "@/components/app/font-license-dialog";
+import { UploadDialog } from "@/components/app/upload-dialog";
 import { useNewDocumentDialog } from "@/components/app/new-document-dialog";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
 import { useUnsavedChangesDialog } from "@/components/app/unsaved-changes-dialog";
@@ -122,6 +123,8 @@ function EditorLayout() {
   const { openLibrary } = useLibraryDialog();
   // 專案管理 → 文件範本...（範本在 App 資料夾，只有桌面版）
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  // 檔案 → 上傳到網站...（網路請求在 Rust，只有桌面版）
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -135,6 +138,7 @@ function EditorLayout() {
       "file.exportFlipbook": () => void project.exportFlipbook(),
       "file.exportFlipbookZip": () => void project.exportFlipbookZip(),
       "file.exportPptx": () => void project.exportPptx(),
+      "file.uploadFlipbook": () => (isDesktop ? setUploadOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       "file.importImage": importImage,
       "project.library": () => openLibrary(),
       "project.templates": () => (isDesktop ? setTemplatesOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
@@ -215,6 +219,7 @@ function EditorLayout() {
       {unsavedDialog}
       {newDocumentDialog}
       {fontLicenseDialog}
+      <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} confirmFontLicense={confirmFontLicense} />
       <TemplatesDialog
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}

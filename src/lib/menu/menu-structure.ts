@@ -55,6 +55,7 @@ export const MENUS = [
           { kind: "item", command: "file.exportEpub" },
         ],
       },
+      { kind: "item", command: "file.uploadFlipbook" },
     ],
   },
   {

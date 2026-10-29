@@ -23,7 +23,7 @@ paths:
   - 橋接程式的 stdout 是 MCP 通道，**不可 `println!`**。
   - App 沒開 / 沒開放時回 `isError` 的中文說明（`APP_NOT_RUNNING`），不是協定錯誤。
 - 開關 `Preferences.mcpEnabled` **預設關**；關閉時 Rust 不開 pipe（`McpState::set_enabled`）。pipe 只在前端 listener 註冊好之後才開（`use-mcp-bridge.ts`）。瀏覽器模式沒有 MCP。
-- 安全：只收本機（`reject_remote_clients`）、目前 Windows 帳號（pipe 名稱）、第一個 instance（`first_pipe_instance`）。存檔、匯出、開啟、字型匯入 / 改名 / 刪除不給 MCP（要使用者在對話框確認）。
+- 安全：只收本機（`reject_remote_clients`）、目前 Windows 帳號（pipe 名稱）、第一個 instance（`first_pipe_instance`）。存檔、匯出、開啟、字型匯入 / 改名 / 刪除不給 MCP（要使用者在對話框確認）。**上傳到網站沒有 MCP 工具**（密碼不能經過 AI 的對話）；`run_command file.uploadFlipbook` 只打開對話框。
 
 ## 工具定義（單一資料來源）
 

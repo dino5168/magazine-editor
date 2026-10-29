@@ -105,7 +105,7 @@ class ToolMethods:
     def run_command(
         self,
         *,
-        id: Literal["file.new", "file.open", "file.save", "file.saveAs", "file.importImage", "file.importPages", "file.exportPng", "file.exportJpeg", "file.exportPdf", "file.exportFlipbook", "file.exportFlipbookZip", "file.exportPptx", "file.exportEpub", "project.library", "project.templates", "view.rulers", "view.grid", "view.contentGuides", "view.margins", "view.snap", "settings.pageSetup", "settings.pageNumbers", "settings.swatches", "settings.fonts", "settings.grid", "settings.mcp", "settings.themeLight", "settings.themeDark", "settings.themeSystem", "panel.templates", "panel.text", "panel.elements", "panel.upload", "panel.background", "panel.draw", "panel.properties", "panel.styles", "panel.pages", "panel.layers", "panel.resetLayout"],
+        id: Literal["file.new", "file.open", "file.save", "file.saveAs", "file.importImage", "file.importPages", "file.exportPng", "file.exportJpeg", "file.exportPdf", "file.exportFlipbook", "file.exportFlipbookZip", "file.exportPptx", "file.exportEpub", "file.uploadFlipbook", "project.library", "project.templates", "view.rulers", "view.grid", "view.contentGuides", "view.margins", "view.snap", "settings.pageSetup", "settings.pageNumbers", "settings.swatches", "settings.fonts", "settings.grid", "settings.mcp", "settings.themeLight", "settings.themeDark", "settings.themeSystem", "panel.templates", "panel.text", "panel.elements", "panel.upload", "panel.background", "panel.draw", "panel.properties", "panel.styles", "panel.pages", "panel.layers", "panel.resetLayout"],
     ) -> Any:
         """執行選單指令
 

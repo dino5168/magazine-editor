@@ -102,6 +102,7 @@
             "file.exportFlipbookZip",
             "file.exportPptx",
             "file.exportEpub",
+            "file.uploadFlipbook",
             "project.library",
             "project.templates",
             "view.rulers",

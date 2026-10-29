@@ -40,6 +40,7 @@ const custom: Preferences = {
   lineStyles: customStyles,
   lineStyleDefaults: { ...customStyles, margins: { color: "#000000", dash: "solid", width: 1 } },
   mcpEnabled: true,
+  upload: { server: "https://magazine.example.com", email: "ann@example.com", confirmedHosts: ["magazine.example.com", "localhost"] },
 };
 
 describe("parsePreferences", () => {
@@ -66,6 +67,7 @@ describe("parsePreferences", () => {
       lineStyles: FACTORY_LINE_STYLES,
       lineStyleDefaults: null,
       mcpEnabled: false,
+      upload: { server: "", email: "", confirmedHosts: [] },
     });
     expect(parsePreferences({ showPageNumbers: "no" }).showPageNumbers).toBe(true);
     expect(parsePreferences({ showPageNumbers: false }).showPageNumbers).toBe(false);
@@ -78,6 +80,15 @@ describe("parsePreferences", () => {
     expect(parsePreferences({ mcpEnabled: "true" }).mcpEnabled).toBe(false);
     expect(parsePreferences({ mcpEnabled: 1 }).mcpEnabled).toBe(false);
     expect(parsePreferences({ mcpEnabled: true }).mcpEnabled).toBe(true);
+  });
+
+  it("keeps the upload server and email but drops broken values", () => {
+    expect(parsePreferences({}).upload).toEqual(DEFAULT_PREFERENCES.upload);
+    const parsed = parsePreferences({ upload: { server: 42, email: "a".repeat(321), confirmedHosts: ["ok.example", 3, "", "b".repeat(321)] } });
+    expect(parsed.upload).toEqual({ server: "", email: "", confirmedHosts: ["ok.example"] });
+    const many = Array.from({ length: 30 }, (_, n) => `host-${n}`);
+    expect(parsePreferences({ upload: { confirmedHosts: many } }).upload.confirmedHosts).toHaveLength(20);
+    expect(JSON.stringify(parsePreferences({ upload: { password: "secret" } }))).not.toContain("secret");
   });
 
   it("reads the page view, falling back to single", () => {

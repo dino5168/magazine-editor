@@ -99,6 +99,7 @@ export const COMMANDS = {
   // 只有簡報尺寸的文件可以匯出：停用與否看文件（command-availability.ts），不是固定的 disabledReason
   "file.exportPptx": { label: "PowerPoint（PPTX）...", title: "匯出為 PowerPoint" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },
+  "file.uploadFlipbook": { label: "上傳到網站...", title: "上傳翻頁電子書到網站" },
   "project.library": { label: "素材管理..." },
   "project.templates": { label: "文件範本..." },
   ...VIEW_COMMANDS,

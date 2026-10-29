@@ -17,6 +17,7 @@ import {
   type RecoveryEntry,
   type SystemFont,
 } from "./project-types";
+import { parseUploadErrorDetails } from "@/lib/upload/upload-flow";
 
 function isErrorKind(value: string): value is AppErrorKind {
   return (ERROR_KINDS as readonly string[]).includes(value);
@@ -35,7 +36,7 @@ export function toCommandError(error: unknown): CommandError {
   if (typeof error === "object" && error !== null && "kind" in error && "message" in error) {
     const { kind, message } = error;
     if (typeof kind === "string" && typeof message === "string" && isErrorKind(kind)) {
-      return new CommandError(kind, message);
+      return new CommandError(kind, message, kind === "upload" ? parseUploadErrorDetails(error) : undefined);
     }
   }
   return new CommandError("tauri", error instanceof Error ? error.message : String(error));
