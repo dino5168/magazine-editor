@@ -136,10 +136,14 @@ interface StaticNodeProps {
   readonly listening: boolean;
 }
 
+// asset protocol 的回應帶 Access-Control-Allow-Origin（Tauri 設成視窗的 origin），用 CORS 載入才不會讓畫布變成 tainted，
+// 之後才能 toDataURL / toBlob（匯出 PNG）；blob: 與打包的圖片同源，不受影響
+const IMAGE_CROSS_ORIGIN = "anonymous";
+
 function ImageNode({ element, common }: { readonly element: ImageElement; readonly common: CommonNodeProps | StaticNodeProps }) {
   // react-konva 的 Stage 會橋接 React context，Konva 子樹內可以直接讀取專案 context（範本縮圖另外指定資料夾）
   const resolveSrc = useResolveSrc();
-  const [image, status] = useImage(resolveSrc(element.src));
+  const [image, status] = useImage(resolveSrc(element.src), IMAGE_CROSS_ORIGIN);
   if (status !== "loaded") {
     // 載入中或失敗時以灰框佔位，物件仍可選取與移動
     return <Rect {...common} width={element.width} height={element.height} fill="#e5e5e5" dash={[6, 4]} stroke="#a3a3a3" />;
@@ -280,7 +284,7 @@ function ShapeOutline({
 function useShapePhoto(shape: ShapeElement): ShapePhoto | null {
   const resolveSrc = useResolveSrc();
   const { image: photo, width, height } = shape;
-  const [image, status] = useImage(photo ? resolveSrc(photo.src) : "");
+  const [image, status] = useImage(photo ? resolveSrc(photo.src) : "", IMAGE_CROSS_ORIGIN);
   const placement = useMemo(() => (photo ? photoPlacement(width, height, photo) : null), [photo, width, height]);
   return photo && placement && image && status === "loaded" ? { image, placement } : null;
 }

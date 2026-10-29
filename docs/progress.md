@@ -74,6 +74,5 @@ Claude 只在瀏覽器模式 / 無頭 Edge / 疊圖比對驗證過。每項要�
 - **全形標點擠壓三端不一致**：畫布把相鄰全形標點擠成半寬，EPUB / 翻頁書與 Typst 行中不擠；Typst 另外擠行首 / 行尾括號。建議另開任務（`docs/05-Plans-字型/02-字型管理問題-實作.md` 步驟 7）。
 - 型別檢查用 `npx tsc --noEmit -p tsconfig.json` 或 `npm run build`，**不要用 `tsc -b`**（會在根目錄產生檔案）。
 - `cargo clippy --all-targets` 剩 5 個警告，刻意保留：`format/elements.rs` 的 `Element` 變體大小差很多（`large_enum_variant`，要 Box 會動到全部匯出程式）、`format/tests.rs` 4 處 `type_complexity`（只在測試）。
-- Konva 讀 asset protocol 的圖片沒設 `crossOrigin`：之後做「匯出 PNG」時畫布可能是 tainted。
 - 圖形內文字一律外框內縮 4 pt，橢圓 / 星形靠邊的文字可能超出。
 - Hook 還沒在實際對話中觸發過。
