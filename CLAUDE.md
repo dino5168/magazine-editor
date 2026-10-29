@@ -3,7 +3,7 @@
 雜誌編輯軟體（`magazine-editor`）是 Windows 桌面應用程式，由 `../setup-tauri-reactv3.ps1` 產生專案骨架。
 
 - 長期目標：**排版與輸出以 EPUB 3 固定版面（Fixed Layout）為主，PDF 是由同一份排版資料衍生的輸出**；Konva.js 做前端自由拖放編輯器（類似 Canva）。方向於 2026-09-22 由「Typst 負責排版與 PDF 輸出」調整而來：固定版面 EPUB 的渲染引擎和 Konva 量測文字同源，「所見即所得」從「盡量接近」變成「本來就一樣」。
-- 目前階段：前端編輯器 v1（畫布、工具面板、文字 / 圖形 / 線條 / 圖片框、主頁、樣式與色票、專案字型、素材庫、文件範本）+ 檔案系統第一、二階段 + 匯出 PDF / 翻頁電子書 / PowerPoint + MCP（Claude Code 連線）與 Python SDK。
+- 目前階段：前端編輯器 v1（畫布、工具面板、文字 / 圖形 / 線條 / 圖片框、主頁、樣式與色票、專案字型、素材庫、文件範本）+ 檔案系統第一、二階段 + 匯出 PDF / 翻頁電子書（資料夾、Zip）/ PowerPoint + 上傳翻頁書到 web-magazine 網站 + MCP（Claude Code 連線）與 Python SDK。
 - 正在依 `0-Task/plan-epubv2.md` 重構成 EPUB 為主（共五個階段，階段 0 字型自備化已完成）。計畫：`../../3_系統設計文件/imp-ui-homepage.md`、`0-Task/plan-filesystem.md`、`0-Task/plan-export-pdf.md`、`0-Task/plan-epubv2.md`（後三份本機限定，不在 repo）。
 - 每個功能的開發歷史（日期、檔案格式版本）：`docs/progress-archive/2026-10.md` 與各計畫文件；檔案格式各版的變更見 `.claude/rules/project-files.md`。
 - Bundle identifier：`com.mycompany.magazineeditor`
@@ -29,7 +29,7 @@
 | UI | shadcn/ui（style `radix-nova`、base color `neutral`、`radix-ui` 單一套件）· Lucide icons · sonner |
 | 自動化 / MCP | `zod` 4（MCP 工具參數的 schema 與驗證，只用在 `src/lib/automation`）· Rust `rmcp` **`=3.5.1`**（官方 MCP SDK，只用在橋接程式 `magazine-mcp.exe`）· `tokio`（named pipe） |
 | 測試 | vitest 5（node 環境，只測 `src/lib/**` 的純邏輯）· `cargo test`（`tempfile`）· 共用 fixture `tests/fixtures/sample.magproj`、`tests/fixtures/sample-library.json` |
-| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版）· `roxmltree`（匯入時確認 SVG）· `comemo`（匯出前用 typst 的 SVG 解析檢查，版本跟 typst）· `reqwest` 0.13（只用在「下載免費字型」；tauri 本來就依賴同一版；TLS 用 Windows 的 Schannel：`native-tls`，不用 rustls（0.13 預設的 aws-lc-rs 在 Windows 要 cmake / NASM）） |
+| Backend | Rust 2021 · `rusqlite 0.40`（`bundled`）· `thiserror 2` · serde · `sha2` · `uuid` · `time` · `image 0.25`（素材縮圖；typst 本來就依賴同一版）· `roxmltree`（匯入時確認 SVG）· `comemo`（匯出前用 typst 的 SVG 解析檢查，版本跟 typst）· `reqwest` 0.13（「下載免費字型」與上傳翻頁書到網站（`multipart`、`stream`，加 `futures-util`）；tauri 本來就依賴同一版；TLS 用 Windows 的 Schannel：`native-tls`，不用 rustls（0.13 預設的 aws-lc-rs 在 Windows 要 cmake / NASM）） |
 | 翻頁書 | StPageFlip（npm `page-flip` **2.0.7**，MIT，沒有相依套件）：**vendor** 在 `src-tauri/src/export/flipbook/vendor/`（`include_str!`，匯出時原樣複製進書裡，不從網路載入；版本、SHA-256 與升級方式見那裡的 `README.md`）。不在 `package.json` |
 | 字型 | 自備靜態字型，放在 `fonts/`（黑體 Geist + Noto Sans TC、明體 Noto Serif TC、楷體霞鶩文楷 TC、圓體源泉圓體，各 Regular / Bold，皆為 SIL OFL）；畫面與匯出**共用同一批檔案** |
 | PDF 排版 | 內嵌 `typst` / `typst-layout` / `typst-pdf` / `typst-render` **`=0.15.1`**（版本必須一致，Typst 的 crate API 每版都會變，所以鎖定 `=`；`typst-render` 把頁面畫成點陣圖：匯出 PowerPoint 與疊圖比對） |
@@ -81,9 +81,9 @@ cargo test --manifest-path src-tauri/Cargo.toml pptx_preview -- --ignored
 src/
   pages/home-page.tsx   # 版面與選單 handlers（Provider 順序：EditorProvider → LibraryProvider → ProjectProvider）
   components/           # app/（選單、對話框、settings/）、dock/、editor/（畫布、面板 panels/）、library/、templates/、ui/（shadcn，vendor）
-  lib/                  # 不含 UI 的邏輯：editor/（文件模型與編輯器核心）、project/、library/、templates/、menu/、dock/、preferences/、export/、automation/（MCP）
+  lib/                  # 不含 UI 的邏輯：editor/（文件模型與編輯器核心）、project/、library/、templates/、menu/、dock/、preferences/、export/、upload/、automation/（MCP）
 src-tauri/
-  src/                  # lib.rs、error.rs、db/、project/（檔案格式）、export/（PDF / EPUB / 翻頁書 / PPTX）、mcp/、commands/、bin/magazine-mcp.rs
+  src/                  # lib.rs、error.rs、db/、project/（檔案格式）、export/（PDF / EPUB / 翻頁書 / PPTX / 封面）、upload/（上傳到網站）、mcp/、commands/、bin/magazine-mcp.rs
   tauri.conf.json · capabilities/ · app-icon.svg · mcp-tools.json（產生的） · fonts-catalog.json
 fonts/                  # 畫面與匯出共用的字型檔（fonts/README.md）
 sdk/python/             # Python SDK（MCP 用戶端）
@@ -114,6 +114,7 @@ docs/ · docs-website/   # 給人看的說明（見上）
 | TS ↔ Rust 必須一致的常數 | `cross-language.md` |
 | MCP 與 Python SDK | `mcp.md` |
 | Rust ↔ Frontend IPC、DB、CSP | `ipc.md` |
+| 上傳翻頁書到網站（web-magazine 合約、token、錯誤碼） | `upload.md` |
 | docs/ 資料夾與需求分析報告 | `docs-layout.md` |
 
 ## Skills（`.claude/skills/`，多步驟流程）

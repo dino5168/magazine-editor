@@ -7,21 +7,20 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-29（重構迭代 7 大檔拆分）
+最後更新：2026-10-29（上傳翻頁書到網站，步驟 1–5、7 完成）
 
 ---
 
 ## 目前在做什麼
 
-- **上傳翻頁書到網站＋匯出翻頁書 zip**（2026-10-29 起）：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。步驟 1（網址驗證、回應分類、`AppError::Upload`，`602ed9f`）完成；步驟 2（登入與書單，`51e8c68`）完成；步驟 3（打包、封面、匯出翻頁書 zip，`ee75ba0`）完成；步驟 4（上傳 command，`e2a09ae`）、步驟 5（上傳對話框）完成，使用者在桌面版實際上傳成功。剩下：步驟 0（web-magazine 白名單）、步驟 6（人工驗證清單）、步驟 7（規則檔 `upload.md` 與文件）。步驟 0（web-magazine 白名單加 `gif`、`txt`）還沒做。步驟 3 之前要先在 web-magazine 做步驟 0（白名單加 `gif`、`txt`）。
-- **專案重構（降低 context 用量）全部完成**（2026-10-28～29）：迭代 0–6 見 `docs/12-Plans-重構/1-專案重構-實作.md` §8（根 CLAUDE.md 102.5k → 6.1k token、`.claude/rules/`、四個 skills）。迭代 7 大檔拆分見 `2-大檔拆分-實作.md`：`project/format/`、`export/render/tests.rs`、`lib/editor/reducer/`、`editor-reducer-*.test.ts`（`f059640`…`e024bee`），只搬程式、對外路徑不變、測試數不變。
+- **上傳翻頁書到網站**：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。剩下步驟 0（另開 web-magazine 工作階段：上傳白名單加 `gif`、`txt`，同步改 `桌面上傳API.md` 與測試；沒做之前 GIF 圖片與 `page-flip.LICENSE.txt` 上傳後會被網站略過）與步驟 6（使用者的人工驗證，見下方待辦）。規則：`.claude/rules/upload.md`。
 
-## 最近完成（全部已 commit；`main` 比 origin 多 12 個 commit，沒有 push）
+## 最近完成（全部已 commit；`main` 比 origin 多 20 個以上 commit，沒有 push）
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
-| 10-22 | MCP `import_library_item`（匯入本機圖片到素材庫） | `e3ca24d` | `docs/11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md` |
-| 10-21 | 匯出 PowerPoint（簡報尺寸、每頁一張滿版圖片） | `c5df28a` `d480b91` | `docs/03-Plans-匯出檔案/03-匯出PowerPoint 檔案-實作.md` |
+| 10-29 | 上傳翻頁書到 web-magazine 網站（檔案 → 上傳到網站...）、匯出翻頁電子書（Zip） | `602ed9f`…`898352c` + 步驟 7 | `docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` |
+| 10-29 | 專案重構（降低 context 用量，迭代 0–7） | 迭代 7：`f059640`…`a9f9aef` | `docs/12-Plans-重構/1-專案重構-實作.md`、`2-大檔拆分-實作.md` |
 更早的（圖片框 v17、文件範本、段落縮排 v16…）、完整的決定表與逐項驗證清單：`docs/progress-archive/2026-10.md`。
 
 ## 待辦
@@ -30,6 +29,7 @@
 
 Claude 只在瀏覽器模式 / 無頭 Edge / 疊圖比對驗證過。每項要點什麼，見 archive 的「待辦 → 使用者」或該功能的計畫文件。
 
+- [ ] 上傳到網站：計畫 §5「步驟 6 的人工驗證清單」（公開書提醒、ADMIN、取消、同時上傳、斷網、第一次連線）；匯出翻頁電子書（Zip）解壓後開 `index.html`
 - [ ] 匯出 PowerPoint（選單停用 / 可用、`.pptx` 用 PowerPoint 開）
 - [ ] 圖形照片：經原生對話框的匯出
 - [ ] 文件範本：用有專案字型與圖片的專案建立範本並新增專案
