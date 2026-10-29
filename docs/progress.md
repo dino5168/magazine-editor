@@ -76,4 +76,4 @@ Claude 只在瀏覽器模式 / 無頭 Edge / 疊圖比對驗證過。每項要�
 - `cargo clippy` 有 1 個警告（`project/recovery.rs` 建議 `sort_by_key`），未處理。
 - Konva 讀 asset protocol 的圖片沒設 `crossOrigin`：之後做「匯出 PNG」時畫布可能是 tainted。
 - 圖形內文字一律外框內縮 4 pt，橢圓 / 星形靠邊的文字可能超出。
-- Hook 還沒在實際對話中觸發過；根目錄 `README.md` 還是 Tauri 範本內容。
+- Hook 還沒在實際對話中觸發過。
