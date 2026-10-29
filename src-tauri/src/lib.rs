@@ -5,6 +5,7 @@ mod export;
 // 橋接程式 magazine-mcp.exe 用到其中的 pipe 用戶端
 pub mod mcp;
 mod project;
+mod upload;
 
 use std::sync::Mutex;
 use tauri::Manager;

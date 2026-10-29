@@ -15,7 +15,8 @@
 | 錯誤怎麼傳到畫面 | 沒寫 | 新增 `AppError::Upload`（帶 `code`、`retryAfter`），前端依 `code` 決定回到哪一步 |
 | 封面 | 「用 typst-render」 | 只排**第一頁**（不排整本），沿用 PowerPoint 的點陣化，改成可指定解析度 |
 | 測試 | 「假伺服器」 | 回應分類寫成純函式，餵 (狀態碼, 標頭, body) 測，不需要假伺服器；連網測試比照「下載免費字型」用 `#[ignore]` + 環境變數，對本機後端跑 |
-| **新發現** | — | 翻頁書裡有伺服器會**略過**的檔案：GIF 圖片、`viewer/page-flip.LICENSE`。要先決定怎麼處理（§6 U1、U2） |
+| **新發現** | — | 翻頁書裡有伺服器會**略過**的檔案：GIF 圖片、`viewer/page-flip.LICENSE`。2026-10-29 決定：U1、U2 都選 A（§6） |
+| **新功能**（2026-10-29） | — | 「檔案 → 匯出為 → 翻頁電子書（Zip）...」：把翻頁書存成一個 `.zip`，內容和上傳的 zip **同一份**（同一個函式產生）。可以手動到網站上傳，也讓步驟 3 在上傳 command 完成前就能實際驗證 zip |
 
 ## 1. 可以直接沿用的現有程式
 
@@ -57,13 +58,17 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 
 | 檔案 | 新 / 改 | 內容 |
 | --- | --- | --- |
-| `src-tauri/Cargo.toml` | 改 | `reqwest` 加 `json`、`multipart`、`stream`（保留 `default-features = false`、`native-tls`、`system-proxy`）。另加 `futures-util`（把位元組切成串流）。加之前用 `cargo tree -i` 確認 tauri 已經帶同一版，不會多編一份 |
+| `src-tauri/Cargo.toml` | 改 | 用到時才加：步驟 2 `reqwest` 加 `json`；步驟 4 加 `multipart`、`stream` 與 `futures-util`（把位元組切成串流）。保留 `default-features = false`、`native-tls`、`system-proxy`；加之前用 `cargo tree -i` 確認不會多編一份 |
 | `src-tauri/src/error.rs` | 改 | `AppError::Upload { code: UploadCode, message, retry_after: Option<u64> }`，序列化多兩個欄位 `code`、`retryAfter`；`kind = "upload"` |
 | `src-tauri/src/upload/mod.rs` | 新 | `UploadState`（server、session、`busy`、`cancel`、`last_reader_url`）、常數（逾時、上限） |
 | `src-tauri/src/upload/server_url.rs` | 新 | `parse_server_url(input) -> AppResult<ServerUrl { origin, host, insecure }>`（純函式） |
 | `src-tauri/src/upload/response.rs` | 新 | `classify_graphql(body)`、`classify_http(status, retry_after_header, body)` → `UploadCode` + 中文訊息（純函式） |
 | `src-tauri/src/upload/client.rs` | 新 | `reqwest::Client`（關轉址、逾時、UA）、`login` / `my_books` / `create_book` / `upload_package` |
-| `src-tauri/src/upload/package.rs` | 新 | `prepare(files) -> AppResult<Vec<u8>>`：伺服器白名單檢查、zip、100 MB 檢查（純函式） |
+| `src-tauri/src/export/flipbook/mod.rs` | 改 | `zip_book(files) -> AppResult<Vec<u8>>`：翻頁書壓成 zip（`index.html` 在根目錄），匯出 zip 與上傳共用；`page-flip.LICENSE` 改名 `page-flip.LICENSE.txt`（U2，資料夾匯出也一樣） |
+| `src-tauri/src/commands/export.rs` | 改 | `ExportFormat::FlipbookZip`（JSON `"flipbookZip"`，存檔對話框 `<名稱> 翻頁書.zip`）、`export_flipbook_zip`（`write_atomic`） |
+| `src/lib/project/project-types.ts`、`project-api.ts`、`use-project-commands.ts` | 改 | `ExportFormat` 加 `flipbookZip`、`exportFlipbookZip`；`runExport` 的字型授權提醒也套用 zip |
+| `src/lib/menu/commands.ts`、`menu-structure.ts` | 改 | `file.exportFlipbookZip`「翻頁電子書（Zip）...」，放在「翻頁電子書（HTML5）...」下面 |
+| `src-tauri/src/upload/package.rs` | 新 | `prepare(files) -> AppResult<Vec<u8>>`：伺服器白名單檢查（會被略過的檔案當錯誤）、`zip_book`、100 MB 檢查（純函式） |
 | `src-tauri/src/export/cover.rs` | 新 | `render_cover(root, request, fonts) -> AppResult<CoverImage>`：只排第一頁，寬 600 px |
 | `src-tauri/src/export/pptx/raster.rs` | 改 | `rasterize` 拆出 `rasterize_at(page, format, pixel_per_pt)`；原函式行為不變 |
 | `src-tauri/src/commands/upload.rs` | 新 | `upload_login`、`upload_logout`、`upload_session`、`upload_list_books`、`upload_create_book`、`upload_flipbook`、`upload_cancel`、`upload_open_reader` |
@@ -140,13 +145,20 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 
 | 步驟 | 內容 | 驗收 |
 | --- | --- | --- |
-| **1** 純函式 | `Cargo.toml` features；`AppError::Upload`；`upload/server_url.rs`、`upload/response.rs` | `cargo test`：`https://x.com/path` 拒絕（有路徑）、`x.com` → `https://x.com`、`http://203.0.113.5` 拒絕、`http://192.168.1.10:8081` 通過且 `insecure`、`http://172.32.0.1` 拒絕、`https://user:pw@host` 拒絕、`http://localhost:8081` 通過；§4.5 每一列各一個分類測試（含 HTML body 的 502、缺 `Retry-After`）；`AppError::Upload` 的 JSON 形狀 |
+| **0** 後端（另開 web-magazine 工作階段，步驟 3 之前） | U1、U2 選 A：`ALLOWED_EXTENSIONS` 加 `gif`、`txt`，更新 `桌面上傳API.md` 的白名單與測試 | web-magazine `cargo test` 全過 |
+| **1** 純函式 | `AppError::Upload`；`upload/server_url.rs`、`upload/response.rs` | `cargo test`：`https://x.com/path` 拒絕（有路徑）、`x.com` → `https://x.com`、`http://203.0.113.5` 拒絕、`http://192.168.1.10:8081` 通過且 `insecure`、`http://172.32.0.1` 拒絕、`https://user:pw@host` 拒絕、`http://localhost:8081` 通過；§4.5 每一列各一個分類測試（含 HTML body 的 502、缺 `Retry-After`）；`AppError::Upload` 的 JSON 形狀 |
 | **2** 登入與書單 | `upload/client.rs`、`UploadState`、`upload_login` / `upload_logout` / `upload_session` / `upload_list_books` / `upload_create_book` | 單元：過期 token 不連線、`bookId` 驗證。連網（`#[ignore]`，環境變數 `UPLOAD_SERVER` / `UPLOAD_EMAIL` / `UPLOAD_PASSWORD`，對本機 web-magazine 後端）：登入成功、錯誤密碼得 `Unauthenticated`、`myBooks` 分頁、新建得 `DRAFT`、回傳值裡沒有 token |
-| **3** 打包與封面 | `upload/package.rs`、`export/cover.rs`、`rasterize_at` | 用 `tests/fixtures/sample.magproj`：zip 根目錄有 `index.html`、`fb-page` 數 = 頁數、每個項目的副檔名都在伺服器白名單（依 U1、U2 的決定）；封面是 PNG / JPEG、寬 600 px、< 5 MB；PowerPoint 既有測試全過（`rasterize` 行為不變） |
+| **3** 打包、封面、匯出 zip | `zip_book`、LICENSE 改名、`upload/package.rs`、`export/cover.rs`、`rasterize_at`；「翻頁電子書（Zip）」選單與 command | 用 `tests/fixtures/sample.magproj`：zip 根目錄有 `index.html`、`fb-page` 數 = 頁數、每個項目的副檔名都在伺服器白名單（含 `gif`、`txt`）；封面是 PNG / JPEG、寬 600 px、< 5 MB；PowerPoint 既有測試全過（`rasterize` 行為不變）。使用者：匯出 zip，到網站手動上傳成功 |
 | **4** 上傳 command | `upload_flipbook`、`upload_cancel`、`upload_open_reader`、進度 event | 連網（`#[ignore]`）：`sample.magproj` 新建書並上傳，回傳頁數正確、`readerUrl` 是 https 或允許的 http；同一本再上傳一次（覆蓋）成功；上傳中取消回 `None` |
 | **5** 對話框與選單 | §3 的前端檔案；授權提醒；偏好 `upload` | `npm test`（`upload-flow.ts`、偏好讀取）、`npm run build`；瀏覽器模式（`ui-verify`）選單項目停用並顯示原因 |
 | **6** 桌面版人工驗證 | 使用者用 `npm run tauri dev` 連本機後端 | 見下方清單 |
 | **7** 文件 | 規則檔、CLAUDE.md、progress、docs | §7 |
+
+**進度**
+
+- [ ] 步驟 0（web-magazine 後端：白名單加 `gif`、`txt`）
+- [x] 步驟 1（2026-10-29）：`upload/server_url.rs`（`parse_server_url`，用 `reqwest::Url`，IP 判斷用 `std::net::IpAddr`，不另加 `url` crate）、`upload/response.rs`（`UploadCode`、`UploadFailure`、`Call`、`graphql_data`、`classify_http`、`timeout`、`redirect`）、`AppError::Upload`（JSON 多 `code`、`retryAfter`）；前端 `ERROR_KINDS` 加 `upload`。測試 17 個。`upload/mod.rs` 暫時 `#![allow(dead_code)]`，步驟 2 移除
+- [ ] 步驟 2
 
 **步驟 6 的人工驗證清單**
 
@@ -161,7 +173,9 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 - [ ] 第一次連新主機：顯示「將傳送密碼到 **主機名稱**」並要求確認；第二次不再問。
 - [ ] 關掉 App 再開：網址與 email 還在，密碼要重新輸入。
 
-## 6. 待決事項（開始步驟 3 前要決定）
+## 6. 待決事項
+
+> ✅ 2026-10-29 使用者決定：**U1、U2 都選 A**。後端的部分列為步驟 0。
 
 | # | 問題 | 選項 | 建議 |
 | --- | --- | --- | --- |

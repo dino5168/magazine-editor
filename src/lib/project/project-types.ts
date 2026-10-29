@@ -109,6 +109,8 @@ export const ERROR_KINDS = [
   "noProject",
   "export",
   "tauri",
+  // 上傳到網站；Rust 另外帶 code / retryAfter（上傳對話框才會用到）
+  "upload",
 ] as const;
 
 export type AppErrorKind = (typeof ERROR_KINDS)[number];

@@ -138,7 +138,8 @@ export function describeCommandError(error: Error): string {
   switch (error.kind) {
     case "invalidInput":
     case "export":
-      // 約定：Rust 端 InvalidInput / Export 的訊息一律是給使用者看的中文
+    case "upload":
+      // 約定：Rust 端 InvalidInput / Export / Upload 的訊息一律是給使用者看的中文
       return error.message;
     case "unsupportedVersion":
       return "這個專案由較新版本的軟體建立，請更新軟體後再開啟";
