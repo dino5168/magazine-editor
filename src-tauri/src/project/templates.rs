@@ -603,7 +603,7 @@ mod tests {
         let untitled = tempfile::tempdir().unwrap();
         for id in [&newer_meta.id, &newer_project.id, &damaged.id] {
             assert!(matches!(new_project_from(base.path(), id, untitled.path(), NOW), Err(AppError::InvalidInput(_))));
-            assert!(matches!(replace(base.path(), id, source.path(), fixture_content(), LATER), Err(_)));
+            assert!(replace(base.path(), id, source.path(), fixture_content(), LATER).is_err());
         }
         assert_eq!(fs::read_dir(untitled.path()).map(|d| d.count()).unwrap_or(0), 0);
         delete(base.path(), &damaged.id).unwrap();

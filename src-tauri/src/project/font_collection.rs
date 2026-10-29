@@ -94,7 +94,7 @@ pub fn build_sfnt(sfnt_version: u32, mut tables: Vec<([u8; 4], &[u8])>) -> AppRe
         return Err(damaged());
     }
     // 表格目錄必須依 tag 排序（OpenType 規格）
-    tables.sort_by(|a, b| a.0.cmp(&b.0));
+    tables.sort_by_key(|table| table.0);
 
     let header_len = 12 + 16 * table_count;
     let body_len: usize = tables.iter().map(|(_, data)| data.len().next_multiple_of(4)).sum();

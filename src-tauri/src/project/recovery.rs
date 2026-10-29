@@ -115,7 +115,7 @@ pub fn list(dir: &Path) -> AppResult<Vec<RecoveryEntry>> {
             Some((modified, summary))
         })
         .collect();
-    found.sort_by(|a, b| b.0.cmp(&a.0));
+    found.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
     Ok(found.into_iter().map(|(_, entry)| entry).collect())
 }
 

@@ -100,9 +100,9 @@ fn validate_fonts(fonts: &[ProjectFont]) -> AppResult<()> {
         if !ids.insert(font.id.as_str()) || !names.insert(name) {
             return Err(invalid("duplicate id or name"));
         }
-        validate_font_file(&font.regular).map_err(|what| invalid(what))?;
+        validate_font_file(&font.regular).map_err(invalid)?;
         if let Some(bold) = &font.bold {
-            validate_font_file(bold).map_err(|what| invalid(what))?;
+            validate_font_file(bold).map_err(invalid)?;
         }
     }
     Ok(())
