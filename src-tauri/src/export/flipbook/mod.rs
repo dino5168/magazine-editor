@@ -5,7 +5,7 @@
 //! ```text
 //! index.html                  the book: every page's markup, inside #book
 //! viewer/page-flip.browser.js StPageFlip, unmodified (see vendor/README.md)
-//! viewer/page-flip.LICENSE
+//! viewer/page-flip.LICENSE.txt
 //! viewer/viewer.js            starts page-flip, scales the pages, toolbar
 //! viewer/viewer.css
 //! styles/page.css             @font-face + page rules (shared with EPUB)
@@ -16,6 +16,7 @@
 //! The book's structure lives in `index.html` itself (no separate JSON): browsers block `fetch()`
 //! of local files, and the book must open with a double click.
 
+use super::archive::{write_zip, Packing};
 use super::html::markup::{escape, num, page_div};
 use super::document_fonts;
 use super::html::{collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
@@ -134,7 +135,8 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
     let mut files: Vec<(String, Vec<u8>)> = vec![
         ("index.html".into(), index.into_bytes()),
         ("viewer/page-flip.browser.js".into(), PAGE_FLIP_JS.as_bytes().to_vec()),
-        ("viewer/page-flip.LICENSE".into(), PAGE_FLIP_LICENSE.as_bytes().to_vec()),
+        // .txt：沒有副檔名的檔案會被網站略過（web-magazine 的白名單），MIT 要求散布時附上授權
+        ("viewer/page-flip.LICENSE.txt".into(), PAGE_FLIP_LICENSE.as_bytes().to_vec()),
         ("viewer/viewer.js".into(), VIEWER_JS.as_bytes().to_vec()),
         ("viewer/viewer.css".into(), VIEWER_CSS.as_bytes().to_vec()),
         // 整份文件的規則（html、body）在 viewer.css，這裡只有字型與 .page 裡的規則
@@ -144,6 +146,25 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
     files.extend(images.iter().map(|image| (image.href.clone(), image.data.clone())));
 
     Ok(FlipbookOutput { files, pages: document.pages.len(), skipped_images: skipped_missing + skipped_unreadable })
+}
+
+/// Packs the book as one ZIP with `index.html` at its root, as a web host (and the web-magazine
+/// upload) expects. Used by the zip export and the upload, so both send the same bytes.
+///
+/// # Errors
+/// `AppError::Export` when the archive cannot be written.
+pub fn zip_book(files: &[(String, Vec<u8>)]) -> AppResult<Vec<u8>> {
+    let entries = files.iter().map(|(name, data)| (name.as_str(), data.as_slice(), packing(name)));
+    write_zip(entries, "翻頁書 zip")
+}
+
+/// Images that are already compressed go in as they are; deflating them again only costs time.
+fn packing(name: &str) -> Packing {
+    let extension = name.rsplit_once('.').map(|(_, ext)| ext.to_ascii_lowercase()).unwrap_or_default();
+    match extension.as_str() {
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "woff2" => Packing::Stored,
+        _ => Packing::Deflated,
+    }
 }
 
 /// Checks that the book can go into `target`: it does not exist yet, or is an empty folder.

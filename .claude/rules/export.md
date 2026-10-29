@@ -34,9 +34,9 @@ paths:
 
 ## Command 與寫檔
 
-- **兩步 command**：`export_choose_path(format, suggestedName)`（存進 `ExportState.pending`，只回傳檔名）→ `export_pdf` / `export_flipbook` / `export_pptx`（只取**同一格式**的路徑，不符視為沒選）。前端不傳路徑給 Rust。新格式（例如 EPUB）要加 Rust 的 `ExportFormat` 與前端的 `EXPORT_FORMATS`。
+- **兩步 command**：`export_choose_path(format, suggestedName)`（存進 `ExportState.pending`，只回傳檔名）→ `export_pdf` / `export_flipbook` / `export_flipbook_zip` / `export_pptx`（只取**同一格式**的路徑，不符視為沒選）。前端不傳路徑給 Rust。新格式（例如 EPUB）要加 Rust 的 `ExportFormat` 與前端的 `EXPORT_FORMATS`。
 - 排版 CPU 密集，用 `spawn_blocking`；PDF 先寫 `.pdf.tmp` 再 rename。
-- PDF：`typst` / `typst-layout` / `typst-pdf` / `typst-render` 版本一起改（`World`、`RootedPath`、`VirtualRoot` 每版都變）。`compile_document` 是 PDF 與 PowerPoint 共用的排版；`archive.rs` 的 `write_zip` 是 EPUB 與 PowerPoint 共用。EPUB（`export/epub`）還沒接 UI。
+- PDF：`typst` / `typst-layout` / `typst-pdf` / `typst-render` 版本一起改（`World`、`RootedPath`、`VirtualRoot` 每版都變）。`compile_document` 是 PDF 與 PowerPoint 共用的排版；`archive.rs` 的 `write_zip` 是 EPUB、PowerPoint 與翻頁書 zip 共用。EPUB（`export/epub`）還沒接 UI。
 
 ## 翻頁電子書（`export/flipbook` + `export/html`）
 
@@ -46,10 +46,11 @@ paths:
 - `data-toc` 用 `is_default_page_name`，和編輯器 `nextPageNames` 的預設名稱**同規則**。
 - **page-flip（vendor）陷阱**：`#book` 必須剛好是書的大小（硬頁與 `flipNext` 假設書在左上角）→ `viewer.js` 的 `layoutBook()` 自己算並置中，`resize` 處理要在建立 PageFlip **之前**註冊；`loadFromHTML` 寫上的 `min-width` / `width: 100%` 要清掉再 `layoutBook()` + `flip.update()`。翻頁區 `mousedown` 被 `preventDefault`，不能選文字（放大檢視是另一層）。升級 page-flip 要重跑計畫裡的瀏覽器驗證。
 - `viewer.js`：DOM API、不用 `innerHTML`、不讀網址、不用 localStorage；縮圖 / 放大的複本從**初始化前留下的頁面**複製（page-flip 翻頁時會暫時複製頁面）。
+- **Zip**（`zip_book`）：`index.html` 在根目錄、PNG / JPEG / GIF / WebP / woff2 不再壓縮。「翻頁電子書（Zip）」匯出與上傳網站（`upload/package.rs`）**共用同一個函式**，兩邊送出的內容相同。授權檔是 `viewer/page-flip.LICENSE.txt`：沒有副檔名的檔案會被網站略過。新增檔案類型時對照 `upload::package::ALLOWED_EXTENSIONS`（= web-magazine 的白名單）。
 - **寫入**（`write_folder`）：隱藏暫存資料夾 → rename；目標只能不存在或是空資料夾，**絕不覆蓋或刪除有內容的資料夾**（`check_target`）。
 
 ## PowerPoint（`pptx-export.ts` + `export/pptx`）
 
-- 一頁 = 一張滿版圖片（同一份 Typst 排版經 typst-render 點陣化，`PIXELS_PER_PT = 3`；有照片的頁 JPEG、其他 PNG），文字不能編輯；`rasterize_pages` 用 `std::thread::scope` 平行。
+- 一頁 = 一張滿版圖片（同一份 Typst 排版經 typst-render 點陣化，`PIXELS_PER_PT = 3`；上傳的封面 `export/cover.rs` 也用 `rasterize_at`，只排第一頁、寬 600 px；有照片的頁 JPEG、其他 PNG），文字不能編輯；`rasterize_pages` 用 `std::thread::scope` 平行。
 - 只給簡報尺寸、每頁同一尺寸：前端 `pptxExportProblem` / Rust `pptx::slide_size`（`SLIDE_SIZES_PT`）**規則相同**。
 - `package.rs` 是固定 XML 模板：使用者文字經 `escape`，屬性再經 `escape_attribute`（換行寫成 `&#10;`）。少任何一個 part PowerPoint 就跳「修復」，**改這裡要用 PowerPoint 實際開檔**（COM `Presentations.Open(path, -1, 0, 0)`；腳本要結束自己開的 POWERPNT）。

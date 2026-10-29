@@ -72,6 +72,7 @@ pub fn run() {
             commands::export::export_choose_path,
             commands::export::export_pdf,
             commands::export::export_flipbook,
+            commands::export::export_flipbook_zip,
             commands::export::export_pptx,
             commands::export::export_open_last,
             commands::mcp::mcp_set_enabled,

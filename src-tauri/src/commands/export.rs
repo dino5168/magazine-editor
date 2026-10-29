@@ -24,6 +24,9 @@ pub enum ExportFormat {
     Pdf,
     /// A folder with `index.html` (HTML5 flip book).
     Flipbook,
+    /// The same flip book as one `.zip` (the bytes the web-magazine upload sends).
+    #[serde(rename = "flipbookZip")]
+    FlipbookZip,
     /// One `.pptx` file; slide-size documents only.
     Pptx,
 }
@@ -33,6 +36,7 @@ impl ExportFormat {
         match self {
             Self::Pdf => "匯出 PDF",
             Self::Flipbook => "匯出翻頁電子書（輸入資料夾名稱）",
+            Self::FlipbookZip => "匯出翻頁電子書（Zip）",
             Self::Pptx => "匯出 PowerPoint",
         }
     }
@@ -44,7 +48,7 @@ pub struct ExportState {
     fonts: OnceLock<Arc<Vec<Font>>>,
     /// Chosen by `export_choose_path`, consumed by the export of the same format.
     pending: Mutex<Option<(ExportFormat, PathBuf)>>,
-    /// What `export_open_last` opens: the PDF / PowerPoint file, or the flip book's `index.html`.
+    /// What `export_open_last` opens: the PDF / PowerPoint / zip file, or the flip book's `index.html`.
     last_export: Mutex<Option<PathBuf>>,
 }
 
@@ -129,6 +133,7 @@ pub async fn export_choose_path(
         ExportFormat::Pdf => dialog.set_file_name(format!("{file_name}.pdf")).add_filter("PDF", &["pdf"]),
         // 資料夾沒有副檔名；不加 filter，對話框才不會自己補上
         ExportFormat::Flipbook => dialog.set_file_name(format!("{file_name} 翻頁書")),
+        ExportFormat::FlipbookZip => dialog.set_file_name(format!("{file_name} 翻頁書.zip")).add_filter("Zip 壓縮檔", &["zip"]),
         ExportFormat::Pptx => dialog.set_file_name(format!("{file_name}.pptx")).add_filter("PowerPoint 簡報", &["pptx"]),
     };
     if let Some(directory) = directory {
@@ -141,6 +146,7 @@ pub async fn export_choose_path(
     let path = match format {
         ExportFormat::Pdf => with_extension(picked, "pdf"),
         ExportFormat::Pptx => with_extension(picked, "pptx"),
+        ExportFormat::FlipbookZip => with_extension(picked, "zip"),
         ExportFormat::Flipbook => {
             let folder = flipbook_folder(picked);
             // 先檢查，使用者不用等排版完才知道名稱不能用（寫入前會再檢查一次）
@@ -194,6 +200,29 @@ pub async fn export_flipbook(
     Ok(ExportResult { pages: output.pages, skipped_images: output.skipped_images })
 }
 
+/// Builds the HTML5 flip book and writes it as one `.zip` to the path chosen by
+/// `export_choose_path` (`index.html` at the root, ready for a web host).
+#[tauri::command]
+pub async fn export_flipbook_zip(
+    project: State<'_, ProjectState>,
+    exports: State<'_, ExportState>,
+    request: ExportRequest,
+) -> AppResult<ExportResult> {
+    let path = exports.take_pending(ExportFormat::FlipbookZip)?;
+    let root = project.current()?.root;
+    let output = tauri::async_runtime::spawn_blocking(move || -> AppResult<(flipbook::FlipbookOutput, Vec<u8>)> {
+        let output = flipbook::build_flipbook(&root, &request)?;
+        let zip = flipbook::zip_book(&output.files)?;
+        Ok((output, zip))
+    })
+    .await
+    .map_err(|error| AppError::Export(format!("匯出中斷：{error}")))??;
+    let (output, zip) = output;
+    write_atomic(&path, &zip)?;
+    exports.set_last_export(path)?;
+    Ok(ExportResult { pages: output.pages, skipped_images: output.skipped_images })
+}
+
 /// Draws every page as a slide picture and writes the PowerPoint file to the path chosen by
 /// `export_choose_path`. Only documents whose pages share one slide size (`pptx::slide_size`).
 #[tauri::command]
@@ -237,6 +266,7 @@ mod tests {
         assert_eq!(serde_json::from_str::<ExportFormat>(r#""pdf""#).unwrap(), ExportFormat::Pdf);
         assert_eq!(serde_json::from_str::<ExportFormat>(r#""flipbook""#).unwrap(), ExportFormat::Flipbook);
         assert_eq!(serde_json::from_str::<ExportFormat>(r#""pptx""#).unwrap(), ExportFormat::Pptx);
+        assert_eq!(serde_json::from_str::<ExportFormat>(r#""flipbookZip""#).unwrap(), ExportFormat::FlipbookZip);
         assert!(serde_json::from_str::<ExportFormat>(r#""epub""#).is_err());
     }
 

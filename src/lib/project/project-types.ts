@@ -89,7 +89,7 @@ export interface FontCatalogProgress {
 }
 
 /** Output format of `export_choose_path` (`ExportFormat` in Rust). */
-export type ExportFormat = "pdf" | "flipbook" | "pptx";
+export type ExportFormat = "pdf" | "flipbook" | "flipbookZip" | "pptx";
 
 /** Result of `export_pdf` / `export_flipbook` / `export_pptx` (`ExportResult` in Rust). */
 export interface ExportResult {

@@ -133,6 +133,7 @@ function EditorLayout() {
       "file.saveAs": () => void project.saveAs(),
       "file.exportPdf": () => void project.exportPdf(),
       "file.exportFlipbook": () => void project.exportFlipbook(),
+      "file.exportFlipbookZip": () => void project.exportFlipbookZip(),
       "file.exportPptx": () => void project.exportPptx(),
       "file.importImage": importImage,
       "project.library": () => openLibrary(),

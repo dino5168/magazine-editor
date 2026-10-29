@@ -7,6 +7,7 @@
 //! [`pptx`] draws each Typst page as a slide picture.
 
 pub mod archive;
+pub mod cover;
 pub mod document_fonts;
 pub mod epub;
 pub mod flipbook;
@@ -15,8 +16,9 @@ pub mod html;
 pub mod pdf;
 pub mod pptx;
 pub mod render;
+// upload/package.rs 的測試也用它產生翻頁書
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 pub mod world;
 
 #[expect(unused_imports, reason = "階段 4 由 export command 呼叫；接上後移除這個屬性")]

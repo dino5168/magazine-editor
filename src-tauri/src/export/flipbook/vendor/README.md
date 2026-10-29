@@ -5,7 +5,7 @@
 | 項目 | 內容 |
 |---|---|
 | 套件 | npm `page-flip` **2.0.7**（https://github.com/Nodlik/StPageFlip） |
-| 授權 | MIT（`page-flip.LICENSE`，匯出時一起附上） |
+| 授權 | MIT（`page-flip.LICENSE`，匯出時以 `viewer/page-flip.LICENSE.txt` 一起附上：沒有副檔名的檔案會被網站略過） |
 | 檔案 | `page-flip.browser.js` = 套件的 `dist/js/page-flip.browser.js`，未修改 |
 | SHA-256 | `BBACA0BBEF57A22BB66A3FC69D67BAF9A17FB9A9C89EC9ED35E2B91ABE4BD1E7` |
 | 取得方式 | `npm pack page-flip@2.0.7`（npm 驗證 integrity）後解壓 |

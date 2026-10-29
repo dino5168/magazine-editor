@@ -67,7 +67,7 @@ pub fn has_raster_photo(page: &RenderPage) -> bool {
     })
 }
 
-/// Draws one page and encodes it.
+/// Draws one page at the slide resolution (`PIXELS_PER_PT`) and encodes it.
 ///
 /// # Args
 /// * `page` - The Typst page.
@@ -76,7 +76,15 @@ pub fn has_raster_photo(page: &RenderPage) -> bool {
 /// # Errors
 /// `AppError::Export` when encoding fails.
 pub fn rasterize(page: &Page, format: SlideImageFormat) -> AppResult<SlideImage> {
-    let pixmap = typst_render::render(page, &typst_render::RenderOptions { pixel_per_pt: PIXELS_PER_PT.into(), ..Default::default() });
+    rasterize_at(page, format, PIXELS_PER_PT)
+}
+
+/// Draws one page at `pixel_per_pt` and encodes it (the upload cover uses a smaller resolution).
+///
+/// # Errors
+/// `AppError::Export` when encoding fails.
+pub fn rasterize_at(page: &Page, format: SlideImageFormat, pixel_per_pt: f64) -> AppResult<SlideImage> {
+    let pixmap = typst_render::render(page, &typst_render::RenderOptions { pixel_per_pt: pixel_per_pt.into(), ..Default::default() });
     let (width, height) = (pixmap.width(), pixmap.height());
     // 頁面背景一定不透明（#rrggbb，模板的 page fill），所以 premultiplied RGBA 就是 RGB + 255，直接丟掉 alpha。
     // 用 image 的 to_rgb8（在已最佳化的 crate 裡），開發版自己寫迴圈一頁要多 0.2 秒

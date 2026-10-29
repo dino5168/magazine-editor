@@ -158,6 +158,7 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 
 - [ ] 步驟 0（web-magazine 後端：白名單加 `gif`、`txt`）
 - [x] 步驟 1（2026-10-29）：`upload/server_url.rs`（`parse_server_url`，用 `reqwest::Url`，IP 判斷用 `std::net::IpAddr`，不另加 `url` crate）、`upload/response.rs`（`UploadCode`、`UploadFailure`、`Call`、`graphql_data`、`classify_http`、`timeout`、`redirect`）、`AppError::Upload`（JSON 多 `code`、`retryAfter`）；前端 `ERROR_KINDS` 加 `upload`。測試 17 個。`upload/mod.rs` 暫時 `#![allow(dead_code)]`，步驟 2 移除
+- [~] 步驟 3（2026-10-29，程式與測試完成，等使用者在桌面版匯出 zip；手動上傳要等步驟 0）：`flipbook::zip_book`（圖片與 woff2 用 Stored）、授權檔改名 `viewer/page-flip.LICENSE.txt`、`export/pptx/raster.rs` 的 `rasterize_at`、`export/cover.rs`（`render_cover` 只排第一頁）、`upload/package.rs`（`prepare`：白名單、5 000 個檔案、解壓 400 MB、zip 100 MB）；`ExportFormat::FlipbookZip`（`"flipbookZip"`）與 `export_flipbook_zip`、選單「檔案 → 匯出為 → 翻頁電子書（Zip）...」（字型授權提醒同資料夾匯出）；`mcp-tools.json`、橋接程式、Python SDK、`MCP-工具清單.md` 重新產生 / 更新。`cover.rs`、`package.rs` 暫時 `#![cfg_attr(not(test), allow(dead_code))]`，步驟 4 移除
 - [x] 步驟 2（2026-10-29；使用者對本機後端跑連網測試通過）：`upload/client.rs`（`http_client`：不轉址、連線 10 秒、GraphQL 每次 30 秒、回應上限 2 MB；`login` / `my_books` / `create_book`；`Session` 的 `Debug` 不印 token）、`UploadState`（`OnceLock` client、`Mutex<Option<Session>>`、過期或 `unauthenticated` 就忘掉）、`commands/upload.rs`（`upload_login` / `upload_logout` / `upload_session` / `upload_list_books` / `upload_create_book`，ADMIN 在本機就擋新建）。單元測試 8 個；連網測試 `login_and_books_over_the_network`（`#[ignore]`，會建立一本「magazine-editor 連線測試 …」草稿）
 
 **步驟 6 的人工驗證清單**

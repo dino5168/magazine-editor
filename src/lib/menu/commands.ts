@@ -95,6 +95,7 @@ export const COMMANDS = {
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },
   "file.exportFlipbook": { label: "翻頁電子書（HTML5）...", title: "匯出為翻頁電子書" },
+  "file.exportFlipbookZip": { label: "翻頁電子書（Zip）...", title: "匯出為翻頁電子書（Zip）" },
   // 只有簡報尺寸的文件可以匯出：停用與否看文件（command-availability.ts），不是固定的 disabledReason
   "file.exportPptx": { label: "PowerPoint（PPTX）...", title: "匯出為 PowerPoint" },
   "file.exportEpub": { label: "EPUB...", title: "匯出為 EPUB" },

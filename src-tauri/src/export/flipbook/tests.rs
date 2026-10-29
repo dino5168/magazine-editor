@@ -58,7 +58,7 @@ fn book_layout() {
     for expected in [
         "index.html",
         "viewer/page-flip.browser.js",
-        "viewer/page-flip.LICENSE",
+        "viewer/page-flip.LICENSE.txt",
         "viewer/viewer.js",
         "viewer/viewer.css",
         "styles/page.css",
@@ -330,4 +330,22 @@ fn project_fonts_ship_with_the_book() {
     assert!(css.contains(r#"font-family: "project-font-font-book"; font-weight: 400; font-style: normal; src: url("../fonts/project-font-1.ttf"); ascent-override: 95.2%;"#), "{css}");
     assert_eq!(output.files.iter().filter(|(name, _)| name.starts_with("fonts/project-font-")).count(), 1);
     assert!(file(&output, "index.html").contains("font-family:'project-font-font-book','Noto Sans TC',sans-serif"));
+}
+#[test]
+fn zip_holds_every_file_with_index_at_the_root() {
+    use std::io::Read;
+    let output = export(fixture_document());
+    let bytes = zip_book(&output.files).unwrap();
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    assert_eq!(archive.len(), output.files.len());
+    for (name, data) in &output.files {
+        let mut entry = archive.by_name(name).unwrap_or_else(|_| panic!("missing {name}"));
+        let mut read = Vec::new();
+        entry.read_to_end(&mut read).unwrap();
+        assert_eq!(&read, data, "{name}");
+        // 已壓縮的圖片原樣放，其他用 deflate
+        let stored = name.ends_with(".png");
+        assert_eq!(entry.compression() == zip::CompressionMethod::Stored, stored, "{name}");
+    }
+    assert!(archive.by_name("index.html").is_ok(), "index.html at the root, not in a folder");
 }

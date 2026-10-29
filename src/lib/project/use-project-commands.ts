@@ -45,6 +45,8 @@ export interface ProjectCommands {
   readonly exportPdf: () => Promise<boolean>;
   /** Exports the same content as an HTML5 flip book folder. */
   readonly exportFlipbook: () => Promise<boolean>;
+  /** Exports the same flip book as one `.zip` file (for a web host or the website upload page). */
+  readonly exportFlipbookZip: () => Promise<boolean>;
   /** Exports the same content as PowerPoint, one picture per slide (slide-size documents only). */
   readonly exportPptx: () => Promise<boolean>;
 }
@@ -53,6 +55,7 @@ export interface ProjectCommands {
 const EXPORT_FORMATS = {
   pdf: { name: "PDF", run: projectApi.exportPdf },
   flipbook: { name: "翻頁電子書", run: projectApi.exportFlipbook },
+  flipbookZip: { name: "翻頁電子書（Zip）", run: projectApi.exportFlipbookZip },
   pptx: { name: "PowerPoint", run: projectApi.exportPptx },
 } as const satisfies Record<ExportFormat, { name: string; run: (request: ExportRequest) => unknown }>;
 
@@ -174,7 +177,7 @@ export function useProjectCommands(
           return false;
         }
       }
-      if (format === "flipbook") {
+      if (format === "flipbook" || format === "flipbookZip") {
         const fonts = fontsToCheckBeforePublishing(document);
         if (fonts.length > 0 && !(await confirmFontLicense(fonts.map((font) => font.name)))) return false;
       }
@@ -208,6 +211,7 @@ export function useProjectCommands(
   );
   const exportPdfImpl = useCallback(() => runExport("pdf"), [runExport]);
   const exportFlipbookImpl = useCallback(() => runExport("flipbook"), [runExport]);
+  const exportFlipbookZipImpl = useCallback(() => runExport("flipbookZip"), [runExport]);
   const exportPptxImpl = useCallback(() => runExport("pptx"), [runExport]);
 
   return useMemo(
@@ -219,9 +223,10 @@ export function useProjectCommands(
       confirmClose: exclusive(resolveUnsaved),
       exportPdf: exclusive(exportPdfImpl),
       exportFlipbook: exclusive(exportFlipbookImpl),
+      exportFlipbookZip: exclusive(exportFlipbookZipImpl),
       exportPptx: exclusive(exportPptxImpl),
     }),
-    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved, exportPdfImpl, exportFlipbookImpl, exportPptxImpl],
+    [exclusive, newImpl, openImpl, saveImpl, saveAsImpl, resolveUnsaved, exportPdfImpl, exportFlipbookImpl, exportFlipbookZipImpl, exportPptxImpl],
   );
 }
 

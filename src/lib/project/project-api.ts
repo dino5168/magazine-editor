@@ -102,13 +102,15 @@ export const projectApi = {
   writeRecovery: (content: ProjectContent) => call<null>("recovery_write", { content }),
   clearRecovery: () => call<null>("recovery_clear"),
   /**
-   * Shows the save dialog for `format`; resolves to the chosen file (PDF, PowerPoint) or folder (flip book)
+   * Shows the save dialog for `format`; resolves to the chosen file (PDF, flip book zip, PowerPoint) or folder (flip book)
    * name, or null when cancelled.
    */
   chooseExportPath: (format: ExportFormat, suggestedName: string) =>
     call<string | null>("export_choose_path", { format, suggestedName }),
   exportPdf: (request: ExportRequest) => call<ExportResult>("export_pdf", { request }),
   exportFlipbook: (request: ExportRequest) => call<ExportResult>("export_flipbook", { request }),
+  /** The same flip book as one `.zip` (`index.html` at the root; the bytes the website upload sends). */
+  exportFlipbookZip: (request: ExportRequest) => call<ExportResult>("export_flipbook_zip", { request }),
   exportPptx: (request: ExportRequest) => call<ExportResult>("export_pptx", { request }),
   openLastExport: () => call<null>("export_open_last"),
   /** Starts / stops listening for the MCP bridge (`magazine-mcp.exe`). */

@@ -5,6 +5,7 @@
 //! Plan: `docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`.
 
 pub mod client;
+pub mod package;
 pub mod response;
 pub mod server_url;
 
