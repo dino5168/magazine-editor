@@ -6,3 +6,4 @@ pub mod mcp;
 pub mod project;
 pub mod recovery;
 pub mod templates;
+pub mod upload;

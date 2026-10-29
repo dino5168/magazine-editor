@@ -43,7 +43,7 @@ pub struct UploadFailure {
 }
 
 impl UploadFailure {
-    fn new(code: UploadCode, message: impl Into<String>) -> Self {
+    pub fn new(code: UploadCode, message: impl Into<String>) -> Self {
         Self { code, message: message.into(), retry_after: None }
     }
 }

@@ -58,7 +58,7 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 
 | 檔案 | 新 / 改 | 內容 |
 | --- | --- | --- |
-| `src-tauri/Cargo.toml` | 改 | 用到時才加：步驟 2 `reqwest` 加 `json`；步驟 4 加 `multipart`、`stream` 與 `futures-util`（把位元組切成串流）。保留 `default-features = false`、`native-tls`、`system-proxy`；加之前用 `cargo tree -i` 確認不會多編一份 |
+| `src-tauri/Cargo.toml` | 改 | 用到時才加：步驟 2 只給 `time` 加 `parsing`（讀 `expiresAt`；JSON 用 `serde_json` 自己序列化，`reqwest` 不加 `json`）；步驟 4 `reqwest` 加 `multipart`、`stream` 與 `futures-util`（把位元組切成串流）。保留 `default-features = false`、`native-tls`、`system-proxy`；加之前用 `cargo tree -i` 確認不會多編一份 |
 | `src-tauri/src/error.rs` | 改 | `AppError::Upload { code: UploadCode, message, retry_after: Option<u64> }`，序列化多兩個欄位 `code`、`retryAfter`；`kind = "upload"` |
 | `src-tauri/src/upload/mod.rs` | 新 | `UploadState`（server、session、`busy`、`cancel`、`last_reader_url`）、常數（逾時、上限） |
 | `src-tauri/src/upload/server_url.rs` | 新 | `parse_server_url(input) -> AppResult<ServerUrl { origin, host, insecure }>`（純函式） |
@@ -158,7 +158,7 @@ WebView（React）                         Rust（src-tauri/src/upload/ + comman
 
 - [ ] 步驟 0（web-magazine 後端：白名單加 `gif`、`txt`）
 - [x] 步驟 1（2026-10-29）：`upload/server_url.rs`（`parse_server_url`，用 `reqwest::Url`，IP 判斷用 `std::net::IpAddr`，不另加 `url` crate）、`upload/response.rs`（`UploadCode`、`UploadFailure`、`Call`、`graphql_data`、`classify_http`、`timeout`、`redirect`）、`AppError::Upload`（JSON 多 `code`、`retryAfter`）；前端 `ERROR_KINDS` 加 `upload`。測試 17 個。`upload/mod.rs` 暫時 `#![allow(dead_code)]`，步驟 2 移除
-- [ ] 步驟 2
+- [x] 步驟 2（2026-10-29；使用者對本機後端跑連網測試通過）：`upload/client.rs`（`http_client`：不轉址、連線 10 秒、GraphQL 每次 30 秒、回應上限 2 MB；`login` / `my_books` / `create_book`；`Session` 的 `Debug` 不印 token）、`UploadState`（`OnceLock` client、`Mutex<Option<Session>>`、過期或 `unauthenticated` 就忘掉）、`commands/upload.rs`（`upload_login` / `upload_logout` / `upload_session` / `upload_list_books` / `upload_create_book`，ADMIN 在本機就擋新建）。單元測試 8 個；連網測試 `login_and_books_over_the_network`（`#[ignore]`，會建立一本「magazine-editor 連線測試 …」草稿）
 
 **步驟 6 的人工驗證清單**
 

@@ -30,7 +30,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
 sha2 = "0.10"
 uuid = { version = "1", features = ["v4"] }
-time = { version = "0.3", features = ["formatting"] }
+# parsing：上傳時讀伺服器給的 token 有效期限（RFC 3339）
+time = { version = "0.3", features = ["formatting", "parsing"] }
 typst = "=0.15.1"
 typst-pdf = "=0.15.1"
 typst-layout = "=0.15.1"

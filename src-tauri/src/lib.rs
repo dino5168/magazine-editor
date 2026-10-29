@@ -33,6 +33,7 @@ pub fn run() {
             app.manage(mcp::McpState::default());
             app.manage(project::system_fonts::SystemFontsState::default());
             app.manage(commands::fonts::FontDownloadState::default());
+            app.manage(upload::UploadState::default());
             commands::project::clear_untitled(app.handle());
             commands::templates::clean_up(app.handle());
             Ok(())
@@ -76,6 +77,11 @@ pub fn run() {
             commands::mcp::mcp_set_enabled,
             commands::mcp::mcp_respond,
             commands::mcp::mcp_take_attachment,
+            commands::upload::upload_login,
+            commands::upload::upload_logout,
+            commands::upload::upload_session,
+            commands::upload::upload_list_books,
+            commands::upload::upload_create_book,
         ])
         // 視窗只會在正常關閉時被 destroy（當機不會），此時才刪除自動備份
         .on_window_event(|window, event| {
