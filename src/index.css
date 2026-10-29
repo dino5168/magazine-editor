@@ -208,6 +208,11 @@
   }
   html {
     @apply font-sans;
+    /*
+     * 全形標點不擠壓（Chromium 預設把相鄰的標點擠成半寬）：畫布、量字（konva-measure-canvas.ts）、文字編輯框
+     * 和 EPUB / 翻頁書（export/html/css.rs）同一個設定，PDF 也不擠（template.typ）。會繼承，canvas 只認 DOM 裡的 computed style
+     */
+    text-spacing-trim: space-all;
   }
 }
 

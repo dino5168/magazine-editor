@@ -13,6 +13,7 @@ paths:
 ## 共通：排版資料怎麼來
 
 - **換行由編輯器決定，Typst 只定位**：`measureTextLayout()` 用離畫面的 `Konva.Text`（屬性和 `canvas-elements.tsx` 的節點完全相同）量 `lines` / `baseline` / `lineWidths`，放進 `ExportRequest.textLayouts`（key = element id；圖形內文字是 `<id>#label`，Rust `shape_label` 轉成一般文字元素）。模板逐行 `place`，不讓 Typst 再斷行。**必須在字型載入後呼叫**。Rust 缺 layout 時的退回只是保險。
+- **全形標點不擠**：Typst（`lang: zh`）會擠行首的開括號 / 行尾的結束標點，沒有開關 → `template.typ` 的 `line-content` 每行前後放寬 0 的 `edge-guard` box（Typst 只在行的第一個 / 最後一個項目是文字時擠；`h(0pt)` 會被丟掉）。EPUB / 翻頁書是 `css.rs` 的 `text-spacing-trim: space-all`。升級 typst 時重跑 `full_width_punctuation_at_line_edges_keeps_its_width`。
 - **使用者文字絕不進 Typst 程式碼**：模板 `template.typ` 固定，資料走 `data.json`（`pdf.rs` 的 `to_data()`）+ `json()`。不要改成字串拼接 .typ（測試 `user_text_is_data_not_typst_code`）。
 - **`ExportWorld` 是沙箱**：只能讀 `main.typ`、`data.json`、`assets/images/*`（再過 `validate_asset_path`），其他一律 `AccessDenied`。
 - **圖形內文字框也由前端算**：`labelFrames[id] = labelFrame(shape)`（有文字的圖形才放）；`shape_label` 驗證（有限、寬 > 0、高 ≥ 0），缺的退回外框內縮。

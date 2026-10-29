@@ -23,11 +23,15 @@
 // 它在換字型的地方（拉丁 ↔ 中文）會少加一個字距，中英混排就和畫布對不上。
 // 每行的起點由 Rust 用編輯器量到的行寬算好（lineStarts），靠左放在那裡，不交給 Typst 對齊
 // 首尾置中：每一行字與字的距離不同（lineGaps，編輯器算好，已含字距），同樣逐字放
+// 全形標點不擠：Typst（lang: zh）把行首的開括號、行尾的結束標點擠成半寬，沒有開關；畫布與 EPUB / 翻頁書都不擠。
+// Typst 只在行的第一個 / 最後一個項目是文字時調整，所以前後各放一個寬 0 的 box（h(0pt) 會被丟掉；整行仍是同一段文字，kerning 不變）
+#let edge-guard = box(width: 0pt)
 #let line-content(el, i, line) = {
   let gap = if el.lineGaps == none { el.letterSpacing } else { el.lineGaps.at(i) }
-  if line == "" or (el.lineGaps == none and gap == 0) { line } else {
+  let body = if line == "" or (el.lineGaps == none and gap == 0) { line } else {
     line.clusters().map(c => [#c]).join(h(pt(gap)))
   }
+  if line == "" { body } else { edge-guard + body + edge-guard }
 }
 
 // 換行由編輯器決定，一行絕不能再被 Typst 折斷。box 的寬度預設受文字框限制：首尾置中的行剛好等於框寬，

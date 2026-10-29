@@ -45,6 +45,8 @@ Chrome 擴充通常沒連上，所以用自己的 CDP 驅動程式：同資料�
 ## 陷阱
 
 - 點擊用 pointer 事件（`Input.dispatchMouseEvent`）：Radix 的 tabs / select 不理 `.click()`。
+- `__mag.dispatch` 之後要等 React render（約 300 ms）才讀 `__mag.state()`，否則拿到舊文件（同一個 `eval` 裡連續 dispatch 沒問題，讀的時候才要等）。
+- 要截畫布的像素：不要用 `stage.toDataURL()`（在不在 DOM 的 canvas 重畫，全形標點會被擠）；`launch({ scale: 2 })` 後讀頁面上圖層的 `layer.getNativeCanvasElement().toDataURL()`。
 - Konva 把同一點兩次快速點擊當 dblclick：重複點同一點時中間等一下。
 - 第一個 `.konvajs-content` 是「頁面」面板的縮圖；主畫布取最大的（`__mag.stage()` 已處理）。
 - `window.Konva` 不存在：`EDITOR_HOOKS` 從 performance entries 找 `/deps/konva.js` 再 `import()`。

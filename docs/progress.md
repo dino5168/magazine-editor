@@ -7,7 +7,7 @@
 > - archive 只在需要查歷史時才讀。
 > - repo 是 public：不要寫個人資訊、本機路徑或金鑰。
 
-最後更新：2026-10-29（上傳翻頁書到網站，步驟 1–5、7 完成）
+最後更新：2026-10-29（全形標點三端一致；上傳翻頁書到網站，步驟 1–5、7 完成）
 
 ---
 
@@ -19,8 +19,8 @@
 
 | 日期 | 項目 | commit | 計畫 |
 |---|---|---|---|
+| 10-29 | 全形標點三端都不擠（畫布 `space-all` + 量字 canvas 放進 DOM、PDF 行首 / 行尾 `edge-guard`；疊圖 ≤ 1 px） | （待 commit） | `docs/05-Plans-字型/03-全形標點擠壓-實作.md` |
 | 10-29 | 上傳翻頁書到 web-magazine 網站（檔案 → 上傳到網站...）、匯出翻頁電子書（Zip） | `602ed9f`…`e1d382c` | `docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` |
-| 10-29 | 專案重構（降低 context 用量，迭代 0–7） | 迭代 7：`f059640`…`a9f9aef` | `docs/12-Plans-重構/1-專案重構-實作.md`、`2-大檔拆分-實作.md` |
 更早的（圖片框 v17、文件範本、段落縮排 v16…）、完整的決定表與逐項驗證清單：`docs/progress-archive/2026-10.md`。
 
 ## 待辦
@@ -71,7 +71,7 @@ Claude 只在瀏覽器模式 / 無頭 Edge / 疊圖比對驗證過。每項要�
 
 ## 尚未驗證 / 已知問題
 
-- **全形標點擠壓三端不一致**：畫布把相鄰全形標點擠成半寬，EPUB / 翻頁書與 Typst 行中不擠；Typst 另外擠行首 / 行尾括號。建議另開任務（`docs/05-Plans-字型/02-字型管理問題-實作.md` 步驟 7）。
+- 之後做「匯出 PNG」：Konva 的 `toDataURL` / `toCanvas` / `cache` 在不在 DOM 的 canvas 重畫，全形標點會被擠（`editor-text.md`）。
 - 型別檢查用 `npx tsc --noEmit -p tsconfig.json` 或 `npm run build`，**不要用 `tsc -b`**（會在根目錄產生檔案）。
 - `cargo clippy --all-targets` 剩 5 個警告，刻意保留：`format/elements.rs` 的 `Element` 變體大小差很多（`large_enum_variant`，要 Box 會動到全部匯出程式）、`format/tests.rs` 4 處 `type_complexity`（只在測試）。
 - 圖形庫的圖形（雲、箭頭、對話框…）內文字還是排在外框內縮 4 pt，可能超出形狀（橢圓 / 多邊形 / 星形已改成形狀內的最大矩形）。

@@ -792,6 +792,30 @@ mod tests {
     }
 
     #[test]
+    fn full_width_punctuation_at_line_edges_keeps_its_width() {
+        // 畫布與 EPUB / 翻頁書都不擠全形標點；Typst（lang: zh）預設把行首的開括號、行尾的結束標點擠成半寬。
+        // 100 pt 字：標點和一般的字（「口」）一樣佔一個字寬，「丨」的位置不變
+        let stroke_x = |line: &str, align: Align, y: u32| {
+            let raster = render_request(&single_text(line, 100.0 * line.chars().count() as f64, |t| t.align = align));
+            let runs = dark_runs(&raster, y);
+            if align == Align::Left { *runs.last().unwrap() } else { runs[0] }
+        };
+        // 開括號在字身上半部、結束標點在下半部：各取只有「丨」與「口」的那一列
+        let plain = stroke_x("口丨", Align::Left, 185);
+        for line in ["「丨", "（丨", "『丨"] {
+            assert_eq!(stroke_x(line, Align::Left, 185), plain, "{line}");
+        }
+        // 行中相鄰的標點也不擠（region: tw 是 CNS 樣式，Typst 本來就不擠；升級 Typst 時守著）
+        assert_eq!(stroke_x("口：「丨", Align::Left, 185), stroke_x("口口口丨", Align::Left, 185), "adjacent punctuation");
+        for align in [Align::Right, Align::Center] {
+            let plain = stroke_x("丨口", align, 115);
+            for line in ["丨」", "丨）", "丨。"] {
+                assert_eq!(stroke_x(line, align, 115), plain, "{line} {align:?}");
+            }
+        }
+    }
+
+    #[test]
     fn underline_and_strikethrough_sit_where_konva_draws_them() {
         // 100 pt：底線中心在基線下 25（y = 215）、刪除線在基線上 25（y = 165），粗 6.67，從 x = 100 到 200
         let raster = render_request(&single_text("  ", 100.0, |t| (t.decoration.underline, t.decoration.strikethrough) = (true, true)));

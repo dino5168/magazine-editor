@@ -24,6 +24,8 @@ paths:
 - 行寬、行框、每行間距由前端量好放進 `TextLayout`（`lineWidths` / `lineGaps` / `lineBoxes`），Rust 不自己量；有 `line_starts` 的行，PDF / EPUB 都靠左放在起點，不交給 Typst / CSS 對齊。
 - 有 `lineStarts` 的行**不能被格式再折斷**：PDF 的 `box` 寬度給框寬 + 1000 pt（`no-wrap-width`）、EPUB 每行 `white-space:nowrap`。
 - 套用 / 新增樣式的文字前先 `loadFontFamily`，否則畫布用替代字型量換行。
+- **全形標點一律不擠**（三端一致，`docs/05-Plans-字型/03-全形標點擠壓-實作.md`）：`index.css` 的 `html { text-spacing-trim: space-all }`。canvas 只吃 **DOM 裡**的 computed style，所以 `main.tsx` 一開始呼叫 `attachKonvaMeasureCanvas()`（`konva-measure-canvas.ts`）把 Konva 的量字 canvas 放進隱藏容器。依賴 Konva 10.5.0 內部（量字 canvas 由 `Util.createCanvasElement` 建立、全 App 共用）：**升級 Konva 時重測**（console 的 `[text]` 警告）。
+- `stage.toDataURL()` / `toCanvas()` / `node.cache()` 在**不在 DOM** 的 canvas 重畫，那裡又會擠標點（字疊在一起）：做「匯出 PNG」時要處理（見計畫 03 步驟 3）。
 
 ## 文字裝飾（`text-style.ts`）
 
