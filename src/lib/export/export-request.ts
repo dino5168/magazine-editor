@@ -6,7 +6,7 @@ import { photoPlacement, type PhotoPlacement } from "@/lib/editor/shape-image";
 import type { PathCommand } from "@/lib/editor/shape-path";
 import { detailStroke, presetPath } from "@/lib/editor/shape-presets";
 import type { LineBox } from "@/lib/editor/text-indent";
-import type { EditorDocument, Page, Stroke, TextElement } from "@/lib/editor/types";
+import type { CanvasElement, EditorDocument, Page, Stroke, TextElement } from "@/lib/editor/types";
 import { resolveElementsVariables, resolveElementVariables, variableValues } from "@/lib/editor/variables";
 import { exportedLinePieces } from "./line-export";
 
@@ -85,28 +85,66 @@ export function spilloverCopyId(pageIndex: number, index: number): string {
   return `spill:${pageIndex}:${index}`;
 }
 
+/** What a page shows, by origin; every element keeps its own id and has its text variables resolved. */
+export interface PageLayers {
+  /** Its master pages' elements, ancestor first. */
+  readonly inherited: readonly CanvasElement[];
+  /** The facing page's elements crossing the spine, shifted into this page (`spilloverInto`). */
+  readonly spillover: readonly SpilloverLayer[];
+  /** The page's own elements. */
+  readonly own: readonly CanvasElement[];
+}
+
+/** One facing-page element crossing the spine, in the receiving page's coordinates. */
+export interface SpilloverLayer {
+  readonly element: CanvasElement;
+  /** 0-based index of the page it belongs to. */
+  readonly sourceIndex: number;
+}
+
 /**
- * A page as exported, bottom to top: its master pages' elements (ancestor first), the facing page's
- * elements crossing the spine (shifted into this page; the paper crops them, so the two pages join
- * up), then its own elements. Copies get per-page ids; text variables take the values of the page
- * each element belongs to (a running footer crossing the spine keeps its own page number).
+ * The layers of a page, bottom to top: its master pages' elements (ancestor first), the facing
+ * page's elements crossing the spine, then its own elements. Text variables take the values of the
+ * page each element belongs to (a running footer crossing the spine keeps its own page number).
+ * Shared by the export (`exportedPage`) and the MCP layout check.
+ *
+ * Args:
+ *   document: Document.
+ *   page: A page of the document.
+ *   pageIndex: Its 0-based index.
+ *
+ * Returns:
+ *   The layers (original ids), or null when the page has no variable values (not a page).
  */
-function exportedPage(document: EditorDocument, page: Page, pageIndex: number): Page {
+export function pageLayers(document: EditorDocument, page: Page, pageIndex: number): PageLayers | null {
   const values = variableValues(document, page.id);
-  if (values === null) return page;
-  // 同一個主頁物件會出現在很多頁，而且換完變數每頁的文字不同：textLayouts 以 id 為 key，所以每頁要有自己的 id
-  const inherited = inheritedElements(document.masters, page).map((element, index) => ({
-    ...resolveElementVariables(element, values),
-    id: masterCopyId(pageIndex, index),
-  }));
-  const spillover = spilloverInto(document.pages, pageIndex).map(({ element, sourceIndex, dx }, index) => {
+  if (values === null) return null;
+  const inherited = inheritedElements(document.masters, page).map((element) => resolveElementVariables(element, values));
+  const spillover = spilloverInto(document.pages, pageIndex).map(({ element, sourceIndex, dx }) => {
     const sourceValues = variableValues(document, document.pages[sourceIndex].id);
     const resolved = sourceValues ? resolveElementVariables(element, sourceValues) : element;
-    return { ...resolved, id: spilloverCopyId(pageIndex, index), x: element.x + dx };
+    return { element: { ...resolved, x: element.x + dx }, sourceIndex };
   });
-  const own = resolveElementsVariables(page.elements, values);
+  return { inherited, spillover, own: resolveElementsVariables(page.elements, values) };
+}
+
+/**
+ * A page as exported, bottom to top (`pageLayers`). Copies get per-page ids.
+ */
+function exportedPage(document: EditorDocument, page: Page, pageIndex: number): Page {
+  const layers = pageLayers(document, page, pageIndex);
+  if (layers === null) return page;
+  const { inherited, spillover, own } = layers;
   if (inherited.length === 0 && spillover.length === 0 && own === page.elements) return page;
-  return { ...page, elements: [...inherited, ...spillover, ...own] };
+  // 同一個主頁物件會出現在很多頁，而且換完變數每頁的文字不同：textLayouts 以 id 為 key，所以每頁要有自己的 id
+  return {
+    ...page,
+    elements: [
+      ...inherited.map((element, index) => ({ ...element, id: masterCopyId(pageIndex, index) })),
+      ...spillover.map(({ element }, index) => ({ ...element, id: spilloverCopyId(pageIndex, index) })),
+      ...own,
+    ],
+  };
 }
 
 /**

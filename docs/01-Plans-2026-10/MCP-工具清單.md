@@ -4,6 +4,7 @@
 > 2026-10-21 加入 `batch`（計畫 `../09-Plans-Scripts/1-python-scripts-實作.md`）。
 > 2026-10-22 加入 `import_library_item`（匯入本機圖片到素材庫，計畫 `../11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md`）。
 > 2026-10-29 `run_command` 多一個指令 `file.exportFlipbookZip`（計畫 `../13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` 步驟 3）；同日步驟 5 再加 `file.uploadFlipbook`（只打開上傳對話框，密碼要使用者自己輸入，沒有上傳工具）。
+> 2026-10-31 `list_elements` 的文字物件回傳量出來的 `height`、`get_element` 多 `textHeight`（計畫 `../14-Plan-ClaudeCode看見畫面/1-看見畫面-實作.md` 步驟 1）；同日加入 `check_layout`（步驟 2）。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -24,7 +25,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 | 分類 | 工具 |
 |---|---|
-| 查詢 | `get_document`、`list_pages`、`list_elements`、`get_element`、`list_text_styles`、`list_shapes`、`list_fonts`、`list_swatches`、`list_library_items`、`list_commands` |
+| 查詢 | `get_document`、`list_pages`、`list_elements`、`get_element`、`check_layout`、`list_text_styles`、`list_shapes`、`list_fonts`、`list_swatches`、`list_library_items`、`list_commands` |
 | 物件 | `add_text`、`add_shape`、`add_line`、`update_element`、`delete_elements`、`place_library_item` |
 | 素材庫 | `import_library_item` |
 | 頁面與主頁 | `add_page`、`add_master`、`set_page_master`、`rename_page`、`set_page_background`、`rename_document` |
@@ -54,8 +55,9 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | -------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `get_document`       | 文件名稱、頁數、主頁數、紙張尺寸（含各尺寸幾頁）、邊界、頁碼規則數、文字樣式數、色票數、有沒有未存檔、使用者正在看的頁面或主頁           | —                                                                                   |
 | `list_pages`         | 頁面：第幾頁、id、名稱、寬高、背景（連到的色票名）、套用的主頁、物件數；主頁：id、名稱、以哪個主頁為基礎、寬高、背景、物件數、幾頁使用     | —                                                                                   |
-| `list_elements`      | 一頁（或主頁）的物件：id、類型、圖層位置（0 = 最底層）、位置、尺寸、旋轉、摘要（文字開頭 / 圖形種類與填色 / 圖片路徑）、連到的文字樣式 | `pageId`（省略 = 正在看的頁）                                                                |
+| `list_elements`      | 一頁（或主頁）的物件：id、類型、圖層位置（0 = 最底層）、位置、尺寸（文字的高度是量出來的）、旋轉、摘要（文字開頭 / 圖形種類與填色 / 圖片路徑）、連到的文字樣式 | `pageId`（省略 = 正在看的頁）                                                                |
 | `get_element`        | 單一物件的完整欄位、所在頁、圖層位置（頁面與主頁上的都找得到）                                           | `id*`                                                                               |
+| `check_layout`       | 一頁（或主頁）的版面問題：圖形內文字超出、有文字的物件重疊、超出頁面、超出邊界（警告）；文字用量的；可放進 `batch` | `pageId`（省略 = 正在看的頁）     |
 | `list_text_styles`   | 文字樣式：id、名稱、各欄位、連到的色票名、使用數                                                 | —                                                                                   |
 | `list_shapes`        | 所有圖形：id、名稱、分類、預設大小；圖形庫圖形的參數（名稱、說明、`ratio` 0–1 比例或 `pt` 固定長度、範圍、預設）        | —                                                                                   |
 | `list_fonts`         | 內建 4 套 + 專案字型：id、名稱、缺字時用的內建字型、有沒有粗體檔、授權、使用數                               | —                                                                                   |
@@ -96,7 +98,9 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | 圖片 | `height` |
 | 線條 | `points`（換掉所有點，頁面座標；不能和 `x` / `y` 同時給）、`path`、`compound`、`stroke`（不能是 `null`）、`start`、`end`（箭頭；只給 `arrowhead` 時保留原本的大小） |
 
-`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。
+`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對文字物件另外回 `textHeight`（依目前字型與換行量出來的高度，沒有存在檔案裡）。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。
+
+`check_layout` 回 `{ pageId, pageName, checked, issues, truncated }`；`issues` 的 `type` 是 `textOverflow`（`direction: height | width`、`overflowPt`；矩形的文字只吃掉內距時 `severity: "warning"`）、`overlap`（`ids`、`areaPt2`）、`outOfPage` / `outOfMargin`（`overflowPt: { top?, right?, bottom?, left? }`）。主頁物件、跨頁物件、頁碼也會檢查，牽涉到它們時附 `sources`（`master` / `facingPage` / `pageNumber`），id 是原物件的。文字的外框只算字實際畫到的範圍（依對齊與縮排）。排除規則：相鄰（重疊 ≤ 1 pt²）、文字完全在圖形 / 圖片裡、線條、雙頁越過中縫、蓋滿整頁的背景、碰到頁緣的物件（不算超出邊界）。最多 50 筆。
 
 **圖片框的 `image`**（2026-10-19）：`{ item, fit, focusX, focusY, zoom }`，把素材庫的圖片裁在圖形的外形裡（畫在填色之上、邊框與文字之下）。`item` = 素材庫圖片的 id 或名稱（`add_shape` 必填；`update_element` 省略 = 保留目前的照片）；`fit` = `cover` 填滿（預設）/ `contain` 完整顯示；`focusX` / `focusY` 0–1（照片比框大時保留哪一段，預設 0.5）；`zoom` 1–10（預設 1）。換照片時保留原本的 `fit` / 對焦 / 縮放。文字檔、音訊、垃圾桶裡的素材不能用。
 

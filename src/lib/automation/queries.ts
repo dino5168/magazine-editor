@@ -18,6 +18,7 @@ import type { Result } from "@/lib/editor/validation";
 import { visibleItems } from "@/lib/library/library-selectors";
 import { folderPath } from "@/lib/library/library-tree";
 import type { Library, LibraryItem } from "@/lib/library/types";
+import { measuredTextHeight, type MeasureText } from "./layout";
 import type { ToolArgs } from "./tool-definitions";
 
 /** Longest text excerpt in element lists (characters, not UTF-16 units). */
@@ -81,7 +82,7 @@ export interface ElementSummary {
   readonly x: number;
   readonly y: number;
   readonly width: number;
-  /** Text elements have no stored height (it follows the text); omitted for them. */
+  /** Text elements: the height measured from their wrapped lines (not stored; it follows the text). */
   readonly height?: number;
   readonly rotation: number;
   /** Text (excerpt), shape kind and label, or image source. */
@@ -149,23 +150,28 @@ export interface ElementDetail {
   readonly pagePoints?: readonly { readonly x: number; readonly y: number }[];
   /** Image frames: the library image their photo is (null when the library no longer lists it). */
   readonly photoItem?: { readonly id: string; readonly name: string } | null;
+  /** Text elements: the height measured from their wrapped lines (pt; not stored). */
+  readonly textHeight?: number;
 }
 
 /**
- * Tool `get_element`: `getElement` plus, for an image frame, which library image its photo is.
+ * Tool `get_element`: `getElement` plus, for a text element, its measured height and, for an image
+ * frame, which library image its photo is.
  *
  * Args:
  *   state: Editor state.
  *   library: The asset library.
+ *   measure: Canvas text layout.
  *   id: Element id.
  *
  * Returns:
  *   The element detail, or an error pointing to `list_elements`.
  */
-export function getElementDetail(state: EditorState, library: Library, id: string): Result<ElementDetail> {
+export function getElementDetail(state: EditorState, library: Library, measure: MeasureText, id: string): Result<ElementDetail> {
   const found = getElement(state, id);
   if (found.error) return found;
   const { element } = found.data;
+  if (element.type === "text") return { data: { ...found.data, textHeight: round(measuredTextHeight(element, measure)) }, error: null };
   if (element.type !== "shape" || !element.image) return found;
   const { src } = element.image;
   const item = library.items.find((candidate) => candidate.kind === "image" && candidate.src === src);
@@ -192,13 +198,18 @@ function sheetRef(state: EditorState, sheet: Sheet): SheetRef {
     : { id: sheet.id, name: sheet.name, kind: "master", index: null };
 }
 
-// 線條回報點的外接框大小
-function elementSize(element: CanvasElement): { width: number; height?: number } {
-  if (element.type === "line") {
-    const bounds = lineLocalBounds(element);
-    return { width: round(bounds.maxX - bounds.minX), height: round(bounds.maxY - bounds.minY) };
+// 線條回報點的外接框大小；文字回報量出來的高度（沒有存）
+function elementSize(element: CanvasElement, measure: MeasureText): { width: number; height: number } {
+  switch (element.type) {
+    case "line": {
+      const bounds = lineLocalBounds(element);
+      return { width: round(bounds.maxX - bounds.minX), height: round(bounds.maxY - bounds.minY) };
+    }
+    case "text":
+      return { width: round(element.width), height: round(measuredTextHeight(element, measure)) };
+    default:
+      return { width: round(element.width), height: round(element.height) };
   }
-  return element.type === "text" ? { width: round(element.width) } : { width: round(element.width), height: round(element.height) };
 }
 
 function elementSummary(element: CanvasElement): string {
@@ -296,6 +307,7 @@ export function listPages(state: EditorState): { pages: PageSummary[]; masters: 
  *
  * Args:
  *   state: Editor state.
+ *   measure: Canvas text layout (text heights).
  *   pageId: Page or master page; omitted = the sheet the user is looking at.
  *
  * Returns:
@@ -303,6 +315,7 @@ export function listPages(state: EditorState): { pages: PageSummary[]; masters: 
  */
 export function listElements(
   state: EditorState,
+  measure: MeasureText,
   pageId?: PageId,
 ): Result<{ sheet: SheetRef; elements: ElementSummary[] }> {
   const sheet = pageId === undefined ? selectActivePage(state) : findSheet(state.history.present, pageId);
@@ -314,7 +327,7 @@ export function listElements(
     layer,
     x: round(element.x),
     y: round(element.y),
-    ...elementSize(element),
+    ...elementSize(element, measure),
     rotation: round(element.rotation),
     summary: elementSummary(element),
     ...linkedStyle(element, styleNames),

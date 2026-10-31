@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEditorDispatch, useEditorState } from "@/lib/editor/editor-context";
 import { editorReducer } from "@/lib/editor/editor-reducer";
 import type { Result } from "@/lib/editor/validation";
+import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { imageTypeOfFile } from "@/lib/library/library-files";
 import type { Library } from "@/lib/library/types";
 import { describeCommandError, isDesktop, projectApi, type McpToolResponse } from "@/lib/project/project-api";
@@ -147,6 +148,8 @@ export function useMcpBridge(
         library: getLibraryRef.current(),
         commands: commandsRef.current,
         apply,
+        measure: measureTextLayout,
+        measureWidth: measureLineWidth,
         attachedFile: payload.attachment ? attachedFile(payload.attachment) : null,
         importFile: importFileRef.current,
       };

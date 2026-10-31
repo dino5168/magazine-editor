@@ -28,7 +28,7 @@
   {
     "name": "list_elements",
     "title": "物件清單",
-    "description": "列出一個頁面或主頁上的物件，由最底層到最上層：id、類型（text / shape / image / line）、位置與尺寸（pt，外框旋轉前的左上角；線條是點的外框）、旋轉角度、文字摘要（最多 80 字）。省略 pageId 時是使用者正在看的頁面。不含主頁帶來的物件與頁碼。",
+    "description": "列出一個頁面或主頁上的物件，由最底層到最上層：id、類型（text / shape / image / line）、位置與尺寸（pt，外框旋轉前的左上角；線條是點的外框；文字物件沒有存高度，height 是依目前的字型與換行量出來的實際高度，可用來判斷會不會壓到下方物件）、旋轉角度、文字摘要（最多 80 字）。省略 pageId 時是使用者正在看的頁面。不含主頁帶來的物件與頁碼。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -47,7 +47,7 @@
   {
     "name": "get_element",
     "title": "物件內容",
-    "description": "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。線條的 points 是相對於 x / y 的座標，另外附 pagePoints（頁面座標，和 add_line / update_element 的 points 同一套）。圖片框（圖形的 image）另外附 photoItem：照片是素材庫的哪一張（id、名稱；素材庫已沒有時為 null）。",
+    "description": "取得單一物件的完整欄位，以及它所在的頁面 id 與圖層位置（0 = 最底層）。頁面與主頁上的物件都找得到。線條的 points 是相對於 x / y 的座標，另外附 pagePoints（頁面座標，和 add_line / update_element 的 points 同一套）。文字物件另外附 textHeight：依目前的字型與換行量出來的高度（pt；不能直接修改，改文字、width、字級或行高會跟著變）。圖片框（圖形的 image）另外附 photoItem：照片是素材庫的哪一張（id、名稱；素材庫已沒有時為 null）。",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -60,6 +60,25 @@
       "required": [
         "id"
       ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "check_layout",
+    "title": "檢查版面",
+    "description": "檢查一個頁面或主頁的版面問題，文字用和畫布相同的方式量測（不是估計）。做完一頁或改了文字之後先呼叫它，issues 是空陣列就沒有問題。問題類型：textOverflow（圖形內文字的行數超出圖形的文字區 direction: \"height\"，或一行比文字區寬 direction: \"width\"；overflowPt = 超出文字區多少 pt；矩形的文字只吃掉內距、還在外框裡時 severity: \"warning\"）；overlap（有文字的物件和其他物件的外框重疊，文字只算字實際畫到的範圍、不是整個文字框；ids 是兩個物件、areaPt2 是重疊面積；相鄰不算、文字完全放在圖形或圖片裡面不算、線條不檢查）；outOfPage（超出頁面，雙頁的中縫那一側可以越過；蓋滿整頁的背景不算）；outOfMargin（在頁面內但超出邊界，severity: \"warning\"；碰到頁緣的滿版物件不算）。主頁帶來的物件、跨頁物件與頁碼也一起檢查：問題牽涉到它們時附 sources（master / facingPage / pageNumber），id 是原物件的（主頁物件要到主頁上改）。外框用旋轉後的軸對齊框，旋轉的物件可能多報。最多回 50 筆（truncated = 沒列出的筆數）。省略 pageId 時是使用者正在看的頁面。不會修改文件，可以放進 batch。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "頁面或主頁的 id（由 list_pages 取得）"
+        }
+      },
       "additionalProperties": false
     },
     "annotations": {

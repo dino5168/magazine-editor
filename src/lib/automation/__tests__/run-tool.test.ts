@@ -84,7 +84,8 @@ describe("runTool: queries", () => {
     expect(sheet.id).toBe("page-1");
     expect(elements.map((e: any) => e.id)).toEqual(document.pages[0].elements.map((e) => e.id));
     expect(elements[0]).toMatchObject({ type: "text", layer: 0, summary: "文字「雜誌標題 ⏎ 副標」" });
-    expect(elements[0]).not.toHaveProperty("height");
+    // 文字沒有存高度：回傳量出來的（假量測：兩段各一行 × 36 pt × 行高 1.4）
+    expect(elements[0].height).toBeCloseTo(100.8);
     expect(elements[1]).toMatchObject({ type: "shape", height: 130, rotation: 12.5 });
   });
 
@@ -99,6 +100,7 @@ describe("runTool: queries", () => {
       layer: 0,
       element: document.pages[0].elements[0],
     });
+    expect(data("get_element", { id: "el-text" }).textHeight).toBeCloseTo(100.8);
     expect(data("get_element", { id: "el-master-logo" }).sheet.kind).toBe("master");
     expect(error("get_element", { id: "nope" })).toContain("list_elements");
   });

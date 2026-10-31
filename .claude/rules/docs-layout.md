@@ -11,6 +11,7 @@ paths:
   - `docs/04-Plans-畫面顯示/`：畫面顯示（2026-10-14 起；`01-換程式的圖示-實作.md`，圖示候選在 `icons/`）。
   - `docs/05-Plans-字型/`：字型（2026-10-14 起；`01-專案字型-實作.md`）。
   - `docs/13-Plans-電子書上傳/`：上傳翻頁書到 web-magazine 網站（2026-10-28 起；`4-資安評估.md`、需求 `5-desktop 上傳.md`、初版 `5-desktop上傳-實作.md`（兩邊共用）、**本系統的計畫 `5-desktop上傳-實作-V2.md`**）。後端與 API 合約在另一個 repo（web-magazine）。
+  - `docs/14-Plan-ClaudeCode看見畫面/`：讓 MCP 檢查版面與看到頁面（2026-10-31 起；建議書 `App-開發建議事項.md`（來自 web-magazine 工作區）、**計畫 `1-看見畫面-實作.md`**：`check_layout`、`render_page`）。
   - `docs/06-Plans-繪圖/`：繪圖（2026-10-15 起；`01-繪圖-評估.md`（可行性）、`01-繪圖-實作.md`（圖形庫）、`02-元素面板-Accordion-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 

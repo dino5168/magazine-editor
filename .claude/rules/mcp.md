@@ -38,6 +38,8 @@ paths:
 - **一次工具呼叫 = 一個 action = 一筆復原**；指定 `pageId` 不切換使用者的頁面（`add_page` 例外）。建立物件沿用 `element-factory`，新增頁面沿用 `add-pages.ts`。
 - `ToolContext.apply`：先用純 reducer 算結果，再 dispatch 同一個 action，**並先把結果記在 ref**（「新增後立刻修改」的下一個呼叫可能比 React 重畫早到）。
 - **MCP 送出的 action 必須是確定的**（新 id 由工具產生並寫進 action），否則 batch 的暫存結果與重播結果不同。
+- **文字尺寸一律用量的**：`ToolContext.measure`（App = `measureTextLayout`，和畫布、匯出同一套；測試 = `tool-session.ts` 的 `fakeMeasure`），高度用 `layout.ts` 的 `measuredTextHeight`。**不要用 `getElementBounds` / `estimateTextHeight`**（估計值）。
+- `check_layout`（`layout-check.ts`，唯讀、可進 batch）：頁面內容由 `export-request.ts` 的 `pageLayers`（和匯出共用，保留原 id）加 `pageNumberShape` 組成；`ToolContext.measureWidth` 給頁碼。排除規則改了要同步工具說明與 `MCP-工具清單.md`。
 - **`batch`**（≤ `BATCH_OPS_MAX`）：`$ref` 由 `batch-refs.ts` 的 `resolveRefs` 換掉；`runBatch` 在暫存 state 上逐一執行，任一失敗整批退回，成功才 `history/batch`（一筆復原）。`batch` / `undo` / `redo` / `run_command` / `import_library_item` 不能進批次（`NOT_IN_BATCH`）；reducer 只收 `BatchableAction`（排除 `history/*`、`document/load`、`document/markSaved`、`page/add`）。
 
 ## `import_library_item`（唯一收檔案路徑的工具）

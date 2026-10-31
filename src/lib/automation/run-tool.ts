@@ -7,6 +7,9 @@ import type { Result } from "@/lib/editor/validation";
 import type { Library } from "@/lib/library/types";
 import type { ImportFileOptions, ImportedItem } from "@/lib/library/use-library-import";
 import { runBatch } from "./batch";
+import type { MeasureTextWidth } from "@/lib/editor/page-numbers";
+import type { MeasureText } from "./layout";
+import { checkLayout } from "./layout-check";
 import { importLibraryItem } from "./imports";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
@@ -53,6 +56,10 @@ export interface ToolContext {
   readonly commands: CommandAccess;
   /** Dispatches one action (= one undo step) and reports the resulting state. */
   readonly apply: ApplyAction;
+  /** Lays out a text element like the canvas (`measureTextLayout` in the app; a fake in tests). */
+  readonly measure: MeasureText;
+  /** Measures one unwrapped line (`measureLineWidth` in the app; page numbers). */
+  readonly measureWidth: MeasureTextWidth;
   /**
    * The file this call names, read by Rust (`mcp_take_attachment`); only `import_library_item`
    * calls have one. Absent in tests and batches.
@@ -80,8 +87,9 @@ function ok<T>(data: T): Result<T> {
 const HANDLERS: ToolHandlers = {
   get_document: (_args, { state }) => ok(getDocumentSummary(state)),
   list_pages: (_args, { state }) => ok(listPages(state)),
-  list_elements: ({ pageId }, { state }) => listElements(state, pageId),
-  get_element: ({ id }, { state, library }) => getElementDetail(state, library, id),
+  list_elements: ({ pageId }, { state, measure }) => listElements(state, measure, pageId),
+  get_element: ({ id }, { state, library, measure }) => getElementDetail(state, library, measure, id),
+  check_layout: ({ pageId }, { state, measure, measureWidth }) => checkLayout(state, measure, measureWidth, pageId),
   list_commands: (_args, { commands }) => ok(listCommands(commands)),
   run_command: ({ id }, { commands }) => runCommand(commands, id),
   add_text: (args, { state, apply }) => addText(state, apply, args),
