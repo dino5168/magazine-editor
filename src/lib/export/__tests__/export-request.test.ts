@@ -102,6 +102,38 @@ describe("buildExportRequest", () => {
     expect(request.textLayouts[`${pageNumber.id}#label`].lines).toEqual(["第 2 頁"]);
   });
 
+  it("keeps only the requested pages, numbered as in the whole document, and measures only them", () => {
+    const first = { ...createPage("封面", { width: 595, height: 842 }, "#ffffff"), elements: [createTextElement("body", { x: 0, y: 0 })] };
+    const second = { ...createPage("內頁", { width: 595, height: 842 }, "#ffffff"), elements: [createTextElement("body", { x: 0, y: 0 })] };
+    const third = createPage("第三頁", { width: 595, height: 842 }, "#ffffff");
+    const source: EditorDocument = {
+      name: "測試",
+      margins: DEFAULT_MARGINS,
+      textStyles: [],
+      swatches: [], fonts: [],
+      pageNumberRules: [createPageNumberRule("r", 1, 9)],
+      masters: [],
+      pages: [first, second, third],
+    };
+    const measured: string[] = [];
+    const request = buildExportRequest(
+      source,
+      (element) => {
+        measured.push(element.id);
+        return { lines: [element.text], baseline: 10, lineWidths: [100] };
+      },
+      measureWidth,
+      { pageIndexes: [1] },
+    );
+
+    expect(request.document.pages.map((page) => page.id)).toEqual([second.id]);
+    // 第 2 頁的頁碼是 2（依整份文件），第 1 頁的文字沒有量
+    const elements = request.document.pages[0].elements;
+    const pageNumber = elements[elements.length - 1];
+    expect(request.textLayouts[`${pageNumber.id}#label`].lines).toEqual(["2"]);
+    expect(measured).toEqual([second.elements[0].id, `${pageNumber.id}#label`]);
+  });
+
   it("draws master page content under each page with per-page ids and resolved variables", () => {
     const size = { width: 595, height: 842 };
     const band = createShapeElement("rect", { x: 50, y: 50 });

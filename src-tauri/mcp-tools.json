@@ -86,6 +86,64 @@
     }
   },
   {
+    "name": "render_page",
+    "title": "頁面圖片",
+    "description": "把一個頁面畫成圖片回傳（和匯出 PDF 同一套排版：含主頁內容、頁碼、背景，沒有選取框、參考線與格線），用來確認實際的樣子。圖片會占用不少 context：先用 check_layout 找問題，需要看視覺效果或確認 check_layout 的結果時再用它。maxWidth 是圖片的長邊（px，預設 1200，200–2000；超過約 1568 px 的圖會被縮小，沒有必要更大）。region 只畫頁面的一塊（pt，頁面座標），同樣放大到 maxWidth，用來看小字細節；放大倍率有上限（A4 約每 pt 6.9 px）。圖片後面附一行說明：頁面尺寸、輸出像素與比例（1 pt = N px）、region 左上角的頁面座標，用來把圖上的位置換回 pt。省略 pageId 時是使用者正在看的頁面；主頁不能畫（請畫套用它的頁面）。不會修改文件、不切換使用者的畫面。不能放進 batch。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "pageId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "頁面或主頁的 id（由 list_pages 取得）"
+        },
+        "maxWidth": {
+          "description": "圖片長邊（px）",
+          "type": "integer",
+          "minimum": 200,
+          "maximum": 2000
+        },
+        "region": {
+          "description": "只畫這一塊（pt，左上角與大小）",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": -10000,
+              "maximum": 10000
+            },
+            "y": {
+              "type": "number",
+              "minimum": -10000,
+              "maximum": 10000
+            },
+            "width": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "height": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
     "name": "list_commands",
     "title": "選單指令清單",
     "description": "列出 App 選單列上的所有指令：id、名稱、在選單中的位置、快捷鍵、勾選項目（視圖、工具面板）目前是否勾選、能不能執行（不能時附原因，例如尚未實作）。",
@@ -2418,7 +2476,7 @@
   {
     "name": "batch",
     "title": "批次執行",
-    "description": "一次執行多個工具操作（最多 200 個），省去一個一個呼叫的來回。ops 的每一項是 { tool: 工具名稱, args: 那個工具的參數 }，參數與錯誤訊息和單獨呼叫那個工具完全相同。依序執行；任何一個失敗就整批退回、文件不變，錯誤訊息指出是 ops[N]（0 起算）。全部成功才套用，整批是一筆復原（使用者按一次 Ctrl+Z 全部撤銷）。引用前面操作的回傳值：參數值寫成 { \"$ref\": \"<第幾個操作>.<欄位路徑>\" }，例如第 0 個是 add_page 時用 { \"$ref\": \"0.pages.0.id\" }（新頁面的 id）、第 1 個是 add_text 時用 { \"$ref\": \"1.id\" }；陣列用數字，只能引用前面的操作。查詢工具（list_elements 等）可以放進批次，看到的是批次進行到那一步的文件。batch、undo、redo、run_command、import_library_item 不能放進批次。成功時回傳 { results: [每個操作的回傳值] }。",
+    "description": "一次執行多個工具操作（最多 200 個），省去一個一個呼叫的來回。ops 的每一項是 { tool: 工具名稱, args: 那個工具的參數 }，參數與錯誤訊息和單獨呼叫那個工具完全相同。依序執行；任何一個失敗就整批退回、文件不變，錯誤訊息指出是 ops[N]（0 起算）。全部成功才套用，整批是一筆復原（使用者按一次 Ctrl+Z 全部撤銷）。引用前面操作的回傳值：參數值寫成 { \"$ref\": \"<第幾個操作>.<欄位路徑>\" }，例如第 0 個是 add_page 時用 { \"$ref\": \"0.pages.0.id\" }（新頁面的 id）、第 1 個是 add_text 時用 { \"$ref\": \"1.id\" }；陣列用數字，只能引用前面的操作。查詢工具（list_elements 等）可以放進批次，看到的是批次進行到那一步的文件。batch、undo、redo、run_command、import_library_item、render_page 不能放進批次。成功時回傳 { results: [每個操作的回傳值] }。",
     "inputSchema": {
       "type": "object",
       "properties": {

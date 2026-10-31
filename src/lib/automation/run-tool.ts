@@ -10,6 +10,7 @@ import { runBatch } from "./batch";
 import type { MeasureTextWidth } from "@/lib/editor/page-numbers";
 import type { MeasureText } from "./layout";
 import { checkLayout } from "./layout-check";
+import { renderPage } from "./render-page";
 import { importLibraryItem } from "./imports";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
@@ -90,6 +91,7 @@ const HANDLERS: ToolHandlers = {
   list_elements: ({ pageId }, { state, measure }) => listElements(state, measure, pageId),
   get_element: ({ id }, { state, library, measure }) => getElementDetail(state, library, measure, id),
   check_layout: ({ pageId }, { state, measure, measureWidth }) => checkLayout(state, measure, measureWidth, pageId),
+  render_page: (args, { state, measure, measureWidth }) => renderPage(state, measure, measureWidth, args),
   list_commands: (_args, { commands }) => ok(listCommands(commands)),
   run_command: ({ id }, { commands }) => runCommand(commands, id),
   add_text: (args, { state, apply }) => addText(state, apply, args),

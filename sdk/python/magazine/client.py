@@ -6,6 +6,7 @@ app over a named pipe.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import subprocess
@@ -90,7 +91,8 @@ class McpSession:
             args: Tool arguments.
 
         Returns:
-            The tool's JSON result (decoded), or its text when it is not JSON.
+            The tool's JSON result (decoded), or its text when it is not JSON. A picture
+            (`render_page`) comes back as `{"image": bytes, "mimeType": str, "info": str}`.
 
         Raises:
             ToolError: The app rejected the call; the message is the app's explanation.
@@ -103,11 +105,15 @@ class McpSession:
             self.records.append(CallRecord(tool, ms, False))
             raise ToolError(f"{tool}: {response['error'].get('message', response['error'])}")
         result = response["result"]
-        text = result["content"][0]["text"] if result.get("content") else ""
+        content = result.get("content") or []
+        text = next((item["text"] for item in content if item.get("type") == "text"), "")
         ok = not result.get("isError")
         self.records.append(CallRecord(tool, ms, ok))
         if not ok:
             raise ToolError(f"{tool}: {text}")
+        image = next((item for item in content if item.get("type") == "image"), None)
+        if image is not None:
+            return {"image": base64.b64decode(image["data"]), "mimeType": image["mimeType"], "info": text}
         try:
             return json.loads(text)
         except json.JSONDecodeError:

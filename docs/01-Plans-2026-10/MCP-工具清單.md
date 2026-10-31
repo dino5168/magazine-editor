@@ -4,7 +4,7 @@
 > 2026-10-21 加入 `batch`（計畫 `../09-Plans-Scripts/1-python-scripts-實作.md`）。
 > 2026-10-22 加入 `import_library_item`（匯入本機圖片到素材庫，計畫 `../11-Plans-匯入/1-McpServer沒有匯入圖片功能-實作.md`）。
 > 2026-10-29 `run_command` 多一個指令 `file.exportFlipbookZip`（計畫 `../13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` 步驟 3）；同日步驟 5 再加 `file.uploadFlipbook`（只打開上傳對話框，密碼要使用者自己輸入，沒有上傳工具）。
-> 2026-10-31 `list_elements` 的文字物件回傳量出來的 `height`、`get_element` 多 `textHeight`（計畫 `../14-Plan-ClaudeCode看見畫面/1-看見畫面-實作.md` 步驟 1）；同日加入 `check_layout`（步驟 2）。
+> 2026-10-31 `list_elements` 的文字物件回傳量出來的 `height`、`get_element` 多 `textHeight`（計畫 `../14-Plan-ClaudeCode看見畫面/1-看見畫面-實作.md` 步驟 1）；同日加入 `check_layout`（步驟 2）與 `render_page`（步驟 3–4，回傳圖片）。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -25,7 +25,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 | 分類 | 工具 |
 |---|---|
-| 查詢 | `get_document`、`list_pages`、`list_elements`、`get_element`、`check_layout`、`list_text_styles`、`list_shapes`、`list_fonts`、`list_swatches`、`list_library_items`、`list_commands` |
+| 查詢 | `get_document`、`list_pages`、`list_elements`、`get_element`、`check_layout`、`render_page`、`list_text_styles`、`list_shapes`、`list_fonts`、`list_swatches`、`list_library_items`、`list_commands` |
 | 物件 | `add_text`、`add_shape`、`add_line`、`update_element`、`delete_elements`、`place_library_item` |
 | 素材庫 | `import_library_item` |
 | 頁面與主頁 | `add_page`、`add_master`、`set_page_master`、`rename_page`、`set_page_background`、`rename_document` |
@@ -58,6 +58,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | `list_elements`      | 一頁（或主頁）的物件：id、類型、圖層位置（0 = 最底層）、位置、尺寸（文字的高度是量出來的）、旋轉、摘要（文字開頭 / 圖形種類與填色 / 圖片路徑）、連到的文字樣式 | `pageId`（省略 = 正在看的頁）                                                                |
 | `get_element`        | 單一物件的完整欄位、所在頁、圖層位置（頁面與主頁上的都找得到）                                           | `id*`                                                                               |
 | `check_layout`       | 一頁（或主頁）的版面問題：圖形內文字超出、有文字的物件重疊、超出頁面、超出邊界（警告）；文字用量的；可放進 `batch` | `pageId`（省略 = 正在看的頁）     |
+| `render_page`        | 把一頁畫成圖片（和匯出 PDF 同一套排版；含主頁、頁碼、背景，沒有選取框與參考線），圖片後附頁面尺寸與比例；**不能**放進 `batch`、不能畫主頁 | `pageId`、`maxWidth`（長邊 px，預設 1200，200–2000）、`region`（`{x, y, width, height}` pt） |
 | `list_text_styles`   | 文字樣式：id、名稱、各欄位、連到的色票名、使用數                                                 | —                                                                                   |
 | `list_shapes`        | 所有圖形：id、名稱、分類、預設大小；圖形庫圖形的參數（名稱、說明、`ratio` 0–1 比例或 `pt` 固定長度、範圍、預設）        | —                                                                                   |
 | `list_fonts`         | 內建 4 套 + 專案字型：id、名稱、缺字時用的內建字型、有沒有粗體檔、授權、使用數                               | —                                                                                   |
@@ -101,6 +102,8 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 `get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對文字物件另外回 `textHeight`（依目前字型與換行量出來的高度，沒有存在檔案裡）。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。
 
 `check_layout` 回 `{ pageId, pageName, checked, issues, truncated }`；`issues` 的 `type` 是 `textOverflow`（`direction: height | width`、`overflowPt`；矩形的文字只吃掉內距時 `severity: "warning"`）、`overlap`（`ids`、`areaPt2`）、`outOfPage` / `outOfMargin`（`overflowPt: { top?, right?, bottom?, left? }`）。主頁物件、跨頁物件、頁碼也會檢查，牽涉到它們時附 `sources`（`master` / `facingPage` / `pageNumber`），id 是原物件的。文字的外框只算字實際畫到的範圍（依對齊與縮排）。排除規則：相鄰（重疊 ≤ 1 pt²）、文字完全在圖形 / 圖片裡、線條、雙頁越過中縫、蓋滿整頁的背景、碰到頁緣的物件（不算超出邊界）。最多 50 筆。
+
+`render_page` 回傳 MCP 的 image content（PNG；有照片的頁 JPEG）加一行說明（頁面尺寸、輸出像素、`1 pt = N px`、region 左上角的頁面座標）。前端只交出那一頁的匯出請求，圖片在 App 的 Rust 端畫（不經過 WebView）。Python SDK 回 `{"image": bytes, "mimeType", "info"}`。
 
 **圖片框的 `image`**（2026-10-19）：`{ item, fit, focusX, focusY, zoom }`，把素材庫的圖片裁在圖形的外形裡（畫在填色之上、邊框與文字之下）。`item` = 素材庫圖片的 id 或名稱（`add_shape` 必填；`update_element` 省略 = 保留目前的照片）；`fit` = `cover` 填滿（預設）/ `contain` 完整顯示；`focusX` / `focusY` 0–1（照片比框大時保留哪一段，預設 0.5）；`zoom` 1–10（預設 1）。換照片時保留原本的 `fit` / 對焦 / 縮放。文字檔、音訊、垃圾桶裡的素材不能用。
 

@@ -23,7 +23,9 @@ const INSTRUCTIONS: &str = "操作使用者正在「雜誌編輯軟體」中開�
 先用 get_document 了解文件，再用 list_pages / list_elements 取得 id。\
 一次要做兩個以上的修改（新增多個物件、多頁版面、新增後立刻修改）時，用 batch 一次送出：\
 後面的操作用 { \"$ref\": \"<第幾個操作>.<欄位>\" } 取得前面建立的 id，整批成功才套用、只算一筆復原，\
-比逐一呼叫少很多來回。只做一個修改時直接呼叫那個工具。";
+比逐一呼叫少很多來回。只做一個修改時直接呼叫那個工具。\
+做完一頁或改了文字之後，先呼叫 check_layout 檢查文字超出、重疊與超出頁面（文字是量出來的，不必自己估行距）；\
+需要確認視覺效果時再用 render_page 看圖片（圖片占用 context，看細節用 region）。";
 
 fn load_tools() -> Vec<Tool> {
     // 內容由 vitest 產生並比對，壞掉只會是開發時的錯誤
@@ -64,6 +66,10 @@ impl ServerHandler for Bridge {
                 CallToolResult::success(vec![ContentBlock::text(text)])
             }
             ToolResponse::Error { error } => CallToolResult::error(vec![ContentBlock::text(error)]),
+            // render_page：圖片給 Claude 看，後面一行說明頁面與比例
+            ToolResponse::Image { data, mime_type, text } => {
+                CallToolResult::success(vec![ContentBlock::image(data, mime_type), ContentBlock::text(text)])
+            }
         };
         Ok(result.into())
     }

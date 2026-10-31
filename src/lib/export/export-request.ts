@@ -161,6 +161,8 @@ function exportedPage(document: EditorDocument, page: Page, pageIndex: number): 
  *   source: Document to export.
  *   measure: Lays out one text element (`measureTextLayout` in the app; a fake in tests).
  *   measureWidth: Measures one line for the page number boxes (`measureLineWidth` in the app).
+ *   options: `pageIndexes` keeps only those pages (0-based, in document order), still numbered and
+ *     expanded as in the whole document; only their text is measured (MCP `render_page`).
  *
  * Returns:
  *   Export request.
@@ -169,13 +171,17 @@ export function buildExportRequest(
   source: EditorDocument,
   measure: (element: TextElement) => TextLayout,
   measureWidth: MeasureTextWidth,
+  options: { readonly pageIndexes?: readonly number[] } = {},
 ): ExportRequest {
-  const expanded = source.pages.map((page, index) => exportedPage(source, page, index));
+  const only = options.pageIndexes ? new Set(options.pageIndexes) : null;
+  const expanded = source.pages.map((page, index) => (only && !only.has(index) ? page : exportedPage(source, page, index)));
   const changed = expanded.some((page, index) => page !== source.pages[index]);
+  // 頁碼要知道是第幾頁：先對整份文件編號，再只留指定的頁
   const numbered = withPageNumbers(changed ? expanded : source.pages, source.pageNumberRules, source.margins, measureWidth);
+  const kept = only ? numbered.filter((_page, index) => only.has(index)) : numbered;
   // 線條換成路徑圖形（主頁與跨頁的複本也是）；路徑先放進 shapePaths，下面的圖形庫迴圈不認得它們的 id、不會覆蓋
   const shapePaths: Record<string, ExportShapePath> = {};
-  const pages = numbered.map((page) => {
+  const pages = kept.map((page) => {
     if (!page.elements.some((element) => element.type === "line")) return page;
     const elements = page.elements.flatMap((element) => {
       if (element.type !== "line") return [element];

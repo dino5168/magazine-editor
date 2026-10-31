@@ -3,14 +3,19 @@
 use super::attachment::{self, AttachmentRef, Attachments};
 use super::pipe;
 use super::protocol::{ToolRequest, ToolResponse};
+use crate::commands::export::ExportState;
 use crate::error::{AppError, AppResult};
-use serde::Serialize;
+use crate::export::page_image::{render_page_image, PageImage, PageImageOptions, PageRegion};
+use crate::export::ExportRequest;
+use crate::project::ProjectState;
+use base64::Engine;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
@@ -87,6 +92,73 @@ async fn read_attachment(request: &ToolRequest) -> Result<Option<attachment::Att
         .map_err(|error| format!("讀取檔案中斷：{error}"))?
 }
 
+/// The tool whose answer the frontend leaves to Rust: it sends the export request, Rust draws the
+/// page (`render_page_image`), so the picture never goes through the WebView.
+pub const RENDER_TOOL: &str = "render_page";
+
+/// What the frontend answers to `render_page`: `{ "render": RenderJob }` (TS `RenderJob` in
+/// `src/lib/automation/render-page.ts`).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenderJob {
+    /// The export request holding only the page to draw.
+    request: ExportRequest,
+    page_index: usize,
+    max_px: u32,
+    region: Option<PageRegion>,
+    /// Shown in the description, e.g. `3`.
+    page_name: String,
+}
+
+fn render_job(data: Value) -> Result<RenderJob, String> {
+    let job = data.get("render").cloned().ok_or_else(|| "App 沒有交出要畫的頁面".to_owned())?;
+    serde_json::from_value(job).map_err(|error| format!("App 交出的頁面格式錯誤：{error}"))
+}
+
+/// The line sent with the picture: which page, its size, the picture's size and its scale (so pixel
+/// positions can be turned back into pt).
+fn describe_image(page_name: &str, image: &PageImage, has_region: bool) -> String {
+    let scale = f64::from(image.width_px) / image.area.width;
+    let mut text = format!(
+        "頁面「{page_name}」，{:.2} × {:.2} pt，輸出 {} × {} px（1 pt = {:.2} px）",
+        image.page_width_pt, image.page_height_pt, image.width_px, image.height_px, scale
+    );
+    if has_region {
+        let area = image.area;
+        text.push_str(&format!(
+            "；只畫 region x {:.1}、y {:.1}、寬 {:.1}、高 {:.1} pt（圖片左上角 = 頁面的 ({:.1}, {:.1})）",
+            area.x, area.y, area.width, area.height, area.x, area.y
+        ));
+    }
+    text
+}
+
+/// Draws the page the frontend handed over and answers with the picture.
+async fn render_answer(app: &AppHandle, data: Value) -> ToolResponse {
+    let job = match render_job(data) {
+        Ok(job) => job,
+        Err(message) => return ToolResponse::error(message),
+    };
+    let root = match app.state::<ProjectState>().current() {
+        Ok(project) => project.root,
+        Err(error) => return ToolResponse::error(format!("沒有開啟的專案：{error}")),
+    };
+    let fonts = app.state::<ExportState>().fonts();
+    let RenderJob { request, page_index, max_px, region, page_name } = job;
+    let options = PageImageOptions { max_px, region };
+    // 排版與點陣化是 CPU 密集工作
+    let drawn = tauri::async_runtime::spawn_blocking(move || render_page_image(&root, request, page_index, &options, fonts.to_vec())).await;
+    match drawn {
+        Ok(Ok(image)) => ToolResponse::Image {
+            text: describe_image(&page_name, &image, region.is_some()),
+            mime_type: image.image.format.content_type().to_owned(),
+            data: base64::engine::general_purpose::STANDARD.encode(&image.image.bytes),
+        },
+        Ok(Err(error)) => ToolResponse::error(error.to_string()),
+        Err(error) => ToolResponse::error(format!("畫頁面中斷：{error}")),
+    }
+}
+
 async fn call_frontend(app: &AppHandle, pending: &Pending, attachments: &Attachments, request: ToolRequest) -> ToolResponse {
     // 讀不到檔案時直接回給 AI，不必經過前端
     let attachment = match read_attachment(&request).await {
@@ -94,6 +166,7 @@ async fn call_frontend(app: &AppHandle, pending: &Pending, attachments: &Attachm
         Err(message) => return ToolResponse::error(message),
     };
     let token = attachment.as_ref().map(|reference| reference.token.clone());
+    let renders = request.tool == RENDER_TOOL;
     let (id, receiver) = pending.register();
     let payload = FrontendRequest { id, tool: request.tool, args: request.args, attachment };
     let response = match app.emit(REQUEST_EVENT, payload) {
@@ -107,7 +180,10 @@ async fn call_frontend(app: &AppHandle, pending: &Pending, attachments: &Attachm
     if let Some(token) = token {
         attachments.remove(&token);
     }
-    response
+    match response {
+        ToolResponse::Ok { data } if renders => render_answer(app, data).await,
+        response => response,
+    }
 }
 
 /// MCP state managed by Tauri: the pipe server task and the calls waiting for the frontend.
@@ -184,6 +260,39 @@ mod tests {
         let response = pending.wait(id, receiver, Duration::from_millis(10)).await;
         assert!(matches!(response, ToolResponse::Error { ref error } if error.contains("沒有在 0 秒內回應")));
         assert!(!pending.resolve(id, ToolResponse::Ok { data: json!(null) }));
+    }
+
+    #[test]
+    fn reads_the_render_job_of_render_page() {
+        let document = serde_json::to_value(crate::export::test_support::fixture_document()).unwrap();
+        let data = json!({ "render": {
+            "request": { "document": document, "textLayouts": {} },
+            "pageIndex": 0,
+            "maxPx": 1200,
+            "region": { "x": 10, "y": 20, "width": 100, "height": 50 },
+            "pageName": "3",
+        } });
+        let job = render_job(data).unwrap();
+        assert_eq!((job.page_index, job.max_px, job.page_name.as_str()), (0, 1200, "3"));
+        assert_eq!(job.region, Some(PageRegion { x: 10.0, y: 20.0, width: 100.0, height: 50.0 }));
+        assert!(render_job(json!({ "pages": [] })).unwrap_err().contains("沒有交出"));
+        assert!(render_job(json!({ "render": { "pageIndex": 0 } })).unwrap_err().contains("格式錯誤"));
+    }
+
+    #[test]
+    fn describes_the_picture_and_its_scale() {
+        let image = PageImage {
+            image: crate::export::pptx::raster::SlideImage { format: crate::export::pptx::raster::SlideImageFormat::Png, bytes: vec![] },
+            width_px: 600,
+            height_px: 300,
+            page_width_pt: 595.28,
+            page_height_pt: 841.89,
+            area: PageRegion { x: 50.0, y: 0.0, width: 100.0, height: 50.0 },
+        };
+        let text = describe_image("3", &image, true);
+        assert!(text.contains("頁面「3」，595.28 × 841.89 pt，輸出 600 × 300 px（1 pt = 6.00 px）"), "{text}");
+        assert!(text.contains("圖片左上角 = 頁面的 (50.0, 0.0)"), "{text}");
+        assert!(!describe_image("3", &image, false).contains("region"));
     }
 
     #[test]

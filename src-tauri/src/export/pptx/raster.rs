@@ -84,12 +84,28 @@ pub fn rasterize(page: &Page, format: SlideImageFormat) -> AppResult<SlideImage>
 /// # Errors
 /// `AppError::Export` when encoding fails.
 pub fn rasterize_at(page: &Page, format: SlideImageFormat, pixel_per_pt: f64) -> AppResult<SlideImage> {
+    encode(&render_rgb(page, pixel_per_pt)?, format)
+}
+
+/// Draws one page at `pixel_per_pt` as RGB pixels (the MCP `render_page` crops them first).
+///
+/// # Errors
+/// `AppError::Export` when the pixmap does not match its size.
+pub fn render_rgb(page: &Page, pixel_per_pt: f64) -> AppResult<image::RgbImage> {
     let pixmap = typst_render::render(page, &typst_render::RenderOptions { pixel_per_pt: pixel_per_pt.into(), ..Default::default() });
     let (width, height) = (pixmap.width(), pixmap.height());
     // 頁面背景一定不透明（#rrggbb，模板的 page fill），所以 premultiplied RGBA 就是 RGB + 255，直接丟掉 alpha。
     // 用 image 的 to_rgb8（在已最佳化的 crate 裡），開發版自己寫迴圈一頁要多 0.2 秒
     let rgba = image::RgbaImage::from_raw(width, height, pixmap.take()).ok_or_else(|| image_error("像素大小不符"))?;
-    let rgb = image::DynamicImage::ImageRgba8(rgba).to_rgb8();
+    Ok(image::DynamicImage::ImageRgba8(rgba).to_rgb8())
+}
+
+/// Encodes RGB pixels as PNG or JPEG (`JPEG_QUALITY`).
+///
+/// # Errors
+/// `AppError::Export` when encoding fails.
+pub fn encode(rgb: &image::RgbImage, format: SlideImageFormat) -> AppResult<SlideImage> {
+    let (width, height) = rgb.dimensions();
     let mut bytes = Vec::new();
     match format {
         SlideImageFormat::Png => PngEncoder::new(&mut bytes).write_image(rgb.as_raw(), width, height, ExtendedColorType::Rgb8),

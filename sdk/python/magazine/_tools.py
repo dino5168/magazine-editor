@@ -109,6 +109,27 @@ class ToolMethods:
         """
         return self._call("check_layout", _args({"pageId": pageId}))
 
+    def render_page(
+        self,
+        *,
+        pageId: str | _Unset = UNSET,
+        maxWidth: int | _Unset = UNSET,
+        region: dict[str, Any] | _Unset = UNSET,
+    ) -> Any:
+        """頁面圖片
+
+        把一個頁面畫成圖片回傳（和匯出 PDF 同一套排版：含主頁內容、頁碼、背景，沒有選取框、參考線與格線），用來確認實際的樣子。圖片會占用不少 context：先用 check_layout 找問題，需要看視覺效果或確認 check_layout 的結果時再用它。maxWidth 是圖片的長邊（px，預設 1200，200–2000；超過約 1568 px 的圖會被縮小，沒有必要更大）。region 只畫頁面的一塊（pt，頁面座標），同樣放大到 maxWidth，用來看小字細節；放大倍率有上限（A4 約每 pt 6.9 px）。圖片後面附一行說明：頁面尺寸、輸出像素與比例（1 pt = N px）、region 左上角的頁面座標，用來把圖上的位置換回 pt。省略 pageId 時是使用者正在看的頁面；主頁不能畫（請畫套用它的頁面）。不會修改文件、不切換使用者的畫面。不能放進 batch。
+
+        Args:
+            pageId: 頁面或主頁的 id（由 list_pages 取得）（可省略）
+            maxWidth: 圖片長邊（px）（可省略）
+            region: 只畫這一塊（pt，左上角與大小）（可省略）
+
+        Returns:
+            The tool's JSON result.
+        """
+        return self._call("render_page", _args({"pageId": pageId, "maxWidth": maxWidth, "region": region}))
+
     def list_commands(self) -> Any:
         """選單指令清單
 
@@ -858,6 +879,7 @@ TOOL_NAMES: Final = frozenset({
     "redo",
     "rename_document",
     "rename_page",
+    "render_page",
     "run_command",
     "set_page_background",
     "set_page_master",

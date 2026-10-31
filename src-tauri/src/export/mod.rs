@@ -13,6 +13,7 @@ pub mod epub;
 pub mod flipbook;
 pub mod fonts;
 pub mod html;
+pub mod page_image;
 pub mod pdf;
 pub mod pptx;
 pub mod render;

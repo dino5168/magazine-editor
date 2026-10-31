@@ -54,5 +54,6 @@ paths:
 ## PowerPoint（`pptx-export.ts` + `export/pptx`）
 
 - 一頁 = 一張滿版圖片（同一份 Typst 排版經 typst-render 點陣化，`PIXELS_PER_PT = 3`；上傳的封面 `export/cover.rs` 也用 `rasterize_at`，只排第一頁、寬 600 px；有照片的頁 JPEG、其他 PNG），文字不能編輯；`rasterize_pages` 用 `std::thread::scope` 平行。
+- MCP 的 `render_page` 用 `export/page_image.rs`（只排一頁、`raster.rs` 的 `render_rgb` + `encode`，可裁 region；縮放上限 8 px/pt 與整頁 2400 萬像素取小）。
 - 只給簡報尺寸、每頁同一尺寸：前端 `pptxExportProblem` / Rust `pptx::slide_size`（`SLIDE_SIZES_PT`）**規則相同**。
 - `package.rs` 是固定 XML 模板：使用者文字經 `escape`，屬性再經 `escape_attribute`（換行寫成 `&#10;`）。少任何一個 part PowerPoint 就跳「修復」，**改這裡要用 PowerPoint 實際開檔**（COM `Presentations.Open(path, -1, 0, 0)`；腳本要結束自己開的 POWERPNT）。

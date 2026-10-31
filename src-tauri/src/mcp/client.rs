@@ -2,7 +2,7 @@
 //!
 //! 每次都重新連線：App 重開或還沒開時，Claude Code 那一端的 MCP 連線不受影響。
 
-use super::protocol::{ToolRequest, ToolResponse, MAX_LINE_BYTES};
+use super::protocol::{ToolRequest, ToolResponse, MAX_RESPONSE_BYTES};
 use std::io;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -44,7 +44,7 @@ async fn exchange(pipe: &str, request: &ToolRequest) -> Result<ToolResponse, Str
 
     let mut answer = Vec::new();
     let read = (&mut client)
-        .take(MAX_LINE_BYTES as u64 + 1)
+        .take(MAX_RESPONSE_BYTES as u64 + 1)
         .read_until(b'\n', &mut answer)
         .await
         .map_err(|error| format!("讀取結果失敗：{error}"))?;
@@ -85,6 +85,23 @@ mod tests {
         for tool in ["get_document", "list_pages"] {
             let response = call(&name, &request(tool)).await;
             assert_eq!(response, ToolResponse::Ok { data: json!({ "tool": tool, "args": { "n": 1 } }) });
+        }
+    }
+
+    #[tokio::test]
+    async fn reads_answers_bigger_than_a_request_line() {
+        // render_page 的圖片（base64）比請求的上限 1 MiB 大
+        let name = format!(r"\\.\pipe\magazine-editor-mcp-test-big-{}", std::process::id());
+        let picture = "A".repeat(3 * 1024 * 1024);
+        let expected = picture.clone();
+        let handler = move |_request: ToolRequest| {
+            let picture = picture.clone();
+            async move { ToolResponse::Image { data: picture, mime_type: "image/png".into(), text: String::new() } }
+        };
+        tokio::spawn(pipe::serve(pipe::bind(&name).unwrap(), name.clone(), handler));
+        match call(&name, &request("render_page")).await {
+            ToolResponse::Image { data, .. } => assert_eq!(data.len(), expected.len()),
+            other => panic!("unexpected {other:?}"),
         }
     }
 

@@ -19,7 +19,7 @@ export const BATCH_OPS_MAX = 200;
  * asset library (side effects outside the document that a failed batch cannot take back; importing
  * is also asynchronous).
  */
-export const NOT_IN_BATCH: ReadonlySet<string> = new Set(["batch", "undo", "redo", "run_command", "import_library_item"]);
+export const NOT_IN_BATCH: ReadonlySet<string> = new Set(["batch", "undo", "redo", "run_command", "import_library_item", "render_page"]);
 
 /** One operation: a tool name and its arguments (may hold `$ref`). */
 export interface BatchOp {

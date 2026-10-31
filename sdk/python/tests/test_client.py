@@ -25,6 +25,11 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "method": "notifications/message", "params": {}}), flush=True)
         if name == "echo":
             result = {"content": [{"type": "text", "text": json.dumps(args, ensure_ascii=False)}]}
+        elif name == "picture":
+            result = {"content": [
+                {"type": "image", "data": "iVBORw0K", "mimeType": "image/png"},
+                {"type": "text", "text": "頁面「1」"},
+            ]}
         elif name == "plain":
             result = {"content": [{"type": "text", "text": "not json"}]}
         else:
@@ -46,6 +51,12 @@ def test_call_returns_json_and_records_timing(bridge: list[str]) -> None:
         assert session.call("plain") == "not json"
     assert [(r.tool, r.ok) for r in session.records] == [("echo", True), ("plain", True)]
     assert all(r.ms >= 0 for r in session.records)
+
+
+def test_pictures_come_back_as_bytes_with_their_description(bridge: list[str]) -> None:
+    with connect(bridge) as session:
+        picture = session.call("picture")
+    assert picture == {"image": b"\x89PNG\r\n", "mimeType": "image/png", "info": "頁面「1」"}
 
 
 def test_tool_error_carries_the_app_message(bridge: list[str]) -> None:

@@ -42,6 +42,11 @@ paths:
 - `check_layout`（`layout-check.ts`，唯讀、可進 batch）：頁面內容由 `export-request.ts` 的 `pageLayers`（和匯出共用，保留原 id）加 `pageNumberShape` 組成；`ToolContext.measureWidth` 給頁碼。排除規則改了要同步工具說明與 `MCP-工具清單.md`。
 - **`batch`**（≤ `BATCH_OPS_MAX`）：`$ref` 由 `batch-refs.ts` 的 `resolveRefs` 換掉；`runBatch` 在暫存 state 上逐一執行，任一失敗整批退回，成功才 `history/batch`（一筆復原）。`batch` / `undo` / `redo` / `run_command` / `import_library_item` 不能進批次（`NOT_IN_BATCH`）；reducer 只收 `BatchableAction`（排除 `history/*`、`document/load`、`document/markSaved`、`page/add`）。
 
+## `render_page`（圖片在 App 的 Rust 端畫）
+
+- 前端只回 `{ render: RenderJob }`（只含那一頁的匯出請求、`pageIndex`、`maxPx`、`region`、`pageName`）；`bridge.rs` 看到 `RENDER_TOOL` 的 `Ok` 回應就交給 `render_answer` → `export/page_image.rs` 的 `render_page_image`（和 PDF / 封面同一套 typst 排版），回 `ToolResponse::Image`（base64）。**圖片不經過 WebView**，也不用 Konva 截圖（全形標點會被擠）。
+- pipe 的請求上限 `MAX_LINE_BYTES` 1 MiB，回應上限 `MAX_RESPONSE_BYTES` 16 MiB（`client.rs`）。橋接程式把 `Image` 包成 MCP 的 image content + 一行說明。
+
 ## `import_library_item`（唯一收檔案路徑的工具）
 
 - 路徑**只在 Rust**：`bridge.rs` 交給前端前用 `mcp/attachment.rs` 檢查並讀檔，位元組以一次性 token 放在 `FrontendRequest.attachment`（`args` 外面，AI 偽造不了），前端 `mcp_take_attachment(token)` 取回。**WebView 不能有讀任意路徑的能力**；其他工具都不收路徑。

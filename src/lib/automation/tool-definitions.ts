@@ -35,6 +35,7 @@ import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
 import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
 import { BATCH_OPS_MAX, NOT_IN_BATCH } from "./batch";
 import { LAYOUT_ISSUES_MAX } from "./layout-check";
+import { RENDER_DEFAULT_PX, RENDER_MAX_PX, RENDER_MIN_PX } from "./render-page";
 
 export interface ToolDefinition<Input extends z.ZodType = z.ZodType> {
   /** Short Chinese name shown by MCP clients. */
@@ -244,6 +245,30 @@ export const TOOL_DEFINITIONS = {
       "外框用旋轉後的軸對齊框，旋轉的物件可能多報。最多回 " +
       `${LAYOUT_ISSUES_MAX} 筆（truncated = 沒列出的筆數）。省略 pageId 時是使用者正在看的頁面。不會修改文件，可以放進 batch。`,
     input: z.strictObject({ pageId: pageId.optional() }),
+    readOnly: true,
+  },
+  render_page: {
+    title: "頁面圖片",
+    description:
+      "把一個頁面畫成圖片回傳（和匯出 PDF 同一套排版：含主頁內容、頁碼、背景，沒有選取框、參考線與格線），用來確認實際的樣子。" +
+      "圖片會占用不少 context：先用 check_layout 找問題，需要看視覺效果或確認 check_layout 的結果時再用它。" +
+      `maxWidth 是圖片的長邊（px，預設 ${RENDER_DEFAULT_PX}，${RENDER_MIN_PX}–${RENDER_MAX_PX}；超過約 1568 px 的圖會被縮小，沒有必要更大）。` +
+      "region 只畫頁面的一塊（pt，頁面座標），同樣放大到 maxWidth，用來看小字細節；放大倍率有上限（A4 約每 pt 6.9 px）。" +
+      "圖片後面附一行說明：頁面尺寸、輸出像素與比例（1 pt = N px）、region 左上角的頁面座標，用來把圖上的位置換回 pt。" +
+      "省略 pageId 時是使用者正在看的頁面；主頁不能畫（請畫套用它的頁面）。不會修改文件、不切換使用者的畫面。不能放進 batch。",
+    input: z.strictObject({
+      pageId: pageId.optional(),
+      maxWidth: z.number().int().min(RENDER_MIN_PX).max(RENDER_MAX_PX).optional().describe("圖片長邊（px）"),
+      region: z
+        .strictObject({
+          x: coordinate,
+          y: coordinate,
+          width: z.number().min(1).max(COORDINATE_LIMIT_PT),
+          height: z.number().min(1).max(COORDINATE_LIMIT_PT),
+        })
+        .optional()
+        .describe("只畫這一塊（pt，左上角與大小）"),
+    }),
     readOnly: true,
   },
   list_commands: {
