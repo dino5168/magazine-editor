@@ -81,7 +81,7 @@ cargo test --manifest-path src-tauri/Cargo.toml pptx_preview -- --ignored
 src/
   pages/home-page.tsx   # 版面與選單 handlers（Provider 順序：EditorProvider → LibraryProvider → ProjectProvider）
   components/           # app/（選單、對話框、settings/）、dock/、editor/（畫布、面板 panels/）、library/、templates/、ui/（shadcn，vendor）
-  lib/                  # 不含 UI 的邏輯：editor/（文件模型與編輯器核心）、project/、library/、templates/、menu/、dock/、preferences/、export/、upload/、automation/（MCP）
+  lib/                  # 不含 UI 的邏輯：editor/（文件模型與編輯器核心）、project/、library/、templates/、menu/、dock/、preferences/、export/、upload/、automation/（MCP）、media/（影片連結解析）
 src-tauri/
   src/                  # lib.rs、error.rs、db/、project/（檔案格式）、export/（PDF / EPUB / 翻頁書 / PPTX / 封面）、upload/（上傳到網站）、mcp/、commands/、bin/magazine-mcp.rs
   tauri.conf.json · capabilities/ · app-icon.svg · mcp-tools.json（產生的） · fonts-catalog.json
