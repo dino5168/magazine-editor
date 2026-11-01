@@ -290,6 +290,19 @@ fn svg_images_are_included() {
 }
 
 #[test]
+fn videos_link_to_youtube_without_a_target() {
+    let (root, req) = crate::export::test_support::video_request();
+    let entries = unzip(&build_epub(root.path(), &req, &meta()).unwrap().bytes);
+    let page = text_of(&entries, "OEBPS/pages/page-1.xhtml");
+    let anchor = page.lines().find(|line| line.starts_with("<a class=\"el link\"")).expect("video anchor");
+    assert!(anchor.contains(r#"href="https://www.youtube.com/watch?v=C5fjrag2Fcg&amp;t=90s""#), "{anchor}");
+    // EPUB 的內容文件不用 target，交給閱讀器決定怎麼開
+    assert!(!anchor.contains("target="), "{anchor}");
+    // 仍是合法的 XHTML
+    parse(page);
+}
+
+#[test]
 fn embeds_only_used_font_families() {
     let fonts_in = |family: &str| {
         let mut document = fixture_document();

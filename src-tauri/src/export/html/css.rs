@@ -18,6 +18,7 @@ pub const PAGE_RULES: &str = r#".page { position: relative; overflow: hidden; }
 .t > .d.s { z-index: -1; }
 img.el { display: block; }
 svg.el { overflow: visible; }
+a.link { display: block; z-index: 1; cursor: pointer; }
 "#;
 
 /// `@font-face` rules for the embedded fonts, each stored at `fonts/<file>` and referenced from

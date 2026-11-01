@@ -63,9 +63,16 @@ pub struct RenderElement {
     /// Shapes only: the image frame's photo, clipped to the outline and drawn over the fill, under
     /// the outline's stroke and the details.
     pub photo: Option<RenderPhoto>,
-    /// Videos only: the URL the element's area opens (PDF link; built by Rust from the validated
-    /// video id, never taken from the request).
-    pub link: Option<String>,
+    /// Videos only: what the element's area opens (PDF link, EPUB / flip book anchor).
+    pub link: Option<RenderLink>,
+}
+
+/// A link area: the URL is built by Rust from the validated video id, never taken from the request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderLink {
+    pub url: String,
+    /// The video's title (user text: escaped wherever it is written); may be empty.
+    pub title: String,
 }
 
 /// An image frame's photo: the file and its rectangle in the shape's coordinates.
@@ -699,7 +706,7 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
             rotation: media.base.rotation,
             kind: RenderKind::Rect(rect),
             photo: poster,
-            link: Some(youtube_watch_url(video_id, *start)),
+            link: Some(RenderLink { url: youtube_watch_url(video_id, *start), title: media.title.clone() }),
         },
         piece(cx - radius, cy - radius, RenderKind::Ellipse(circle)),
         piece(cx - 0.7 * t, cy - t, RenderKind::Polygon(triangle)),

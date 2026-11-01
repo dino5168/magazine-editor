@@ -94,7 +94,7 @@ fn element_data(element: &RenderElement) -> Value {
     }
     // 影片：外框是連結（網址由 Rust 用驗證過的影片 id 組成，模板只當成字串用）
     if let Some(link) = &element.link {
-        data["link"] = json!(link);
+        data["link"] = json!(link.url);
     }
     data
 }

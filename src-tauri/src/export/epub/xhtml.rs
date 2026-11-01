@@ -1,6 +1,6 @@
 //! One document page → one fixed-layout XHTML file around the shared page markup.
 
-use crate::export::html::markup::{escape, page_div};
+use crate::export::html::markup::{escape, page_div, LinkTarget};
 use crate::export::html::{PageImages, LANGUAGE};
 use crate::export::render::RenderPage;
 
@@ -35,6 +35,6 @@ pub fn page(page: &RenderPage, title: &str, images: &PageImages) -> String {
         bg = page.background,
         // 頁面在 pages/ 底下，圖片在上一層的 images/
         // 每頁一個 XHTML：clipPath 的 id 只要在這一頁裡不重複
-        page = page_div(page, 0, images, "../"),
+        page = page_div(page, 0, images, "../", LinkTarget::ReadingSystem),
     )
 }

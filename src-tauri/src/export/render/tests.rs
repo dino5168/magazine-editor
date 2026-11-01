@@ -60,7 +60,10 @@ fn videos_become_a_poster_box_with_a_link_and_a_play_badge() {
     let [frame, circle, triangle] = video_pieces(&document) else { panic!("three pieces") };
     assert!(matches!(&frame.kind, RenderKind::Rect(r) if (r.width, r.height) == (160.0, 90.0) && r.fill == "#262626" && r.stroke.is_none()));
     assert_eq!(frame.photo, Some(RenderPhoto { src: FRAME_PHOTO.into(), x: 0.0, y: -15.0, width: 160.0, height: 120.0 }));
-    assert_eq!(frame.link.as_deref(), Some("https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s"));
+    assert_eq!(
+        frame.link,
+        Some(RenderLink { url: "https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s".into(), title: "影片".into() })
+    );
     // 圓：半徑 = 短邊 90 × 0.14 = 12.6，置中在 (380, 345)
     assert!(matches!(&circle.kind, RenderKind::Ellipse(e) if (e.width - 25.2).abs() < 1e-9 && e.fill == "#00000099"));
     assert!((circle.x - (380.0 - 12.6)).abs() < 1e-9 && (circle.y - (345.0 - 12.6)).abs() < 1e-9);

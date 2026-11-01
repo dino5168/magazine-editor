@@ -110,6 +110,29 @@ fn nothing_loads_from_outside_the_book() {
 }
 
 #[test]
+fn videos_are_poster_links_opening_youtube_in_a_new_tab() {
+    let (root, mut req) = crate::export::test_support::video_request();
+    let Some(crate::project::format::Element::Media(video)) = req.document.pages[0].elements.last_mut() else { panic!("video") };
+    video.title = r#"<b>訪談</b> & "q""#.into();
+    let output = build_flipbook(root.path(), &req).unwrap();
+    let index = file(&output, "index.html");
+    // 連結在頁面最後（蓋在播放圖示上面），新分頁、不帶 referrer 與 opener；標題經過 escape
+    let anchor = index.lines().find(|line| line.starts_with("<a class=\"el link\"")).expect("video anchor");
+    assert!(anchor.contains(r#"href="https://www.youtube.com/watch?v=C5fjrag2Fcg&amp;t=90s""#), "{anchor}");
+    assert!(anchor.contains(r#"target="_blank" rel="noopener noreferrer""#), "{anchor}");
+    assert!(anchor.contains("觀看影片：&lt;b&gt;訪談&lt;/b&gt; &amp; &quot;q&quot;"), "{anchor}");
+    assert!(anchor.contains("left:300px;top:300px;width:160px;height:90px"), "{anchor}");
+    let page = &index[index.find("class=\"page\"").unwrap()..];
+    // 第 1 頁到下一頁（.fb-page）之前；頁面裡的文字行也是 div，不能找 </div>
+    let page = &page[..page.find("class=\"fb-page").unwrap_or(page.len())];
+    assert!(page.rfind("<a class=\"el link\"").unwrap() > page.rfind("<svg").unwrap(), "the anchor comes after the badge");
+    // 書裡唯一的外部網址就是這個影片連結，而且不會被載入（CSP 不變、沒有 iframe）
+    let outside: Vec<&str> = attribute_values(index, "href").into_iter().filter(|v| v.starts_with("http")).collect();
+    assert_eq!(outside, vec!["https://www.youtube.com/watch?v=C5fjrag2Fcg&amp;t=90s"]);
+    assert!(!index.contains("<iframe"));
+}
+
+#[test]
 fn user_text_is_data_not_markup() {
     let hostile = r#"<script>alert(1)</script> & "q" ]]> <!--"#;
     let mut document = fixture_document();

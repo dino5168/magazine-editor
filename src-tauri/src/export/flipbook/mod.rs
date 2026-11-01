@@ -17,7 +17,7 @@
 //! of local files, and the book must open with a double click.
 
 use super::archive::{write_zip, Packing};
-use super::html::markup::{escape, num, page_div};
+use super::html::markup::{escape, num, page_div, LinkTarget};
 use super::document_fonts;
 use super::html::{collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
 use super::render::{build_render, RenderPage};
@@ -103,7 +103,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
             r#"<div class="{class}" data-name="{name}"{toc}><div class="fb-scale"{fit}>{markup}</div></div>"#,
             name = escape(&name),
             // 頁面標記在 index.html 裡，圖片在同一層的 images/
-            markup = page_div(page, n, &images, ""),
+            markup = page_div(page, n, &images, "", LinkTarget::NewTab),
         );
     }
     let index = format!(

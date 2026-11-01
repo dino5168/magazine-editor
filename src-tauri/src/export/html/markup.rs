@@ -8,7 +8,7 @@ use super::PageImages;
 use crate::export::document_fonts::is_project_family;
 use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{
-    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderPage, RenderPhoto, RenderRect, RenderStroke,
+    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderLink, RenderPage, RenderPhoto, RenderRect, RenderStroke,
     RenderText, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use crate::project::format::Align;
@@ -412,6 +412,35 @@ fn element_markup(out: &mut String, element: &RenderElement, images: &PageImages
     }
 }
 
+/// How a format opens links (videos).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinkTarget {
+    /// The flip book: a new tab, so the reader keeps the book open.
+    NewTab,
+    /// EPUB: the reading system decides (`target` is not part of EPUB content documents).
+    ReadingSystem,
+}
+
+/// A transparent anchor over the element's box (videos: the whole poster, play badge included).
+/// The URL comes from Rust; the title is user text and escaped.
+fn link_markup(out: &mut String, element: &RenderElement, link: &RenderLink, target: LinkTarget) {
+    let RenderKind::Rect(rect) = &element.kind else { return };
+    let mut style =
+        format!("left:{}px;top:{}px;width:{}px;height:{}px", num(element.x), num(element.y), num(rect.width), num(rect.height));
+    rotate(&mut style, element.rotation);
+    let label = if link.title.is_empty() { "觀看影片".to_owned() } else { format!("觀看影片：{}", link.title) };
+    let target = match target {
+        LinkTarget::NewTab => r#" target="_blank" rel="noopener noreferrer""#,
+        LinkTarget::ReadingSystem => "",
+    };
+    let _ = writeln!(
+        out,
+        r#"<a class="el link" href="{href}"{target} title="{label}" aria-label="{label}" style="{style}"></a>"#,
+        href = escape(&link.url),
+        label = escape(&label),
+    );
+}
+
 /// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
 pub fn has_svg(page: &RenderPage) -> bool {
     page.elements.iter().any(|element| element.photo.is_some() || match &element.kind {
@@ -431,11 +460,17 @@ pub fn has_svg(page: &RenderPage) -> bool {
 ///   drawn.
 /// * `image_prefix` - Path from the document holding this markup to the output root, put in front
 ///   of every image href (`../` for an EPUB page in `pages/`, empty for the flip book's `index.html`).
-pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image_prefix: &str) -> String {
+pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image_prefix: &str, links: LinkTarget) -> String {
     let mut body = String::new();
     for (index, element) in page.elements.iter().enumerate() {
         // 翻頁書把所有頁面放在同一份 HTML：clipPath 的 id 帶頁序，整本書不重複
         element_markup(&mut body, element, images, image_prefix, &format!("photo-{page_index}-{index}"));
+    }
+    // 連結放在最後（最上層）：影片的播放圖示畫在外框之後，連結若跟著外框會被圖示蓋住、點不到
+    for element in &page.elements {
+        if let Some(link) = &element.link {
+            link_markup(&mut body, element, link, links);
+        }
     }
     format!(
         "<div class=\"page\" style=\"width:{w}px;height:{h}px;background:{bg}\">\n{body}</div>",
@@ -457,7 +492,7 @@ mod tests {
         assert_eq!(skipped, 0);
         let page = &document.pages[0];
         assert!(has_svg(page));
-        let markup = page_div(page, 3, &images, "");
+        let markup = page_div(page, 3, &images, "", LinkTarget::NewTab);
         let href = images.href(crate::export::test_support::FRAME_PHOTO).expect("the photo is collected");
         let image = format!(
             r#"<image href="{href}" x="0" y="-5" width="120" height="90" preserveAspectRatio="none" clip-path="url(#photo-3-"#
@@ -470,7 +505,7 @@ mod tests {
         assert!(clip < filled && filled < photo && photo < outlined, "{markup}");
         // 照片讀不到（沒收錄）時照一般圖形畫
         let empty = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
-        assert!(!page_div(page, 3, &empty, "").contains("<clipPath"));
+        assert!(!page_div(page, 3, &empty, "", LinkTarget::NewTab).contains("<clipPath"));
     }
 
     #[test]
@@ -479,7 +514,7 @@ mod tests {
         let page = &document.pages[0];
         assert!(has_svg(page));
         let images = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
-        let markup = page_div(page, 0, &images, "");
+        let markup = page_div(page, 0, &images, "", LinkTarget::NewTab);
         assert!(
             markup.contains(r##"<path d="M0 0 L60 0 L60 60 L0 60 Z M100 0 L160 0 L160 60 L100 60 Z" fill="#ff0000"/>"##),
             "outline: two closed subpaths, filled, no stroke: {markup}"
