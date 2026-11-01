@@ -297,7 +297,7 @@ fn videos_link_to_youtube_without_a_target() {
     let anchor = page.lines().find(|line| line.starts_with("<a class=\"el link\"")).expect("video anchor");
     assert!(anchor.contains(r#"href="https://www.youtube.com/watch?v=C5fjrag2Fcg&amp;t=90s""#), "{anchor}");
     // EPUB 的內容文件不用 target，交給閱讀器決定怎麼開
-    assert!(!anchor.contains("target="), "{anchor}");
+    assert!(!anchor.contains("target=") && !anchor.contains("data-embed"), "{anchor}");
     // 仍是合法的 XHTML
     parse(page);
 }

@@ -20,7 +20,8 @@ use super::archive::{write_zip, Packing};
 use super::html::markup::{escape, num, page_div, LinkTarget};
 use super::document_fonts;
 use super::html::{collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
-use super::render::{build_render, RenderPage};
+use super::render::{build_render, RenderDocument, RenderPage};
+use crate::media::YOUTUBE_EMBED_ORIGIN;
 use super::ExportRequest;
 use crate::error::{AppError, AppResult};
 use std::fmt::Write;
@@ -35,6 +36,17 @@ const VIEWER_CSS: &str = include_str!("viewer/viewer.css");
 /// images. Inline styles are needed for the page markup and for page-flip's injected `<style>`.
 const CONTENT_SECURITY_POLICY: &str =
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'";
+
+/// The policy of a book: books with videos may also frame YouTube's player (the only outside
+/// origin, and only as a frame); books without keep the closed policy.
+fn content_security_policy(document: &RenderDocument) -> String {
+    let has_video = document.pages.iter().flat_map(|page| &page.elements).any(|element| element.link.is_some());
+    if has_video {
+        format!("{CONTENT_SECURITY_POLICY}; frame-src {YOUTUBE_EMBED_ORIGIN}")
+    } else {
+        CONTENT_SECURITY_POLICY.to_owned()
+    }
+}
 
 /// Pages whose size differs from the book by less than this (pt) are drawn as they are.
 const SIZE_TOLERANCE_PT: f64 = 0.01;
@@ -126,7 +138,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
 </html>
 "#,
         lang = LANGUAGE,
-        csp = CONTENT_SECURITY_POLICY,
+        csp = content_security_policy(&document),
         title = escape(&title),
         w = num(book_width),
         h = num(book_height),

@@ -1,7 +1,8 @@
 // 翻頁書的 viewer：用 page-flip（viewer/page-flip.browser.js）翻 index.html 裡的 .fb-page，
 // 加上工具列（第一頁 / 上一頁 / 頁碼與跳頁 / 下一頁 / 最後一頁 / 全螢幕）與鍵盤操作。
 // 書的尺寸（pt）寫在 #book 的 data-width / data-height；頁面標記以 pt 為 px 排好，
-// 這裡只負責縮放到翻頁區的大小。不讀網址或其他外部輸入，不用 innerHTML 放文字。
+// 這裡只負責縮放到翻頁區的大小。不讀網址或其他外部輸入（唯一的例外：location.protocol 判斷影片
+// 能不能在書裡播放），不用 innerHTML 放文字。
 (function () {
   "use strict";
 
@@ -228,6 +229,8 @@
       if (page.classList.contains("fb-fitted")) slot.classList.add("fb-fitted");
       // 縮圖不是頁面內容，不給輔助技術重複朗讀
       copy.setAttribute("aria-hidden", "true");
+      // 影片連結：縮圖本身是按鈕（跳到那一頁），裡面的連結不能搶走點擊
+      copy.querySelectorAll("a").forEach(function (a) { a.remove(); });
       slot.style.setProperty("--s", String(thumbScale));
       slot.appendChild(copy);
     });
@@ -832,6 +835,98 @@
     event.preventDefault();
   }
 
+  // ---- 影片 ----
+  // 頁面上的影片是連到 YouTube 的 <a class="link" data-embed="播放器網址">（放大檢視裡的複本也是）。
+  // 從網站（http / https）開啟時在書上方播放；本機開檔（file:）時 YouTube 不允許內嵌（沒有來源網址，
+  // 播放器顯示錯誤），照連結開新分頁。播放器網址由匯出程式產生，CSP 只允許那個網域的 frame。
+  // 網站用 CSP sandbox 把書放在不透明來源（origin 是 "null"）時也一樣：YouTube 收不到來源，播放器是全黑的
+  // （實測；web-magazine 的 sandbox 要加 allow-same-origin 才能在書裡播放）。
+  var canEmbed = (location.protocol === "https:" || location.protocol === "http:") && window.origin !== "null";
+  var videoOpen = false;
+  var videoReturn = null;
+
+  var videoLayer = document.createElement("div");
+  videoLayer.id = "video";
+  videoLayer.hidden = true;
+  videoLayer.setAttribute("role", "dialog");
+  videoLayer.setAttribute("aria-modal", "true");
+  var videoFrame = document.createElement("div");
+  videoFrame.className = "fb-video-frame";
+  var videoBar = document.createElement("div");
+  videoBar.className = "fb-video-bar";
+  var videoTitle = document.createElement("span");
+  videoTitle.className = "fb-video-title";
+  // 影片不允許內嵌時播放器只顯示錯誤：一律提供到 YouTube 觀看的連結
+  var videoOnYouTube = document.createElement("a");
+  videoOnYouTube.className = "fb-video-youtube";
+  videoOnYouTube.target = "_blank";
+  videoOnYouTube.rel = "noopener noreferrer";
+  videoOnYouTube.textContent = "在 YouTube 觀看";
+  var videoClose = button("關閉影片（Esc）", "close", function () { closeVideo(); });
+  [videoTitle, videoOnYouTube, videoClose].forEach(function (el) { videoBar.appendChild(el); });
+  videoLayer.appendChild(videoFrame);
+  videoLayer.appendChild(videoBar);
+  document.body.appendChild(videoLayer);
+
+  function openVideo(link) {
+    var label = link.getAttribute("aria-label") || "觀看影片";
+    var player = document.createElement("iframe");
+    player.src = link.dataset.embed;
+    player.title = label;
+    player.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    player.allowFullscreen = true;
+    // YouTube 依來源網址判斷能不能內嵌：送出網站的來源（不含路徑）
+    player.referrerPolicy = "strict-origin-when-cross-origin";
+    videoFrame.replaceChildren(player);
+    videoTitle.textContent = label;
+    videoOnYouTube.href = link.href;
+    videoLayer.setAttribute("aria-label", label);
+    videoReturn = link;
+    videoOpen = true;
+    videoLayer.hidden = false;
+    videoClose.focus();
+  }
+
+  function closeVideo() {
+    if (!videoOpen) return;
+    videoOpen = false;
+    videoLayer.hidden = true;
+    // 拿掉 iframe 才會停止播放
+    videoFrame.replaceChildren();
+    var back = videoReturn && document.body.contains(videoReturn) ? videoReturn : stage;
+    videoReturn = null;
+    if (back === stage) stage.focus();
+    else back.focus();
+  }
+
+  document.addEventListener("click", function (event) {
+    if (!canEmbed) return;
+    var link = event.target instanceof Element ? event.target.closest("a.link[data-embed]") : null;
+    if (!link) return;
+    event.preventDefault();
+    openVideo(link);
+  });
+  // 點播放器以外的暗處關閉
+  videoLayer.addEventListener("click", function (event) {
+    if (event.target === videoLayer) closeVideo();
+  });
+
+  /** 影片開著時的按鍵：Esc 關閉，Tab 留在影片層裡，其他（方向鍵翻頁、Z 放大）都不作用。 */
+  function videoKey(event) {
+    if (event.key === "Escape") {
+      closeVideo();
+    } else if (event.key === "Tab") {
+      var focusables = [videoOnYouTube, videoClose];
+      var at = focusables.indexOf(document.activeElement);
+      var next = (at + (event.shiftKey ? -1 : 1) + focusables.length) % focusables.length;
+      focusables[at === -1 ? 0 : next].focus();
+    } else if (event.target === videoOnYouTube || event.target === videoClose) {
+      // Enter / 空白鍵照常按下連結與按鈕
+      return;
+    }
+    event.preventDefault();
+  }
+
   // ---- 滾輪翻頁 ----
   // 只在翻頁區（#stage）：工具列、縮圖列、目錄面板、放大檢視是另外的層，它們的滾輪照常。
   // 往下 / 觸控板往左滑 = 下一頁（兩者的 delta 都是正的），取比較大的那一軸。
@@ -876,6 +971,11 @@
 
   document.addEventListener("keydown", function (event) {
     if (event.defaultPrevented) return;
+    // 影片可以從放大檢視裡打開，疊在它上面：先處理
+    if (videoOpen) {
+      videoKey(event);
+      return;
+    }
     if (zoomOpen) {
       zoomKey(event);
       return;

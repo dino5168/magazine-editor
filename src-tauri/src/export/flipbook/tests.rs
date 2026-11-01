@@ -107,6 +107,8 @@ fn nothing_loads_from_outside_the_book() {
         assert!(!text.contains("http://") && !text.contains("https://") && !text.contains("//cdn"), "{name} links outside");
     }
     assert!(file(&output, "index.html").contains(r#"http-equiv="Content-Security-Policy""#));
+    // 沒有影片的書不允許任何 frame
+    assert!(!file(&output, "index.html").contains("frame-src"));
 }
 
 #[test]
@@ -130,6 +132,9 @@ fn videos_are_poster_links_opening_youtube_in_a_new_tab() {
     let outside: Vec<&str> = attribute_values(index, "href").into_iter().filter(|v| v.starts_with("http")).collect();
     assert_eq!(outside, vec!["https://www.youtube.com/watch?v=C5fjrag2Fcg&amp;t=90s"]);
     assert!(!index.contains("<iframe"));
+    // 書內播放：播放器網址（無 cookie 網域）；CSP 只多允許這個來源的 frame
+    assert!(anchor.contains(r#"data-embed="https://www.youtube-nocookie.com/embed/C5fjrag2Fcg?autoplay=1&amp;rel=0&amp;start=90""#), "{anchor}");
+    assert!(index.contains("font-src 'self'; frame-src https://www.youtube-nocookie.com\""), "CSP");
 }
 
 #[test]

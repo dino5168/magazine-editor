@@ -429,9 +429,10 @@ fn link_markup(out: &mut String, element: &RenderElement, link: &RenderLink, tar
         format!("left:{}px;top:{}px;width:{}px;height:{}px", num(element.x), num(element.y), num(rect.width), num(rect.height));
     rotate(&mut style, element.rotation);
     let label = if link.title.is_empty() { "觀看影片".to_owned() } else { format!("觀看影片：{}", link.title) };
+    // 翻頁書：data-embed 讓 viewer 在書上方播放（從網站開啟時）；本機開檔時照連結開新分頁
     let target = match target {
-        LinkTarget::NewTab => r#" target="_blank" rel="noopener noreferrer""#,
-        LinkTarget::ReadingSystem => "",
+        LinkTarget::NewTab => format!(r#" target="_blank" rel="noopener noreferrer" data-embed="{}""#, escape(&link.embed)),
+        LinkTarget::ReadingSystem => String::new(),
     };
     let _ = writeln!(
         out,

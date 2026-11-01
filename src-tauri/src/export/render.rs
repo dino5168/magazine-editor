@@ -13,7 +13,7 @@ use crate::project::format::{
     TextDecoration, TextShadow,
     VerticalAlign,
 };
-use crate::media::youtube_watch_url;
+use crate::media::{youtube_embed_url, youtube_watch_url};
 use crate::project::shape;
 use std::collections::HashMap;
 use std::path::Path;
@@ -73,6 +73,8 @@ pub struct RenderLink {
     pub url: String,
     /// The video's title (user text: escaped wherever it is written); may be empty.
     pub title: String,
+    /// The player URL for playing inside the flip book (`media::youtube_embed_url`).
+    pub embed: String,
 }
 
 /// An image frame's photo: the file and its rectangle in the shape's coordinates.
@@ -706,7 +708,11 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
             rotation: media.base.rotation,
             kind: RenderKind::Rect(rect),
             photo: poster,
-            link: Some(RenderLink { url: youtube_watch_url(video_id, *start), title: media.title.clone() }),
+            link: Some(RenderLink {
+                url: youtube_watch_url(video_id, *start),
+                title: media.title.clone(),
+                embed: youtube_embed_url(video_id, *start),
+            }),
         },
         piece(cx - radius, cy - radius, RenderKind::Ellipse(circle)),
         piece(cx - 0.7 * t, cy - t, RenderKind::Polygon(triangle)),

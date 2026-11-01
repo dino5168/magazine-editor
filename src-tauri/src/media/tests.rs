@@ -27,6 +27,12 @@ fn builds_the_watch_url_like_the_editor() {
 }
 
 #[test]
+fn builds_the_player_url_on_the_cookieless_domain() {
+    assert_eq!(youtube_embed_url(ID, 0), "https://www.youtube-nocookie.com/embed/C5fjrag2Fcg?autoplay=1&rel=0");
+    assert_eq!(youtube_embed_url(ID, 90), "https://www.youtube-nocookie.com/embed/C5fjrag2Fcg?autoplay=1&rel=0&start=90");
+}
+
+#[test]
 fn reads_availability_from_the_oembed_status() {
     assert_eq!(Availability::from_oembed_status(200), Availability::Ok);
     assert_eq!(Availability::from_oembed_status(401), Availability::NotEmbeddable);

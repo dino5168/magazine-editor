@@ -166,6 +166,22 @@ interface MediaElement extends BaseElement {
 
 ---
 
+## 4.1 交給 web-magazine 工作階段（步驟 7 發現，2026-11-01）
+
+書內播放在**網站上**目前不會出現（翻頁書會退回開新分頁，而且新分頁也被擋）。原因在網站的書檔伺服器（`A01-Magazine-Server/src/lib.rs` 的 `books_router`）送出的標頭：
+
+| 標頭 | 現在 | 影響 |
+|---|---|---|
+| `Content-Security-Policy` | `sandbox allow-scripts` | 書在**不透明來源**（origin `"null"`）：YouTube 收不到來源，播放器全黑；沒有 `allow-popups`，`target="_blank"` 的連結與「在 YouTube 觀看」也開不了 |
+| `Referrer-Policy` | `no-referrer` | 沒影響（播放器 iframe 自己設 `strict-origin-when-cross-origin`，實測可播） |
+
+**實測**（本機用相同標頭供應同一本書，無頭 Edge）：`sandbox allow-scripts` → 全黑；加 `allow-same-origin` → 可以播放（不論 Referrer-Policy）；再加 `allow-popups allow-popups-to-escape-sandbox` → 新分頁連結也能用。
+
+**要 web-magazine 決定與修改**（不在本 repo 改）：
+1. sandbox 加 `allow-same-origin allow-popups allow-popups-to-escape-sandbox`。**資安取捨**：書會共用書檔伺服器的來源（彼此的 localStorage 等；書檔伺服器本來就和 API / 前端不同來源，登入 token 不受影響）。要在 web-magazine 的資安評估裡決定。
+2. 前端用來嵌入書的 iframe 若有 `sandbox` 屬性，也要加同樣的旗標（iframe 內的文件會繼承）。
+3. 改完後上傳一本有影片的書實測。翻頁書這邊不用改：viewer 偵測到可以內嵌（`window.origin` 不是 `"null"`）就會在書裡播放。
+
 ## 5. 不做（這次）
 
 - 本機 mp4 檔（需求明確排除：檔案太大）；直接的 `.mp4` 網址（無法自動產生封面，§2 問題 2）。
@@ -190,3 +206,4 @@ interface MediaElement extends BaseElement {
 | 2026-11-01 | 步驟 4 完成 | **入口**：選單「檔案 → 匯入 → YouTube 影片連結...」（指令 `file.insertVideo`，MCP `run_command` 可用；`mcp-tools.json`、Python SDK 已更新、橋接程式已重編）+ 底部工具列圖片旁的影片按鈕（**和計畫不同：沒有放元素面板**，元素面板目前只有圖形，影片和圖片按鈕放一起比較好找）。**對話框** `components/app/insert-video-dialog.tsx`：輸入停 400 ms 後抓資訊，預覽封面 / 標題 / 開始時間 / 提醒（不存在的影片不能加入；不能內嵌、沒有封面只提醒），晚回來的舊結果不蓋新的。**共用** `use-add-video.ts`（`fetchVideoInfo`、`add`、`fetchAndAdd`）與純函式 `lib/media/media-insert.ts`（`posterOf`、`videoNotice`、`videoFromTransfer`、`formatVideoTime` / `parseVideoTime`，測試 7 項）。**捷徑** `use-video-transfer.ts`：Ctrl+V 貼網址（放在游標所在處，游標不在畫布上就放頁面中央）、拖曳連結到畫布（放開的位置）。**畫布**：封面用 `photoPlacement` + Konva pattern（和圖片框同公式），上面是半透明圓形 + 播放三角形；沒有封面是深色底。**屬性面板**新分頁「影片」（`video-fields.tsx`）：網址（換成別支影片時一起換封面與標題，一筆復原）、開始時間（1:30 / 90 / 1:02:03 / 1m30s）、標題、在瀏覽器開啟（`openUrl`）、重新抓封面；「封面」區塊重用圖片框的欄位（`ShapePhotoFields` 抽出 `PhotoFields`）。影片預設「限制寬高比」。**驗證**（無頭 Edge、瀏覽器模式）：工具列按鈕開對話框、錯誤網址提示並停用「加入」、加入後選取、分頁與欄位、改標題 / 開始時間、Ctrl+V（一般文字不處理）、拖曳 uri-list、復原一筆；另用 4:3 帶黑邊的測試圖確認封面 `cover` 剛好裁掉黑邊。**桌面版待使用者驗證**：對話框真的抓到封面與標題、從 Edge / Chrome 把網址或分頁拖進 WebView2、在瀏覽器開啟 |
 | 2026-11-01 | 步驟 5 完成 | 影片在 Rust 拆成**既有的畫法**（`render.rs` 的 `media_elements`）：深色 `Rect` + 封面當它的 `photo`（`render_photo` 改成收 id 與 `ShapeImage`，圖片框與影片共用；前端把封面位置放進同一張 `shapePhotos`）+ 播放圖示的 `Ellipse` / `Polygon`（顏色與比例同畫布，旋轉時依外框左上角換算位置，同圖形內文字）。所以 PDF、PowerPoint、`render_page`、EPUB / 翻頁書**都不用新的繪製程式**就畫得出封面與圖示。外框帶新欄位 `RenderElement.link`：網址由 Rust 用驗證過的 id 組成（`media::youtube_watch_url`，和 TS `youTubeWatchUrl` 同格式），PDF 模板把外框 box 包在 `link()` 裡；EPUB / 翻頁書這一步還不用它（步驟 6）。封面檔不見時只畫深色底並算進略過的圖片數。測試：render 4 項（三個部件與連結、旋轉、沒有 / 遺失封面、缺位置）、PDF 1 項（frame 裡的 `Link` 網址與範圍 = 影片外框；點陣化後封面四象限顏色、三角形白、圓形變暗）、`youtube_watch_url` 1 項 |
 | 2026-11-01 | 步驟 6 完成 | `RenderElement.link` 改成 `RenderLink { url, title }`。`markup.rs` 的 `page_div` 多一個參數 `LinkTarget`：每頁**最後**（最上層）為每個連結寫一個透明的 `<a class="el link">`，大小、位置、旋轉同影片外框。**為什麼放最後**：播放圖示是外框之後的元素，連結如果跟著外框會被圖示蓋住，最常點的地方反而點不到。翻頁書 `target="_blank" rel="noopener noreferrer"`；EPUB 不寫 target（交給閱讀器）。`title` / `aria-label` 是「觀看影片：標題」（經 escape）。CSS `a.link { display: block; z-index: 1; cursor: pointer }`。翻頁書 CSP 不用改（只是連結，不載入任何東西，也沒有 iframe）。測試：翻頁書 1 項（網址、target / rel、標題 escape、位置、在播放圖示之後、書裡唯一的外部網址）、EPUB 1 項（沒有 target、仍是合法 XHTML）。**瀏覽器實測**（`flipbook_preview` + 自己做的請求：4 頁、封面與第 2 頁各一支影片；無頭 Edge 開 `file://`）：點播放圖示與點外框角落都只產生**一次**沒被取消的 click 到 `<a>`（target `_blank`），頁碼不變（沒有被當成翻頁）；從右下角拖曳照樣翻到 2–3 頁；封面 `cover` 正確裁掉黑邊。**待使用者驗證**：用一般瀏覽器開匯出的翻頁書，點影片真的開新分頁；上傳到網站後在網站上點 |
+| 2026-11-01 | 步驟 7 完成（網站端待 web-magazine，見 §4.1） | Rust：`RenderLink.embed`（`media::youtube_embed_url`：`youtube-nocookie.com/embed/<id>?autoplay=1&rel=0&start=`），翻頁書的連結多 `data-embed`（EPUB 沒有）；**有影片的書**的 CSP 才加 `frame-src https://www.youtube-nocookie.com`（`content_security_policy`）。`viewer.js` 新的「影片」段：點 `a.link[data-embed]` → `#video` 層（role=dialog，疊在放大檢視之上 z-index 30）放 iframe（`allow` autoplay / fullscreen…、`referrerpolicy="strict-origin-when-cross-origin"`），下方標題列有「在 YouTube 觀看」與關閉；Esc / 點暗處 / 關閉鈕關閉並**移除 iframe**（停止播放），焦點回到原本的連結；開著時方向鍵、Z 不作用，Tab 留在層內。`file:` 或不透明來源（`window.origin === "null"`）不攔，照連結開新分頁。**順便修正**：縮圖列的頁面複本拿掉 `<a>`（縮圖本身是按鈕，步驟 6 起裡面的影片連結會搶走點擊）。測試：`youtube_embed_url` 1 項；翻頁書測試加 `data-embed` 與 CSP、沒有影片的書沒有 `frame-src`；EPUB 沒有 `data-embed`。**瀏覽器實測**（無頭 Edge）：`http://127.0.0.1` 供應 → 點影片開播放層、iframe 網址與 referrer policy 正確、**YouTube 真的在書裡播放**（截圖）、方向鍵不翻頁、Esc 關閉且 iframe 移除、焦點回連結、縮圖裡沒有連結、沒有 CSP 錯誤；`file://` → 不開播放層、click 沒被取消（開新分頁）；用網站的標頭供應 → 見 §4.1 |

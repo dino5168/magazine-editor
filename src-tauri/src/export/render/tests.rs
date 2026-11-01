@@ -62,7 +62,11 @@ fn videos_become_a_poster_box_with_a_link_and_a_play_badge() {
     assert_eq!(frame.photo, Some(RenderPhoto { src: FRAME_PHOTO.into(), x: 0.0, y: -15.0, width: 160.0, height: 120.0 }));
     assert_eq!(
         frame.link,
-        Some(RenderLink { url: "https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s".into(), title: "影片".into() })
+        Some(RenderLink {
+            url: "https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s".into(),
+            title: "影片".into(),
+            embed: "https://www.youtube-nocookie.com/embed/C5fjrag2Fcg?autoplay=1&rel=0&start=90".into(),
+        })
     );
     // 圓：半徑 = 短邊 90 × 0.14 = 12.6，置中在 (380, 345)
     assert!(matches!(&circle.kind, RenderKind::Ellipse(e) if (e.width - 25.2).abs() < 1e-9 && e.fill == "#00000099"));

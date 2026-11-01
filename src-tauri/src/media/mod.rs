@@ -32,6 +32,17 @@ pub fn youtube_watch_url(video_id: &str, start: u32) -> String {
     if start > 0 { format!("{base}&t={start}s") } else { base }
 }
 
+/// Host of the in-book player: YouTube's privacy-enhanced domain (no cookies until playback).
+/// The flip book's CSP allows frames from exactly this origin.
+pub const YOUTUBE_EMBED_ORIGIN: &str = "https://www.youtube-nocookie.com";
+
+/// The player URL the flip book opens over the book: starts playing (the reader clicked play),
+/// no related videos from other channels at the end, from `start` seconds.
+pub fn youtube_embed_url(video_id: &str, start: u32) -> String {
+    let base = format!("{YOUTUBE_EMBED_ORIGIN}/embed/{video_id}?autoplay=1&rel=0");
+    if start > 0 { format!("{base}&start={start}") } else { base }
+}
+
 /// YouTube's oEmbed endpoint for the video: its title, and whether it may be embedded.
 pub fn oembed_url(video_id: &str) -> String {
     // id 只含 [A-Za-z0-9_-]，放進 query 不必另外編碼；外層網址的 : / ? = 要編碼
