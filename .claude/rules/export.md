@@ -45,7 +45,7 @@ paths:
 
 - **頁面 = EPUB 的頁面標記**：`export/html/` 共用（`markup::page_div(page, images, image_prefix)`、`css::font_faces` + `PAGE_RULES`），改標記兩邊一起變。
 - 書的結構寫在 `index.html`（`file://` 擋 `fetch()`，不另放 JSON）；**沒有 inline script**，頁名 / 書名經 `escape`；CSP meta 只允許書裡的檔案（`data:` 也不行）。**有影片的書**多一個 `frame-src https://www.youtube-nocookie.com`（`content_security_policy`）。
-- **書內播放**（`viewer.js` 的「影片」段）：點 `a.link[data-embed]` → 書上方的 `#video` 層放 iframe（`referrerpolicy="strict-origin-when-cross-origin"`：YouTube 要有來源才肯內嵌），關閉時移除 iframe（停止播放）。`file:` 或不透明來源（`window.origin === "null"`，例如 CSP `sandbox` 沒有 `allow-same-origin`）播放器只會全黑 → 不攔，照連結開新分頁。縮圖的頁面複本拿掉 `<a>`（縮圖本身是按鈕）。
+- **書內播放**（`viewer.js` 的「影片」段）：點 `a.link[data-embed]` → 書上方的 `#video` 層放 iframe（`referrerpolicy="strict-origin-when-cross-origin"`：YouTube 要有來源才肯內嵌），關閉時移除 iframe（停止播放）。`file:` 或不透明來源（`window.origin === "null"`，例如 CSP `sandbox` 沒有 `allow-same-origin`）YouTube 不肯內嵌（錯誤 153 / 全黑）→ 同一個層改成**說明**（`data-poster` 的封面 + 原因 +「到 YouTube 觀看」按鈕），不自動開新視窗；Ctrl / Shift + 點擊不攔。`data-poster` 是 `page_div` 算好的書內圖片路徑（只有翻頁書）。縮圖的頁面複本拿掉 `<a>`（縮圖本身是按鈕）。
 - `.fb-page` 的 style 每次繪製被 page-flip 改寫 → 縮放放在裡面的 `.fb-scale`。
 - `data-toc` 用 `is_default_page_name`，和編輯器 `nextPageNames` 的預設名稱**同規則**。
 - **page-flip（vendor）陷阱**：`#book` 必須剛好是書的大小（硬頁與 `flipNext` 假設書在左上角）→ `viewer.js` 的 `layoutBook()` 自己算並置中，`resize` 處理要在建立 PageFlip **之前**註冊；`loadFromHTML` 寫上的 `min-width` / `width: 100%` 要清掉再 `layoutBook()` + `flip.update()`。翻頁區 `mousedown` 被 `preventDefault`，不能選文字（放大檢視是另一層）。升級 page-flip 要重跑計畫裡的瀏覽器驗證。

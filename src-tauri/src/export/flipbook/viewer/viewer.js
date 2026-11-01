@@ -836,9 +836,10 @@
   }
 
   // ---- 影片 ----
-  // 頁面上的影片是連到 YouTube 的 <a class="link" data-embed="播放器網址">（放大檢視裡的複本也是）。
-  // 從網站（http / https）開啟時在書上方播放；本機開檔（file:）時 YouTube 不允許內嵌（沒有來源網址，
-  // 播放器顯示錯誤），照連結開新分頁。播放器網址由匯出程式產生，CSP 只允許那個網域的 frame。
+  // 頁面上的影片是連到 YouTube 的 <a class="link" data-embed="播放器網址" data-poster="封面">（放大檢視裡的複本也是）。
+  // 從網站（http / https）開啟時在書上方播放。本機開檔（file:）時 YouTube 不允許內嵌（沒有來源網址，
+  // 播放器顯示錯誤 153）：同一個層改成說明（封面 + 原因 +「到 YouTube 觀看」按鈕），不自動開新視窗，
+  // 讀者按了按鈕才開。播放器網址由匯出程式產生，CSP 只允許那個網域的 frame。
   // 網站用 CSP sandbox 把書放在不透明來源（origin 是 "null"）時也一樣：YouTube 收不到來源，播放器是全黑的
   // （實測；web-magazine 的 sandbox 要加 allow-same-origin 才能在書裡播放）。
   var canEmbed = (location.protocol === "https:" || location.protocol === "http:") && window.origin !== "null";
@@ -868,23 +869,67 @@
   videoLayer.appendChild(videoBar);
   document.body.appendChild(videoLayer);
 
+  // 本機開檔時的說明（不能播放時才用）：封面上蓋一層原因與按鈕
+  var videoNotice = document.createElement("div");
+  videoNotice.className = "fb-video-notice";
+  var videoPoster = document.createElement("img");
+  videoPoster.className = "fb-video-poster";
+  videoPoster.alt = "";
+  var videoNoticeBody = document.createElement("div");
+  videoNoticeBody.className = "fb-video-notice-body";
+  var videoNoticeText = document.createElement("p");
+  videoNoticeText.textContent = "直接開啟電子書檔案時不能在書裡播放影片（YouTube 的限制）。";
+  var videoNoticeHint = document.createElement("p");
+  videoNoticeHint.className = "fb-video-notice-hint";
+  videoNoticeHint.textContent = "放到網站上的電子書可以直接播放。";
+  var videoNoticeOpen = document.createElement("a");
+  videoNoticeOpen.className = "fb-video-notice-open";
+  videoNoticeOpen.target = "_blank";
+  videoNoticeOpen.rel = "noopener noreferrer";
+  videoNoticeOpen.textContent = "到 YouTube 觀看";
+  [videoNoticeText, videoNoticeHint, videoNoticeOpen].forEach(function (el) { videoNoticeBody.appendChild(el); });
+  videoNotice.appendChild(videoPoster);
+  videoNotice.appendChild(videoNoticeBody);
+  // 按了按鈕就關掉說明層（影片在新分頁），回到書時不必再關一次
+  videoNoticeOpen.addEventListener("click", function () { closeVideo(); });
+
   function openVideo(link) {
     var label = link.getAttribute("aria-label") || "觀看影片";
-    var player = document.createElement("iframe");
-    player.src = link.dataset.embed;
-    player.title = label;
-    player.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-    player.allowFullscreen = true;
-    // YouTube 依來源網址判斷能不能內嵌：送出網站的來源（不含路徑）
-    player.referrerPolicy = "strict-origin-when-cross-origin";
-    videoFrame.replaceChildren(player);
+    if (canEmbed) {
+      var player = document.createElement("iframe");
+      player.src = link.dataset.embed;
+      player.title = label;
+      player.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      player.allowFullscreen = true;
+      // YouTube 依來源網址判斷能不能內嵌：送出網站的來源（不含路徑）
+      player.referrerPolicy = "strict-origin-when-cross-origin";
+      videoFrame.replaceChildren(player);
+    } else {
+      // 封面是書裡的圖片（匯出時收錄）；沒有封面時只有文字
+      if (link.dataset.poster) {
+        videoPoster.src = link.dataset.poster;
+        videoPoster.hidden = false;
+      } else {
+        videoPoster.removeAttribute("src");
+        videoPoster.hidden = true;
+      }
+      videoNoticeOpen.href = link.href;
+      videoFrame.replaceChildren(videoNotice);
+    }
+    // 說明層裡已經有按鈕，標題列不再重複一個
+    videoOnYouTube.hidden = !canEmbed;
     videoTitle.textContent = label;
     videoOnYouTube.href = link.href;
     videoLayer.setAttribute("aria-label", label);
     videoReturn = link;
     videoOpen = true;
     videoLayer.hidden = false;
-    videoClose.focus();
+    (canEmbed ? videoClose : videoNoticeOpen).focus();
+  }
+
+  /** 影片層裡可以用 Tab 移動到的元素。 */
+  function videoFocusables() {
+    return canEmbed ? [videoOnYouTube, videoClose] : [videoNoticeOpen, videoClose];
   }
 
   function closeVideo() {
@@ -900,9 +945,10 @@
   }
 
   document.addEventListener("click", function (event) {
-    if (!canEmbed) return;
     var link = event.target instanceof Element ? event.target.closest("a.link[data-embed]") : null;
     if (!link) return;
+    // 不能在書裡播放時，Ctrl / Shift / ⌘ + 點擊是讀者自己要開新分頁、新視窗：照瀏覽器的做法
+    if (!canEmbed && (event.ctrlKey || event.shiftKey || event.metaKey)) return;
     event.preventDefault();
     openVideo(link);
   });
@@ -916,11 +962,11 @@
     if (event.key === "Escape") {
       closeVideo();
     } else if (event.key === "Tab") {
-      var focusables = [videoOnYouTube, videoClose];
+      var focusables = videoFocusables();
       var at = focusables.indexOf(document.activeElement);
       var next = (at + (event.shiftKey ? -1 : 1) + focusables.length) % focusables.length;
       focusables[at === -1 ? 0 : next].focus();
-    } else if (event.target === videoOnYouTube || event.target === videoClose) {
+    } else if (videoFocusables().indexOf(event.target) !== -1) {
       // Enter / 空白鍵照常按下連結與按鈕
       return;
     }

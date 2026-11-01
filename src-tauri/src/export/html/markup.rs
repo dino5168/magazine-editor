@@ -423,15 +423,24 @@ pub enum LinkTarget {
 
 /// A transparent anchor over the element's box (videos: the whole poster, play badge included).
 /// The URL comes from Rust; the title is user text and escaped.
-fn link_markup(out: &mut String, element: &RenderElement, link: &RenderLink, target: LinkTarget) {
+///
+/// `poster` is the poster's href inside the book (already prefixed), when it was collected.
+fn link_markup(out: &mut String, element: &RenderElement, link: &RenderLink, target: LinkTarget, poster: Option<String>) {
     let RenderKind::Rect(rect) = &element.kind else { return };
     let mut style =
         format!("left:{}px;top:{}px;width:{}px;height:{}px", num(element.x), num(element.y), num(rect.width), num(rect.height));
     rotate(&mut style, element.rotation);
     let label = if link.title.is_empty() { "觀看影片".to_owned() } else { format!("觀看影片：{}", link.title) };
-    // 翻頁書：data-embed 讓 viewer 在書上方播放（從網站開啟時）；本機開檔時照連結開新分頁
+    // 翻頁書：data-embed 讓 viewer 在書上方播放（從網站開啟時）；本機開檔時 viewer 改顯示說明層，
+    // data-poster 是說明層裡的封面（書裡的圖片檔）
     let target = match target {
-        LinkTarget::NewTab => format!(r#" target="_blank" rel="noopener noreferrer" data-embed="{}""#, escape(&link.embed)),
+        LinkTarget::NewTab => {
+            let mut attrs = format!(r#" target="_blank" rel="noopener noreferrer" data-embed="{}""#, escape(&link.embed));
+            if let Some(poster) = poster {
+                let _ = write!(attrs, r#" data-poster="{}""#, escape(&poster));
+            }
+            attrs
+        }
         LinkTarget::ReadingSystem => String::new(),
     };
     let _ = writeln!(
@@ -470,7 +479,8 @@ pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image
     // 連結放在最後（最上層）：影片的播放圖示畫在外框之後，連結若跟著外框會被圖示蓋住、點不到
     for element in &page.elements {
         if let Some(link) = &element.link {
-            link_markup(&mut body, element, link, links);
+            let poster = element.photo.as_ref().and_then(|p| images.href(&p.src)).map(|href| format!("{image_prefix}{href}"));
+            link_markup(&mut body, element, link, links, poster);
         }
     }
     format!(

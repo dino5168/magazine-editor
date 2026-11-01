@@ -135,6 +135,21 @@ fn videos_are_poster_links_opening_youtube_in_a_new_tab() {
     // 書內播放：播放器網址（無 cookie 網域）；CSP 只多允許這個來源的 frame
     assert!(anchor.contains(r#"data-embed="https://www.youtube-nocookie.com/embed/C5fjrag2Fcg?autoplay=1&amp;rel=0&amp;start=90""#), "{anchor}");
     assert!(index.contains("font-src 'self'; frame-src https://www.youtube-nocookie.com\""), "CSP");
+    // 本機開檔時的說明層用的封面：書裡收錄的圖片（和頁面上的 <image> 同一個檔）
+    let poster = attribute_values(anchor, "data-poster");
+    assert_eq!(poster.len(), 1, "{anchor}");
+    assert!(poster[0].starts_with("images/") && output.files.iter().any(|(name, _)| name == poster[0]), "{anchor}");
+}
+
+#[test]
+fn videos_without_a_collected_poster_have_no_data_poster() {
+    let (root, mut req) = crate::export::test_support::video_request();
+    let Some(crate::project::format::Element::Media(video)) = req.document.pages[0].elements.last_mut() else { panic!("video") };
+    video.poster = None;
+    let output = build_flipbook(root.path(), &req).unwrap();
+    let index = file(&output, "index.html");
+    let anchor = index.lines().find(|line| line.starts_with("<a class=\"el link\"")).expect("video anchor");
+    assert!(anchor.contains("data-embed=") && !anchor.contains("data-poster"), "{anchor}");
 }
 
 #[test]
