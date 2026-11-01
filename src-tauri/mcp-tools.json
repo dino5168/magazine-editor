@@ -172,6 +172,7 @@
             "file.saveAs",
             "file.importImage",
             "file.importPages",
+            "file.insertVideo",
             "file.exportPng",
             "file.exportJpeg",
             "file.exportPdf",

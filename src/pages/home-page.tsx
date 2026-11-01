@@ -7,6 +7,7 @@ import { DOCK_CENTER_PROPS } from "@/components/dock/dock-splitter";
 import { useDockDrag } from "@/components/dock/use-dock-drag";
 import { SETTINGS_DIALOGS } from "@/components/app/settings";
 import { useFontLicenseDialog } from "@/components/app/font-license-dialog";
+import { InsertVideoDialog } from "@/components/app/insert-video-dialog";
 import { UploadDialog } from "@/components/app/upload-dialog";
 import { useNewDocumentDialog } from "@/components/app/new-document-dialog";
 import { useRecoveryDialog } from "@/components/app/recovery-dialog";
@@ -125,6 +126,9 @@ function EditorLayout() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   // 檔案 → 上傳到網站...（網路請求在 Rust，只有桌面版）
   const [uploadOpen, setUploadOpen] = useState(false);
+  // 檔案 → 匯入 → YouTube 影片連結...（底部工具列的影片按鈕共用）
+  const [videoOpen, setVideoOpen] = useState(false);
+  const openVideo = useCallback(() => setVideoOpen(true), []);
 
   // 匯出 PNG / JPEG / EPUB、匯入其他專案的頁面、外觀等仍是佔位（toast「尚未實作」）
   const menuHandlers = useMemo<CommandHandlers>(
@@ -140,6 +144,7 @@ function EditorLayout() {
       "file.exportPptx": () => void project.exportPptx(),
       "file.uploadFlipbook": () => (isDesktop ? setUploadOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       "file.importImage": importImage,
+      "file.insertVideo": openVideo,
       "project.library": () => openLibrary(),
       "project.templates": () => (isDesktop ? setTemplatesOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),
@@ -147,7 +152,7 @@ function EditorLayout() {
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
-    [project, importImage, updateDock, setPreferences, openLibrary],
+    [project, importImage, openVideo, updateDock, setPreferences, openLibrary],
   );
 
   const onDropPanel = useCallback(
@@ -201,7 +206,7 @@ function EditorLayout() {
             <EditorCanvas />
             {/* 開尺規時往下移，不蓋住上方尺規（top-8 = 尺規 20 px + 12 px） */}
             <MasterEditBanner className={cn("absolute inset-x-0 z-10", showRulers ? "top-8" : "top-3")} />
-            <BottomToolbar onImportImage={importImage} className="absolute inset-x-0 bottom-6 z-10" />
+            <BottomToolbar onImportImage={importImage} onInsertVideo={openVideo} className="absolute inset-x-0 bottom-6 z-10" />
           </div>
         </div>
         <DockArea
@@ -220,6 +225,7 @@ function EditorLayout() {
       {newDocumentDialog}
       {fontLicenseDialog}
       <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} confirmFontLicense={confirmFontLicense} />
+      <InsertVideoDialog open={videoOpen} onOpenChange={setVideoOpen} />
       <TemplatesDialog
         open={templatesOpen}
         onOpenChange={setTemplatesOpen}

@@ -20,9 +20,8 @@ interface ShapePhotoFieldsProps {
 }
 
 /**
- * 「照片」in the 樣式 tab: turns the shape into an image frame. Pick a photo from the project's
- * library, change or remove it, and set how it fills the frame (fit, focus, zoom). Every change is
- * one `element/update` (one undo step).
+ * 「照片」in the 樣式 tab: turns the shape into an image frame. Every change is one `element/update`
+ * (one undo step).
  *
  * Args:
  *   props: The selected shape and the panel's update function.
@@ -31,12 +30,35 @@ interface ShapePhotoFieldsProps {
  *   Fields for the photo.
  */
 export function ShapePhotoFields({ shape, update }: ShapePhotoFieldsProps) {
-  const { image } = shape;
+  return <PhotoFields image={shape.image} onChange={(image) => update({ image })} />;
+}
+
+interface PhotoFieldsProps {
+  /** The photo (`ShapeImage`: an image frame's photo or a video's poster); null = none. */
+  readonly image: ShapeImage | null;
+  readonly onChange: (image: ShapeImage | null) => void;
+  /** Row label; default 照片. */
+  readonly label?: string;
+  /** Name shown when the photo is not in the library (e.g. a fetched video thumbnail). */
+  readonly fallbackName?: string;
+}
+
+/**
+ * Picks a photo from the project's library, changes or removes it, and sets how it fills its box
+ * (fit, focus, zoom). Shared by image frames and video posters.
+ *
+ * Args:
+ *   props: Current photo, change handler and labels.
+ *
+ * Returns:
+ *   Fields for the photo.
+ */
+export function PhotoFields({ image, onChange, label = "照片", fallbackName = label }: PhotoFieldsProps) {
   const library = useLibrary();
   const { resolveSrc } = useProject();
   const photos = library.items.filter((item): item is ImageItem => item.kind === "image" && item.trashed === null);
   const current = image ? photos.find((item) => item.src === image.src) : undefined;
-  const setImage = (next: ShapeImage | null) => update({ image: next });
+  const setImage = onChange;
   const setLook = (patch: Partial<Pick<ShapeImage, "fit" | "focusX" | "focusY" | "zoom">>) => image && setImage({ ...image, ...patch });
   // 換照片時保留填滿方式、對焦與縮放；第一次放照片用預設（填滿、置中）
   const choose = (item: ImageItem) =>
@@ -44,7 +66,7 @@ export function ShapePhotoFields({ shape, update }: ShapePhotoFieldsProps) {
 
   if (!image) {
     return (
-      <Row label="照片">
+      <Row label={label}>
         <PhotoPicker photos={photos} resolveSrc={resolveSrc} onChoose={choose}>
           <Button variant="outline" size="sm" className="h-7">
             <ImagePlus />
@@ -59,17 +81,17 @@ export function ShapePhotoFields({ shape, update }: ShapePhotoFieldsProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2 text-sm">
-        <span className="shrink-0">照片</span>
+        <span className="shrink-0">{label}</span>
         <img src={resolveSrc(image.src)} alt="" className="ml-auto size-9 shrink-0 rounded-sm object-cover ring-1 ring-border" />
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={current?.name}>
-          {current?.name ?? "照片"}
+          {current?.name ?? fallbackName}
         </span>
         <PhotoPicker photos={photos} resolveSrc={resolveSrc} onChoose={choose}>
           <Button variant="outline" size="sm" className="h-7">
             更換
           </Button>
         </PhotoPicker>
-        <IconButton label="移除照片" onClick={() => setImage(null)}>
+        <IconButton label={`移除${label}`} onClick={() => setImage(null)}>
           <Trash />
         </IconButton>
       </div>

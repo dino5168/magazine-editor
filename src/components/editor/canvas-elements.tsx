@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text } from "react-konva";
+import { Circle, Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text } from "react-konva";
 import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
@@ -153,21 +153,28 @@ function ImageNode({ element, common }: { readonly element: ImageElement; readon
   return <KonvaImage {...common} image={image} width={element.width} height={element.height} />;
 }
 
-// 影片：步驟 2 先畫預設樣子（深色底 + 播放圖示）；封面與完整外觀在計畫步驟 4
+// 影片：封面（和圖片框同一個擺放公式 photoPlacement，Rect 自然裁掉超出的部分）+ 播放圖示；沒有封面時是深色底
 const MEDIA_BACKGROUND = "#262626";
-const MEDIA_MARK_FILL = "rgba(255, 255, 255, 0.9)";
+const MEDIA_BADGE_FILL = "rgba(0, 0, 0, 0.6)";
+const MEDIA_MARK_FILL = "rgba(255, 255, 255, 0.95)";
 
 function MediaNode({ element, common }: { readonly element: MediaElement; readonly common: CommonNodeProps | StaticNodeProps }) {
-  const { width, height } = element;
-  // 播放圖示：外框短邊的 1/4 寬的三角形，置中（視覺重心往右偏 1/12）
-  const size = Math.min(width, height) / 4;
-  const cx = width / 2 + size / 12;
-  const cy = height / 2;
+  const { width, height, poster } = element;
+  const resolveSrc = useResolveSrc();
+  const [image, status] = useImage(poster ? resolveSrc(poster.src) : "", IMAGE_CROSS_ORIGIN);
+  const placement = useMemo(() => (poster ? photoPlacement(width, height, poster) : null), [poster, width, height]);
+  const posterAttrs = image && status === "loaded" && placement ? { fillPatternImage: image, ...photoPatternAttrs(placement, image) } : null;
+  // 播放圖示：圓形底 + 三角形，直徑是短邊的 28%（視覺重心讓三角形往右偏一點）
+  const radius = Math.min(width, height) * 0.14;
+  const [cx, cy] = [width / 2, height / 2];
+  const t = radius * 0.5;
   return (
     <Group {...common}>
       <Rect width={width} height={height} fill={MEDIA_BACKGROUND} />
+      {posterAttrs && <Rect width={width} height={height} {...posterAttrs} listening={false} />}
+      <Circle x={cx} y={cy} radius={radius} fill={MEDIA_BADGE_FILL} listening={false} />
       <Line
-        points={[cx - size / 2, cy - size / 2, cx + size / 2, cy, cx - size / 2, cy + size / 2]}
+        points={[cx - t * 0.7, cy - t, cx + t, cy, cx - t * 0.7, cy + t]}
         closed
         fill={MEDIA_MARK_FILL}
         listening={false}

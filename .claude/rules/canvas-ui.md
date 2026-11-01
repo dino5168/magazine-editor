@@ -66,6 +66,7 @@ paths:
 - **canvas 必須等字型載入後才建 Stage**（Konva 不會重新量測）。`use-fonts-ready.ts`：預設字型 + 文件用到的字型都載入才畫；換字型時先 `loadFontOption` 再寫入。
 - 文字編輯 overlay 用 `compositionstart/end` 與 `isComposing` 忽略選字期間的 Enter / Esc。
 - 快捷鍵（`use-editor-shortcuts.ts`，`window` bubble 階段）焦點在 input、textarea、dialog、menu 內時不觸發。工具鍵與 Ctrl+D 以 **`event.code`** 比對，工具鍵不帶修飾鍵、按住只觸發一次。空白鍵（暫時手形）只在焦點在 `document.body` 時生效。瀏覽器分頁收不到 Ctrl+Shift+PageUp / PageDown。
+- **影片連結**（`use-video-transfer.ts`）：`window` 的 `paste`（剪貼簿是 YouTube 網址才攔，焦點在輸入框 / 對話框時不管）放在游標所在的頁（游標不在畫布上就放目前頁中央）；捲動容器的 HTML5 `drop`（`text/uri-list` / `text/plain`，有 `Files` 不收）放在放開的位置。兩者都先 `fetchVideoInfo` 再一筆 `element/add`（`use-add-video.ts`）。
 - 匯入圖片：PNG / JPEG / WebP / GIF / SVG、≤ 20 MB、必須能解碼。瀏覽器模式用 `blob:` URL，**不 revoke**（undo 可能讓圖片回來）。
 - `editor-canvas.tsx` 裡的 `document` 是編輯中的文件；DOM API 要寫 `window.document`。
 - 瀏覽器模式（`npm run dev`）只載入 `createSampleDocument()`，檔案指令提示「僅在桌面版可用」。

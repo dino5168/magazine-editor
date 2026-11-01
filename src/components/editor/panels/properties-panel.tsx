@@ -36,10 +36,11 @@ import { ShapePhotoFields } from "../shape-photo-fields";
 import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
+import { VideoTab } from "../video-fields";
 
-type TabId = "style" | "text" | "line" | "arrange";
+type TabId = "style" | "text" | "line" | "video" | "arrange";
 
-const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", line: "線條", arrange: "調整" };
+const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", line: "線條", video: "影片", arrange: "調整" };
 
 // 各物件有哪些分頁
 function tabsOf(element: CanvasElement): readonly TabId[] {
@@ -49,8 +50,9 @@ function tabsOf(element: CanvasElement): readonly TabId[] {
     case "shape":
       return ["style", "text", "arrange"];
     case "image":
-    case "media":
       return ["arrange"];
+    case "media":
+      return ["video", "arrange"];
     case "line":
       return ["line", "arrange"];
     default: {
@@ -546,6 +548,11 @@ function SelectedProperties({ element }: { readonly element: CanvasElement }) {
       {element.type === "line" && (
         <TabsContent value="line">
           <LineTab line={element} update={update} />
+        </TabsContent>
+      )}
+      {element.type === "media" && (
+        <TabsContent value="video">
+          <VideoTab media={element} update={update} />
         </TabsContent>
       )}
       <TabsContent value="arrange">

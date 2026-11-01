@@ -91,6 +91,7 @@ export const COMMANDS = {
   "file.saveAs": { label: "另存新檔...", shortcut: { ctrl: true, shift: true, code: "KeyS", keyLabel: "S" } },
   "file.importImage": { label: "圖片...", title: "匯入圖片" },
   "file.importPages": { label: "其他專案的頁面...", title: "匯入其他專案的頁面" },
+  "file.insertVideo": { label: "YouTube 影片連結...", title: "插入 YouTube 影片" },
   "file.exportPng": { label: "PNG...", title: "匯出為 PNG" },
   "file.exportJpeg": { label: "JPEG...", title: "匯出為 JPEG" },
   "file.exportPdf": { label: "PDF...", title: "匯出為 PDF" },

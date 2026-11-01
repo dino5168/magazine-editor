@@ -34,6 +34,7 @@ import { useFontsReady } from "@/lib/editor/use-fonts-ready";
 import { usePreferences } from "@/lib/preferences/preferences-context";
 import { cn } from "@/lib/utils";
 import { useCanvasDrop } from "./canvas-drop";
+import { useVideoTransfer } from "./use-video-transfer";
 import { isAdditive, snapAbsoluteToGrid } from "./canvas-elements";
 import { CanvasRuler, moveRulerMarker, RULER_SIZE_PX, RulerCorner } from "./canvas-ruler";
 import { CanvasSheet, PAGE_BACKGROUND_NAME, SpreadSpine, type ElementHandlers } from "./canvas-sheet";
@@ -180,6 +181,8 @@ export function EditorCanvas() {
     });
     return () => registerDrop(null);
   }, [registerDrop]);
+  // Ctrl+V 貼上 / 拖曳 YouTube 連結到畫布 = 加入影片
+  const videoTransfer = useVideoTransfer();
   const create = useCanvasCreate({
     scrollRef,
     tool: state.tool,
@@ -517,6 +520,8 @@ export function EditorCanvas() {
         className="relative min-h-0 min-w-0 overflow-scroll bg-muted"
         style={{ cursor: pan.cursor ?? create.cursor ?? (lineTool.active ? "crosshair" : undefined) }}
         onScroll={(event) => setScroll({ x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop })}
+        onDragOver={videoTransfer.onDragOver}
+        onDrop={videoTransfer.onDrop}
         // 平移優先（手形 / 空白鍵 / 中鍵）；平移攔下的事件，建立工具不再處理
         onPointerDownCapture={(event) => {
           pan.handlers.onPointerDownCapture(event);

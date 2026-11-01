@@ -62,10 +62,10 @@ export function normalizeRotation(degrees: number): number {
  *   element: Canvas element.
  *
  * Returns:
- *   True for shapes and images.
+ *   True for shapes, images and videos.
  */
-export function hasEditableHeight(element: CanvasElement): element is Extract<CanvasElement, { type: "shape" | "image" }> {
-  return element.type === "shape" || element.type === "image";
+export function hasEditableHeight(element: CanvasElement): element is Extract<CanvasElement, { type: "shape" | "image" | "media" }> {
+  return element.type === "shape" || element.type === "image" || element.type === "media";
 }
 
 /**

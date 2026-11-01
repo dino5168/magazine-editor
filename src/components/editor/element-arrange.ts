@@ -59,9 +59,9 @@ export const ALIGN_EDGES: readonly (ArrangeItem & { readonly edge: ContentEdge }
   { edge: "bottom", label: "靠下對齊內容區", icon: AlignEndHorizontal },
 ];
 
-/** 「限制寬高比」的預設：圖片開（拉長照片很少是刻意的），其他關。右鍵選單沒有這個開關，一律用預設。 */
+/** 「限制寬高比」的預設：圖片與影片開（拉長照片、改變 16:9 很少是刻意的），其他關。右鍵選單沒有這個開關，一律用預設。 */
 export function defaultKeepRatio(element: CanvasElement): boolean {
-  return element.type === "image";
+  return element.type === "image" || element.type === "media";
 }
 
 export interface ContentAlign {

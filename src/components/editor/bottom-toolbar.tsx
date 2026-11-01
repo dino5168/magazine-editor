@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   ChevronUp,
+  Clapperboard,
   Copy,
   EllipsisVertical,
   Hand,
@@ -156,6 +157,8 @@ function ActionBar() {
 interface BottomToolbarProps {
   /** Opens the image file picker and adds the chosen images (same as 檔案 → 匯入 → 圖片). */
   readonly onImportImage: () => void;
+  /** Opens 「插入 YouTube 影片」 (same as 檔案 → 匯入 → YouTube 影片連結). */
+  readonly onInsertVideo: () => void;
   readonly className?: string;
 }
 
@@ -165,12 +168,13 @@ interface BottomToolbarProps {
  *
  * Args:
  *   props.onImportImage: Handler of the image button.
+ *   props.onInsertVideo: Handler of the video button.
  *   props.className: Extra classes for placement.
  *
  * Returns:
  *   Toolbar overlay (pointer events only on the bars themselves).
  */
-export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) {
+export function BottomToolbar({ onImportImage, onInsertVideo, className }: BottomToolbarProps) {
   const { tool, shapeKind, lineKind } = useEditorState();
   const dispatch = useEditorDispatch();
   // 選了工具之後到畫布上點擊或拖曳建立（圖片除外：直接開選檔對話框）
@@ -215,6 +219,9 @@ export function BottomToolbar({ onImportImage, className }: BottomToolbarProps) 
           {toolButton("pencil", getToolLabel("pencil"), TOOL_ICONS.pencil, () => chooseTool("pencil"), getToolKeyLabel("pencil"))}
           <IconButton label="圖片" size="icon-lg" onClick={onImportImage}>
             <Image className="size-5" strokeWidth={1.75} />
+          </IconButton>
+          <IconButton label="YouTube 影片" size="icon-lg" onClick={onInsertVideo}>
+            <Clapperboard className="size-5" strokeWidth={1.75} />
           </IconButton>
           <Separator orientation="vertical" className="mx-0.5 h-6" />
           <MenuIconButton

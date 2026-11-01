@@ -17,7 +17,7 @@ const ARROW_DELTAS: Readonly<Record<string, readonly [number, number]>> = {
 };
 
 // 焦點在輸入元件或對話框/選單內時不攔截，避免打字時誤刪物件
-function isEditableTarget(target: EventTarget | null): boolean {
+export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
   if (target.closest("input, textarea, select")) return true;

@@ -38,6 +38,7 @@ export const MENUS = [
         label: "匯入",
         children: [
           { kind: "item", command: "file.importImage" },
+          { kind: "item", command: "file.insertVideo" },
           { kind: "item", command: "file.importPages" },
         ],
       },
