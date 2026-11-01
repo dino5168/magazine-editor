@@ -16,6 +16,7 @@ import {
   type ProjectInfo,
   type RecoveryEntry,
   type SystemFont,
+  type YouTubeInfo,
 } from "./project-types";
 import { parseUploadErrorDetails } from "@/lib/upload/upload-flow";
 
@@ -97,6 +98,11 @@ export const projectApi = {
   cachedCatalogFonts: () => call<string[]>("font_catalog_cached"),
   /** Path of an image's thumbnail (made on demand), or null to show the original. */
   libraryThumbnail: (src: string) => call<string | null>("library_thumbnail", { src }),
+  /**
+   * Fetches a YouTube video's thumbnail (stored in the project as an image) and title. Network
+   * failures give null fields, not errors; an invalid id is an `invalidInput` error.
+   */
+  youTubeInfo: (videoId: string) => call<YouTubeInfo>("media_youtube_info", { videoId }),
   listRecovery: () => call<RecoveryEntry[]>("recovery_list"),
   restoreRecovery: (id: string) => call<OpenedProject>("recovery_restore", { id }),
   discardRecovery: (id: string) => call<null>("recovery_discard", { id }),

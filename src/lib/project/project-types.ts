@@ -79,6 +79,18 @@ export interface ImportedFonts {
   readonly bold: FontFile | null;
 }
 
+/** Whether a YouTube video can play inside the flip book (Rust `media::Availability`). */
+export type VideoAvailability = "ok" | "notEmbeddable" | "notFound" | "unknown";
+
+/** Result of `media_youtube_info` (Rust `media::YouTubeInfo`). */
+export interface YouTubeInfo {
+  /** The thumbnail stored in `assets/images/`, with its size in pixels; null when it could not be fetched. */
+  readonly poster: { readonly src: string; readonly width: number; readonly height: number } | null;
+  /** From YouTube oEmbed, already cut to `MEDIA_TITLE_MAX_CHARS`; null when unavailable. */
+  readonly title: string | null;
+  readonly availability: VideoAvailability;
+}
+
 /** Event with the progress of `font_catalog_download` (Rust `commands/fonts.rs`). */
 export const FONT_CATALOG_PROGRESS_EVENT = "font-catalog://progress";
 

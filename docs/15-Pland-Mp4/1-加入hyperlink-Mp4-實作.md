@@ -59,23 +59,25 @@
   - 不能讓前端直接顯示遠端圖片：App 的 CSP `img-src` 不允許，而且翻頁書要離線可看、`render_page` 要畫得出來。
 - 沒有網路 / 下載失敗：物件照樣建立，畫成灰底 + 播放圖示；之後可以「重新抓封面」或**換成自己的圖片**（從素材庫拖一張上去，和圖片框一樣）。
 
-### 1.5 資料模型草案（步驟 2 定案）
+### 1.5 資料模型（步驟 2 定案，v18）
 
 ```ts
+type MediaOrigin = { kind: "youtube"; videoId: string; start: number };  // A 階段再加 file / url
+
 interface MediaElement extends BaseElement {
   type: "media";
   width: number; height: number;
-  source:
-    | { kind: "youtube"; videoId: string; start: number }   // V 階段
-    | { kind: "file"; src: string }                          // A 階段：assets/audio/…
-    | { kind: "url"; url: string };                         // A 階段：網址音訊（不收 .mp4 網址，§2 問題 2）
-  poster: string | null;   // assets/images/…；null = 畫預設圖示
-  title: string;           // 圖層面板、無障礙文字、PDF 連結的說明
+  source: MediaOrigin;
+  poster: ShapeImage | null;  // 和圖片框的照片同一個型別：src、原始尺寸、fit / focus / zoom
+  title: string;              // 圖層面板、連結文字；可空，最多 200 字元
 }
 ```
 
+- 型別名稱用 `MediaOrigin`，不用 `MediaSource`：後者是 DOM 內建型別，漏 import 時 TS 不會報錯。
 - 檔案裡存 `videoId` 而不是原始網址：網址有很多寫法（`watch?v=`、`youtu.be/`、`shorts/`、`&t=1m30s`…），**解析只在一個純函式**做，存進檔案的是解析結果；匯出時由 id 組出標準網址。Rust 驗證 id 的格式與 `start` 範圍（不信任前端）。
-- `poster` 要算進開檔清理（`referenced_assets`）與範本的 `imageSources`，和圖片框的照片一樣。
+- **封面重用圖片框的 `ShapeImage`**（不另做一個型別）：驗證（`isShapeImage` / `validate_shape_image`）、擺放公式（`photoPlacement`）、匯出的 `shapePhotos`、屬性面板的照片欄位都可以直接用。YouTube 的 `hqdefault.jpg` 是 4:3 帶上下黑邊，放進 16:9 的框用 `cover` 剛好裁掉黑邊。
+- `poster` 算進開檔清理（`referenced_assets`）與範本的 `imageSources`，和圖片框的照片一樣。
+- `source` 這次只有 `youtube`：A 階段加 `file` / `url` 時再提升一次版本（v19）。不先預留沒有人會建立、也沒辦法測的值。
 
 ---
 
@@ -156,7 +158,7 @@ interface MediaElement extends BaseElement {
 
 | # | 步驟 | 內容 | 驗證 |
 |---|---|---|---|
-| A1 | 本機音訊放到頁面 | `source: { kind: "file", src: "assets/audio/…" }`（模型在步驟 2 已預留，只需開放驗證）；素材庫移除「不能放到頁面」；畫布是喇叭圖示按鈕（可換封面）；屬性面板試聽（`<audio>` 用 asset URL，要加 CSP `media-src asset:`） | vitest + `ui-verify` |
+| A1 | 本機音訊放到頁面 | `source: { kind: "file", src: "assets/audio/…" }`（`MediaOrigin` 加一種，**提升到 v19**，照 skill `bump-file-format`）；素材庫移除「不能放到頁面」；畫布是喇叭圖示按鈕（可換封面）；屬性面板試聽（`<audio>` 用 asset URL，要加 CSP `media-src asset:`） | vitest + `ui-verify` |
 | A2 | 匯出音訊 | 翻頁書：音訊檔複製到書的 `media/`，`viewer.js` 點擊播放 / 暫停，CSP `media-src 'self'`；EPUB：`<audio>` + manifest；PDF / PPTX：只有圖示（本機音訊無法在 PDF 播放，匯出完提示數量，同 `skippedImages`）。**另開 web-magazine 工作階段加上傳白名單**（§3 檢核 6）+ 檢查 100 MB 上限 | `flipbook_preview` + 瀏覽器；`epub_preview` + epubcheck |
 | A3 | 網址音訊 | `source: { kind: "url" }`：只收 `https:`；PDF 是連結，翻頁書用 `<audio>` 播放（CSP `media-src https:`） | 同上 |
 
@@ -183,3 +185,5 @@ interface MediaElement extends BaseElement {
 | 2026-11-01 | §2 決定 | 1 只做 YouTube；2 不支援 .mp4 網址；3 先開新分頁（步驟 6），書內播放（步驟 7）是主要功能、必做；4 任意物件超連結另開計畫；5 影片進素材庫（步驟 8）；6 抓 oEmbed 標題，失敗用預設 |
 | 2026-11-01 | 操作方式 | 先 A（直接放到頁面，步驟 4）再 B（素材庫，步驟 8）；加入時不自動存素材庫，屬性面板「加入素材庫」；做 Ctrl+V 貼網址、拖曳連結兩個捷徑（§1.6） |
 | 2026-11-01 | 步驟 1 完成 | `src/lib/media/youtube-url.ts`：`parseYouTubeUrl`（watch / youtu.be / shorts / embed / live / v、m. / music. / nocookie 網域、可省略 scheme；`t` / `start` / `#t`，讀不懂當 0、超過 `YOUTUBE_START_MAX_SECONDS` 夾住；其他網站、頻道、純播放清單、id 不是 11 碼都回 `null`）、`youTubeWatchUrl`、`isYouTubeVideoId`、`parseDuration`。測試 `__tests__/youtube-url.test.ts` 10 項通過，`tsc` 通過。`YOUTUBE_ID_PATTERN` / `YOUTUBE_START_MAX_SECONDS` 在步驟 2 寫 Rust 對應時加進 `cross-language.md` |
+| 2026-11-01 | 步驟 2 完成 | 文件模型 `media`，`SCHEMA_VERSION` 17 → 18（不需要升級步驟：舊檔本來就沒有這種物件）。TS：`types.ts`（`MediaElement`、`MediaOrigin`）、`validation.ts`（`isMediaOrigin`、`isMediaTitle`、`MEDIA_TITLE_MAX_CHARS`）、reducer 的 patch / 新增檢查、`createMediaElement`（16:9，最寬 320 pt、不超過頁面一半）、各處 `switch`（外框、Transformer、圖層圖示 `Clapperboard`、屬性面板「調整」、描述、MCP 只能改位置與尺寸、版面檢查、範本 `imageSources`）；畫布先畫**暫時的**深色底 + 播放三角形（封面在步驟 4）。Rust：`MediaElement` / `MediaOrigin`、`validate_media_origin`、`is_youtube_video_id`、`referenced_assets` 算封面；`build_render` **先略過影片**（步驟 5 才畫）。Fixture 主頁 B 加一個影片（有封面、start 90）。測試：vitest `media-element.test.ts` 8 項、Rust 4 項；`types.html` 加 `MediaElement` 方框與說明卡（圖加寬一欄）；`cross-language.md`、`project-files.md`、`editor-model.md` 已更新 |
+| 2026-11-01 | 步驟 3 完成 | Rust `src-tauri/src/media/`（`youtube_info`）+ command `media_youtube_info(videoId)`（`commands/media.rs`），TS `projectApi.youTubeInfo` / `YouTubeInfo`。同時抓兩個固定網址：`i.ytimg.com/vi/<id>/hqdefault.jpg`（只收 200、≤ 2 MB、PNG / JPEG / WebP 且能解碼，走 `import_asset` 存成 `assets/images/<hash>.jpg`，回傳原始尺寸）與 oEmbed（標題去掉控制字元、截到 200 字元）。**網路失敗不是錯誤**：欄位回 null；id 不合格才回 `InvalidInput`。不跟轉址、連線 10 秒 / 全程 20 秒逾時。**多回傳 `availability`**（oEmbed 狀態：200 `ok`、401 / 403 `notEmbeddable`、400 / 404 `notFound`、其他 `unknown`）：步驟 4 的對話框可以提醒「這支影片不能內嵌，翻頁書只能開新分頁」，步驟 7（書內播放）需要知道。測試 6 項 + 1 項連網（`cargo test youtube_info_over_the_network -- --ignored --nocapture`，需求的範例影片抓到 480×360 封面與標題、不存在的 id 是 `notFound`）。對話框取消時已下載的封面沒有被引用，下次開檔清理會刪掉 |

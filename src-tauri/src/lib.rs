@@ -4,6 +4,7 @@ mod error;
 mod export;
 // 橋接程式 magazine-mcp.exe 用到其中的 pipe 用戶端
 pub mod mcp;
+mod media;
 mod project;
 mod upload;
 
@@ -56,6 +57,7 @@ pub fn run() {
             commands::fonts::font_catalog_cached,
             commands::fonts::font_catalog_cancel,
             commands::fonts::font_catalog_download,
+            commands::media::media_youtube_info,
             commands::library::library_read_text,
             commands::library::library_thumbnail,
             commands::recovery::recovery_list,

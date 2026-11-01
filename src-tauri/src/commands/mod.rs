@@ -3,6 +3,7 @@ pub mod export;
 pub mod fonts;
 pub mod library;
 pub mod mcp;
+pub mod media;
 pub mod project;
 pub mod recovery;
 pub mod templates;

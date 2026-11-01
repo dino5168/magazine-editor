@@ -83,7 +83,7 @@ src/
   components/           # app/（選單、對話框、settings/）、dock/、editor/（畫布、面板 panels/）、library/、templates/、ui/（shadcn，vendor）
   lib/                  # 不含 UI 的邏輯：editor/（文件模型與編輯器核心）、project/、library/、templates/、menu/、dock/、preferences/、export/、upload/、automation/（MCP）、media/（影片連結解析）
 src-tauri/
-  src/                  # lib.rs、error.rs、db/、project/（檔案格式）、export/（PDF / EPUB / 翻頁書 / PPTX / 封面）、upload/（上傳到網站）、mcp/、commands/、bin/magazine-mcp.rs
+  src/                  # lib.rs、error.rs、db/、project/（檔案格式）、export/（PDF / EPUB / 翻頁書 / PPTX / 封面）、upload/（上傳到網站）、media/（YouTube 縮圖與標題）、mcp/、commands/、bin/magazine-mcp.rs
   tauri.conf.json · capabilities/ · app-icon.svg · mcp-tools.json（產生的） · fonts-catalog.json
 fonts/                  # 畫面與匯出共用的字型檔（fonts/README.md）
 sdk/python/             # Python SDK（MCP 用戶端）
