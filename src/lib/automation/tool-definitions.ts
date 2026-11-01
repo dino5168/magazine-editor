@@ -31,7 +31,9 @@ import {
   SWATCH_NAME_MAX_LENGTH,
   TEXT_SHADOW_OFFSET_MAX,
 } from "@/lib/editor/validation";
+import { MEDIA_TITLE_MAX_CHARS } from "@/lib/editor/validation";
 import { ITEM_NAME_MAX_CHARS } from "@/lib/library/types";
+import { YOUTUBE_START_MAX_SECONDS } from "@/lib/media/youtube-url";
 import { COMMAND_IDS, type CommandId } from "@/lib/menu/commands";
 import { BATCH_OPS_MAX, NOT_IN_BATCH } from "./batch";
 import { LAYOUT_ISSUES_MAX } from "./layout-check";
@@ -342,7 +344,7 @@ export const TOOL_DEFINITIONS = {
   },
   update_element: {
     title: "修改物件",
-    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）、image（圖片框的照片：給 item 換照片、只給 fit / focusX / focusY / zoom 調整目前的照片、null = 移除照片）。圖片只能改位置與尺寸。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
+    description: `修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）、image（圖片框的照片：給 item 換照片、只給 fit / focusX / focusY / zoom 調整目前的照片、null = 移除照片）。圖片只能改位置與尺寸。影片：位置、尺寸、startSeconds（開始秒數）、title（標題，空字串 = 沒有標題）。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。${STYLE_HELP}${COLOR_HELP} 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。`,
     input: z.strictObject({
       id: elementId,
       x: coordinate.optional(),
@@ -366,6 +368,14 @@ export const TOOL_DEFINITIONS = {
       compound: lineCompound.optional(),
       start: lineEnd.optional(),
       end: lineEnd.optional(),
+      startSeconds: z
+        .number()
+        .int()
+        .min(0)
+        .max(YOUTUBE_START_MAX_SECONDS)
+        .optional()
+        .describe("影片從第幾秒開始播放（只有影片；線條的 start 是箭頭）"),
+      title: z.string().max(MEDIA_TITLE_MAX_CHARS).optional().describe("影片標題（只有影片）；空字串 = 沒有標題"),
       ...textStyleInput.shape,
     }),
     readOnly: false,
@@ -496,9 +506,9 @@ export const TOOL_DEFINITIONS = {
   list_library_items: {
     title: "素材清單",
     description:
-      "列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。",
+      "列出專案素材庫（使用者匯入的圖片、文字檔、音訊與 YouTube 影片連結）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio / video）、所在資料夾路徑（null = 未分類）、檔案大小（bytes，影片是 0）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄，影片另有 videoId 與 start（開始秒數）。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。",
     input: z.strictObject({
-      kind: z.enum(["image", "text", "audio"]).optional().describe("只列這一種素材"),
+      kind: z.enum(["image", "text", "audio", "video"]).optional().describe("只列這一種素材"),
       query: z.string().max(ITEM_NAME_MAX_CHARS).optional().describe("名稱包含這段文字（不分大小寫）"),
       folderId: z.string().min(1).optional().describe("只列這個資料夾（含子資料夾）的素材；id 由本工具回傳的 folders 取得"),
       includeTrashed: z.boolean().optional().describe("也列出垃圾桶裡的素材（預設 false）"),
@@ -529,13 +539,33 @@ export const TOOL_DEFINITIONS = {
   place_library_item: {
     title: "把素材放到頁面",
     description:
-      "把素材庫裡的圖片放到頁面或主頁（放在最上層），回傳新物件的 id 與尺寸（pt）。item 是素材 id 或名稱（名稱要完全相符；同名的素材不只一個時請改用 id）。x / y 是圖片外框左上角（pt），省略的那一軸置中於頁面。width 省略時和使用者從素材面板放到頁面相同：原始像素當 pt，太大時縮到頁面寬、高的一半以內；給 width 時高度依原圖比例算（要改比例再用 update_element）。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。目前只能放圖片：文字檔請讀 list_library_items 的摘錄後用 add_text，音訊不能放到頁面，垃圾桶裡的素材要使用者先還原。一次呼叫 = 一筆復原紀錄。",
+      "把素材庫裡的圖片或影片放到頁面或主頁（放在最上層），回傳新物件的 id 與尺寸（pt）。影片會變成影片物件（封面、開始時間、標題 = 素材名稱；預設 16:9，最寬 320 pt），給 width 時高度 = 寬 × 9/16。item 是素材 id 或名稱（名稱要完全相符；同名的素材不只一個時請改用 id）。x / y 是圖片外框左上角（pt），省略的那一軸置中於頁面。width 省略時和使用者從素材面板放到頁面相同：原始像素當 pt，太大時縮到頁面寬、高的一半以內；給 width 時高度依原圖比例算（要改比例再用 update_element）。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。文字檔請讀 list_library_items 的摘錄後用 add_text，音訊不能放到頁面，垃圾桶裡的素材要使用者先還原。一次呼叫 = 一筆復原紀錄。",
     input: z.strictObject({
       item: z.string().min(1).max(ITEM_NAME_MAX_CHARS).describe("素材 id 或名稱（由 list_library_items 取得）"),
       pageId: pageId.optional(),
       x: coordinate.optional(),
       y: coordinate.optional(),
-      width: length.optional().describe("寬度（pt），高度依原圖比例"),
+      width: length.optional().describe("寬度（pt），高度依原圖比例（影片是 16:9）"),
+    }),
+    readOnly: false,
+  },
+  add_video: {
+    title: "新增 YouTube 影片",
+    description:
+      "把一支 YouTube 影片放到頁面或主頁（放在最上層），和使用者在 App 裡「插入 YouTube 影片」相同：App 先向 YouTube 取得封面（存成專案裡的圖片）與標題。" +
+      "畫布上是封面 + 播放圖示；匯出的 PDF 點了開 YouTube，翻頁書從網站開啟時在書裡播放。" +
+      "url 是影片網址（watch?v=、youtu.be/、shorts/、embed/ 都可以；網址裡的 t= / start= 是開始時間；頻道、播放清單不行）。" +
+      "回傳新物件的 id、尺寸（pt）、title、hasPoster（有沒有取得封面）與 availability（ok / notEmbeddable = 只能開新分頁、不能在書裡播放 / unknown = 沒有網路）；影片不存在時回錯誤、不新增。" +
+      "x / y 是外框左上角（pt），省略的那一軸置中於頁面；width 省略 = 16:9、最寬 320 pt 且不超過頁面一半，給 width 時高度 = 寬 × 9/16。title 省略 = YouTube 上的標題。" +
+      "省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。開始時間、標題之後可以用 update_element 的 startSeconds / title 改。" +
+      "要等 YouTube 回應，所以不能放進 batch（先單獨新增，再把之後的修改放進 batch）。一次呼叫 = 一筆復原紀錄。",
+    input: z.strictObject({
+      url: z.string().min(1).max(2048).describe("YouTube 影片網址，例如 https://www.youtube.com/watch?v=C5fjrag2Fcg"),
+      pageId: pageId.optional(),
+      x: coordinate.optional(),
+      y: coordinate.optional(),
+      width: length.optional().describe("寬度（pt），高度 = 寬 × 9/16"),
+      title: z.string().max(MEDIA_TITLE_MAX_CHARS).optional().describe(`影片標題（最多 ${MEDIA_TITLE_MAX_CHARS} 字）；省略 = YouTube 上的標題`),
     }),
     readOnly: false,
   },

@@ -13,7 +13,7 @@ import { formatVideoTime, parseVideoTime, posterOf, videoNotice } from "@/lib/me
 import { parseYouTubeUrl, youTubeWatchUrl } from "@/lib/media/youtube-url";
 import { isDesktop } from "@/lib/project/project-api";
 import { PhotoFields } from "./shape-photo-fields";
-import { fetchVideoInfo } from "./use-add-video";
+import { fetchVideoInfo } from "@/lib/media/video-info";
 
 type Update = (patch: ElementPatch) => void;
 

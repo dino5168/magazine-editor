@@ -11,6 +11,7 @@ import type { CommandAccess } from "./commands";
 import type { ApplyAction } from "./edits";
 import { recordMcpCall, setMcpStatus } from "./mcp-status";
 import { runToolAsync, type ImportFileFn, type ToolContext } from "./run-tool";
+import { fetchVideoInfo } from "@/lib/media/video-info";
 
 /** A file Rust read for the call (`AttachmentRef` in Rust `mcp/attachment.rs`). */
 interface McpAttachment {
@@ -152,6 +153,7 @@ export function useMcpBridge(
         measureWidth: measureLineWidth,
         attachedFile: payload.attachment ? attachedFile(payload.attachment) : null,
         importFile: importFileRef.current,
+        fetchVideoInfo,
       };
       const response = await answer(payload, context);
       recordMcpCall({ tool: payload.tool, ok: response.status === "ok", at: Date.now() });

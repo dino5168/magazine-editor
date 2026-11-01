@@ -6,7 +6,7 @@ import { pageCenter } from "@/lib/editor/geometry";
 import type { PageId, Point } from "@/lib/editor/types";
 import { posterOf, videoNotice } from "@/lib/media/media-insert";
 import type { YouTubeVideo } from "@/lib/media/youtube-url";
-import { isDesktop, projectApi } from "@/lib/project/project-api";
+import { fetchVideoInfo } from "@/lib/media/video-info";
 import { useProject } from "@/lib/project/project-context";
 import type { YouTubeInfo } from "@/lib/project/project-types";
 
@@ -14,17 +14,6 @@ import type { YouTubeInfo } from "@/lib/project/project-types";
 export interface VideoTarget {
   readonly pageId: PageId;
   readonly point: Point;
-}
-
-/**
- * Asks Rust for a video's poster and title. Browser dev mode has no Rust: null (the video is added
- * with the default look). A failed call is also null; network problems already come back as empty
- * fields, so this only happens for an invalid id or a missing project.
- */
-export async function fetchVideoInfo(videoId: string): Promise<YouTubeInfo | null> {
-  if (!isDesktop) return null;
-  const result = await projectApi.youTubeInfo(videoId);
-  return result.data;
 }
 
 export interface AddVideo {

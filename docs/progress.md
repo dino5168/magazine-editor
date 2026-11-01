@@ -13,7 +13,7 @@
 
 ## 目前在做什麼
 
-- **多媒體（影片超連結 → 音訊）**：`docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md`。影片步驟 1–8 完成（v18 `media` 物件、插入對話框 / Ctrl+V / 拖曳、PDF 連結、翻頁書開新分頁與書內播放、素材庫 v2 影片）；剩步驟 9（MCP，可選），之後是音訊 A1–A3。**網站上的書內播放要另開 web-magazine 工作階段**改書檔伺服器的 sandbox（計畫 §4.1）。
+- **多媒體（影片超連結 → 音訊）**：`docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md`。影片步驟 1–8 完成（v18 `media` 物件、插入對話框 / Ctrl+V / 拖曳、PDF 連結、翻頁書開新分頁與書內播放、素材庫 v2 影片）；步驟 9（MCP `add_video`）也完成；之後是音訊 A1–A3。**網站上的書內播放要另開 web-magazine 工作階段**改書檔伺服器的 sandbox（計畫 §4.1）。
 - **上傳翻頁書到網站**：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。剩下步驟 0（另開 web-magazine 工作階段：上傳白名單加 `gif`、`txt`，同步改 `桌面上傳API.md` 與測試；沒做之前 GIF 圖片與 `page-flip.LICENSE.txt` 上傳後會被網站略過）與步驟 6（使用者的人工驗證，見下方待辦）。規則：`.claude/rules/upload.md`。
 
 ## 最近完成（全部已 commit 並 push）

@@ -28,6 +28,7 @@ import {
 } from "@/lib/editor/element-factory";
 import { FONT_OPTIONS, projectFontOption } from "@/lib/editor/fonts";
 import { pageCenter } from "@/lib/editor/geometry";
+import { mediaFromVideoItem } from "@/lib/library/video-item";
 import { withLinePoints } from "@/lib/editor/line-geometry";
 import { toolLineStroke } from "@/lib/editor/line-kinds";
 import { findSheet, nextMasterName } from "@/lib/editor/master-pages";
@@ -208,14 +209,14 @@ function hasKeys(value: object): boolean {
 }
 
 /** The page or master page a new element goes to: `pageId`, or the sheet the user is looking at. */
-function targetSheet(state: EditorState, pageId: PageId | undefined): Result<PageId> {
+export function targetSheet(state: EditorState, pageId: PageId | undefined): Result<PageId> {
   const document = state.history.present;
   if (pageId === undefined) return ok(state.activePageId);
   const exists = document.pages.some((page) => page.id === pageId) || document.masters.some((m) => m.id === pageId);
   return exists ? ok(pageId) : fail(`找不到頁面「${pageId}」，請先用 list_pages 取得 id`);
 }
 
-function addElement(apply: ApplyAction, element: CanvasElement, pageId: PageId) {
+export function addElement(apply: ApplyAction, element: CanvasElement, pageId: PageId) {
   if (!apply({ type: "element/add", element, pageId })) return fail("App 沒有接受這個物件（參數不合法）");
   return ok({ id: element.id, pageId });
 }
@@ -339,11 +340,19 @@ export function placeLibraryItem(
   const item = found.data;
   if (item.trashed) return fail(`素材「${item.name}」在垃圾桶裡，請使用者先在素材管理還原`);
   if (item.kind === "audio") return fail("音訊不能放到頁面");
-  if (item.kind === "video") return fail(`影片「${item.name}」目前請使用者在素材管理放到頁面`);
   if (item.kind === "text") {
     return fail(`目前只能放圖片；文字檔「${item.name}」請用 list_library_items 的摘錄（或使用者提供的內容）以 add_text 加入`);
   }
   const sheet = findSheet(state.history.present, sheetId.data)!;
+  if (item.kind === "video") {
+    // 和素材面板放到頁面相同（封面、開始、標題 = 素材名稱）；給寬度時保持 16:9
+    const video = mediaFromVideoItem(item, sheet, pageCenter(sheet));
+    const width = args.width ?? video.width;
+    const height = (width * video.height) / video.width;
+    const element = { ...video, width, height, x: args.x ?? (sheet.width - width) / 2, y: args.y ?? (sheet.height - height) / 2 };
+    const added = addElement(apply, element, sheetId.data);
+    return added.error ? added : ok({ ...added.data, width, height });
+  }
   // 和素材面板放到頁面相同（太大時縮小）；給寬度時依原圖比例算高度
   const placed = createImageElement(item.src, item, sheet, pageCenter(sheet));
   const width = args.width ?? placed.width;
@@ -489,8 +498,7 @@ const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "image", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
   line: ["points", "path", "compound", "stroke", "start", "end"],
-  // 影片的來源 / 封面 / 標題由 MCP 步驟（計畫步驟 9）再開放
-  media: ["width", "height"],
+  media: ["width", "height", "startSeconds", "title"],
 };
 
 const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條", media: "影片" };
@@ -518,8 +526,14 @@ function elementPatch(state: EditorState, library: Library, element: CanvasEleme
       if (!hasValidTextIndent({ ...element, ...style })) return fail(INDENT_ERROR);
       return ok({ ...position, ...(args.text !== undefined && { text: args.text }), ...style });
     case "image":
-    case "media":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
+    case "media":
+      return ok({
+        ...position,
+        ...(args.height !== undefined && { height: args.height }),
+        ...(args.startSeconds !== undefined && { source: { ...element.source, start: args.startSeconds } }),
+        ...(args.title !== undefined && { title: args.title.trim() }),
+      });
     case "line":
       return linePatch(state, element, args, position);
     case "shape": {

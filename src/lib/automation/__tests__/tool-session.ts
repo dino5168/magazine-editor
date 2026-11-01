@@ -47,7 +47,7 @@ export function toolSession(
   initial: EditorState,
   commands: CommandAccess = NO_COMMANDS,
   library: Library = EMPTY_LIBRARY,
-  hooks: Pick<ToolContext, "attachedFile" | "importFile"> = {},
+  hooks: Pick<ToolContext, "attachedFile" | "importFile" | "fetchVideoInfo"> = {},
 ) {
   let state = initial;
   const apply = (action: Parameters<typeof editorReducer>[1]) => {

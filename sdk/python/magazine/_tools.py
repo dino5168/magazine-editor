@@ -340,6 +340,8 @@ class ToolMethods:
         compound: Literal["single", "double"] | _Unset = UNSET,
         start: dict[str, Any] | _Unset = UNSET,
         end: dict[str, Any] | _Unset = UNSET,
+        startSeconds: int | _Unset = UNSET,
+        title: str | _Unset = UNSET,
         fontSize: float | _Unset = UNSET,
         font: str | _Unset = UNSET,
         bold: bool | _Unset = UNSET,
@@ -357,7 +359,7 @@ class ToolMethods:
     ) -> Any:
         """修改物件
 
-        修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）、image（圖片框的照片：給 item 換照片、只給 fit / focusX / focusY / zoom 調整目前的照片、null = 移除照片）。圖片只能改位置與尺寸。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱 / id，見 list_fonts）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）、indentLeft / indentRight / indentFirstLine（段落縮排，單位「字」；首行負值 = 首行突排）。顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。
+        修改一個物件（頁面或主頁上的都可以，用 id 找），只改有給的欄位，回傳是否有變更。位置與尺寸：x、y、width、height（文字物件沒有 height）、rotation。文字物件：text 與文字樣式。圖形：fill、stroke、cornerRadius（只有矩形）、shape（換成另一個圖形，位置、大小、樣式、文字不變，參數用新圖形的預設）、params（圖形庫圖形的參數，只改有給的）、text（圖形內文字，空字串 = 移除）、verticalAlign 與文字樣式（套用在圖形內文字）、image（圖片框的照片：給 item 換照片、只給 fit / focusX / focusY / zoom 調整目前的照片、null = 移除照片）。圖片只能改位置與尺寸。影片：位置、尺寸、startSeconds（開始秒數）、title（標題，空字串 = 沒有標題）。線條：x、y、rotation（整條移動 / 轉）、points（換掉所有點，頁面座標；不能同時給 x / y）、path、compound、stroke（不能是 null）、start、end（箭頭；scale 省略時保留原本的大小）。文字樣式欄位（都可省略）：fontSize、font（黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱 / id，見 list_fonts）、bold、italic、underline、strikethrough、align（left / center / right / distributed（分散對齊：每一行首字貼左緣、末字貼右緣，含最後一行））、textColor、shadow、lineHeight（行距倍數）、letterSpacing（字距 ‰）、indentLeft / indentRight / indentFirstLine（段落縮排，單位「字」；首行負值 = 首行突排）。顏色參數（textColor、shadow.color、fill、stroke.color）可以是 hex，也可以是 { swatch: 色票名稱或 id, opacity?: 0–1 } 連到文件色票（list_swatches）：連到色票的顏色會在改色票時跟著變。 給了不屬於該物件類型的欄位會回錯誤、不做修改。一次呼叫 = 一筆復原紀錄。
 
         Args:
             id: 物件 id（由 list_elements 取得）
@@ -379,6 +381,8 @@ class ToolMethods:
             compound: double = 雙線（兩條細線各 1/3 線寬、中間留空；只給 straight）（可省略）
             start: 這一端的箭頭；箭頭永遠是實線，尖端在端點上（可省略）
             end: 這一端的箭頭；箭頭永遠是實線，尖端在端點上（可省略）
+            startSeconds: 影片從第幾秒開始播放（只有影片；線條的 start 是箭頭）（可省略）
+            title: 影片標題（只有影片）；空字串 = 沒有標題（可省略）
             fontSize: 字級（pt）（可省略）
             font: 字型：內建的 黑體 / 明體 / 楷體 / 圓體，或專案字型的名稱或 id（由 list_fonts 取得）（可省略）
             bold: （可省略）
@@ -397,7 +401,7 @@ class ToolMethods:
         Returns:
             The tool's JSON result.
         """
-        return self._call("update_element", _args({"id": id, "x": x, "y": y, "width": width, "height": height, "rotation": rotation, "text": text, "fill": fill, "stroke": stroke, "cornerRadius": cornerRadius, "shape": shape, "params": params, "image": image, "verticalAlign": verticalAlign, "points": points, "path": path, "compound": compound, "start": start, "end": end, "fontSize": fontSize, "font": font, "bold": bold, "italic": italic, "underline": underline, "strikethrough": strikethrough, "align": align, "textColor": textColor, "shadow": shadow, "lineHeight": lineHeight, "letterSpacing": letterSpacing, "indentLeft": indentLeft, "indentRight": indentRight, "indentFirstLine": indentFirstLine}))
+        return self._call("update_element", _args({"id": id, "x": x, "y": y, "width": width, "height": height, "rotation": rotation, "text": text, "fill": fill, "stroke": stroke, "cornerRadius": cornerRadius, "shape": shape, "params": params, "image": image, "verticalAlign": verticalAlign, "points": points, "path": path, "compound": compound, "start": start, "end": end, "startSeconds": startSeconds, "title": title, "fontSize": fontSize, "font": font, "bold": bold, "italic": italic, "underline": underline, "strikethrough": strikethrough, "align": align, "textColor": textColor, "shadow": shadow, "lineHeight": lineHeight, "letterSpacing": letterSpacing, "indentLeft": indentLeft, "indentRight": indentRight, "indentFirstLine": indentFirstLine}))
 
     def delete_elements(
         self,
@@ -709,14 +713,14 @@ class ToolMethods:
     def list_library_items(
         self,
         *,
-        kind: Literal["image", "text", "audio"] | _Unset = UNSET,
+        kind: Literal["image", "text", "audio", "video"] | _Unset = UNSET,
         query: str | _Unset = UNSET,
         folderId: str | _Unset = UNSET,
         includeTrashed: bool | _Unset = UNSET,
     ) -> Any:
         """素材清單
 
-        列出專案素材庫（使用者匯入的圖片、文字檔、音訊）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio）、所在資料夾路徑（null = 未分類）、檔案大小（bytes）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。
+        列出專案素材庫（使用者匯入的圖片、文字檔、音訊與 YouTube 影片連結）的資料夾與素材，新匯入的在前。素材：id、名稱、種類（image / text / audio / video）、所在資料夾路徑（null = 未分類）、檔案大小（bytes，影片是 0）；圖片另有像素尺寸 width / height，文字檔另有開頭摘錄，影片另有 videoId 與 start（開始秒數）。可依種類、名稱（包含，不分大小寫）、資料夾（含子資料夾）篩選；垃圾桶裡的素材預設不列，includeTrashed 為 true 時排在最後。新增圖片素材用 import_library_item；刪除、移動素材不能用工具。
 
         Args:
             kind: 只列這一種素材（可省略）
@@ -761,19 +765,46 @@ class ToolMethods:
     ) -> Any:
         """把素材放到頁面
 
-        把素材庫裡的圖片放到頁面或主頁（放在最上層），回傳新物件的 id 與尺寸（pt）。item 是素材 id 或名稱（名稱要完全相符；同名的素材不只一個時請改用 id）。x / y 是圖片外框左上角（pt），省略的那一軸置中於頁面。width 省略時和使用者從素材面板放到頁面相同：原始像素當 pt，太大時縮到頁面寬、高的一半以內；給 width 時高度依原圖比例算（要改比例再用 update_element）。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。目前只能放圖片：文字檔請讀 list_library_items 的摘錄後用 add_text，音訊不能放到頁面，垃圾桶裡的素材要使用者先還原。一次呼叫 = 一筆復原紀錄。
+        把素材庫裡的圖片或影片放到頁面或主頁（放在最上層），回傳新物件的 id 與尺寸（pt）。影片會變成影片物件（封面、開始時間、標題 = 素材名稱；預設 16:9，最寬 320 pt），給 width 時高度 = 寬 × 9/16。item 是素材 id 或名稱（名稱要完全相符；同名的素材不只一個時請改用 id）。x / y 是圖片外框左上角（pt），省略的那一軸置中於頁面。width 省略時和使用者從素材面板放到頁面相同：原始像素當 pt，太大時縮到頁面寬、高的一半以內；給 width 時高度依原圖比例算（要改比例再用 update_element）。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。文字檔請讀 list_library_items 的摘錄後用 add_text，音訊不能放到頁面，垃圾桶裡的素材要使用者先還原。一次呼叫 = 一筆復原紀錄。
 
         Args:
             item: 素材 id 或名稱（由 list_library_items 取得）
             pageId: 頁面或主頁的 id（由 list_pages 取得）（可省略）
             x: （可省略）
             y: （可省略）
-            width: 寬度（pt），高度依原圖比例（可省略）
+            width: 寬度（pt），高度依原圖比例（影片是 16:9）（可省略）
 
         Returns:
             The tool's JSON result.
         """
         return self._call("place_library_item", _args({"item": item, "pageId": pageId, "x": x, "y": y, "width": width}))
+
+    def add_video(
+        self,
+        *,
+        url: str,
+        pageId: str | _Unset = UNSET,
+        x: float | _Unset = UNSET,
+        y: float | _Unset = UNSET,
+        width: float | _Unset = UNSET,
+        title: str | _Unset = UNSET,
+    ) -> Any:
+        """新增 YouTube 影片
+
+        把一支 YouTube 影片放到頁面或主頁（放在最上層），和使用者在 App 裡「插入 YouTube 影片」相同：App 先向 YouTube 取得封面（存成專案裡的圖片）與標題。畫布上是封面 + 播放圖示；匯出的 PDF 點了開 YouTube，翻頁書從網站開啟時在書裡播放。url 是影片網址（watch?v=、youtu.be/、shorts/、embed/ 都可以；網址裡的 t= / start= 是開始時間；頻道、播放清單不行）。回傳新物件的 id、尺寸（pt）、title、hasPoster（有沒有取得封面）與 availability（ok / notEmbeddable = 只能開新分頁、不能在書裡播放 / unknown = 沒有網路）；影片不存在時回錯誤、不新增。x / y 是外框左上角（pt），省略的那一軸置中於頁面；width 省略 = 16:9、最寬 320 pt 且不超過頁面一半，給 width 時高度 = 寬 × 9/16。title 省略 = YouTube 上的標題。省略 pageId = 使用者正在看的頁面；指定別頁不會切換使用者的畫面。開始時間、標題之後可以用 update_element 的 startSeconds / title 改。要等 YouTube 回應，所以不能放進 batch（先單獨新增，再把之後的修改放進 batch）。一次呼叫 = 一筆復原紀錄。
+
+        Args:
+            url: YouTube 影片網址，例如 https://www.youtube.com/watch?v=C5fjrag2Fcg
+            pageId: 頁面或主頁的 id（由 list_pages 取得）（可省略）
+            x: （可省略）
+            y: （可省略）
+            width: 寬度（pt），高度 = 寬 × 9/16（可省略）
+            title: 影片標題（最多 200 字）；省略 = YouTube 上的標題（可省略）
+
+        Returns:
+            The tool's JSON result.
+        """
+        return self._call("add_video", _args({"url": url, "pageId": pageId, "x": x, "y": y, "width": width, "title": title}))
 
     def rename_page(
         self,
@@ -859,6 +890,7 @@ TOOL_NAMES: Final = frozenset({
     "add_swatch",
     "add_text",
     "add_text_style",
+    "add_video",
     "apply_text_style",
     "check_layout",
     "delete_elements",

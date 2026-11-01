@@ -12,6 +12,8 @@ import type { MeasureText } from "./layout";
 import { checkLayout } from "./layout-check";
 import { renderPage } from "./render-page";
 import { importLibraryItem } from "./imports";
+import { addVideo } from "./media-tools";
+import type { YouTubeInfo } from "@/lib/project/project-types";
 import { listCommands, runCommand, type CommandAccess } from "./commands";
 import {
   addLine,
@@ -67,13 +69,15 @@ export interface ToolContext {
    */
   readonly attachedFile?: (() => Promise<Result<File>>) | null;
   readonly importFile?: ImportFileFn;
+  /** Asks YouTube (through Rust) for a video's poster and title (`add_video`); a fake in tests. */
+  readonly fetchVideoInfo?: (videoId: string) => Promise<YouTubeInfo | null>;
 }
 
 /** Imports one file into the asset library (`useLibraryImport().importFile`). */
 export type ImportFileFn = (file: File, options: ImportFileOptions) => Promise<Result<ImportedItem>>;
 
 /** Tools that wait for the app (file I/O); they run through `runToolAsync` only, never in a batch. */
-type AsyncToolName = Extract<ToolName, "import_library_item">;
+type AsyncToolName = Extract<ToolName, "import_library_item" | "add_video">;
 type SyncToolName = Exclude<ToolName, AsyncToolName>;
 
 type ToolHandlers = { readonly [Name in SyncToolName]: (args: ToolArgs<Name>, context: ToolContext) => Result<unknown> };
@@ -125,6 +129,7 @@ const HANDLERS: ToolHandlers = {
 
 const ASYNC_HANDLERS: AsyncToolHandlers = {
   import_library_item: (args, context) => importLibraryItem(context.library, context, args),
+  add_video: (args, context) => addVideo(context, args),
 };
 
 function isAsyncToolName(name: ToolName): name is AsyncToolName {
