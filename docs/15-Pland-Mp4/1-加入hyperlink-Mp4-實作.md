@@ -153,6 +153,8 @@ interface MediaElement extends BaseElement {
 | 7 | 翻頁書 V2（**主要功能**） | `viewer.js` 播放層（書之外、`youtube-nocookie.com/embed/<id>?start=`），CSP `frame-src`；`file://` 退回開新分頁；關閉時移除 iframe（停止播放） | 本機 https 伺服器 + `file://` 各測一次；web-magazine 上傳後實測 |
 | 8 | 素材庫 `video`（操作方式 B，libraryVersion 2） | Rust `library.rs` + TS types + fixture；「新增影片連結」按鈕；屬性面板「加入素材庫」；影片卡片（封面縮圖）；拖到頁面 / 「放到目前頁面」；**類別篩選**（全部 / 圖片 / 文字 / 影片 / 音訊） | vitest + `cargo test` + `ui-verify` |
 | 9 | MCP（可選） | `add_media`（skill `add-mcp-tool`）；`list_elements` / `get_element` 顯示影片 | `npx vitest run mcp-tools` |
+| 10 | 本機開檔時不自動開新分頁（做法 C） | `file:` 或不透明來源時（`canEmbed` 為 false），點影片改開**同一個播放層**，但內容是封面 + 「這種開啟方式不能在書裡播放（YouTube 的限制）」+「到 YouTube 觀看」按鈕（`target="_blank"`），不自動跳出新視窗。封面：`markup.rs` 的連結多 `data-poster`（書裡 `images/` 的檔案；`link_markup` 需要拿到 `images` 與 `image_prefix`），沒有封面時只有文字。EPUB 不變 | `cargo test`（`data-poster`）+ 無頭 Edge：`file://` 點影片 → 出現說明層、沒有新分頁；按鈕才開新分頁；Esc 關閉；`http://` 仍是播放器 |
+| 11 | 「預覽翻頁書」（做法 B） | 選單「檔案 → 預覽翻頁書」：把目前文件匯出到暫存資料夾（`app_local_data_dir()/flipbook-preview/`，啟動時清掉舊的），用**有網址的方式**打開，在書裡播放影片。**先做技術驗證（11a）**：Tauri 另開一個視窗載入暫存的書（asset protocol，網址是 `http://asset.localhost/…`），看 YouTube 肯不肯內嵌、App 的 CSP 會不會擋；可以的話就用它（不用開 port）。不行才做 **11b**：Rust 在 `127.0.0.1` 隨機 port 開只讀的小型檔案伺服器（只服務那個暫存資料夾、網址帶隨機 token、只收 GET / HEAD、擋 `..`），用 `openUrl` 開系統瀏覽器；App 關閉時停止 | 11a：實測截圖；11b：`cargo test`（路徑穿越、token、Content-Type）+ 實際開啟播放 |
 
 ### A 階段：音訊
 
@@ -168,19 +170,21 @@ interface MediaElement extends BaseElement {
 
 ## 4.1 交給 web-magazine 工作階段（步驟 7 發現，2026-11-01）
 
-書內播放在**網站上**目前不會出現（翻頁書會退回開新分頁，而且新分頁也被擋）。原因在網站的書檔伺服器（`A01-Magazine-Server/src/lib.rs` 的 `books_router`）送出的標頭：
+網站上的翻頁書現在點影片**沒有反應**：書檔伺服器的 `Content-Security-Policy: sandbox allow-scripts` 與閱讀頁 iframe 的 `sandbox="allow-scripts"` 把書放在不透明來源（YouTube 拒絕內嵌），也不准開新分頁。
 
-| 標頭 | 現在 | 影響 |
-|---|---|---|
-| `Content-Security-Policy` | `sandbox allow-scripts` | 書在**不透明來源**（origin `"null"`）：YouTube 收不到來源，播放器全黑；沒有 `allow-popups`，`target="_blank"` 的連結與「在 YouTube 觀看」也開不了 |
-| `Referrer-Policy` | `no-referrer` | 沒影響（播放器 iframe 自己設 `strict-origin-when-cross-origin`，實測可播） |
+**建議實作（可以整份交給 web-magazine）：`2-web-magazine-書內播放-建議.md`**：伺服器與閱讀頁 iframe 的 sandbox 加 `allow-same-origin allow-popups allow-popups-to-escape-sandbox`，iframe 的 `allow` 加 `autoplay; encrypted-media; picture-in-picture`；資安取捨（書與書之間不再隔離、登入資訊仍安全）與更嚴格的替代方案（每本書一個子網域）；本機模擬的結果與驗收清單。翻頁書這邊不用改。
 
-**實測**（本機用相同標頭供應同一本書，無頭 Edge）：`sandbox allow-scripts` → 全黑；加 `allow-same-origin` → 可以播放（不論 Referrer-Policy）；再加 `allow-popups allow-popups-to-escape-sandbox` → 新分頁連結也能用。
+### 三種讀者的整體做法（2026-11-01 討論）
 
-**要 web-magazine 決定與修改**（不在本 repo 改）：
-1. sandbox 加 `allow-same-origin allow-popups allow-popups-to-escape-sandbox`。**資安取捨**：書會共用書檔伺服器的來源（彼此的 localStorage 等；書檔伺服器本來就和 API / 前端不同來源，登入 token 不受影響）。要在 web-magazine 的資安評估裡決定。
-2. 前端用來嵌入書的 iframe 若有 `sandbox` 屬性，也要加同樣的旗標（iframe 內的文件會繼承）。
-3. 改完後上傳一本有影片的書實測。翻頁書這邊不用改：viewer 偵測到可以內嵌（`window.origin` 不是 `"null"`）就會在書裡播放。
+同一份匯出，翻頁書依開啟方式自己決定（**不分開匯出**：本機開檔不能內嵌是 YouTube 的規則，和匯出內容無關）：
+
+| 讀者 | 開啟方式 | 做法 | 結果 |
+|---|---|---|---|
+| 網站讀者 | 網站網址 | web-magazine 改設定（上面的建議） | 在書裡播放 |
+| 作者 | App「預覽翻頁書」 | 步驟 11 | 在書裡播放 |
+| 拿到資料夾 / Zip 的人 | 雙擊 `index.html` | 步驟 10 | 不能在書裡播放（YouTube 錯誤 153），改成說明層 + 按鈕，不自動開新視窗 |
+
+**實測**：本機開檔的頁面嵌入 YouTube，四種寫法（一般網域、無 cookie 網域、`origin` 參數、`widget_referrer` 參數）都是錯誤 153「影片播放器設定錯誤」。不建議的做法：書裡附啟動檔（.cmd + PowerShell 開本機伺服器，會被 SmartScreen / 防毒警告、Mac 不能用）、把影片下載進書裡（違反 YouTube 條款、需求已排除）。
 
 ## 5. 不做（這次）
 
@@ -209,3 +213,5 @@ interface MediaElement extends BaseElement {
 | 2026-11-01 | 步驟 7 完成（網站端待 web-magazine，見 §4.1） | Rust：`RenderLink.embed`（`media::youtube_embed_url`：`youtube-nocookie.com/embed/<id>?autoplay=1&rel=0&start=`），翻頁書的連結多 `data-embed`（EPUB 沒有）；**有影片的書**的 CSP 才加 `frame-src https://www.youtube-nocookie.com`（`content_security_policy`）。`viewer.js` 新的「影片」段：點 `a.link[data-embed]` → `#video` 層（role=dialog，疊在放大檢視之上 z-index 30）放 iframe（`allow` autoplay / fullscreen…、`referrerpolicy="strict-origin-when-cross-origin"`），下方標題列有「在 YouTube 觀看」與關閉；Esc / 點暗處 / 關閉鈕關閉並**移除 iframe**（停止播放），焦點回到原本的連結；開著時方向鍵、Z 不作用，Tab 留在層內。`file:` 或不透明來源（`window.origin === "null"`）不攔，照連結開新分頁。**順便修正**：縮圖列的頁面複本拿掉 `<a>`（縮圖本身是按鈕，步驟 6 起裡面的影片連結會搶走點擊）。測試：`youtube_embed_url` 1 項；翻頁書測試加 `data-embed` 與 CSP、沒有影片的書沒有 `frame-src`；EPUB 沒有 `data-embed`。**瀏覽器實測**（無頭 Edge）：`http://127.0.0.1` 供應 → 點影片開播放層、iframe 網址與 referrer policy 正確、**YouTube 真的在書裡播放**（截圖）、方向鍵不翻頁、Esc 關閉且 iframe 移除、焦點回連結、縮圖裡沒有連結、沒有 CSP 錯誤；`file://` → 不開播放層、click 沒被取消（開新分頁）；用網站的標頭供應 → 見 §4.1 |
 | 2026-11-01 | 步驟 8 完成 | **素材庫 v2**（Rust `library.rs` 權威）：`LibraryItem::Video`（`videoId`、`start`、`poster: { src, width, height } \| null`）。影片沒有檔案，**`src` 是虛擬的 `youtube:<id>`**：沿用「同一個 src 只能一筆」，同一支影片自然只留一筆；`bytes` 0；`asset_dir()` 改回傳 `Option`（影片 None），驗證改成檢查 src = 前綴 + id。`referenced`（開檔清理）算影片封面、不算 `youtube:`。**v1 檔讀成 v2**（`parse_library` 改版本號，內容不變；下次寫入就是 v2），舊版 App 拒開 v2。Fixture `sample-library.json` 加一支影片。TS：`VideoItem`、`FileItemKind`（匯入檔案用的種類，不含影片）、`libraryProblem` 同規則、`visibleItems` 多一個 `kind` 篩選；`lib/library/video-item.ts`（`videoItemFromInfo` / `videoItemFromElement` / `mediaFromVideoItem`，名稱 = 標題或「YouTube 影片 <id>」）。**UI**：素材管理工具列「影片連結」（重用 `InsertVideoDialog`，新增 `destination` 參數：加到目前檢視的資料夾；已經有的影片提示並選取那一筆，在垃圾桶的還原）、「類別」篩選（全部 / 圖片 / 文字 / 影片 / 音訊）；影片卡片 = 封面 + 播放圖示（沒封面是深色底 + 圖示）；資訊欄顯示開始時間與網址（不顯示檔案大小）；「放到目前頁面」/ 拖到畫布 → 影片物件（封面、開始、標題 = 素材名稱）；屬性面板「影片」分頁「加入素材庫」（加到未分類；已在素材庫時停用）。MCP：`list_library_items` 的影片附 `videoId` / `start`；`place_library_item` 對影片回「請在素材管理放到頁面」（步驟 9 再處理）。測試：Rust 3 項（讀影片、v1→v2、拒絕 7 種壞影片）、vitest（驗證 7 種、篩選、`video-item` 3 項；fixture 計數更新）。**瀏覽器實測**：素材管理 → 影片連結 → 加入（資訊欄、未分類）、同一支再加一次仍是 1 個、篩選圖片 0 / 影片 1、放到目前頁面（start 45、標題）、屬性面板「已在素材庫」停用、換成別支影片後可以加入。**桌面版待使用者驗證**：素材管理加入影片會抓封面、存檔重開後素材庫還在（`library.json` 變成 v2） |
 | 2026-11-01 | 步驟 9 完成 | MCP：新工具 **`add_video`**（`media-tools.ts`；非同步、不能進 `batch`，先檢查網址與頁面再問 YouTube，影片不存在時回錯誤不新增；回傳 `hasPoster` / `availability`）。`ToolContext.fetchVideoInfo`（App = `lib/media/video-info.ts` 的 `fetchVideoInfo`，從 `use-add-video.ts` 搬過來，`lib/automation` 不引用 components；測試用假的）。`place_library_item` 可以放影片素材（`mediaFromVideoItem`，給 width 時 16:9）；`list_library_items` 的 `kind` 多 `video`；`update_element` 的影片可改 `startSeconds`（線條已經有 `start` = 箭頭，所以不叫 start）與 `title`。測試 `video-tools.test.ts` 8 項（成功與一筆復原、參數、離線、壞網址 / 不存在的頁面不問 YouTube、不存在的影片、不能進 batch、列出影片、放影片素材、改開始與標題）。`mcp-tools.json`、Python SDK（pytest 17 項）、橋接程式重編、`MCP-工具清單.md` 已更新。**使用者要 `/mcp` 重新連線**才看得到 `add_video` |
+| 2026-11-01 | 影片階段收尾 | commits：步驟 1 `193766f`、2 `f715042`、3 `fa92d32`、4 `b434be7`、5 `b101e2c`、6 `a976442`、7 `0bf10d9`、8 `eea1453`、9 `c419229`（未 push）。使用者先在桌面版測試（清單見 `docs/progress.md` 待辦），之後做音訊 A1 |
+| 2026-11-01 | 規劃步驟 10、11 與 web-magazine 建議 | 使用者測試影片功能 OK；回報「匯出的翻頁書播放 YouTube 時開新視窗」。實測本機開檔不能內嵌（錯誤 153，四種寫法都一樣），決定**不分開匯出**：步驟 10（本機開檔改成說明層）、步驟 11（App 內預覽翻頁書，先驗證 asset protocol 視窗）；網站端寫成 `2-web-magazine-書內播放-建議.md` 交給 web-magazine（另用「不同網域的閱讀頁 + 書檔伺服器」模擬確認：只加 sandbox 旗標會出現播放器但不自動播放，要再加 iframe 的 `allow="… autoplay …"` 才點了就播）。建議順序 C → B → A。**尚未實作** |
