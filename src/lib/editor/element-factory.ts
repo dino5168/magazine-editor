@@ -15,6 +15,8 @@ import type {
   ImageElement,
   Margins,
   MasterPage,
+  MediaElement,
+  MediaOrigin,
   Page,
   PageId,
   Point,
@@ -478,6 +480,45 @@ export function createLineElement(
   };
 }
 
+/** A new video's box: 16:9, at most this wide (pt), and at most half the page like images. */
+const MEDIA_DEFAULT_WIDTH_PT = 320;
+const MEDIA_ASPECT = 16 / 9;
+
+/**
+ * Creates a video link element: a 16:9 box centered on `center`, at most half the page wide.
+ *
+ * Args:
+ *   source: The parsed video (`parseYouTubeUrl`).
+ *   page: Page size in pt.
+ *   center: Center position in pt.
+ *   options: Poster (`shapeImageOf` of the fetched thumbnail) and title; default none / empty.
+ *
+ * Returns:
+ *   New media element.
+ */
+export function createMediaElement(
+  source: MediaOrigin,
+  page: Size,
+  center: Point,
+  options: Partial<Pick<MediaElement, "poster" | "title">> = {},
+): MediaElement {
+  const width = Math.min(MEDIA_DEFAULT_WIDTH_PT, page.width * IMAGE_MAX_PAGE_RATIO, page.height * IMAGE_MAX_PAGE_RATIO * MEDIA_ASPECT);
+  const height = width / MEDIA_ASPECT;
+  return {
+    id: createId(),
+    type: "media",
+    x: center.x - width / 2,
+    y: center.y - height / 2,
+    rotation: 0,
+    width,
+    height,
+    source,
+    poster: null,
+    title: "",
+    ...options,
+  };
+}
+
 /**
  * Creates an image element scaled to fit within half of the page, preserving aspect ratio.
  *
@@ -742,6 +783,8 @@ export function describeElement(element: CanvasElement): string {
       return "圖片";
     case "line":
       return describeLine(element);
+    case "media":
+      return summarize(element.title, 20) ?? "YouTube 影片";
     default: {
       const exhaustive: never = element;
       return exhaustive;

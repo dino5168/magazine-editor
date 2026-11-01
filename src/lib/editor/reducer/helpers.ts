@@ -12,6 +12,8 @@ import { isLetterSpacing, isLineHeight } from "../text-style";
 import {
   PAGE_NAME_MAX_LENGTH,
   isElementColor,
+  isMediaOrigin,
+  isMediaTitle,
   isShapeGeometry,
   isShapeImage,
   isValidLine,
@@ -106,6 +108,9 @@ export function isValidPatch(patch: ElementPatch): boolean {
   if ("label" in patch && patch.label !== null && !isShapeLabel(patch.label)) return false;
   if ("geometry" in patch && !isShapeGeometry(patch.geometry)) return false;
   if ("image" in patch && patch.image !== null && !isShapeImage(patch.image)) return false;
+  if ("poster" in patch && patch.poster !== null && !isShapeImage(patch.poster)) return false;
+  if ("source" in patch && !isMediaOrigin(patch.source)) return false;
+  if ("title" in patch && !isMediaTitle(patch.title)) return false;
   if ("shadow" in patch && patch.shadow !== null && !isTextShadow(patch.shadow)) return false;
   const fields: Record<string, unknown> = patch;
   if (TEXT_FLAGS.some((flag) => flag in fields && typeof fields[flag] !== "boolean")) return false;
@@ -133,6 +138,9 @@ export function isValidElementShape(element: CanvasElement): boolean {
       );
     case "image":
       return true;
+    case "media":
+      // 新增的物件不經過 isValidPatch，來源、封面與標題在這裡檢查
+      return isMediaOrigin(element.source) && isMediaTitle(element.title) && (element.poster === null || isShapeImage(element.poster));
   }
 }
 

@@ -26,13 +26,14 @@ function blankPage(document: EditorDocument): Page {
   );
 }
 
-// 圖片物件與圖片框（圖形裡的照片）都算
+// 圖片物件、圖片框（圖形裡的照片）與影片封面都算
 function imageSources(sheets: readonly Sheet[]): Set<string> {
   return new Set(
     sheets.flatMap((sheet) =>
       sheet.elements.flatMap((element) => {
         if (element.type === "image") return [element.src];
         if (element.type === "shape" && element.image) return [element.image.src];
+        if (element.type === "media" && element.poster) return [element.poster.src];
         return [];
       }),
     ),

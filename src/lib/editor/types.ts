@@ -218,7 +218,37 @@ export interface LineElement extends BaseElement {
   readonly end: LineEnd;
 }
 
-export type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement;
+/**
+ * What a media element plays (v18). Stored parsed, never as the pasted link: exports build the
+ * canonical URL (`youtube-url.ts` `youTubeWatchUrl`; Rust validates the id the same way).
+ */
+export type MediaOrigin = {
+  readonly kind: "youtube";
+  /** 11 characters of `[A-Za-z0-9_-]` (`YOUTUBE_ID_PATTERN`). */
+  readonly videoId: string;
+  /** Seconds, 0–`YOUTUBE_START_MAX_SECONDS`; 0 = from the beginning. */
+  readonly start: number;
+};
+
+/**
+ * A video link (v18): a box showing a poster with a play mark; the flip book and PDF play / open it.
+ * The canvas cannot play it.
+ */
+export interface MediaElement extends BaseElement {
+  readonly type: "media";
+  readonly width: number;
+  readonly height: number;
+  readonly source: MediaOrigin;
+  /**
+   * The poster, placed like a frame's photo (`photoPlacement`; a YouTube thumbnail with `cover`
+   * crops its letterbox bars). null = the default look (no thumbnail could be fetched).
+   */
+  readonly poster: ShapeImage | null;
+  /** Video title (layers panel, link text); may be empty; at most `MEDIA_TITLE_MAX_CHARS`. */
+  readonly title: string;
+}
+
+export type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement | MediaElement;
 
 export type ElementType = CanvasElement["type"];
 

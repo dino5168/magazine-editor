@@ -39,6 +39,7 @@ function localBounds(element: CanvasElement): Bounds {
       return { minX: 0, minY: 0, maxX: element.width, maxY: estimateTextHeight(element) };
     case "shape":
     case "image":
+    case "media":
       return { minX: 0, minY: 0, maxX: element.width, maxY: element.height };
     case "line":
       return lineLocalBounds(element);

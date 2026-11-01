@@ -7,6 +7,7 @@ import type {
   LineEnd,
   LinePoint,
   Margins,
+  MediaOrigin,
   ProjectFont,
   ShapeGeometry,
   ShapeImage,
@@ -18,6 +19,7 @@ import type {
   TextShadow,
   TextStyle,
 } from "./types";
+import { isYouTubeVideoId, YOUTUBE_START_MAX_SECONDS } from "../media/youtube-url";
 import { hasValidTextIndent } from "./text-indent";
 import { hasValidTextSpacing, isTextAlign } from "./text-style";
 import { mmToPt } from "./units";
@@ -346,6 +348,31 @@ export function isShapeImage(value: unknown): value is ShapeImage {
     zoom >= 1 &&
     zoom <= SHAPE_IMAGE_ZOOM_MAX
   );
+}
+
+/** Longest video title (characters); same as `MEDIA_TITLE_MAX_CHARS` in Rust. */
+export const MEDIA_TITLE_MAX_CHARS = 200;
+
+/**
+ * Checks what a media element plays (same rules as Rust `validate_media_source`): a YouTube id of
+ * 11 `[A-Za-z0-9_-]` characters and a whole-second start 0–`YOUTUBE_START_MAX_SECONDS`.
+ */
+export function isMediaOrigin(value: unknown): value is MediaOrigin {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, videoId, start } = value as Record<string, unknown>;
+  return (
+    kind === "youtube" &&
+    typeof videoId === "string" &&
+    isYouTubeVideoId(videoId) &&
+    Number.isInteger(start) &&
+    (start as number) >= 0 &&
+    (start as number) <= YOUTUBE_START_MAX_SECONDS
+  );
+}
+
+/** A video title: a string of at most `MEDIA_TITLE_MAX_CHARS` characters (code points, like Rust `chars()`). */
+export function isMediaTitle(value: unknown): value is string {
+  return typeof value === "string" && Array.from(value).length <= MEDIA_TITLE_MAX_CHARS;
 }
 
 /** Most points a line may have (pencil strokes are simplified below it); same as `MAX_LINE_POINTS` in Rust. */

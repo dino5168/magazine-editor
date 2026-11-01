@@ -67,6 +67,7 @@ const TRANSFORMER_OPTIONS: {
   image: { anchors: ALL_ANCHORS, keepRatio: false, rotatable: true },
   // 線條的長度與角度由端點決定（端點把手），Transformer 只負責移動
   line: { anchors: [], keepRatio: false, rotatable: false },
+  media: { anchors: ALL_ANCHORS, keepRatio: false, rotatable: true },
 };
 
 /**

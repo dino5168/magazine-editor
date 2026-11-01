@@ -3,6 +3,7 @@ import {
   createBlankDocument,
   createImageElement,
   createLineElement,
+  createMediaElement,
   createMasterPage,
   createShapeElement,
   createTextElement,
@@ -34,6 +35,7 @@ const FACTORY_ELEMENTS: { readonly [K in ElementType]: CanvasElement } = {
   shape: createShapeElement("rect", center),
   image: createImageElement("assets/images/a.png", { width: 10, height: 10 }, { width: 100, height: 100 }, center),
   line: createLineElement([center, { x: 200, y: 150 }]),
+  media: createMediaElement({ kind: "youtube", videoId: "C5fjrag2Fcg", start: 0 }, { width: 600, height: 800 }, center),
 };
 
 // 每種 geometry 的欄位（kind 以外）；漏了一種會編譯失敗

@@ -137,6 +137,7 @@ function mapElementColors(element: CanvasElement, update: ColorSlotUpdate): Canv
       return stroke === element.stroke && label === element.label ? filled : { ...filled, stroke, label };
     }
     case "image":
+    case "media":
       return element;
     case "line": {
       // 線一定有線條，mapStroke 收非 null 就回傳非 null

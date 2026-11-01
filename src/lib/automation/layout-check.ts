@@ -201,6 +201,8 @@ function describe(element: CanvasElement): string {
       return "圖片";
     case "line":
       return "線條";
+    case "media":
+      return element.title !== "" ? `影片「${shortText(element.title)}」` : "影片";
   }
 }
 

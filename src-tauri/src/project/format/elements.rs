@@ -1,4 +1,4 @@
-//! Page elements: text, shapes, images and lines, and the text style sheet.
+//! Page elements: text, shapes, images, lines and media, and the text style sheet.
 
 use super::*;
 use serde::{Deserialize, Serialize};
@@ -365,6 +365,33 @@ pub struct LineElement {
     pub end: LineEnd,
 }
 
+/// What a media element plays (v18); same as `MediaOrigin` in `src/lib/editor/types.ts`. Stored
+/// parsed: exports build the canonical URL from the id.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum MediaOrigin {
+    Youtube {
+        /// 11 characters of `[A-Za-z0-9_-]` (`is_youtube_video_id`).
+        video_id: String,
+        /// Seconds, 0–`YOUTUBE_START_MAX_SECONDS`.
+        start: u32,
+    },
+}
+
+/// A video link (v18): a box with a poster; the flip book and PDF play / open the video.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MediaElement {
+    #[serde(flatten)]
+    pub base: Base,
+    pub width: f64,
+    pub height: f64,
+    pub source: MediaOrigin,
+    /// Placed like a frame's photo; `None` = the default look.
+    pub poster: Option<ShapeImage>,
+    /// May be empty; at most `MEDIA_TITLE_MAX_CHARS` characters.
+    pub title: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum Element {
@@ -372,4 +399,5 @@ pub enum Element {
     Shape(ShapeElement),
     Image(ImageElement),
     Line(LineElement),
+    Media(MediaElement),
 }

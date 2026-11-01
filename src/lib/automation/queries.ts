@@ -225,6 +225,8 @@ function elementSummary(element: CanvasElement): string {
       return `圖片 ${element.src}`;
     case "line":
       return `${describeLine(element)}，${element.points.length} 個點，線條 ${element.stroke.color}`;
+    case "media":
+      return `YouTube 影片 ${element.source.videoId}${element.title !== "" ? `「${excerpt(element.title)}」` : ""}`;
   }
 }
 

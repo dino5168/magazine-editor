@@ -698,6 +698,8 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 }
                 // 編輯器匯出前把線條換成路徑圖形（buildExportRequest），匯出請求裡不該有線條
                 Element::Line(_) => return Err(AppError::invalid_input("匯出資料有誤：線條沒有先換成路徑")),
+                // 影片的匯出（封面 + 連結）在計畫步驟 5；在那之前不畫
+                Element::Media(_) => continue,
                 Element::Image(e) => {
                     // 圖片檔被刪除時略過，和畫布顯示灰框一樣不讓整份匯出失敗
                     if !root.join(&e.src).is_file() {

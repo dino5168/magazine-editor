@@ -49,6 +49,7 @@ function tabsOf(element: CanvasElement): readonly TabId[] {
     case "shape":
       return ["style", "text", "arrange"];
     case "image":
+    case "media":
       return ["arrange"];
     case "line":
       return ["line", "arrange"];
@@ -67,6 +68,8 @@ function elementName(element: CanvasElement): string {
       return describeShape(element);
     case "image":
       return "圖片";
+    case "media":
+      return "影片";
     case "line":
       return describeLine(element);
     default: {

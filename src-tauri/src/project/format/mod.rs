@@ -35,7 +35,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// and backups → 0 (`docs/07-Plans-物件屬性與事件/01-新增文字框屬性-實作.md`).
 /// v17: shapes may hold a photo (`image`, an image frame). Missing in older files and backups →
 /// none (`docs/07-Plans-物件屬性與事件/03-圖形照片-實作.md`).
-pub const SCHEMA_VERSION: u32 = 17;
+/// v18: media elements (`type: "media"`, a YouTube video link with an optional poster). Older App
+/// versions refuse the file as newer (`docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md`).
+pub const SCHEMA_VERSION: u32 = 18;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -46,6 +48,12 @@ pub const MAX_VERTEX_COUNT: u32 = 1000;
 pub const MAX_LINE_POINTS: usize = 500;
 /// Largest zoom of a photo in a shape; same as `SHAPE_IMAGE_ZOOM_MAX` in `src/lib/editor/validation.ts`.
 pub const SHAPE_IMAGE_ZOOM_MAX: f64 = 10.0;
+/// Longest video title (characters); same as `MEDIA_TITLE_MAX_CHARS` in `src/lib/editor/validation.ts`.
+pub const MEDIA_TITLE_MAX_CHARS: usize = 200;
+/// Latest video start time (seconds); same as `YOUTUBE_START_MAX_SECONDS` in `src/lib/media/youtube-url.ts`.
+pub const YOUTUBE_START_MAX_SECONDS: u32 = 86_400;
+/// Length of a YouTube video id (characters of `[A-Za-z0-9_-]`); same as `YOUTUBE_ID_PATTERN` in TS.
+pub const YOUTUBE_ID_LENGTH: usize = 11;
 /// Largest |coordinate| of a line point (pt); same as `LINE_COORDINATE_MAX` in TS.
 pub const LINE_COORDINATE_MAX: f64 = 1e6;
 /// Arrowhead size factor range; same as `LINE_END_SCALE_MIN` / `MAX` in TS.

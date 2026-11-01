@@ -2,6 +2,7 @@ import {
   ArrowDown,
   ArrowUp,
   Circle,
+  Clapperboard,
   Image,
   Minus,
   MoveHorizontal,
@@ -51,6 +52,8 @@ function elementIcon(element: CanvasElement): LucideIcon {
       return Image;
     case "line":
       return lineIcon(element);
+    case "media":
+      return Clapperboard;
     default: {
       const exhaustive: never = element;
       return exhaustive;

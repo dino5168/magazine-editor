@@ -358,6 +358,38 @@ fn validate_element(element: &Element, refs: &Refs) -> AppResult<()> {
             validate_stroke(&e.stroke, &refs.swatches)?;
             validate_line(e)
         }
+        Element::Media(e) => {
+            require_id(&e.base.id)?;
+            validate_media_origin(&e.source)?;
+            if let Some(poster) = &e.poster {
+                validate_shape_image(poster)?;
+            }
+            if e.title.chars().count() > MEDIA_TITLE_MAX_CHARS {
+                return Err(AppError::invalid_project(format!("media {} title is too long", e.base.id)));
+            }
+            Ok(())
+        }
+    }
+}
+
+/// True for a YouTube video id: `YOUTUBE_ID_LENGTH` characters of `[A-Za-z0-9_-]` (same as
+/// `isYouTubeVideoId` in `src/lib/media/youtube-url.ts`).
+pub fn is_youtube_video_id(id: &str) -> bool {
+    id.len() == YOUTUBE_ID_LENGTH && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+}
+
+/// Same rules as `isMediaOrigin` in `src/lib/editor/validation.ts`.
+fn validate_media_origin(origin: &MediaOrigin) -> AppResult<()> {
+    match origin {
+        MediaOrigin::Youtube { video_id, start } => {
+            if !is_youtube_video_id(video_id) {
+                return Err(AppError::invalid_project(format!("invalid YouTube video id {video_id:?}")));
+            }
+            if *start > YOUTUBE_START_MAX_SECONDS {
+                return Err(AppError::invalid_project(format!("invalid video start {start}")));
+            }
+            Ok(())
+        }
     }
 }
 
@@ -512,6 +544,8 @@ pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) ->
         elements.iter().filter_map(|element| match element {
             Element::Image(image) => Some(image.src.as_str()),
             Element::Shape(shape) => shape.image.as_ref().map(|image| image.src.as_str()),
+            // 影片封面也算：否則開檔清理會刪掉封面
+            Element::Media(media) => media.poster.as_ref().map(|poster| poster.src.as_str()),
             _ => None,
         })
     });

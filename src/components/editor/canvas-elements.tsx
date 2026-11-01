@@ -21,6 +21,7 @@ import type {
   ElementPatch,
   ImageElement,
   LineElement,
+  MediaElement,
   ShapeElement,
   ShapeGeometry,
   ShapeLabel,
@@ -113,6 +114,7 @@ export function bakeTransform(element: CanvasElement, node: Konva.Node): Element
       return { ...base, width: Math.max(MIN_SIZE_PT, node.width() * scaleX) };
     case "shape":
     case "image":
+    case "media":
       return {
         ...base,
         width: Math.max(MIN_SIZE_PT, element.width * scaleX),
@@ -149,6 +151,29 @@ function ImageNode({ element, common }: { readonly element: ImageElement; readon
     return <Rect {...common} width={element.width} height={element.height} fill="#e5e5e5" dash={[6, 4]} stroke="#a3a3a3" />;
   }
   return <KonvaImage {...common} image={image} width={element.width} height={element.height} />;
+}
+
+// 影片：步驟 2 先畫預設樣子（深色底 + 播放圖示）；封面與完整外觀在計畫步驟 4
+const MEDIA_BACKGROUND = "#262626";
+const MEDIA_MARK_FILL = "rgba(255, 255, 255, 0.9)";
+
+function MediaNode({ element, common }: { readonly element: MediaElement; readonly common: CommonNodeProps | StaticNodeProps }) {
+  const { width, height } = element;
+  // 播放圖示：外框短邊的 1/4 寬的三角形，置中（視覺重心往右偏 1/12）
+  const size = Math.min(width, height) / 4;
+  const cx = width / 2 + size / 12;
+  const cy = height / 2;
+  return (
+    <Group {...common}>
+      <Rect width={width} height={height} fill={MEDIA_BACKGROUND} />
+      <Line
+        points={[cx - size / 2, cy - size / 2, cx + size / 2, cy, cx - size / 2, cy + size / 2]}
+        closed
+        fill={MEDIA_MARK_FILL}
+        listening={false}
+      />
+    </Group>
+  );
 }
 
 // Transformer 以 Group 的外框決定控制框；超出圖形的文字不能算進去，否則控制框變大、拖曳換算的 scale 也會錯。
@@ -400,6 +425,8 @@ export function StaticElement({
       return <StaticShape shape={element} listening={listening} />;
     case "image":
       return <ImageNode element={element} common={position} />;
+    case "media":
+      return <MediaNode element={element} common={position} />;
     case "line":
       return (
         <Group {...position}>
@@ -473,6 +500,8 @@ export function ElementNode({ element, textHidden, onSelect, onChange, onMoveEnd
       );
     case "image":
       return <ImageNode element={element} common={common} />;
+    case "media":
+      return <MediaNode element={element} common={common} />;
     // Group 的原點是線條的 (x, y)；Transformer 掛在 Group 上，只能移動（端點由把手改）。雙擊線段 = 在那裡加一點
     case "line":
       return (

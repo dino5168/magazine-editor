@@ -645,6 +645,83 @@ fn rejects_invalid_shape_images() {
     }
 }
 
+const VIDEO: &str = "/document/masters/1/elements/4";
+
+#[test]
+fn reads_media_elements_and_counts_their_posters() {
+    let project = parse_project(FIXTURE).unwrap();
+    let Element::Media(video) = &project.document.masters[1].elements[4] else { panic!("expected the video") };
+    assert_eq!(video.source, MediaOrigin::Youtube { video_id: "C5fjrag2Fcg".into(), start: 90 });
+    assert_eq!((video.width, video.height, video.title.as_str()), (160.0, 90.0, "示範影片"));
+    let poster = video.poster.as_ref().expect("fixture video has a poster");
+    assert_eq!((poster.image_width, poster.image_height, poster.fit), (480.0, 360.0, ShapeImageFit::Cover));
+    // 封面只有這個影片在用：開檔清理要把它算進引用
+    let refs: Vec<_> = referenced_assets(&project.document, &project.assets).collect();
+    assert!(refs.contains(&"assets/images/0123456789abcdef0123456789abcdef.jpg"));
+    // 存回去的 JSON 欄位名稱和讀進來的一樣（數字會從 90 變成 90.0，所以比欄位、不比整份）
+    let round_trip: Value = serde_json::to_value(&project.document.masters[1].elements[4]).unwrap();
+    let original: Value = serde_json::from_str::<Value>(FIXTURE).unwrap().pointer(VIDEO).unwrap().clone();
+    let keys = |value: &Value| value.as_object().unwrap().keys().cloned().collect::<Vec<_>>();
+    for pointer in ["", "/source", "/poster"] {
+        assert_eq!(keys(round_trip.pointer(pointer).unwrap()), keys(original.pointer(pointer).unwrap()), "{pointer}");
+    }
+    assert_eq!(round_trip["source"], original["source"]);
+}
+
+#[test]
+fn accepts_media_without_poster_or_title() {
+    let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+    let video = value.pointer_mut(VIDEO).unwrap();
+    video["poster"] = Value::Null;
+    video["title"] = Value::from("");
+    assert!(parse_project(&value.to_string()).is_ok());
+}
+
+#[test]
+fn rejects_invalid_media_elements() {
+    use serde_json::json;
+    let with = |pointer: &str, key: &str, replacement: Value| {
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value.pointer_mut(&format!("{VIDEO}{pointer}")).unwrap()[key] = replacement;
+        parse_project(&value.to_string())
+    };
+    assert!(with("/source", "start", json!(YOUTUBE_START_MAX_SECONDS)).is_ok());
+    assert!(with("/source", "videoId", json!("a-b_c-d_e-f")).is_ok());
+    assert!(with("", "title", json!("影".repeat(MEDIA_TITLE_MAX_CHARS))).is_ok());
+    for (pointer, key, bad) in [
+        ("/source", "videoId", json!("short")),
+        ("/source", "videoId", json!("C5fjrag2Fcg1")),
+        ("/source", "videoId", json!("C5fjrag2Fc!")),
+        ("/source", "videoId", json!("C5fjrag2Fc影")),
+        ("/source", "start", json!(YOUTUBE_START_MAX_SECONDS + 1)),
+        ("/source", "start", json!(-1)),
+        ("/source", "start", json!(1.5)),
+        ("/source", "kind", json!("vimeo")),
+        ("", "title", json!("影".repeat(MEDIA_TITLE_MAX_CHARS + 1))),
+        ("/poster", "src", json!("../secret.jpg")),
+        ("/poster", "zoom", json!(0.5)),
+    ] {
+        assert!(with(pointer, key, bad.clone()).is_err(), "{pointer}/{key} = {bad}");
+    }
+    // 少了必要欄位（poster 是 Option，少了 = 沒有封面）
+    for key in ["source", "title", "width"] {
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value.pointer_mut(VIDEO).unwrap().as_object_mut().unwrap().remove(key);
+        assert!(parse_project(&value.to_string()).is_err(), "missing {key}");
+    }
+}
+
+#[test]
+fn checks_youtube_video_ids() {
+    assert!(is_youtube_video_id("C5fjrag2Fcg"));
+    assert!(is_youtube_video_id("___________"));
+    assert!(!is_youtube_video_id(""));
+    assert!(!is_youtube_video_id("C5fjrag2Fc"));
+    assert!(!is_youtube_video_id("C5fjrag2Fc/"));
+    // 多位元組字元：長度用位元組算也不會誤判
+    assert!(!is_youtube_video_id("C5fjrag2影"));
+}
+
 #[test]
 fn reads_project_fonts_and_defaults_them_in_older_files() {
     let document = parse_project(FIXTURE).unwrap().document;

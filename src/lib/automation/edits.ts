@@ -488,9 +488,11 @@ const UPDATABLE: Record<CanvasElement["type"], readonly string[]> = {
   shape: ["width", "height", "fill", "stroke", "cornerRadius", "shape", "params", "image", "text", "verticalAlign", ...STYLE_KEYS],
   image: ["width", "height"],
   line: ["points", "path", "compound", "stroke", "start", "end"],
+  // 影片的來源 / 封面 / 標題由 MCP 步驟（計畫步驟 9）再開放
+  media: ["width", "height"],
 };
 
-const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條" };
+const TYPE_NAMES: Record<CanvasElement["type"], string> = { text: "文字物件", shape: "圖形", image: "圖片", line: "線條", media: "影片" };
 
 /** Builds the patch of `update_element`, or explains which argument does not fit the element. */
 function elementPatch(state: EditorState, library: Library, element: CanvasElement, args: ToolArgs<"update_element">): Result<ElementPatch> {
@@ -515,6 +517,7 @@ function elementPatch(state: EditorState, library: Library, element: CanvasEleme
       if (!hasValidTextIndent({ ...element, ...style })) return fail(INDENT_ERROR);
       return ok({ ...position, ...(args.text !== undefined && { text: args.text }), ...style });
     case "image":
+    case "media":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
     case "line":
       return linePatch(state, element, args, position);

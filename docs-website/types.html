@@ -149,7 +149,7 @@
 <p class="crumb"><a href="index.html">← 文件首頁</a></p>
 <h1>文件模型型別圖</h1>
 <p class="meta">
-  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；2026-10-15 <code>Stroke.dash</code> 加入點劃線 <code>"dashDot"</code>（<code>schemaVersion</code> 15）；2026-10-15 加入線條 <code>LineElement</code>、<code>LinePoint</code>、<code>LineEnd</code>、<code>LineArrowhead</code>（同樣是 <code>schemaVersion</code> 15）；2026-10-19 <code>TextStyle</code> 加入段落縮排 <code>indentLeft</code> / <code>indentRight</code> / <code>indentFirstLine</code>（<code>schemaVersion</code> 16）；2026-10-19 <code>ShapeElement</code> 加入圖片框的照片 <code>image</code>（<code>ShapeImage</code>、<code>ShapeImageFit</code>，<code>schemaVersion</code> 17）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-10-19
+  對應原始檔 <code>src/lib/editor/types.ts</code>（2026-10-04 加入 <code>EditorDocument.margins</code>（<code>schemaVersion</code> 4）與 <code>EditorDocument.pageNumberRules</code>（<code>schemaVersion</code> 5）；2026-10-05 <code>TextStyle</code> 加入斜體 / 底線 / 刪除線 / 陰影（<code>schemaVersion</code> 6）；2026-10-07 加入主頁：<code>Sheet</code>、<code>MasterPage</code>、<code>Page.masterId</code>、<code>EditorDocument.masters</code>（<code>schemaVersion</code> 7）；2026-10-10 加入樣式表：<code>TextStyleDef</code>、<code>StyledText.styleId</code>、<code>EditorDocument.textStyles</code>（<code>schemaVersion</code> 8）；2026-10-11 <code>TextStyle</code> 加入行距 / 字距 <code>lineHeight</code> / <code>letterSpacing</code>（<code>schemaVersion</code> 9）；2026-10-12 <code>align</code> 加入 <code>"distributed"</code>（首尾置中，型別 <code>TextAlign</code>，<code>schemaVersion</code> 10）；2026-10-12 矩形的 <code>cornerRadius</code> 可以是四個角（<code>CornerRadius</code> / <code>CornerRadii</code>，<code>schemaVersion</code> 11）；2026-10-12 加入文件色票：<code>Swatch</code>、<code>EditorDocument.swatches</code>，以及每個顏色旁的連結欄位 <code>fillSwatchId</code> / <code>swatchId</code> / <code>backgroundSwatchId</code>（<code>schemaVersion</code> 12）；2026-10-14 加入專案字型：<code>ProjectFont</code>、<code>FontFile</code>、<code>FontEmbedding</code>、<code>EditorDocument.fonts</code>（<code>schemaVersion</code> 13）；2026-10-15 <code>ShapeGeometry</code> 加入圖形庫的 <code>{ kind: "preset"; preset; params }</code>（<code>schemaVersion</code> 14）；2026-10-15 <code>Stroke.dash</code> 加入點劃線 <code>"dashDot"</code>（<code>schemaVersion</code> 15）；2026-10-15 加入線條 <code>LineElement</code>、<code>LinePoint</code>、<code>LineEnd</code>、<code>LineArrowhead</code>（同樣是 <code>schemaVersion</code> 15）；2026-10-19 <code>TextStyle</code> 加入段落縮排 <code>indentLeft</code> / <code>indentRight</code> / <code>indentFirstLine</code>（<code>schemaVersion</code> 16）；2026-10-19 <code>ShapeElement</code> 加入圖片框的照片 <code>image</code>（<code>ShapeImage</code>、<code>ShapeImageFit</code>，<code>schemaVersion</code> 17）；2026-11-01 加入影片連結 <code>MediaElement</code>、<code>MediaOrigin</code>（<code>schemaVersion</code> 18）；本頁和 <code>types.ts</code> 在同一個 commit 更新，用 <code>git log -1 -- docs-website/types.html</code> 查編號）· 本頁更新於 2026-11-01
 </p>
 <p class="meta">這一頁說明型別的<strong>結構與關係</strong>；「為什麼這樣設計」（例如為什麼用 pt、為什麼不存 scale）會寫在 <a href="../docs/README.md"><code>docs/03-document-model.md</code></a>（撰寫中）。</p>
 
@@ -158,7 +158,7 @@
   <li>長度單位一律是 <strong>pt</strong>（1/72 inch，和 Typst 相同），座標原點是<strong>頁面左上角</strong>。</li>
   <li><code>types.ts</code> 裡<strong>沒有任何 class</strong>，只有 <code>interface</code> 和 <code>type</code>。它們只描述資料的形狀，編譯成 JavaScript 後會完全消失。</li>
   <li>所有欄位都是 <code>readonly</code>：修改資料時會產生新的物件，舊版本保留下來給「復原」使用。</li>
-  <li>物件種類靠 <code>type</code> 欄位區分（<code>"text"</code>、<code>"shape"</code>、<code>"image"</code>、<code>"line"</code>），不是靠繼承。</li>
+  <li>物件種類靠 <code>type</code> 欄位區分（<code>"text"</code>、<code>"shape"</code>、<code>"image"</code>、<code>"line"</code>、<code>"media"</code>），不是靠繼承。</li>
   <li>所有圖形（矩形、橢圓、多邊形、星形）都是同一種 <code>ShapeElement</code>：共用外框、填色、邊框、圖形內文字，差別只在 <code>geometry</code>（再用 <code>kind</code> 欄位區分）。</li>
   <li>每種物件的 <code>x</code> / <code>y</code> 都是<strong>外框的左上角</strong>，旋轉也繞這一點。</li>
   <li>文件的結構是一棵樹：<code>EditorDocument</code> → <code>Page</code> → <code>CanvasElement</code>。主頁（<code>MasterPage</code>）是另一串，頁面以 <code>masterId</code> 指向它。</li>
@@ -166,7 +166,7 @@
 
 <h2 id="diagram">型別關係圖</h2>
 <div class="figure-wrap">
-<svg class="diagram" viewBox="0 0 1160 2010" role="img" aria-labelledby="diagram-title">
+<svg class="diagram" viewBox="0 0 1355 2010" role="img" aria-labelledby="diagram-title">
   <title id="diagram-title">types.ts 型別關係圖</title>
   <defs>
     <marker id="dep" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
@@ -190,7 +190,7 @@
   <polygon class="diamond" points="737.5,206 731.5,218 737.5,230 743.5,218"/>
   <line class="edge" x1="737.5" y1="230" x2="737.5" y2="250"/>
   <text class="elabel" x="747" y="236">elements　0..*</text>
-  <path class="edge union" d="M737.5 346 V510 M135 510 H1065 M135 510 V540 M435 510 V540 M1065 510 V540 M972 510 V900 H980"/>
+  <path class="edge union" d="M737.5 346 V510 M135 510 H1065 M135 510 V540 M435 510 V540 M1065 510 V540 M972 510 V900 H980 M1065 510 H1255 V540"/>
   <text class="elabel" x="746" y="430">union 成員（ | ）</text>
   <!-- ShapeElement 擁有 geometry（1 個）、stroke 與 label（0 或 1 個） -->
   <polygon class="diamond" points="570,610 582,604 594,610 582,616"/>
@@ -293,7 +293,7 @@
     <rect class="frame" x="600" y="250" width="275" height="96" rx="6"/>
     <text class="st" x="737.5" y="267">«union»</text>
     <text class="nm" x="737.5" y="285">CanvasElement</text>
-      <text class="prose" x="610" y="314">四種 Element 其中之一</text>
+      <text class="prose" x="610" y="314">五種 Element 其中之一</text>
       <text class="prose" x="610" y="334">以 type 欄位區分</text>
   </a>
   <a href="#t-ElementId" class="node derived">
@@ -318,14 +318,14 @@
   </a>
   <a href="#t-ElementType" class="node derived">
     <title>ElementType：點擊查看說明</title>
-    <rect class="body" x="910" y="125" width="235" height="96" rx="6"/>
-    <path class="hdr" d="M910 169 V131 a6 6 0 0 1 6 -6 H1139 a6 6 0 0 1 6 6 V169 Z"/>
-    <line class="sep" x1="910" y1="169" x2="1145" y2="169"/>
-    <rect class="frame" x="910" y="125" width="235" height="96" rx="6"/>
-    <text class="st" x="1027.5" y="142">«type»</text>
-    <text class="nm" x="1027.5" y="160">ElementType</text>
+    <rect class="body" x="910" y="125" width="270" height="96" rx="6"/>
+    <path class="hdr" d="M910 169 V131 a6 6 0 0 1 6 -6 H1174 a6 6 0 0 1 6 6 V169 Z"/>
+    <line class="sep" x1="910" y1="169" x2="1180" y2="169"/>
+    <rect class="frame" x="910" y="125" width="270" height="96" rx="6"/>
+    <text class="st" x="1045" y="142">«type»</text>
+    <text class="nm" x="1045" y="160">ElementType</text>
       <text class="field" x="920" y="189"><tspan class="ft">= CanvasElement["type"]</tspan></text>
-      <text class="field" x="920" y="209"><tspan class="ft">"text"|"shape"|"image"|"line"</tspan></text>
+      <text class="field" x="920" y="209"><tspan class="ft">"text"|"shape"|"image"|"line"|"media"</tspan></text>
   </a>
   <a href="#t-ElementPatch" class="node derived">
     <title>ElementPatch：點擊查看說明</title>
@@ -419,6 +419,20 @@
       <text class="field" x="990" y="934">stroke<tspan class="ft">: Stroke</tspan></text>
       <text class="field" x="990" y="954">start / end<tspan class="ft">: LineEnd</tspan></text>
   </a>
+  <a href="#t-MediaElement" class="node doc">
+    <title>MediaElement：點擊查看說明</title>
+    <rect class="body" x="1170" y="540" width="170" height="156" rx="6"/>
+    <path class="hdr" d="M1170 584 V546 a6 6 0 0 1 6 -6 H1334 a6 6 0 0 1 6 6 V584 Z"/>
+    <line class="sep" x1="1170" y1="584" x2="1340" y2="584"/>
+    <rect class="frame" x="1170" y="540" width="170" height="156" rx="6"/>
+    <text class="st" x="1255" y="557">«interface» · v18</text>
+    <text class="nm" x="1255" y="575">MediaElement</text>
+      <text class="field disc" x="1180" y="604">type<tspan class="ft">: "media"</tspan></text>
+      <text class="field" x="1180" y="624">width / height</text>
+      <text class="field" x="1180" y="644">source<tspan class="ft">: MediaOrigin</tspan></text>
+      <text class="field" x="1180" y="664">poster<tspan class="ft">: ShapeImage?</tspan></text>
+      <text class="field" x="1180" y="684">title<tspan class="ft">: string</tspan></text>
+  </a>
   <a href="#t-GeometryKind" class="node derived">
     <title>GeometryKind：點擊查看說明</title>
     <rect class="body" x="985" y="700" width="160" height="96" rx="6"/>
@@ -494,7 +508,7 @@
     <path class="hdr" d="M470 1034 V996 a6 6 0 0 1 6 -6 H684 a6 6 0 0 1 6 6 V1034 Z"/>
     <line class="sep" x1="470" y1="1034" x2="690" y2="1034"/>
     <rect class="frame" x="470" y="990" width="220" height="136" rx="6"/>
-    <text class="st" x="580" y="1007">«interface» · 四種 Element 都 extends</text>
+    <text class="st" x="580" y="1007">«interface» · 五種 Element 都 extends</text>
     <text class="nm" x="580" y="1025">BaseElement</text>
       <text class="field" x="480" y="1054">id<tspan class="ft">: ElementId</tspan></text>
       <text class="field" x="480" y="1074">x<tspan class="ft">: number</tspan></text>
@@ -698,7 +712,7 @@
   </g>
 </svg>
 </div>
-<p class="hint">點擊方框可以跳到該型別的說明。方框裡只列出該型別<strong>自己</strong>宣告的欄位：四種 Element 都 extends <code>BaseElement</code>（<code>id</code> / <code>x</code> / <code>y</code> / <code>rotation</code>），<code>TextElement</code> 與 <code>ShapeLabel</code> 另外 extends <code>TextStyle</code>（字型欄位），這些都不重複列出。</p>
+<p class="hint">點擊方框可以跳到該型別的說明。方框裡只列出該型別<strong>自己</strong>宣告的欄位：五種 Element 都 extends <code>BaseElement</code>（<code>id</code> / <code>x</code> / <code>y</code> / <code>rotation</code>），<code>TextElement</code> 與 <code>ShapeLabel</code> 另外 extends <code>TextStyle</code>（字型欄位），這些都不重複列出。</p>
 
 <ul class="legend" aria-label="圖例">
   <li><span class="swatch" style="background:var(--doc-hdr);border-color:var(--doc-stroke)"></span><span>文件資料：會進入復原歷史</span></li>
@@ -866,8 +880,8 @@
 <section class="card doc" id="t-CanvasElement">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>CanvasElement</code><span class="badge">union type</span></h4>
-  <p>「畫布上的任何一個物件」，是四種 Element 其中之一（<code>LineElement</code> 是 v15 加的）：</p>
-  <pre><code>type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement;</code></pre>
+  <p>「畫布上的任何一個物件」，是五種 Element 其中之一（<code>LineElement</code> 是 v15、<code>MediaElement</code> 是 v18 加的）：</p>
+  <pre><code>type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement | MediaElement;</code></pre>
   <p>程式用 <code>type</code> 欄位判斷拿到的是哪一種。在 <code>switch (el.type)</code> 的 <code>case "text":</code> 裡，TypeScript 會自動把 <code>el</code> 視為 <code>TextElement</code>，所以可以直接讀 <code>el.fontSize</code>。圖形還要再看一層 <code>el.geometry.kind</code> 才知道是矩形、橢圓、多邊形還是星形。</p>
   <p class="uses">使用位置：<code>components/editor/canvas-elements.tsx</code> · <code>components/editor/panels/layers-panel.tsx</code> · <code>components/editor/panels/properties-panel.tsx</code> · <code>lib/editor/editor-reducer.ts</code> · <code>lib/editor/element-factory.ts</code> · <code>lib/editor/geometry.ts</code> · <code>lib/editor/properties.ts</code></p>
 </section>
@@ -875,7 +889,7 @@
 <section class="card doc" id="t-BaseElement">
   <a class="back" href="#diagram">↑ 回到圖</a>
   <h4><code>BaseElement</code><span class="badge">interface</span></h4>
-  <p>四種 Element 共用的欄位。它只是一份「欄位清單」，程式裡不會出現單獨的 <code>BaseElement</code> 物件。</p>
+  <p>五種 Element 共用的欄位。它只是一份「欄位清單」，程式裡不會出現單獨的 <code>BaseElement</code> 物件。</p>
   <div class="table-wrap"><table>
     <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
     <tr><td><code>id</code></td><td><code>ElementId</code></td><td>唯一識別碼，建立後不能修改（<code>ElementPatch</code> 排除了它）</td></tr>
@@ -1102,6 +1116,20 @@ type CornerRadii = readonly [number, number, number, number]; // 左上、右上
     <tr><td><code>start</code> / <code>end</code></td><td><code>LineEnd</code>（<code>{ arrowhead, scale }</code>）</td><td>第一個 / 最後一個點那一端。<code>arrowhead</code> 是 <code>"none" | "open" | "triangle"</code>（<code>LineArrowhead</code>），<code>scale</code> 是大小倍數 0.5–5；箭頭永遠是實線</td></tr>
   </table></div>
   <p class="uses">使用位置：<code>lib/editor/line-geometry.ts</code> · <code>lib/editor/element-factory.ts</code>（<code>createLineElement</code>、<code>describeLine</code>）· <code>lib/editor/validation.ts</code>（<code>isValidLine</code>）· <code>lib/editor/editor-reducer.ts</code> · Rust <code>project/format/</code></p>
+</section>
+
+<section class="card doc" id="t-MediaElement">
+  <a class="back" href="#diagram">↑ 回到圖</a>
+  <h4><code>MediaElement</code><span class="badge">interface · type: "media" · v18</span></h4>
+  <p>影片連結（目前只有 YouTube）：頁面上是一個外框，畫封面與播放圖示；匯出的翻頁書與 PDF 點了會播放或開啟影片，畫布本身不能播放。檔案裡存的是<strong>解析後的影片 id</strong>，不是使用者貼上的網址（網址有很多寫法；解析在 <code>lib/media/youtube-url.ts</code>，匯出時由 id 組出標準網址）。計畫：<code>docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md</code>。</p>
+  <div class="table-wrap"><table>
+    <tr><th>欄位</th><th>型別</th><th>說明</th></tr>
+    <tr><td><code>width</code> / <code>height</code></td><td><code>number</code></td><td>外框（pt）。新增時由 <code>createMediaElement()</code> 給 16:9，最寬 320 pt、不超過頁面的一半</td></tr>
+    <tr><td><code>source</code></td><td><code>MediaOrigin</code>（<code>{ kind: "youtube"; videoId; start }</code>）</td><td>播放什麼。<code>videoId</code> 是 11 個 <code>[A-Za-z0-9_-]</code>；<code>start</code> 是開始秒數（整數，0–86 400）。TS <code>isMediaOrigin</code> 與 Rust <code>validate_media_origin</code> 規則相同。音訊階段會再加其他 <code>kind</code></td></tr>
+    <tr><td><code>poster</code></td><td><code>ShapeImage | null</code></td><td>封面，和圖片框的照片同一個型別與擺放公式（<code>photoPlacement</code>）：YouTube 縮圖用 <code>cover</code> 剛好裁掉上下黑邊。<code>null</code> = 預設樣子（抓不到縮圖時）。開檔清理與文件範本都算進引用</td></tr>
+    <tr><td><code>title</code></td><td><code>string</code></td><td>影片標題（圖層面板、連結文字），可以是空字串，最多 200 個字元（<code>MEDIA_TITLE_MAX_CHARS</code>）</td></tr>
+  </table></div>
+  <p class="uses">使用位置：<code>lib/editor/element-factory.ts</code>（<code>createMediaElement</code>）· <code>lib/editor/validation.ts</code>（<code>isMediaOrigin</code>、<code>isMediaTitle</code>）· <code>lib/media/youtube-url.ts</code> · <code>components/editor/canvas-elements.tsx</code> · Rust <code>project/format/</code></p>
 </section>
 
 <h3 class="group-title">UI 狀態（不進入復原歷史）</h3>

@@ -302,7 +302,7 @@ fn embeds_only_used_font_families() {
                         label.font_family = family.to_owned();
                     }
                 }
-                Element::Image(_) | Element::Line(_) => {}
+                Element::Image(_) | Element::Line(_) | Element::Media(_) => {}
             }
         }
         let (_, entries) = export(document);
