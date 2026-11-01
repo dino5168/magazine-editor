@@ -117,8 +117,9 @@ pub struct ExportRequest {
     /// not know) is skipped.
     #[serde(default)]
     pub shape_paths: HashMap<String, ShapePath>,
-    /// Keyed by shape element id: where each image frame's photo goes. Every shape with a photo
-    /// has an entry (the editor computes it, Rust does not repeat the formula).
+    /// Keyed by element id: where each image frame's photo and each video's poster goes. Every
+    /// shape with a photo and every video with a poster has an entry (the editor computes it,
+    /// Rust does not repeat the formula).
     #[serde(default)]
     pub shape_photos: HashMap<String, PhotoPlacement>,
     /// Keyed by shape element id: the frame each shape's text is laid out in (the editor computes

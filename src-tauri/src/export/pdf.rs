@@ -92,6 +92,10 @@ fn element_data(element: &RenderElement) -> Value {
     if let Some(photo) = &element.photo {
         data["photo"] = json!({ "src": photo.src, "x": photo.x, "y": photo.y, "width": photo.width, "height": photo.height });
     }
+    // 影片：外框是連結（網址由 Rust 用驗證過的影片 id 組成，模板只當成字串用）
+    if let Some(link) = &element.link {
+        data["link"] = json!(link);
+    }
     data
 }
 
@@ -291,6 +295,53 @@ mod tests {
     }
     use crate::export::TextLayout;
     use crate::project::format::{CornerRadius, Element, ShapeGeometry, Stroke, StrokeDash, TextDecoration, TextShadow};
+
+    /// A link's URL and its area's top-left corner and size (pt).
+    type LinkArea = (String, (f64, f64), (f64, f64));
+
+    /// Every link on the page (frame item `Link`).
+    fn links(frame: &typst::layout::Frame, origin: typst::layout::Point, out: &mut Vec<LinkArea>) {
+        for (pos, item) in frame.items() {
+            let at = origin + *pos;
+            match item {
+                typst::layout::FrameItem::Group(group) => links(&group.frame, at, out),
+                typst::layout::FrameItem::Link(typst::model::Destination::Url(url), size) => {
+                    out.push((url.as_str().to_owned(), (at.x.to_pt(), at.y.to_pt()), (size.x.to_pt(), size.y.to_pt())));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn videos_draw_their_poster_and_badge_and_link_to_youtube() {
+        let (root, req) = crate::export::test_support::video_request();
+        let compiled = compiled_pages(root.path(), &req);
+        let mut found = Vec::new();
+        links(&compiled.pages()[0].frame, typst::layout::Point::zero(), &mut found);
+        assert_eq!(found.len(), 1, "{found:?}");
+        let (url, (x, y), (w, h)) = &found[0];
+        assert_eq!(url, "https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s");
+        // 連結範圍 = 影片外框 (300, 300) 160 × 90
+        assert!((x - 300.0).abs() < 0.01 && (y - 300.0).abs() < 0.01 && (w - 160.0).abs() < 0.01 && (h - 90.0).abs() < 0.01, "{found:?}");
+
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 2.0.into(), ..Default::default() });
+        let at = |x: f64, y: f64| {
+            let p = pixmap.pixel(((300.0 + x) * 2.0) as u32, ((300.0 + y) * 2.0) as u32).unwrap();
+            (p.red(), p.green(), p.blue())
+        };
+        // 封面 cover：照片畫在 (0, -15) 160 × 120，四個象限的顏色
+        assert_eq!(at(20.0, 15.0), (255, 0, 0));
+        assert_eq!(at(140.0, 15.0), (0, 200, 0));
+        assert_eq!(at(20.0, 75.0), (0, 0, 255));
+        assert_eq!(at(140.0, 75.0), (255, 220, 0));
+        // 播放圖示：三角形中間是白色，圓的邊緣是照片疊上 60% 黑
+        let (r, g, b) = at(80.0, 45.0);
+        assert!(r > 230 && g > 230 && b > 230, "triangle {r} {g} {b}");
+        let (r, ..) = at(80.0 - 11.0, 45.0 - 3.0);
+        assert!(r < 120, "badge darkens the red quadrant: {r}");
+    }
 
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();

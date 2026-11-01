@@ -45,6 +45,70 @@ fn photo_placements_must_come_from_the_editor_and_be_usable() {
     assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
 }
 
+fn video_pieces(document: &RenderDocument) -> &[RenderElement] {
+    // 影片是第 1 頁最後加的物件：外框 + 圓 + 三角形
+    let elements = &document.pages[0].elements;
+    &elements[elements.len() - 3..]
+}
+
+#[test]
+fn videos_become_a_poster_box_with_a_link_and_a_play_badge() {
+    use crate::export::test_support::{video_request, FRAME_PHOTO};
+    let (root, req) = video_request();
+    let (document, skipped) = build_render(root.path(), &req).unwrap();
+    assert_eq!(skipped, 0);
+    let [frame, circle, triangle] = video_pieces(&document) else { panic!("three pieces") };
+    assert!(matches!(&frame.kind, RenderKind::Rect(r) if (r.width, r.height) == (160.0, 90.0) && r.fill == "#262626" && r.stroke.is_none()));
+    assert_eq!(frame.photo, Some(RenderPhoto { src: FRAME_PHOTO.into(), x: 0.0, y: -15.0, width: 160.0, height: 120.0 }));
+    assert_eq!(frame.link.as_deref(), Some("https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s"));
+    // 圓：半徑 = 短邊 90 × 0.14 = 12.6，置中在 (380, 345)
+    assert!(matches!(&circle.kind, RenderKind::Ellipse(e) if (e.width - 25.2).abs() < 1e-9 && e.fill == "#00000099"));
+    assert!((circle.x - (380.0 - 12.6)).abs() < 1e-9 && (circle.y - (345.0 - 12.6)).abs() < 1e-9);
+    assert!(matches!(&triangle.kind, RenderKind::Polygon(p) if p.points.len() == 3 && p.fill == "#fffffff2"));
+    // 只有外框是連結
+    assert!(circle.link.is_none() && triangle.link.is_none());
+    assert_eq!(document.pages[0].elements.iter().filter(|e| e.link.is_some()).count(), 1);
+}
+
+#[test]
+fn rotated_videos_turn_the_badge_with_them() {
+    let (root, mut req) = crate::export::test_support::video_request();
+    let Some(Element::Media(video)) = req.document.pages[0].elements.last_mut() else { panic!("video") };
+    video.base.rotation = 90.0;
+    let (document, _) = build_render(root.path(), &req).unwrap();
+    let [frame, circle, _] = video_pieces(&document) else { panic!("three pieces") };
+    assert_eq!((frame.x, frame.y, frame.rotation), (300.0, 300.0, 90.0));
+    // 圓的左上角在外框內 (67.4, 32.4)：轉 90° 後是 (300 − 32.4, 300 + 67.4)
+    assert!((circle.x - 267.6).abs() < 1e-9 && (circle.y - 367.4).abs() < 1e-9, "{} {}", circle.x, circle.y);
+    assert_eq!(circle.rotation, 90.0);
+}
+
+#[test]
+fn videos_without_poster_or_with_a_missing_one_keep_the_dark_box() {
+    use crate::export::test_support::{video_request, FRAME_PHOTO, VIDEO_ID};
+    // 封面檔不見：只畫深色底，算進略過的圖片（圖片框的照片也是同一個檔，一起算）
+    let (root, req) = video_request();
+    std::fs::remove_file(root.path().join(FRAME_PHOTO)).unwrap();
+    let (document, skipped) = build_render(root.path(), &req).unwrap();
+    assert_eq!(skipped, 2);
+    let [frame, ..] = video_pieces(&document) else { panic!("three pieces") };
+    assert!(frame.photo.is_none() && frame.link.is_some());
+    // 沒有封面：不需要位置
+    let (root, mut req) = video_request();
+    let Some(Element::Media(video)) = req.document.pages[0].elements.last_mut() else { panic!("video") };
+    video.poster = None;
+    req.shape_photos.remove(VIDEO_ID);
+    let (document, _) = build_render(root.path(), &req).unwrap();
+    assert!(video_pieces(&document)[0].photo.is_none());
+}
+
+#[test]
+fn video_posters_need_their_placement_from_the_editor() {
+    let (root, mut req) = crate::export::test_support::video_request();
+    req.shape_photos.remove(crate::export::test_support::VIDEO_ID);
+    assert!(matches!(build_render(root.path(), &req), Err(AppError::InvalidInput(_))));
+}
+
 /// The fixture with its rectangle (`el-rect`) turned into a shape-library shape.
 fn with_preset_shape() -> ExportRequest {
     let mut document = fixture_document();

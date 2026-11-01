@@ -9,10 +9,11 @@
 use super::{ExportRequest, LabelFrame, LineBox, PathCommand, PhotoPlacement, ShapePath, TextLayout};
 use crate::error::{AppError, AppResult};
 use crate::project::format::{
-    validate_content, validate_stroke_look, Align, Element, FontStyle, ShapeElement, ShapeGeometry, Stroke, StrokeDash,
+    validate_content, validate_stroke_look, Align, Element, FontStyle, MediaElement, MediaOrigin, ShapeElement, ShapeGeometry, ShapeImage, Stroke, StrokeDash,
     TextDecoration, TextShadow,
     VerticalAlign,
 };
+use crate::media::youtube_watch_url;
 use crate::project::shape;
 use std::collections::HashMap;
 use std::path::Path;
@@ -62,6 +63,9 @@ pub struct RenderElement {
     /// Shapes only: the image frame's photo, clipped to the outline and drawn over the fill, under
     /// the outline's stroke and the details.
     pub photo: Option<RenderPhoto>,
+    /// Videos only: the URL the element's area opens (PDF link; built by Rust from the validated
+    /// video id, never taken from the request).
+    pub link: Option<String>,
 }
 
 /// An image frame's photo: the file and its rectangle in the shape's coordinates.
@@ -626,10 +630,11 @@ fn shape_label(
         rotation: shape.base.rotation,
         kind: RenderKind::Text(render_text(layout, frame_width, shape.base.rotation, &style)),
         photo: None,
+        link: None,
     }))
 }
 
-/// The photo of an image frame for the render model.
+/// The photo of an image frame (or the poster of a video, placed the same way) for the render model.
 ///
 /// # Returns
 /// `Ok(None)` without a photo, or when its file is missing (the shape keeps its fill, like a
@@ -637,9 +642,9 @@ fn shape_label(
 ///
 /// # Errors
 /// `AppError::InvalidInput` when the editor sent no placement or an unusable one.
-fn render_photo(root: &Path, shape: &ShapeElement, placements: &HashMap<String, PhotoPlacement>) -> AppResult<Option<RenderPhoto>> {
-    let Some(image) = &shape.image else { return Ok(None) };
-    let Some(placement) = placements.get(&shape.base.id) else {
+fn render_photo(root: &Path, id: &str, image: Option<&ShapeImage>, placements: &HashMap<String, PhotoPlacement>) -> AppResult<Option<RenderPhoto>> {
+    let Some(image) = image else { return Ok(None) };
+    let Some(placement) = placements.get(id) else {
         return Err(AppError::invalid_input("匯出資料有誤：圖片框沒有照片的位置"));
     };
     let PhotoPlacement { x, y, width, height } = *placement;
@@ -651,6 +656,54 @@ fn render_photo(root: &Path, shape: &ShapeElement, placements: &HashMap<String, 
         return Ok(None);
     }
     Ok(Some(RenderPhoto { src: image.src.clone(), x, y, width, height }))
+}
+
+/// Background of a video without poster; same as `MEDIA_BACKGROUND` in `canvas-elements.tsx`.
+const MEDIA_BACKGROUND: &str = "#262626";
+/// The play badge's circle (black, 60 %) and triangle (white, 95 %); same as the canvas.
+const MEDIA_BADGE_FILL: &str = "#00000099";
+const MEDIA_MARK_FILL: &str = "#fffffff2";
+/// Badge radius as a share of the box's shorter side; same as the canvas (`MediaNode`).
+const MEDIA_BADGE_RADIUS: f64 = 0.14;
+
+/// A video as render elements: the box (dark fill with the poster as its photo, carrying the
+/// link), then the play badge's circle and triangle on top, all rotated with the video. Same
+/// drawing as the canvas's `MediaNode`, made of kinds every format already draws.
+fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<RenderElement> {
+    let MediaOrigin::Youtube { video_id, start } = &media.source;
+    let (width, height) = (media.width, media.height);
+    let (sin, cos) = media.base.rotation.to_radians().sin_cos();
+    // 外框內的一點（左上角為原點）旋轉後在頁面上的位置：和圖形內文字相同的換算
+    let at = |local_x: f64, local_y: f64| (media.base.x + local_x * cos - local_y * sin, media.base.y + local_x * sin + local_y * cos);
+    let piece = |local_x: f64, local_y: f64, kind: RenderKind| {
+        let (x, y) = at(local_x, local_y);
+        RenderElement { x, y, rotation: media.base.rotation, kind, photo: None, link: None }
+    };
+    let radius = width.min(height) * MEDIA_BADGE_RADIUS;
+    let (cx, cy) = (width / 2.0, height / 2.0);
+    let t = radius * 0.5;
+    let rect = RenderRect { width, height, corner_radii: [0.0; 4], fill: MEDIA_BACKGROUND.to_owned(), stroke: None };
+    let circle = RenderEllipse { width: 2.0 * radius, height: 2.0 * radius, fill: MEDIA_BADGE_FILL.to_owned(), stroke: None };
+    // 三角形的外框：左邊在 cx - 0.7t、右尖端在 cx + t，上下 cy ± t（頂點碰到外框四邊）
+    let triangle = RenderPolygon {
+        width: 1.7 * t,
+        height: 2.0 * t,
+        points: vec![[0.0, 0.0], [1.7 * t, t], [0.0, 2.0 * t]],
+        fill: MEDIA_MARK_FILL.to_owned(),
+        stroke: None,
+    };
+    vec![
+        RenderElement {
+            x: media.base.x,
+            y: media.base.y,
+            rotation: media.base.rotation,
+            kind: RenderKind::Rect(rect),
+            photo: poster,
+            link: Some(youtube_watch_url(video_id, *start)),
+        },
+        piece(cx - radius, cy - radius, RenderKind::Ellipse(circle)),
+        piece(cx - 0.7 * t, cy - t, RenderKind::Polygon(triangle)),
+    ]
 }
 
 /// Turns the editor's document and line breaks into the render model.
@@ -685,10 +738,10 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 }
                 Element::Shape(e) => {
                     if let Some(kind) = shape_kind(e, &request.shape_paths)? {
-                        let photo = render_photo(root, e, &request.shape_photos)?;
+                        let photo = render_photo(root, &e.base.id, e.image.as_ref(), &request.shape_photos)?;
                         // 照片檔被刪除時只畫填色，算進略過的圖片數（同圖片物件）
                         skipped += usize::from(e.image.is_some() && photo.is_none());
-                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo });
+                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo, link: None });
                     }
                     // 圖形內文字緊接在圖形上方，z 軸順序和畫布相同（同一個 Group 裡文字畫在圖形之後）
                     if let Some(label) = shape_label(e, &request.text_layouts, &request.label_frames)? {
@@ -698,8 +751,14 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 }
                 // 編輯器匯出前把線條換成路徑圖形（buildExportRequest），匯出請求裡不該有線條
                 Element::Line(_) => return Err(AppError::invalid_input("匯出資料有誤：線條沒有先換成路徑")),
-                // 影片的匯出（封面 + 連結）在計畫步驟 5；在那之前不畫
-                Element::Media(_) => continue,
+                // 影片：封面（深色底 + 照片，和圖片框同一條路）+ 播放圖示，整個外框是連結
+                Element::Media(e) => {
+                    let poster = render_photo(root, &e.base.id, e.poster.as_ref(), &request.shape_photos)?;
+                    // 封面檔被刪除時只畫深色底，算進略過的圖片數（同圖片框）
+                    skipped += usize::from(e.poster.is_some() && poster.is_none());
+                    elements.extend(media_elements(e, poster));
+                    continue;
+                }
                 Element::Image(e) => {
                     // 圖片檔被刪除時略過，和畫布顯示灰框一樣不讓整份匯出失敗
                     if !root.join(&e.src).is_file() {
@@ -712,7 +771,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                     )
                 }
             };
-            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind, photo: None });
+            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind, photo: None, link: None });
         }
         pages.push(RenderPage {
             name: page.name.clone(),

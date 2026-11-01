@@ -21,6 +21,12 @@ fn builds_fixed_youtube_urls_from_the_id() {
 }
 
 #[test]
+fn builds_the_watch_url_like_the_editor() {
+    assert_eq!(youtube_watch_url(ID, 0), "https://www.youtube.com/watch?v=C5fjrag2Fcg");
+    assert_eq!(youtube_watch_url(ID, 90), "https://www.youtube.com/watch?v=C5fjrag2Fcg&t=90s");
+}
+
+#[test]
 fn reads_availability_from_the_oembed_status() {
     assert_eq!(Availability::from_oembed_status(200), Availability::Ok);
     assert_eq!(Availability::from_oembed_status(401), Availability::NotEmbeddable);

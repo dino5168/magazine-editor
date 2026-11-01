@@ -57,8 +57,9 @@ export interface ExportRequest {
    */
   readonly shapePaths: Readonly<Record<string, ExportShapePath>>;
   /**
-   * Keyed by shape element id (after expansion): where each image frame's photo goes, from the same
-   * `photoPlacement` the canvas uses (Rust `PhotoPlacement`; Rust does not repeat the formula).
+   * Keyed by element id (after expansion): where each image frame's photo and each video's poster
+   * goes, from the same `photoPlacement` the canvas uses (Rust `PhotoPlacement`; Rust does not
+   * repeat the formula).
    */
   readonly shapePhotos: Readonly<Record<string, PhotoPlacement>>;
   /**
@@ -207,6 +208,10 @@ export function buildExportRequest(
       // 圖片框的照片位置（主頁與跨頁的複本也有自己的 id）
       if (element.type === "shape" && element.image) {
         shapePhotos[element.id] = photoPlacement(element.width, element.height, element.image);
+      }
+      // 影片的封面：同一個公式，同一張表
+      if (element.type === "media" && element.poster) {
+        shapePhotos[element.id] = photoPlacement(element.width, element.height, element.poster);
       }
       // 圖形庫的圖形：路徑由編輯器算好交給 Rust（和畫布同一個 presetPath）；不認得的不放，匯出略過
       if (element.type === "shape" && element.geometry.kind === "preset") {

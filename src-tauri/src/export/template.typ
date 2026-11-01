@@ -149,7 +149,9 @@
     // 再畫裁在外形裡的照片並帶邊框（邊框在照片之上）；details 是畫在最上面、只描邊的細節線
     let photo = el.at("photo", default: none)
     let details = el.at("details", default: ())
-    at-corner(el, box(width: pt(el.width), height: pt(el.height), {
+    // 影片的外框是連結：PDF 閱讀器裡點了開影片（連結範圍是這個 box）
+    let linked(body) = { let url = el.at("link", default: none); if url == none { body } else { link(url, body) } }
+    at-corner(el, linked(box(width: pt(el.width), height: pt(el.height), {
       if photo == none {
         place(top + left, shape-outline(el, rgb(el.fill), stroke-of(el.stroke)))
       } else {
@@ -159,7 +161,7 @@
       if details.len() > 0 and el.detailStroke != none {
         place(top + left, curve(stroke: stroke-of(el.detailStroke), ..details.map(path-segment)))
       }
-    }))
+    })))
   }
 }
 

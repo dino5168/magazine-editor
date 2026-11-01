@@ -25,6 +25,13 @@ pub fn thumbnail_url(video_id: &str) -> String {
     format!("https://i.ytimg.com/vi/{video_id}/hqdefault.jpg")
 }
 
+/// The canonical watch URL the exports link to; same as `youTubeWatchUrl` in
+/// `src/lib/media/youtube-url.ts` (start 0 leaves `t` out).
+pub fn youtube_watch_url(video_id: &str, start: u32) -> String {
+    let base = format!("https://www.youtube.com/watch?v={video_id}");
+    if start > 0 { format!("{base}&t={start}s") } else { base }
+}
+
 /// YouTube's oEmbed endpoint for the video: its title, and whether it may be embedded.
 pub fn oembed_url(video_id: &str) -> String {
     // id 只含 [A-Za-z0-9_-]，放進 query 不必另外編碼；外層網址的 : / ? = 要編碼

@@ -20,6 +20,7 @@ paths:
 - **圖形庫：前端算路徑，Rust 只畫**：`buildExportRequest` 放 `shapePaths[id] = { outline, details, detailStroke }`；`render.rs` 的 `render_path` 驗證（來自 WebView：≤ 2000 指令、M 開頭、|v| ≤ 1e6…不合 → `InvalidInput`）。不要在 Rust 再寫一份公式。
 - **線條：匯出前換成路徑圖形**（`line-export.ts` 的 `exportedLinePieces`：`x-line` + `x-line-heads`，不在 `SHAPE_LIBRARY`）。Rust render / 模板 / EPUB 都不認識線條（`build_render` 遇到回 `InvalidInput`）。
 - **有邊框的矩形 / 橢圓畫成路徑**（PDF：`rounded_rect_path` / `ellipse_path`；EPUB：inline SVG）：虛線位置由路徑起點決定，要和 Konva 相同；CSS border 畫在框內會差半個線寬。沒有邊框的照舊。
+- **影片**（`media`）：`render.rs` 的 `media_elements` 拆成既有的畫法：深色 `Rect`（封面是它的 `photo`，位置同圖片框放在 `ExportRequest.shapePhotos[id]`）+ 播放圖示的 `Ellipse` 與 `Polygon`（顏色、比例和畫布 `MediaNode` 相同，常數在 `render.rs`）。外框帶 `RenderElement.link`（**Rust 用驗證過的 id 組網址**，`media::youtube_watch_url`，不從請求拿）：PDF 模板包 `link()`；PPTX / `render_page` 是點陣圖，只有樣子；EPUB / 翻頁書在計畫步驟 6 才用 link。
 - **半透明**：EPUB / 翻頁書輸出前轉換（`markup.rs` 的 `css_color` / `svg_fill`），8 位 hex 不能進 EPUB（SVG 1.1 不允許）。
 - **SVG 圖片**：一張壞 SVG 會讓**整份** Typst 排版失敗 → `drop_undrawable_svgs` 先用 `SvgImage::with_fonts_images` 逐張檢查（所以直接依賴 `comemo`，版本跟 typst）；圖片包在 `text(font: data.svgFonts)` 裡，否則沒內嵌字型的 SVG 文字一個字都不畫。
 - 缺圖 / 壞圖略過並回報 `skippedImages`，不讓整份失敗。匯出目前畫面（含未存檔），不要求先存檔。

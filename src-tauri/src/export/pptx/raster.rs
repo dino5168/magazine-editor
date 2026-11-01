@@ -170,7 +170,7 @@ mod tests {
 
     fn image(src: &str) -> RenderElement {
         let kind = RenderKind::Image(RenderImage { width: 10.0, height: 10.0, src: src.into() });
-        RenderElement { x: 0.0, y: 0.0, rotation: 0.0, kind, photo: None }
+        RenderElement { x: 0.0, y: 0.0, rotation: 0.0, kind, photo: None, link: None }
     }
 
     #[test]

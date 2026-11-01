@@ -123,7 +123,7 @@ pub fn path_shape_document() -> RenderDocument {
             width: 200.0,
             height: 120.0,
             background: "#ffffff".into(),
-            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path), photo: None }],
+            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path), photo: None, link: None }],
         }],
     }
 }
@@ -162,5 +162,34 @@ pub fn photo_frame_request() -> (tempfile::TempDir, ExportRequest) {
     }
     let mut req = request(document);
     req.shape_photos.insert("el-ellipse".into(), super::PhotoPlacement { x: 0.0, y: -5.0, width: 120.0, height: 90.0 });
+    (root, req)
+}
+
+/// Id of the video `video_request` adds.
+pub const VIDEO_ID: &str = "el-video";
+
+/// The photo project of `photo_frame_request` with a 160 × 90 YouTube video (`el-video`, start 90)
+/// added on top of the first page at (300, 300), its poster the same four-color photo, cover: drawn
+/// at (0, −15) at 160 × 120 (`photoPlacement`).
+pub fn video_request() -> (tempfile::TempDir, ExportRequest) {
+    use crate::project::format::{Base, MediaElement, MediaOrigin, ShapeImage, ShapeImageFit};
+    let (root, mut req) = photo_frame_request();
+    req.document.pages[0].elements.push(Element::Media(MediaElement {
+        base: Base { id: VIDEO_ID.into(), x: 300.0, y: 300.0, rotation: 0.0 },
+        width: 160.0,
+        height: 90.0,
+        source: MediaOrigin::Youtube { video_id: "C5fjrag2Fcg".into(), start: 90 },
+        poster: Some(ShapeImage {
+            src: FRAME_PHOTO.into(),
+            image_width: 200.0,
+            image_height: 150.0,
+            fit: ShapeImageFit::Cover,
+            focus_x: 0.5,
+            focus_y: 0.5,
+            zoom: 1.0,
+        }),
+        title: "影片".into(),
+    }));
+    req.shape_photos.insert(VIDEO_ID.into(), super::PhotoPlacement { x: 0.0, y: -15.0, width: 160.0, height: 120.0 });
     (root, req)
 }
