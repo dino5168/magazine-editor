@@ -339,6 +339,7 @@ export function placeLibraryItem(
   const item = found.data;
   if (item.trashed) return fail(`素材「${item.name}」在垃圾桶裡，請使用者先在素材管理還原`);
   if (item.kind === "audio") return fail("音訊不能放到頁面");
+  if (item.kind === "video") return fail(`影片「${item.name}」目前請使用者在素材管理放到頁面`);
   if (item.kind === "text") {
     return fail(`目前只能放圖片；文字檔「${item.name}」請用 list_library_items 的摘錄（或使用者提供的內容）以 add_text 加入`);
   }

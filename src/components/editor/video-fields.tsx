@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { ExternalLink, FolderPlus, RefreshCw } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { createId } from "@/lib/editor/element-factory";
 import type { ElementPatch, MediaElement } from "@/lib/editor/types";
+import { useLibrary, useLibraryDispatch } from "@/lib/library/library-context";
+import { videoItemFromElement } from "@/lib/library/video-item";
 import { MEDIA_TITLE_MAX_CHARS } from "@/lib/editor/validation";
 import { formatVideoTime, parseVideoTime, posterOf, videoNotice } from "@/lib/media/media-insert";
 import { parseYouTubeUrl, youTubeWatchUrl } from "@/lib/media/youtube-url";
@@ -83,6 +86,16 @@ export function VideoTab({ media, update }: { readonly media: MediaElement; read
   const { videoId, start } = media.source;
   const url = youTubeWatchUrl(videoId, start);
   const [busy, setBusy] = useState(false);
+  const library = useLibrary();
+  const libraryDispatch = useLibraryDispatch();
+  const inLibrary = library.items.find((item) => item.kind === "video" && item.videoId === videoId && !item.trashed);
+
+  // 加到素材庫的「未分類」（操作方式 B 的另一個入口）；同一支影片只留一筆
+  const addToLibrary = (): void => {
+    const item = videoItemFromElement(media, { id: createId(), folderId: null, importedAt: new Date().toISOString() });
+    libraryDispatch({ type: "item/add", item });
+    toast.success(`已加入素材庫的「未分類」：「${item.name}」`);
+  };
 
   const changeLink = async (text: string): Promise<void> => {
     const video = parseYouTubeUrl(text);
@@ -144,6 +157,16 @@ export function VideoTab({ media, update }: { readonly media: MediaElement; read
           <Button variant="outline" size="sm" onClick={() => openLink(url)}>
             <ExternalLink />
             {isDesktop ? "在瀏覽器開啟" : "在新分頁開啟"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={inLibrary !== undefined}
+            title={inLibrary ? `素材庫已經有這支影片：「${inLibrary.name}」` : undefined}
+            onClick={addToLibrary}
+          >
+            <FolderPlus />
+            {inLibrary ? "已在素材庫" : "加入素材庫"}
           </Button>
           {isDesktop && (
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void refetchPoster()}>

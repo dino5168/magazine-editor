@@ -15,7 +15,8 @@ export const TEXT_ASSET_MAX_BYTES = 200 * 1024;
 export const AUDIO_ASSET_MAX_BYTES = 50 * 1024 * 1024;
 
 export interface Library {
-  readonly libraryVersion: 1;
+  /** 2 since video items; Rust reads v1 files as v2. */
+  readonly libraryVersion: 2;
   /** Array order is the order among siblings. */
   readonly folders: readonly LibraryFolder[];
   readonly items: readonly LibraryItem[];
@@ -40,7 +41,10 @@ interface LibraryItemBase {
   readonly id: string;
   /** Display name (the original file name, renamable). */
   readonly name: string;
-  /** Project-relative path: `assets/images/`, `assets/texts/` or `assets/audio/` by kind. */
+  /**
+   * Project-relative path: `assets/images/`, `assets/texts/` or `assets/audio/` by kind; for a video
+   * the virtual `youtube:<id>` (`VIDEO_SRC_PREFIX`), so the same video is listed once.
+   */
   readonly src: string;
   /** File size in bytes. */
   readonly bytes: number;
@@ -69,9 +73,25 @@ export interface AudioItem extends LibraryItemBase {
   readonly kind: "audio";
 }
 
-export type LibraryItem = ImageItem | TextItem | AudioItem;
+/** The virtual `src` of a video item; same as `VIDEO_SRC_PREFIX` in Rust `project/library.rs`. */
+export const VIDEO_SRC_PREFIX = "youtube:";
+
+/** A YouTube video link (library v2): no file of its own (`bytes` 0); its poster is a project image. */
+export interface VideoItem extends LibraryItemBase {
+  readonly kind: "video";
+  readonly videoId: string;
+  /** Seconds, 0–`YOUTUBE_START_MAX_SECONDS`. */
+  readonly start: number;
+  /** An image under `assets/images/` and its size in pixels; null = none (fetched offline). */
+  readonly poster: { readonly src: string; readonly width: number; readonly height: number } | null;
+}
+
+export type LibraryItem = ImageItem | TextItem | AudioItem | VideoItem;
 
 export type LibraryItemKind = LibraryItem["kind"];
 
+/** Kinds backed by an imported file (everything but videos). */
+export type FileItemKind = Exclude<LibraryItemKind, "video">;
+
 /** A project without any library entries yet. */
-export const EMPTY_LIBRARY: Library = { libraryVersion: 1, folders: [], items: [] };
+export const EMPTY_LIBRARY: Library = { libraryVersion: 2, folders: [], items: [] };

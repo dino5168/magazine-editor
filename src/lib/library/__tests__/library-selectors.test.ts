@@ -16,14 +16,15 @@ const ids = (items: readonly { id: string }[]) => items.map((item) => item.id);
 describe("libraryCounts", () => {
   it("counts system entries and folders including subfolders", () => {
     const counts = libraryCounts(library);
-    expect([counts.all, counts.unsorted, counts.trash]).toEqual([5, 2, 1]);
-    expect(Object.fromEntries(counts.folders)).toEqual({ "f-cover": 1, "f-people": 1, "f-inner": 1, "f-text": 1 });
+    expect([counts.all, counts.unsorted, counts.trash]).toEqual([6, 2, 1]);
+    expect(Object.fromEntries(counts.folders)).toEqual({ "f-cover": 1, "f-people": 1, "f-inner": 2, "f-text": 1 });
   });
 });
 
 describe("visibleItems", () => {
   it("lists each view newest first", () => {
     expect(ids(visibleItems(library, { type: "all" }))).toEqual([
+      "i-video",
       "i-illustration",
       "i-interview",
       "i-editorial",
@@ -34,6 +35,13 @@ describe("visibleItems", () => {
     expect(ids(visibleItems(library, { type: "trash" }))).toEqual(["i-old-cover"]);
     // 資料夾包含子資料夾的素材
     expect(ids(visibleItems(library, { type: "folder", id: "f-cover" }))).toEqual(["i-cover-photo"]);
+  });
+
+  it("filters by kind, together with the view and the name", () => {
+    expect(ids(visibleItems(library, { type: "all" }, "", "video"))).toEqual(["i-video"]);
+    expect(ids(visibleItems(library, { type: "all" }, "", "image"))).toEqual(["i-illustration", "i-unsorted", "i-cover-photo"]);
+    expect(ids(visibleItems(library, { type: "unsorted" }, "", "audio"))).toEqual(["i-interview"]);
+    expect(ids(visibleItems(library, { type: "all" }, "五十音", "image"))).toEqual([]);
   });
 
   it("filters by name and keeps array order for equal times", () => {

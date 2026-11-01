@@ -26,7 +26,7 @@ paths:
 - 主頁鏈深度 `MASTER_DEPTH_MAX`（8）與引用規則：`master-pages.ts` / `format/validate.rs`。
 - 文字樣式：`TEXT_STYLE_NAME_MAX_LENGTH`（50）、名稱 / id 規則與引用（`style-sheet.ts` / `validate_text_styles`、`require_style`）；內建三個樣式 `defaultTextStyles` / `default_text_styles` 共用 `tests/fixtures/default-text-styles.json`。
 - 文件色票：`SWATCH_NAME_MAX_LENGTH`（50）、小寫 `#rrggbb`、id / 名稱不重複、連結存在（`isSwatchList` / `isSwatchLink` / `validate_swatches` / `require_swatch`）。
-- 素材庫：`LIBRARY_DEPTH_MAX`（8）、名稱上限、`TEXT_EXCERPT_MAX_CHARS`（`lib/library/types.ts`、`library-validation.ts` / `project/library.rs`，共用 `sample-library.json`）；`TEXT_ASSET_MAX_BYTES`（200 KB）、`AUDIO_ASSET_MAX_BYTES`（50 MB）（`types.ts` / `assets.rs`）。
+- 素材庫：`LIBRARY_VERSION`（2）、影片 `VIDEO_SRC_PREFIX`（`youtube:`）與 `src` = 前綴 + `videoId` 的規則、名稱上限、`TEXT_EXCERPT_MAX_CHARS`（`lib/library/types.ts`、`library-validation.ts` / `project/library.rs`，共用 `sample-library.json`）；`TEXT_ASSET_MAX_BYTES`（200 KB）、`AUDIO_ASSET_MAX_BYTES`（50 MB）（`types.ts` / `assets.rs`）。
 - 文件範本：`TEMPLATE_NAME_MAX_LENGTH`（50）、`TEMPLATE_DESCRIPTION_MAX_LENGTH`（200）與名稱規則（`lib/templates/types.ts`、`template-content.ts` / `project/templates.rs`）。
 - 匯出：翻頁書目錄的 `is_default_page_name` / 編輯器 `nextPageNames` 的預設頁名；PowerPoint 尺寸 `pptxExportProblem` / `pptx::slide_size`；內建字型 `FONT_OPTIONS` / `BUNDLED_FONTS`（見 `export.md`）。
 - 底線 / 刪除線公式與模擬斜體的斜率**只在 Rust**（`render.rs`），對應的是 Konva 與瀏覽器本身的行為：升級 Konva 時重查（`editor-text.md`）。

@@ -121,7 +121,9 @@ describe("list_library_items", () => {
   it("lists folders with paths and items newest first, without the trash", () => {
     const { folders, items } = library.ok("list_library_items");
     expect(folders).toContainEqual({ id: "f-people", name: "人物", parentId: "f-cover", path: "封面 / 人物" });
-    expect(ids(items)).toEqual(["i-illustration", "i-interview", "i-editorial", "i-unsorted", "i-cover-photo"]);
+    expect(ids(items)).toEqual(["i-video", "i-illustration", "i-interview", "i-editorial", "i-unsorted", "i-cover-photo"]);
+    // 影片附影片 id 與開始時間
+    expect(items.find((item: any) => item.id === "i-video")).toMatchObject({ kind: "video", videoId: "C5fjrag2Fcg", start: 90, bytes: 0 });
     expect(items.find((item: any) => item.id === "i-cover-photo")).toEqual({
       id: "i-cover-photo",
       name: "封面照片.png",

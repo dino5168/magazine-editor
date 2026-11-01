@@ -1,6 +1,6 @@
 import type { AssetInfo } from "@/lib/editor/types";
 import { descendants } from "./library-tree";
-import type { Library, LibraryItem } from "./types";
+import type { Library, LibraryItem, LibraryItemKind } from "./types";
 
 /** What the manager's center column shows. */
 export type LibraryView =
@@ -58,11 +58,12 @@ export function libraryCounts(library: Library): LibraryCounts {
  *   library: The library.
  *   view: Selected entry of the left column.
  *   query: Name filter (case-insensitive substring); empty = no filter.
+ *   kind: Only this kind (the manager's 類別 filter); null = every kind.
  *
  * Returns:
  *   Items to show.
  */
-export function visibleItems(library: Library, view: LibraryView, query = ""): LibraryItem[] {
+export function visibleItems(library: Library, view: LibraryView, query = "", kind: LibraryItemKind | null = null): LibraryItem[] {
   let matches: (item: LibraryItem) => boolean;
   switch (view.type) {
     case "all":
@@ -83,7 +84,7 @@ export function visibleItems(library: Library, view: LibraryView, query = ""): L
   const needle = query.trim().toLowerCase();
   return library.items
     .map((item, index) => ({ item, index }))
-    .filter(({ item }) => matches(item) && (needle === "" || item.name.toLowerCase().includes(needle)))
+    .filter(({ item }) => matches(item) && (kind === null || item.kind === kind) && (needle === "" || item.name.toLowerCase().includes(needle)))
     .sort((a, b) => b.item.importedAt.localeCompare(a.item.importedAt) || b.index - a.index)
     .map(({ item }) => item);
 }

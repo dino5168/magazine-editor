@@ -14,7 +14,7 @@ import {
   TEXT_ASSET_MAX_BYTES,
   type ImageItem,
   type LibraryItem,
-  type LibraryItemKind,
+  type FileItemKind,
 } from "./types";
 
 /** An image ready to be placed on a page: `src` for `ImageElement.src` plus its intrinsic size. */
@@ -31,7 +31,7 @@ export interface ImportFileOptions {
   /** Folder to import into; `null` = 未分類. */
   readonly folderId: string | null;
   /** Kinds accepted (default: all). */
-  readonly accept?: readonly LibraryItemKind[];
+  readonly accept?: readonly FileItemKind[];
   /** Item name instead of the one from the file name (an item already in the library keeps its name). */
   readonly name?: string;
 }
@@ -42,21 +42,21 @@ type Prepared =
   | { readonly kind: "text"; readonly name: string; readonly bytes: number; readonly src: string; readonly excerpt: string }
   | { readonly kind: "audio"; readonly name: string; readonly bytes: number; readonly src: string };
 
-const KIND_LABELS: { readonly [K in LibraryItemKind]: string } = { image: "圖片", text: "文字檔", audio: "音訊" };
+const KIND_LABELS: { readonly [K in FileItemKind]: string } = { image: "圖片", text: "文字檔", audio: "音訊" };
 const BOM_BYTES = 3;
 
 const ok = <T>(data: T): Result<T> => ({ data, error: null });
 const fail = (message: string): Result<never> => ({ data: null, error: new Error(message) });
 
 // 瀏覽器模式沒有專案資料夾：素材只存在記憶體，src 用 blob URL（不 revoke，undo 可能讓物件回來）
-async function store(bytes: ArrayBuffer, kind: LibraryItemKind, extension: string, blobUrl: string): Promise<Result<string>> {
+async function store(bytes: ArrayBuffer, kind: FileItemKind, extension: string, blobUrl: string): Promise<Result<string>> {
   if (!isDesktop) return ok(blobUrl);
   const stored = await projectApi.importLibraryAsset(new Uint8Array(bytes), kind, extension);
   return stored.error ? fail(`無法把檔案存入專案：${describeCommandError(stored.error)}`) : ok(stored.data);
 }
 
 /** Checks a file and stores it in the project; the error message is user-facing (toast or MCP). */
-async function prepare(file: File, accept: readonly LibraryItemKind[]): Promise<Result<Prepared>> {
+async function prepare(file: File, accept: readonly FileItemKind[]): Promise<Result<Prepared>> {
   const kind = kindOfFile(file.name);
   if (kind === null || !accept.includes(kind)) {
     const allowed = accept.map((k) => KIND_LABELS[k]).join("、");
@@ -112,7 +112,7 @@ function toItem(prepared: Prepared, folderId: string | null, importedAt: string)
   }
 }
 
-const ALL_KINDS: readonly LibraryItemKind[] = ["image", "text", "audio"];
+const ALL_KINDS: readonly FileItemKind[] = ["image", "text", "audio"];
 
 /**
  * Returns functions that copy files into the project and add them to the asset library.
@@ -132,7 +132,7 @@ export function useLibraryImport(): {
   readonly importFiles: (
     files: readonly File[],
     folderId: string | null,
-    accept?: readonly LibraryItemKind[],
+    accept?: readonly FileItemKind[],
   ) => Promise<LibraryItem[]>;
   /**
    * Imports one file like `importFiles`, but shows no toast: the problem (unsupported file, too
@@ -156,7 +156,7 @@ export function useLibraryImport(): {
   );
 
   const importFiles = useCallback(
-    async (files: readonly File[], folderId: string | null, accept: readonly LibraryItemKind[] = ALL_KINDS) => {
+    async (files: readonly File[], folderId: string | null, accept: readonly FileItemKind[] = ALL_KINDS) => {
       // 各檔案互不相依，並行處理；結果依原本的檔案順序加入
       const results = await Promise.all(files.map((file) => prepare(file, accept)));
       const importedAt = new Date().toISOString();

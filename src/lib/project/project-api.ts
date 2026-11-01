@@ -2,7 +2,7 @@ import { invoke, isTauri, type InvokeArgs, type InvokeOptions } from "@tauri-app
 import type { FontFile } from "@/lib/editor/types";
 import type { Result } from "@/lib/editor/validation";
 import type { ExportRequest } from "@/lib/export/export-request";
-import type { Library, LibraryItemKind } from "@/lib/library/types";
+import type { FileItemKind, Library } from "@/lib/library/types";
 import {
   CommandError,
   ERROR_KINDS,
@@ -71,7 +71,7 @@ export const projectApi = {
    * Bytes go as a raw body (a JSON array would make a 20 MB image several times larger); the kind
    * and a text file's extension go in headers.
    */
-  importLibraryAsset: (bytes: Uint8Array, kind: LibraryItemKind, extension: string) =>
+  importLibraryAsset: (bytes: Uint8Array, kind: FileItemKind, extension: string) =>
     call<string>("library_import", bytes, { headers: { "x-asset-kind": kind, "x-asset-extension": extension } }),
   readLibraryText: (src: string) => call<string>("library_read_text", { src }),
   /**

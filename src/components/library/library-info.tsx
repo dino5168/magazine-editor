@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { folderPath } from "@/lib/library/library-tree";
 import { itemNameError } from "@/lib/library/library-validation";
 import type { LibraryFolder, LibraryItem } from "@/lib/library/types";
+import { formatVideoTime } from "@/lib/media/media-insert";
+import { youTubeWatchUrl } from "@/lib/media/youtube-url";
 import { kindBadge, LibraryThumb } from "./library-card";
 
-const KIND_LABELS: { readonly [K in LibraryItem["kind"]]: string } = { image: "圖片", text: "文字檔", audio: "音訊" };
+const KIND_LABELS: { readonly [K in LibraryItem["kind"]]: string } = { image: "圖片", text: "文字檔", audio: "音訊", video: "影片" };
 
 /** `345 KB` / `1.4 MB`. */
 export function formatBytes(bytes: number): string {
@@ -134,6 +136,7 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
 
   const [item] = items;
   const canPlace = !item.trashed && item.kind !== "audio";
+  const videoUrl = item.kind === "video" ? youTubeWatchUrl(item.videoId, item.start) : null;
   const isMarkdown = kindBadge(item) === "MD";
   const folderName =
     item.trashed !== null ? (item.trashed.fromName ?? "未分類") : item.folderId === null ? "未分類" : folderPath(folders, item.folderId).join(" / ");
@@ -155,8 +158,17 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
             </dd>
           </>
         )}
-        <dt className="text-muted-foreground">檔案大小</dt>
-        <dd className="text-right">{formatBytes(item.bytes)}</dd>
+        {item.kind === "video" ? (
+          <>
+            <dt className="text-muted-foreground">開始</dt>
+            <dd className="text-right">{formatVideoTime(item.start)}</dd>
+          </>
+        ) : (
+          <>
+            <dt className="text-muted-foreground">檔案大小</dt>
+            <dd className="text-right">{formatBytes(item.bytes)}</dd>
+          </>
+        )}
         <dt className="text-muted-foreground">{item.trashed ? "原資料夾" : "資料夾"}</dt>
         <dd className="text-right break-all">{folderName}</dd>
         <dt className="text-muted-foreground">匯入日期</dt>
@@ -171,6 +183,11 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
       {item.kind === "text" && !item.trashed && (
         <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">
           放到頁面時是一個文字物件（純文字）{isMarkdown && "，Markdown 符號原樣保留"}。
+        </p>
+      )}
+      {videoUrl && !item.trashed && (
+        <p className="rounded-md bg-muted px-2.5 py-2 text-xs break-all text-muted-foreground">
+          YouTube 影片連結（不佔檔案空間）：{videoUrl}。放到頁面後，翻頁書與 PDF 裡點了可以觀看。
         </p>
       )}
       {item.kind === "audio" && !item.trashed && (

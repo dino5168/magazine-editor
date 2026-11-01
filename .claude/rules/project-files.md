@@ -48,6 +48,7 @@ paths:
 - 「內建範例」**不寫進 `library.json`**：放到頁面時才 `importBundled`，之後和一般素材同一條路（`usePlaceLibraryItem`）。
 - 管理視窗處理的按鍵要 **`stopPropagation`**：否則編輯器快捷鍵判斷不出焦點在視窗裡，會刪掉畫布上的物件。確認框關閉時焦點放回視窗。視窗有 `transform`，拖曳標籤 portal 到 `document.body`。拖曳規則在純函式 `libraryDropResult`；拖已選取的卡片時**開始拖曳才改選取**。
 - 永久刪除只移除清單，檔案在下次開檔清理時才刪。
+- **影片**（`libraryVersion` 2，`kind: "video"`）：沒有檔案，`src` 是虛擬的 `youtube:<id>`（`VIDEO_SRC_PREFIX`，所以同一支影片只留一筆）、`bytes` 0；`videoId` / `start` / `poster`（`assets/images/` 的圖片 + 像素尺寸，可 null）。Rust `referenced` 算封面、不算 `youtube:`。v1 檔讀成 v2（下次寫入就是 v2），舊版 App 拒開 v2。建立 / 放到頁面：`lib/library/video-item.ts`；素材管理的「影片連結」與屬性面板「加入素材庫」共用 `InsertVideoDialog` 的 `destination` / `videoItemFromElement`。檔案類的種類是 `FileItemKind`。
 - 文字檔放到頁面時全文由 `library_read_text` 讀：**CSP 不讓前端 fetch asset URL**。
 - 縮圖 `assets/thumbs/<原圖 hash>.jpg|png`：路徑由原圖推導、**不寫進 `library.json`**；`library_thumbnail` 用 `spawn_blocking`，前端最多同時 2 個。畫布用原圖。`Cargo.toml` 的 `[profile.dev.package.*]` 最佳化圖片解碼（不要刪，否則開發版一張 24 MP 約 8 秒）。
 - SVG：`kind: "image"`、原檔照存（`<img>` 不執行 script）。Rust `is_svg`（roxmltree）要求 SVG namespace 的 `<svg>` 根元素。寬高不是絕對長度時改用 viewBox（`svgViewBoxSize` / `svgIntrinsicSize`）。不支援 `.svgz`；SVG 裡的文字 PDF 可能換字型（已知限制）。

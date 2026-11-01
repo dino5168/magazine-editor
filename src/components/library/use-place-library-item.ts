@@ -7,6 +7,7 @@ import { findSheet } from "@/lib/editor/master-pages";
 import type { PageId, Point } from "@/lib/editor/types";
 import { normalizeText } from "@/lib/library/library-files";
 import type { LibraryItem } from "@/lib/library/types";
+import { mediaFromVideoItem } from "@/lib/library/video-item";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
 
 /** Full text of a text item: from Rust on the desktop (the CSP blocks fetching asset URLs), from the blob URL in the browser. */
@@ -29,7 +30,8 @@ async function readItemText(src: string): Promise<string | null> {
 
 /**
  * Returns a function that puts a library item on the active page: an image becomes an image
- * element, a text file a text element with its content as is (Markdown marks stay). Audio cannot
+ * element, a text file a text element with its content as is (Markdown marks stay), a video a
+ * video element (poster, start and title from the item). Audio cannot
  * be placed. One `element/add` = one undo step; the new element is selected.
  *
  * Returns:
@@ -57,7 +59,11 @@ export function usePlaceLibraryItem(): (item: LibraryItem, center?: Point, pageI
       // 已經是目前頁時 page/select 不會改變任何東西
       dispatch({ type: "page/select", id: page.id });
       const element =
-        item.kind === "image" ? createImageElement(item.src, item, page, at) : createTextFromFile(normalizeText(text ?? ""), page, at);
+        item.kind === "image"
+          ? createImageElement(item.src, item, page, at)
+          : item.kind === "video"
+            ? mediaFromVideoItem(item, page, at)
+            : createTextFromFile(normalizeText(text ?? ""), page, at);
       dispatch({ type: "element/add", element });
       return true;
     },

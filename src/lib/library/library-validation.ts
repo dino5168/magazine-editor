@@ -7,11 +7,13 @@ import {
   type Library,
   type LibraryFolder,
   type LibraryItem,
-  type LibraryItemKind,
+  type FileItemKind,
+  VIDEO_SRC_PREFIX,
 } from "./types";
+import { isYouTubeVideoId, YOUTUBE_START_MAX_SECONDS } from "@/lib/media/youtube-url";
 
 /** Asset directory of each item kind; same as `LibraryItem::asset_dir` in Rust. */
-export const ASSET_DIR_OF_KIND: { readonly [K in LibraryItemKind]: string } = {
+export const ASSET_DIR_OF_KIND: { readonly [K in FileItemKind]: string } = {
   image: "assets/images",
   text: "assets/texts",
   audio: "assets/audio",
@@ -83,7 +85,9 @@ const isId = (id: string): boolean => id !== "" && id.length <= ID_MAX_LENGTH;
 function itemProblem(item: LibraryItem, folderIds: ReadonlySet<string>): string | null {
   if (!isId(item.id)) return `invalid item id ${JSON.stringify(item.id)}`;
   if (!isStoredName(item.name, ITEM_NAME_MAX_CHARS)) return `invalid item name ${JSON.stringify(item.name)}`;
-  if (!isAssetPathIn(item.src, ASSET_DIR_OF_KIND[item.kind])) return `invalid item src ${JSON.stringify(item.src)}`;
+  // 影片沒有檔案：src 必須剛好是 youtube:<id>
+  const srcOk = item.kind === "video" ? item.src === `${VIDEO_SRC_PREFIX}${item.videoId}` : isAssetPathIn(item.src, ASSET_DIR_OF_KIND[item.kind]);
+  if (!srcOk) return `invalid item src ${JSON.stringify(item.src)}`;
   if (item.folderId !== null && item.trashed !== null) return "trashed item is still in a folder";
   if (item.folderId !== null && !folderIds.has(item.folderId)) return `item folder ${item.folderId} does not exist`;
   switch (item.kind) {
@@ -95,6 +99,14 @@ function itemProblem(item: LibraryItem, folderIds: ReadonlySet<string>): string 
       return charCount(item.excerpt) <= TEXT_EXCERPT_MAX_CHARS ? null : "text excerpt is too long";
     case "audio":
       return null;
+    case "video": {
+      if (!isYouTubeVideoId(item.videoId)) return `invalid video id ${JSON.stringify(item.videoId)}`;
+      if (!Number.isInteger(item.start) || item.start < 0 || item.start > YOUTUBE_START_MAX_SECONDS) return "video start is out of range";
+      const { poster } = item;
+      if (poster === null) return null;
+      const positive = (value: number) => Number.isFinite(value) && value > 0;
+      return isAssetPathIn(poster.src, ASSET_DIR_OF_KIND.image) && positive(poster.width) && positive(poster.height) ? null : "invalid video poster";
+    }
   }
 }
 
@@ -109,7 +121,7 @@ function itemProblem(item: LibraryItem, folderIds: ReadonlySet<string>): string 
  *   Description of the first problem (English, for developers), or null when valid.
  */
 export function libraryProblem(library: Library): string | null {
-  if (library.libraryVersion !== 1) return `unsupported library version ${String(library.libraryVersion)}`;
+  if (library.libraryVersion !== 2) return `unsupported library version ${String(library.libraryVersion)}`;
   const { folders } = library;
   const folderIds = new Set(folders.map((folder) => folder.id));
   if (folderIds.size !== folders.length) return "duplicate folder id";

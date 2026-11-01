@@ -4,7 +4,7 @@
 //! of the undo history. Same rules as `src/lib/library/` on the frontend; both are tested against
 //! `tests/fixtures/sample-library.json`.
 
-use super::format::{self, AssetInfo, ASSET_DIR, AUDIO_ASSET_DIR, TEXT_ASSET_DIR};
+use super::format::{self, is_youtube_video_id, AssetInfo, ASSET_DIR, AUDIO_ASSET_DIR, TEXT_ASSET_DIR, YOUTUBE_START_MAX_SECONDS};
 use super::io;
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,11 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 pub const LIBRARY_FILE_NAME: &str = "library.json";
-pub const LIBRARY_VERSION: u32 = 1;
+/// v2: video items (`kind: "video"`, multimedia plan step 8). v1 files are read as they are and
+/// written back as v2; older App versions refuse v2 as newer.
+pub const LIBRARY_VERSION: u32 = 2;
+/// The virtual `src` of a video item: `youtube:<video id>` (no file; one item per video).
+pub const VIDEO_SRC_PREFIX: &str = "youtube:";
 /// Longest folder chain, counting the top folder.
 pub const LIBRARY_DEPTH_MAX: usize = 8;
 pub const FOLDER_NAME_MAX_CHARS: usize = 100;
@@ -51,6 +55,7 @@ pub enum LibraryItem {
     Image(ImageItem),
     Text(TextItem),
     Audio(AudioItem),
+    Video(VideoItem),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -59,7 +64,8 @@ pub struct ItemBase {
     pub id: String,
     /// Display name (the original file name, renamable).
     pub name: String,
-    /// Project-relative path in the directory of the item's kind.
+    /// Project-relative path in the directory of the item's kind; for a video, `youtube:<id>`
+    /// (`VIDEO_SRC_PREFIX`), so the same video is listed once.
     pub src: String,
     /// File size in bytes.
     pub bytes: u64,
@@ -103,21 +109,43 @@ pub struct AudioItem {
     pub base: ItemBase,
 }
 
+/// A YouTube video link (v2): no file of its own (`bytes` 0); its poster is a project image.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoItem {
+    #[serde(flatten)]
+    pub base: ItemBase,
+    pub video_id: String,
+    /// Seconds, 0–`YOUTUBE_START_MAX_SECONDS`.
+    pub start: u32,
+    pub poster: Option<LibraryPoster>,
+}
+
+/// A video item's poster: an image under `assets/images/` and its size in pixels.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LibraryPoster {
+    pub src: String,
+    pub width: f64,
+    pub height: f64,
+}
+
 impl LibraryItem {
     pub fn base(&self) -> &ItemBase {
         match self {
             Self::Image(item) => &item.base,
             Self::Text(item) => &item.base,
             Self::Audio(item) => &item.base,
+            Self::Video(item) => &item.base,
         }
     }
 
-    /// The asset directory files of this kind live in.
-    pub fn asset_dir(&self) -> &'static str {
+    /// The asset directory files of this kind live in; `None` for videos (no file).
+    pub fn asset_dir(&self) -> Option<&'static str> {
         match self {
-            Self::Image(_) => ASSET_DIR,
-            Self::Text(_) => TEXT_ASSET_DIR,
-            Self::Audio(_) => AUDIO_ASSET_DIR,
+            Self::Image(_) => Some(ASSET_DIR),
+            Self::Text(_) => Some(TEXT_ASSET_DIR),
+            Self::Audio(_) => Some(AUDIO_ASSET_DIR),
+            Self::Video(_) => None,
         }
     }
 }
@@ -168,7 +196,10 @@ fn validate_item(item: &LibraryItem, folder_ids: &HashSet<&str>) -> AppResult<()
     let base = item.base();
     format::require_id(&base.id)?;
     require_name(&base.name, ITEM_NAME_MAX_CHARS, "item")?;
-    format::validate_asset_path_in(&base.src, item.asset_dir())?;
+    // 影片沒有檔案：src 是 youtube:<id>，在 validate_video_item 檢查（同一支影片只留一筆）
+    if let Some(dir) = item.asset_dir() {
+        format::validate_asset_path_in(&base.src, dir)?;
+    }
     match (&base.folder_id, &base.trashed) {
         (Some(_), Some(_)) => return Err(AppError::invalid_project("trashed item is still in a folder")),
         (Some(id), None) if !folder_ids.contains(id.as_str()) => {
@@ -189,6 +220,25 @@ fn validate_item(item: &LibraryItem, folder_ids: &HashSet<&str>) -> AppResult<()
             }
         }
         LibraryItem::Audio(_) => {}
+        LibraryItem::Video(video) => validate_video_item(video)?,
+    }
+    Ok(())
+}
+
+/// Same rules as the video case of `itemProblem` in `src/lib/library/library-validation.ts`.
+fn validate_video_item(video: &VideoItem) -> AppResult<()> {
+    if !is_youtube_video_id(&video.video_id) || video.base.src != format!("{VIDEO_SRC_PREFIX}{}", video.video_id) {
+        return Err(AppError::invalid_project(format!("invalid video item {:?}", video.base.src)));
+    }
+    if video.start > YOUTUBE_START_MAX_SECONDS {
+        return Err(AppError::invalid_project("video start is too late"));
+    }
+    if let Some(poster) = &video.poster {
+        format::validate_asset_path_in(&poster.src, ASSET_DIR)?;
+        let positive = |value: f64| value.is_finite() && value > 0.0;
+        if !positive(poster.width) || !positive(poster.height) {
+            return Err(AppError::invalid_project("video poster size must be positive"));
+        }
     }
     Ok(())
 }
@@ -228,7 +278,11 @@ pub fn validate_library(library: &Library) -> AppResult<()> {
 /// # Errors
 /// Returns `AppError::InvalidProject` for malformed JSON or content that fails validation.
 pub fn parse_library(json: &str) -> AppResult<Library> {
-    let library: Library = serde_json::from_str(json)?;
+    let mut library: Library = serde_json::from_str(json)?;
+    // v1 沒有影片，其他內容和 v2 相同：讀成 v2，下次寫入就是 v2
+    if library.library_version == 1 {
+        library.library_version = LIBRARY_VERSION;
+    }
     validate_library(&library)?;
     Ok(library)
 }
@@ -348,9 +402,13 @@ pub fn load_or_create(root: &Path, assets: &[AssetInfo], now: &str) -> AppResult
     Ok(LoadedLibrary { library, rebuilt })
 }
 
-/// Every file the library refers to, including items in the trash (they can be restored).
+/// Every file the library refers to, including items in the trash (they can be restored): the
+/// items' files and the videos' posters (a video's own `src` is not a file).
 pub fn referenced(library: &Library) -> impl Iterator<Item = &str> {
-    library.items.iter().map(|item| item.base().src.as_str())
+    library.items.iter().filter_map(|item| match item {
+        LibraryItem::Video(video) => video.poster.as_ref().map(|poster| poster.src.as_str()),
+        other => Some(other.base().src.as_str()),
+    })
 }
 
 #[cfg(test)]
@@ -375,9 +433,11 @@ mod tests {
     fn fixture_is_valid_and_round_trips() {
         let library = parse_library(FIXTURE).unwrap();
         assert_eq!(library.folders.len(), 4);
-        assert_eq!(library.items.len(), 6);
+        assert_eq!(library.items.len(), 7);
         assert!(matches!(library.items[2], LibraryItem::Text(_)));
         assert!(matches!(library.items[3], LibraryItem::Audio(_)));
+        assert!(matches!(library.items[6], LibraryItem::Video(_)));
+        assert_eq!(serde_json::to_value(&library).unwrap()["items"][6]["videoId"], "C5fjrag2Fcg");
         let again = parse_library(&serde_json::to_string(&library).unwrap()).unwrap();
         assert_eq!(again, library);
         // 序列化的欄位名稱和前端一致
@@ -477,8 +537,8 @@ mod tests {
             assert!(parse_value(&value).is_err(), "{label} should be rejected");
         }
         let mut value = fixture_value();
-        value["libraryVersion"] = Value::from(2);
-        assert!(matches!(parse_value(&value), Err(AppError::UnsupportedVersion(2))));
+        value["libraryVersion"] = Value::from(3);
+        assert!(matches!(parse_value(&value), Err(AppError::UnsupportedVersion(3))));
         value["libraryVersion"] = Value::from(0);
         assert!(matches!(parse_value(&value), Err(AppError::InvalidProject(_))));
     }
@@ -520,9 +580,9 @@ mod tests {
     fn load_or_create_refuses_newer_library() {
         let dir = tempfile::tempdir().unwrap();
         let mut value = fixture_value();
-        value["libraryVersion"] = Value::from(2);
+        value["libraryVersion"] = Value::from(3);
         fs::write(dir.path().join(LIBRARY_FILE_NAME), value.to_string()).unwrap();
-        assert!(matches!(load_or_create(dir.path(), &[], "now"), Err(AppError::UnsupportedVersion(2))));
+        assert!(matches!(load_or_create(dir.path(), &[], "now"), Err(AppError::UnsupportedVersion(3))));
         // 新版的檔案不能被動到
         assert_eq!(fs::read_to_string(dir.path().join(LIBRARY_FILE_NAME)).unwrap(), value.to_string());
     }
@@ -597,7 +657,61 @@ mod tests {
     fn referenced_includes_trash() {
         let library = parse_library(FIXTURE).unwrap();
         let all: Vec<_> = referenced(&library).collect();
-        assert_eq!(all.len(), 6);
+        // 6 個檔案 + 影片的封面（影片自己的 youtube:… 不是檔案）
+        assert_eq!(all.len(), 7);
         assert!(all.contains(&library.items[5].base().src.as_str()));
+        assert!(all.contains(&"assets/images/44444444444444444444444444444444.jpg"));
+        assert!(!all.iter().any(|src| src.starts_with(VIDEO_SRC_PREFIX)));
+    }
+
+    #[test]
+    fn reads_video_items() {
+        let library = parse_library(FIXTURE).unwrap();
+        let LibraryItem::Video(video) = library.items.last().unwrap() else { panic!("the fixture ends with a video") };
+        assert_eq!((video.base.src.as_str(), video.video_id.as_str(), video.start), ("youtube:C5fjrag2Fcg", "C5fjrag2Fcg", 90));
+        assert_eq!(video.poster.as_ref().map(|poster| (poster.width, poster.height)), Some((480.0, 360.0)));
+        assert_eq!(library.items.last().unwrap().asset_dir(), None);
+    }
+
+    #[test]
+    fn reads_version_1_files_as_version_2() {
+        let mut value = fixture_value();
+        value["libraryVersion"] = Value::from(1);
+        value["items"].as_array_mut().unwrap().retain(|item| item["kind"] != "video");
+        let library = parse_value(&value).unwrap();
+        assert_eq!(library.library_version, LIBRARY_VERSION);
+        assert_eq!(serde_json::to_value(&library).unwrap()["libraryVersion"], 2);
+    }
+
+    #[test]
+    fn rejects_bad_video_items() {
+        let last = |v: &mut Value| -> usize { v["items"].as_array().unwrap().len() - 1 };
+        type EditVideo = fn(&mut Value, usize);
+        let cases: [(&str, EditVideo); 7] = [
+            ("src does not match the id", |v, i| v["items"][i]["src"] = Value::from("youtube:aaaaaaaaaaa")),
+            ("src is a file path", |v, i| v["items"][i]["src"] = Value::from("assets/images/44444444444444444444444444444444.jpg")),
+            ("bad id", |v, i| {
+                v["items"][i]["videoId"] = Value::from("short");
+                v["items"][i]["src"] = Value::from("youtube:short");
+            }),
+            ("start too late", |v, i| v["items"][i]["start"] = Value::from(YOUTUBE_START_MAX_SECONDS + 1)),
+            ("poster outside images", |v, i| v["items"][i]["poster"]["src"] = Value::from("assets/audio/x.mp3")),
+            ("zero size poster", |v, i| v["items"][i]["poster"]["width"] = Value::from(0)),
+            ("same video twice", |v, _| {
+                let copy = { let mut c = v["items"].as_array().unwrap().last().unwrap().clone(); c["id"] = Value::from("i-video-2"); c };
+                v["items"].as_array_mut().unwrap().push(copy);
+            }),
+        ];
+        for (label, edit) in cases {
+            let mut value = fixture_value();
+            let index = last(&mut value);
+            edit(&mut value, index);
+            assert!(parse_value(&value).is_err(), "{label} should be rejected");
+        }
+        // 沒有封面可以
+        let mut value = fixture_value();
+        let index = last(&mut value);
+        value["items"][index]["poster"] = Value::Null;
+        assert!(parse_value(&value).is_ok());
     }
 }

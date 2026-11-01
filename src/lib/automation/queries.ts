@@ -140,6 +140,9 @@ export interface LibraryItemSummary {
   readonly height?: number;
   /** Text files: the start of the text on one line. */
   readonly excerpt?: string;
+  /** Videos: the YouTube video id and start time (seconds). */
+  readonly videoId?: string;
+  readonly start?: number;
 }
 
 export interface ElementDetail {
@@ -560,6 +563,8 @@ export function itemSummary(library: Library, item: LibraryItem): LibraryItemSum
       return { ...base, excerpt: excerpt(item.excerpt) };
     case "audio":
       return base;
+    case "video":
+      return { ...base, videoId: item.videoId, start: item.start };
   }
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ImageOff, Music } from "lucide-react";
+import { Clapperboard, ImageOff, Music, Play } from "lucide-react";
 import { fileExtension } from "@/lib/library/library-files";
 import { requestThumbnail, usesThumbnail } from "@/lib/library/thumbnails";
 import type { LibraryItem } from "@/lib/library/types";
@@ -14,12 +14,15 @@ export function cardAspect(item: LibraryItem): number {
       return 0.9;
     case "audio":
       return 0.55;
+    case "video":
+      return 9 / 16;
   }
 }
 
 /** Format badge for files that are not raster images, e.g. `MD`, `MP3`, `SVG` (vector images). */
 export function kindBadge(item: LibraryItem): string | null {
   // 桌面版的 src 是 assets/texts/<hash>.md；瀏覽器模式是沒有副檔名的 blob URL，改看名稱
+  if (item.kind === "video") return null;
   const extension = fileExtension(item.src.startsWith("assets/") ? item.src : item.name);
   if (item.kind === "image") return extension === "svg" ? "SVG" : null;
   return extension ? extension.toUpperCase() : null;
@@ -69,7 +72,8 @@ function useCardImage(item: LibraryItem, element: HTMLElement | null): string | 
 
 /**
  * The picture part of a library card: the image (its thumbnail in the desktop app), the start of
- * a text file, or an audio tile. A missing image file shows 「檔案遺失」 instead of a broken image.
+ * a text file, an audio tile, or a video's poster with a play mark. A missing image file shows
+ * 「檔案遺失」 instead of a broken image.
  *
  * Args:
  *   props: Item, the asset URL resolver and extra classes (the size comes from the parent).
@@ -114,6 +118,19 @@ export function LibraryThumb({ item, resolveSrc, className, fit = "cover" }: Lib
         <div className="flex size-full flex-col justify-end gap-1 bg-linear-to-br from-indigo-900 to-violet-700 p-3 pt-7 text-white">
           <Music className="size-5 opacity-80" />
           <span className="truncate text-xs font-medium">{item.name}</span>
+        </div>
+      )}
+      {item.kind === "video" && (
+        // 影片：封面（YouTube 縮圖是 4:3 帶黑邊，cover 剛好裁掉）+ 播放圖示；沒有封面是深色底
+        <div className="relative flex size-full items-center justify-center bg-neutral-800">
+          {item.poster && <img src={resolveSrc(item.poster.src)} alt={item.name} loading="lazy" draggable={false} className="absolute inset-0 size-full object-cover" />}
+          {item.poster ? (
+            <span className="relative flex size-8 items-center justify-center rounded-full bg-black/60 text-white">
+              <Play className="size-4 translate-x-px fill-current" />
+            </span>
+          ) : (
+            <Clapperboard className="size-6 text-neutral-300" />
+          )}
         </div>
       )}
       {badge && (

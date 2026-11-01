@@ -1,6 +1,6 @@
-import { ITEM_NAME_MAX_CHARS, TEXT_EXCERPT_MAX_CHARS, type LibraryItemKind } from "./types";
+import { ITEM_NAME_MAX_CHARS, TEXT_EXCERPT_MAX_CHARS, type FileItemKind } from "./types";
 
-const KIND_OF_EXTENSION: Readonly<Record<string, LibraryItemKind>> = {
+const KIND_OF_EXTENSION: Readonly<Record<string, FileItemKind>> = {
   png: "image",
   jpg: "image",
   jpeg: "image",
@@ -44,7 +44,7 @@ export function fileExtension(name: string): string {
  * Returns:
  *   The kind, or null for an unsupported file.
  */
-export function kindOfFile(name: string): LibraryItemKind | null {
+export function kindOfFile(name: string): FileItemKind | null {
   return KIND_OF_EXTENSION[fileExtension(name)] ?? null;
 }
 

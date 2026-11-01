@@ -1,5 +1,5 @@
 {
-  "libraryVersion": 1,
+  "libraryVersion": 2,
   "folders": [
     { "id": "f-cover", "name": "封面", "parentId": null },
     { "id": "f-people", "name": "人物", "parentId": "f-cover" },
@@ -75,6 +75,23 @@
       "trashed": { "at": "2026-10-08T10:00:00Z", "fromFolderId": "f-deleted", "fromName": "舊稿" },
       "width": 1000,
       "height": 1400
+    },
+    {
+      "kind": "video",
+      "id": "i-video",
+      "name": "五十音教學",
+      "src": "youtube:C5fjrag2Fcg",
+      "bytes": 0,
+      "folderId": "f-inner",
+      "importedAt": "2026-11-01T09:00:00Z",
+      "trashed": null,
+      "videoId": "C5fjrag2Fcg",
+      "start": 90,
+      "poster": {
+        "src": "assets/images/44444444444444444444444444444444.jpg",
+        "width": 480,
+        "height": 360
+      }
     }
   ]
 }

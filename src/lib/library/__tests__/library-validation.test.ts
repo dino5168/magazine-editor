@@ -45,7 +45,14 @@ describe("libraryProblem", () => {
     ["trashed but in a folder", (v) => (v.items[5].folderId = "f-cover")],
     ["zero size image", (v) => (v.items[0].width = 0)],
     ["long excerpt", (v) => (v.items[2].excerpt = "字".repeat(TEXT_EXCERPT_MAX_CHARS + 1))],
-    ["version 2", (v) => (v.libraryVersion = 2)],
+    ["version 3", (v) => (v.libraryVersion = 3)],
+    ["video src that does not match the id", (v) => (v.items[6].src = "youtube:aaaaaaaaaaa")],
+    ["video src that is a file", (v) => (v.items[6].src = "assets/images/44444444444444444444444444444444.jpg")],
+    ["bad video id", (v) => ((v.items[6].videoId = "short"), (v.items[6].src = "youtube:short"))],
+    ["video start too late", (v) => (v.items[6].start = 86_401)],
+    ["video start not whole", (v) => (v.items[6].start = 1.5)],
+    ["video poster outside images", (v) => ((v.items[6].poster as Record<string, unknown>).src = "assets/audio/x.mp3")],
+    ["video poster without size", (v) => ((v.items[6].poster as Record<string, unknown>).width = 0)],
   ];
 
   it.each(cases)("rejects %s", (_label, edit) => {
@@ -62,7 +69,7 @@ describe("libraryProblem", () => {
 
   it("allows 8 levels but not 9", () => {
     const chain = (count: number): Library => ({
-      libraryVersion: 1,
+      libraryVersion: 2,
       folders: Array.from({ length: count }, (_, i) => ({ id: `d${i}`, name: `層${i}`, parentId: i === 0 ? null : `d${i - 1}` })),
       items: [],
     });

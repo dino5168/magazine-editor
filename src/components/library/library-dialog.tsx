@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Folder, Images, Search, Trash, Upload } from "lucide-react";
+import { Clapperboard, Folder, Images, Search, Trash, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InsertVideoDialog, type VideoDestination } from "@/components/app/insert-video-dialog";
 import { DragGhost } from "@/components/drag-ghost";
 import { createId } from "@/lib/editor/element-factory";
 import { pickFiles } from "@/lib/editor/image";
@@ -23,7 +25,8 @@ import { LIBRARY_ACCEPT } from "@/lib/library/library-files";
 import { ALL_VIEW, importFolderOf, libraryCounts, restoredToUnsorted, visibleItems, type LibraryView } from "@/lib/library/library-selectors";
 import { descendants, folderPath, nextFolderName } from "@/lib/library/library-tree";
 import { folderNameError } from "@/lib/library/library-validation";
-import type { LibraryItem } from "@/lib/library/types";
+import type { LibraryItem, LibraryItemKind } from "@/lib/library/types";
+import { videoItemFromInfo } from "@/lib/library/video-item";
 import { useLibraryImport } from "@/lib/library/use-library-import";
 import { useProject } from "@/lib/project/project-context";
 import { LibraryGrid, type SelectMode } from "./library-grid";
@@ -115,6 +118,15 @@ function refocusManager(event: Event): void {
   document.querySelector<HTMLElement>("[data-library-dialog]")?.focus();
 }
 
+/** The 類別 filter: every kind, or one. */
+const KIND_FILTERS: readonly { readonly value: LibraryItemKind | "all"; readonly label: string }[] = [
+  { value: "all", label: "全部類別" },
+  { value: "image", label: "圖片" },
+  { value: "text", label: "文字" },
+  { value: "video", label: "影片" },
+  { value: "audio", label: "音訊" },
+];
+
 function LibraryManager({ initialView }: { readonly initialView: LibraryView }) {
   const library = useLibrary();
   const dispatch = useLibraryDispatch();
@@ -126,6 +138,9 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [anchor, setAnchor] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<LibraryItemKind | null>(null);
+  // 「影片連結」：貼網址加入素材庫（不放到頁面）
+  const [videoOpen, setVideoOpen] = useState(false);
   // 一開始全部展開；展開狀態不存檔
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(library.folders.map((folder) => folder.id)));
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -137,7 +152,7 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
   // 顯示中的資料夾被刪掉（例如另一個資料夾的刪除連帶刪除）時回到「全部」
   const shownView = view.type === "folder" && !folders.some((folder) => folder.id === view.id) ? ALL_VIEW : view;
   const counts = useMemo(() => libraryCounts(library), [library]);
-  const items = useMemo(() => visibleItems(library, shownView, query), [library, shownView, query]);
+  const items = useMemo(() => visibleItems(library, shownView, query, kind), [library, shownView, query, kind]);
   // 選取只算目前看得到的（搬走、刪除後自動不選）
   const selectedItems = useMemo(() => items.filter((item) => selected.includes(item.id)), [items, selected]);
   const selectedSet = useMemo(() => new Set(selectedItems.map((item) => item.id)), [selectedItems]);
@@ -242,6 +257,21 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
     else dispatch({ type: "folder/rename", id, name });
   };
 
+  const videoDestination: VideoDestination = {
+    title: "新增 YouTube 影片連結",
+    description: `貼上影片網址，加入素材庫的「${importFolder === null ? "未分類" : folderPath(folders, importFolder).join(" / ")}」。影片不佔檔案空間，封面存成圖片。`,
+    applyLabel: "加入素材庫",
+    onAdd: (video, info) => {
+      const existing = library.items.find((item) => item.kind === "video" && item.videoId === video.videoId);
+      const item = videoItemFromInfo(video, info, { id: createId(), folderId: importFolder, importedAt: new Date().toISOString() });
+      dispatch({ type: "item/add", item });
+      // 同一支影片只留一筆：已經有了就選取那一筆（在垃圾桶的會還原到這個資料夾）
+      if (existing && !existing.trashed) toast.info(`素材庫已經有這支影片：「${existing.name}」`);
+      else toast.success(`已加入素材庫：「${existing?.name ?? item.name}」`);
+      setSelected([existing?.id ?? item.id]);
+    },
+  };
+
   const place = async (item: LibraryItem) => {
     if (await placeItem(item)) toast.success(`已把「${item.name}」放到目前頁面`);
   };
@@ -256,7 +286,7 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
     shownView.type === "folder" ? folderPath(folders, shownView.id) : [{ all: "全部", unsorted: "未分類", trash: "垃圾桶" }[shownView.type]];
   const importTargetName = importFolder === null ? "未分類" : folderPath(folders, importFolder).join(" / ");
   const emptyMessage =
-    shownView.type === "trash" ? "垃圾桶是空的" : query.trim() ? "找不到符合的素材" : "這裡還沒有素材\n按「匯入」或把檔案拖進來";
+    shownView.type === "trash" ? "垃圾桶是空的" : query.trim() || kind ? "找不到符合的素材" : "這裡還沒有素材\n按「匯入」或把檔案拖進來";
 
   return (
     <>
@@ -314,7 +344,19 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
                 </span>
               ))}
             </p>
-            <label className="ml-auto flex h-8 w-48 items-center gap-1.5 rounded-md border px-2 text-muted-foreground">
+            <Select value={kind ?? "all"} onValueChange={(value) => setKind(value === "all" ? null : (value as LibraryItemKind))}>
+              <SelectTrigger size="sm" className="ml-auto h-8 w-28" aria-label="類別">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KIND_FILTERS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <label className="flex h-8 w-48 items-center gap-1.5 rounded-md border px-2 text-muted-foreground">
               <Search className="size-4 shrink-0" />
               <Input
                 value={query}
@@ -337,6 +379,12 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
               >
                 <Trash />
                 清空垃圾桶
+              </Button>
+            )}
+            {shownView.type !== "trash" && (
+              <Button size="sm" variant="outline" onClick={() => setVideoOpen(true)}>
+                <Clapperboard />
+                影片連結
               </Button>
             )}
             {shownView.type !== "trash" && (
@@ -377,6 +425,8 @@ function LibraryManager({ initialView }: { readonly initialView: LibraryView }) 
           />
         </aside>
       </div>
+
+      <InsertVideoDialog open={videoOpen} onOpenChange={setVideoOpen} destination={videoDestination} />
 
       {/* 視窗本身有 transform（置中），fixed 定位會以它為準；標籤放到 body 才會跟著游標 */}
       {createPortal(<DragGhost ref={ghostRef}>{ghostLabel}</DragGhost>, document.body)}

@@ -4,7 +4,7 @@ import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/di
 import { Input } from "@/components/ui/input";
 import { fetchVideoInfo, useAddVideo } from "@/components/editor/use-add-video";
 import { formatVideoTime, videoNotice } from "@/lib/media/media-insert";
-import { parseYouTubeUrl } from "@/lib/media/youtube-url";
+import { parseYouTubeUrl, type YouTubeVideo } from "@/lib/media/youtube-url";
 import { isDesktop } from "@/lib/project/project-api";
 import { useProject } from "@/lib/project/project-context";
 import type { YouTubeInfo } from "@/lib/project/project-types";
@@ -16,27 +16,44 @@ const FETCH_DELAY_MS = 400;
 
 type Fetched = { readonly videoId: string; readonly info: YouTubeInfo | null };
 
+/** What the dialog does with the video, and how it says so. */
+export interface VideoDestination {
+  readonly title: string;
+  readonly description: string;
+  readonly applyLabel: string;
+  readonly onAdd: (video: YouTubeVideo, info: YouTubeInfo | null) => void;
+}
+
+interface InsertVideoDialogProps {
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  /** Default: the center of the current page (operation A). The library passes its own (operation B). */
+  readonly destination?: VideoDestination;
+}
+
 /**
- * 「插入 YouTube 影片連結」: paste a link, see the poster and title, add the video to the center of
- * the current page (multimedia plan step 4, operation A).
+ * 「插入 YouTube 影片」: paste a link, see the poster and title, then add the video — to the center
+ * of the current page (multimedia plan step 4, operation A) or wherever `destination` says (the
+ * library's 「新增影片連結」, step 8).
  *
  * Args:
- *   props.open / props.onOpenChange: Controlled visibility.
+ *   props: Controlled visibility and the optional destination.
  *
  * Returns:
  *   The dialog.
  */
-export function InsertVideoDialog({ open, onOpenChange }: { readonly open: boolean; readonly onOpenChange: (open: boolean) => void }) {
+export function InsertVideoDialog({ open, onOpenChange, destination }: InsertVideoDialogProps) {
   return (
     <SettingsDialog open={open} onOpenChange={onOpenChange}>
       {/* 關閉時卸載：每次開啟都是空白的 */}
-      {open && <InsertVideoForm onDone={() => onOpenChange(false)} />}
+      {open && <InsertVideoForm destination={destination} onDone={() => onOpenChange(false)} />}
     </SettingsDialog>
   );
 }
 
-function InsertVideoForm({ onDone }: { readonly onDone: () => void }) {
-  const { add } = useAddVideo();
+function InsertVideoForm({ destination, onDone }: { readonly destination?: VideoDestination; readonly onDone: () => void }) {
+  const { add: addToPage } = useAddVideo();
+  const add = destination?.onAdd ?? addToPage;
   const { resolveSrc } = useProject();
   const inputId = useId();
   const [text, setText] = useState("");
@@ -72,8 +89,8 @@ function InsertVideoForm({ onDone }: { readonly onDone: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>插入 YouTube 影片</DialogTitle>
-        <DialogDescription>貼上影片網址。影片會放在目前頁面的中央；翻頁書與 PDF 裡點了可以觀看。</DialogDescription>
+        <DialogTitle>{destination?.title ?? "插入 YouTube 影片"}</DialogTitle>
+        <DialogDescription>{destination?.description ?? "貼上影片網址。影片會放在目前頁面的中央；翻頁書與 PDF 裡點了可以觀看。"}</DialogDescription>
       </DialogHeader>
       <form
         className="flex flex-col gap-3"
@@ -114,7 +131,7 @@ function InsertVideoForm({ onDone }: { readonly onDone: () => void }) {
         )}
         <button type="submit" hidden />
       </form>
-      <SettingsDialogFooter onApply={apply} applyDisabled={!canAdd} applyLabel="加入" />
+      <SettingsDialogFooter onApply={apply} applyDisabled={!canAdd} applyLabel={destination?.applyLabel ?? "加入"} />
     </>
   );
 }
