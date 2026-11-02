@@ -62,6 +62,10 @@ base64 = "0.22"
 [dev-dependencies]
 tempfile = "3"
 
+# 開發版的相依套件不產生除錯資訊（.pdb）：target/debug 曾累積到約 70 GB，大半是相依套件的除錯資訊
+# 只影響第三方 crate；本專案自己的程式碼仍有完整除錯資訊（中斷點、堆疊追蹤照常）
+[profile.dev.package."*"]
+debug = false
 
 # 開發版（tauri dev / cargo test）也最佳化解碼圖片的套件：沒有最佳化時一張 24 MP 照片的縮圖要約 8 秒
 # 只列這幾個，不用 "*"（全部最佳化會讓開發版第一次編譯很久、也更吃記憶體）
