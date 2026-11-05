@@ -22,6 +22,7 @@ paths:
 - 上限 `STROKE_WIDTH_MAX`、`MAX_VERTEX_COUNT`、`MARGIN_MAX_PT`、`TEXT_SHADOW_OFFSET_MAX`、`FONT_SIZE_MIN` / `FONT_SIZE_MAX`：`validation.ts` / `format/mod.rs`（驗證在 `format/validate.rs`）。頁碼 `PAGE_NUMBER_MAX` / `PAGE_NUMBER_AFFIX_MAX_LENGTH`（`page-numbers.ts`）/ `validate_page_number_rules`。
 - 圖片框：`SHAPE_IMAGE_ZOOM_MAX`（10）、`SHAPE_IMAGE_FITS`、`isShapeImage` / `validate_shape_image`；照片位置只在前端（`photoPlacement`），Rust 讀 `ExportRequest.shapePhotos`。
 - 影片連結：`YOUTUBE_ID_PATTERN` / `YOUTUBE_ID_LENGTH` + `is_youtube_video_id`（11 個 `[A-Za-z0-9_-]`）、`YOUTUBE_START_MAX_SECONDS`（86 400）、`MEDIA_TITLE_MAX_CHARS`（200，以字元計：TS `Array.from`、Rust `chars()`）：`youtube-url.ts` / `validation.ts`（`isMediaOrigin` / `isMediaTitle`）/ `format/mod.rs` / `validate.rs`（`validate_media_origin`）。
+- 音訊（v19）：`MEDIA_AUDIO_EXTENSIONS`（`["mp3"]`）與 `src` 規則（`assets/audio/` 底下的單純檔名、小寫副檔名）：`validation.ts` 的 `isMediaAudioSrc` / `format/mod.rs` + `validate.rs`（`validate_media_origin` 的 `File`）。
 - 圖形庫 geometry：`SHAPE_PRESET_ID_MAX_LENGTH`（32，英數與 `-`）、`SHAPE_PRESET_PARAMS_MAX`（8）：`isShapePresetName` / `isShapeGeometry` / `is_preset_name` / `validate_geometry`。
 - 主頁鏈深度 `MASTER_DEPTH_MAX`（8）與引用規則：`master-pages.ts` / `format/validate.rs`。
 - 文字樣式：`TEXT_STYLE_NAME_MAX_LENGTH`（50）、名稱 / id 規則與引用（`style-sheet.ts` / `validate_text_styles`、`require_style`）；內建三個樣式 `defaultTextStyles` / `default_text_styles` 共用 `tests/fixtures/default-text-styles.json`。

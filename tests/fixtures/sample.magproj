@@ -1,6 +1,6 @@
 {
   "format": "magazine-editor/project",
-  "schemaVersion": 18,
+  "schemaVersion": 19,
   "id": "5d0b2c44-7f0e-4c43-9a55-1b2f3a4c5d6e",
   "createdAt": "2026-09-18T02:00:00Z",
   "modifiedAt": "2026-10-01T03:30:00Z",
@@ -290,6 +290,38 @@
               "zoom": 1
             },
             "title": "示範影片"
+          },
+          {
+            "id": "el-master-audio",
+            "type": "media",
+            "x": 320,
+            "y": 742,
+            "rotation": 0,
+            "width": 48,
+            "height": 48,
+            "source": { "kind": "file", "src": "assets/audio/00112233445566778899aabbccddeeff.mp3" },
+            "poster": null,
+            "title": "訪談片段"
+          },
+          {
+            "id": "el-master-audio-cover",
+            "type": "media",
+            "x": 260,
+            "y": 742,
+            "rotation": 0,
+            "width": 48,
+            "height": 48,
+            "source": { "kind": "file", "src": "assets/audio/ffeeddccbbaa99887766554433221100.mp3" },
+            "poster": {
+              "src": "assets/images/0123456789abcdef0123456789abcdef.jpg",
+              "imageWidth": 480,
+              "imageHeight": 360,
+              "fit": "cover",
+              "focusX": 0.5,
+              "focusY": 0.5,
+              "zoom": 1
+            },
+            "title": "配樂"
           }
         ]
       }

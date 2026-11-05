@@ -528,6 +528,7 @@ function elementPatch(state: EditorState, library: Library, element: CanvasEleme
     case "image":
       return ok({ ...position, ...(args.height !== undefined && { height: args.height }) });
     case "media":
+      if (args.startSeconds !== undefined && element.source.kind !== "youtube") return fail("音訊沒有開始時間（startSeconds 只用在影片）");
       return ok({
         ...position,
         ...(args.height !== undefined && { height: args.height }),

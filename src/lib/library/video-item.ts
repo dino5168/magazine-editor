@@ -5,7 +5,7 @@
  */
 import { createMediaElement } from "@/lib/editor/element-factory";
 import { shapeImageOf } from "@/lib/editor/shape-image";
-import type { MediaElement, Point, ShapeImage, Size } from "@/lib/editor/types";
+import type { Point, ShapeImage, Size, VideoElement } from "@/lib/editor/types";
 import type { YouTubeVideo } from "@/lib/media/youtube-url";
 import type { YouTubeInfo } from "@/lib/project/project-types";
 import { ITEM_NAME_MAX_CHARS, VIDEO_SRC_PREFIX, type VideoItem } from "./types";
@@ -53,7 +53,7 @@ export function videoItemFromInfo(video: YouTubeVideo, info: YouTubeInfo | null,
 }
 
 /** A video item from a video on a page: same video, start, title and poster image. */
-export function videoItemFromElement(media: MediaElement, place: NewItemPlace): VideoItem {
+export function videoItemFromElement(media: VideoElement, place: NewItemPlace): VideoItem {
   const { poster } = media;
   return {
     ...videoItemFromInfo(media.source, null, place),
@@ -68,7 +68,7 @@ function posterOfItem(item: VideoItem): ShapeImage | null {
 }
 
 /** A video element for a library item, centered on `center` (title = the item's name). */
-export function mediaFromVideoItem(item: VideoItem, page: Size, center: Point): MediaElement {
+export function mediaFromVideoItem(item: VideoItem, page: Size, center: Point): VideoElement {
   return createMediaElement({ kind: "youtube", videoId: item.videoId, start: item.start }, page, center, {
     poster: posterOfItem(item),
     title: item.name,

@@ -22,7 +22,7 @@ paths:
 ## 文件模型（`types.ts`）
 
 - 單位一律 **pt**，原點是頁面左上角。每種物件的 `x` / `y` 都是外框（旋轉前）左上角，旋轉也繞這一點。
-- 物件 `text` / `shape` / `image` / `line` / `media`（v18 影片連結：解析後的 `source`、封面 `poster` 和圖片框同一個 `ShapeImage`；畫布不能播放）；`Page.elements[0]` 是最底層（圖層面板反向顯示）。
+- 物件 `text` / `shape` / `image` / `line` / `media`（v18 影片連結：解析後的 `source`、封面 `poster` 和圖片框同一個 `ShapeImage`；v19 `source.kind: "file"` 是音訊；分辨用 `lib/media/media-kind.ts`；畫布不能播放）；`Page.elements[0]` 是最底層（圖層面板反向顯示）。
 - 線條沒有 width / height，`points` 相對於 x / y（`normalizeLinePoints`），`stroke` 不可 null；reducer 檢查**套用後**的整條線（`isValidLine`）。Rust 不認識線條，匯出前由前端換成路徑圖形。見 `editor-shapes-lines.md`。
 - 圖形 = 外框 + `geometry` + `fill` + `stroke | null` + `label | null` + `image | null`。**新增框型圖形 = 在 `SHAPE_LIBRARY` 加一筆**，不改 `ShapeGeometry`、檔案格式、Rust。
 - `element-factory.ts` 的 `ShapeKind` 是 UI 的圖形選項（`SHAPE_PRESETS` 對應 geometry）；文件存的是 `GeometryKind`。

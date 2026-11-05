@@ -390,6 +390,14 @@ fn validate_media_origin(origin: &MediaOrigin) -> AppResult<()> {
             }
             Ok(())
         }
+        MediaOrigin::File { src } => {
+            validate_asset_path_in(src, AUDIO_ASSET_DIR)?;
+            let extension = src.rsplit_once('.').map(|(_, extension)| extension);
+            if !extension.is_some_and(|extension| MEDIA_AUDIO_EXTENSIONS.contains(&extension)) {
+                return Err(AppError::invalid_project(format!("audio {src:?} is not one of {MEDIA_AUDIO_EXTENSIONS:?}")));
+            }
+            Ok(())
+        }
     }
 }
 
@@ -541,12 +549,21 @@ pub fn referenced_assets<'a>(document: &'a Document, assets: &'a [AssetInfo]) ->
     let sheets = document.pages.iter().map(|page| &page.elements).chain(document.masters.iter().map(|master| &master.elements));
     // 圖片框（圖形裡的照片）也算：否則開檔清理會刪掉只用在圖片框的照片
     let from_elements = sheets.flat_map(|elements| {
-        elements.iter().filter_map(|element| match element {
-            Element::Image(image) => Some(image.src.as_str()),
-            Element::Shape(shape) => shape.image.as_ref().map(|image| image.src.as_str()),
-            // 影片封面也算：否則開檔清理會刪掉封面
-            Element::Media(media) => media.poster.as_ref().map(|poster| poster.src.as_str()),
-            _ => None,
+        elements.iter().flat_map(|element| {
+            let (first, second): (Option<&str>, Option<&str>) = match element {
+                Element::Image(image) => (Some(&image.src), None),
+                Element::Shape(shape) => (shape.image.as_ref().map(|image| image.src.as_str()), None),
+                // 封面與音訊檔都算：否則開檔清理會刪掉只用在頁面上的檔案
+                Element::Media(media) => (
+                    media.poster.as_ref().map(|poster| poster.src.as_str()),
+                    match &media.source {
+                        MediaOrigin::File { src } => Some(src),
+                        MediaOrigin::Youtube { .. } => None,
+                    },
+                ),
+                Element::Text(_) | Element::Line(_) => (None, None),
+            };
+            first.into_iter().chain(second)
         })
     });
     let fonts = document.fonts.iter().flat_map(|font| std::iter::once(&font.regular).chain(&font.bold)).map(|file| file.src.as_str());

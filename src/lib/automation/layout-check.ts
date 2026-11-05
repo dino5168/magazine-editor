@@ -13,6 +13,7 @@ import type { Bounds, CanvasElement, PageId, ShapeElement, Sheet, TextAlign, Tex
 import type { Result } from "@/lib/editor/validation";
 import { pageLayers, type TextLayout } from "@/lib/export/export-request";
 import { measuredTextHeight, type MeasureText } from "./layout";
+import { mediaKindName } from "@/lib/media/media-kind";
 
 /** Most issues one call reports; the rest are counted in `truncated`. */
 export const LAYOUT_ISSUES_MAX = 50;
@@ -202,7 +203,7 @@ function describe(element: CanvasElement): string {
     case "line":
       return "線條";
     case "media":
-      return element.title !== "" ? `影片「${shortText(element.title)}」` : "影片";
+      return element.title !== "" ? `${mediaKindName(element)}「${shortText(element.title)}」` : mediaKindName(element);
   }
 }
 

@@ -679,7 +679,10 @@ const MEDIA_BADGE_RADIUS: f64 = 0.14;
 /// link), then the play badge's circle and triangle on top, all rotated with the video. Same
 /// drawing as the canvas's `MediaNode`, made of kinds every format already draws.
 fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<RenderElement> {
-    let MediaOrigin::Youtube { video_id, start } = &media.source;
+    let MediaOrigin::Youtube { video_id, start } = &media.source else {
+        // build_render 先略過音訊（步驟 5 才畫）
+        return Vec::new();
+    };
     let (width, height) = (media.width, media.height);
     let (sin, cos) = media.base.rotation.to_radians().sin_cos();
     // 外框內的一點（左上角為原點）旋轉後在頁面上的位置：和圖形內文字相同的換算
@@ -765,6 +768,8 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 // 編輯器匯出前把線條換成路徑圖形（buildExportRequest），匯出請求裡不該有線條
                 Element::Line(_) => return Err(AppError::invalid_input("匯出資料有誤：線條沒有先換成路徑")),
                 // 影片：封面（深色底 + 照片，和圖片框同一條路）+ 播放圖示，整個外框是連結
+                // 音訊（v19）：步驟 5 才畫（docs/16-Plans-Audio/02-Audio-素材-實作.md），先略過
+                Element::Media(MediaElement { source: MediaOrigin::File { .. }, .. }) => continue,
                 Element::Media(e) => {
                     let poster = render_photo(root, &e.base.id, e.poster.as_ref(), &request.shape_photos)?;
                     // 封面檔被刪除時只畫深色底，算進略過的圖片數（同圖片框）

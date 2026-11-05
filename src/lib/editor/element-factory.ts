@@ -496,12 +496,12 @@ const MEDIA_ASPECT = 16 / 9;
  * Returns:
  *   New media element.
  */
-export function createMediaElement(
-  source: MediaOrigin,
+export function createMediaElement<S extends MediaOrigin>(
+  source: S,
   page: Size,
   center: Point,
   options: Partial<Pick<MediaElement, "poster" | "title">> = {},
-): MediaElement {
+): MediaElement & { readonly source: S } {
   const width = Math.min(MEDIA_DEFAULT_WIDTH_PT, page.width * IMAGE_MAX_PAGE_RATIO, page.height * IMAGE_MAX_PAGE_RATIO * MEDIA_ASPECT);
   const height = width / MEDIA_ASPECT;
   return {
@@ -784,7 +784,7 @@ export function describeElement(element: CanvasElement): string {
     case "line":
       return describeLine(element);
     case "media":
-      return summarize(element.title, 20) ?? "YouTube 影片";
+      return summarize(element.title, 20) ?? (element.source.kind === "file" ? "音訊" : "YouTube 影片");
     default: {
       const exhaustive: never = element;
       return exhaustive;

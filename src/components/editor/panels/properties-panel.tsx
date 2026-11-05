@@ -37,6 +37,7 @@ import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
 import { VideoTab } from "../video-fields";
+import { isVideoElement, mediaKindName } from "@/lib/media/media-kind";
 
 type TabId = "style" | "text" | "line" | "video" | "arrange";
 
@@ -52,7 +53,8 @@ function tabsOf(element: CanvasElement): readonly TabId[] {
     case "image":
       return ["arrange"];
     case "media":
-      return ["video", "arrange"];
+      // 音訊的分頁在步驟 3（docs/16-Plans-Audio/02-Audio-素材-實作.md）
+      return isVideoElement(element) ? ["video", "arrange"] : ["arrange"];
     case "line":
       return ["line", "arrange"];
     default: {
@@ -71,7 +73,7 @@ function elementName(element: CanvasElement): string {
     case "image":
       return "圖片";
     case "media":
-      return "影片";
+      return mediaKindName(element);
     case "line":
       return describeLine(element);
     default: {
@@ -550,7 +552,7 @@ function SelectedProperties({ element }: { readonly element: CanvasElement }) {
           <LineTab line={element} update={update} />
         </TabsContent>
       )}
-      {element.type === "media" && (
+      {element.type === "media" && isVideoElement(element) && (
         <TabsContent value="video">
           <VideoTab media={element} update={update} />
         </TabsContent>

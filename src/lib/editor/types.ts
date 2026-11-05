@@ -219,20 +219,30 @@ export interface LineElement extends BaseElement {
 }
 
 /**
- * What a media element plays (v18). Stored parsed, never as the pasted link: exports build the
- * canonical URL (`youtube-url.ts` `youTubeWatchUrl`; Rust validates the id the same way).
+ * What a media element plays. A YouTube video (v18) is stored parsed, never as the pasted link:
+ * exports build the canonical URL (`youtube-url.ts` `youTubeWatchUrl`; Rust validates the id the
+ * same way). An audio file (v19) is a project file.
  */
-export type MediaOrigin = {
-  readonly kind: "youtube";
-  /** 11 characters of `[A-Za-z0-9_-]` (`YOUTUBE_ID_PATTERN`). */
-  readonly videoId: string;
-  /** Seconds, 0–`YOUTUBE_START_MAX_SECONDS`; 0 = from the beginning. */
-  readonly start: number;
-};
+export type MediaOrigin =
+  | {
+      readonly kind: "youtube";
+      /** 11 characters of `[A-Za-z0-9_-]` (`YOUTUBE_ID_PATTERN`). */
+      readonly videoId: string;
+      /** Seconds, 0–`YOUTUBE_START_MAX_SECONDS`; 0 = from the beginning. */
+      readonly start: number;
+    }
+  | {
+      readonly kind: "file";
+      /** `assets/audio/<hash>.mp3` (`MEDIA_AUDIO_EXTENSIONS`); a blob URL in browser mode. */
+      readonly src: string;
+    };
+
+export type YouTubeOrigin = Extract<MediaOrigin, { readonly kind: "youtube" }>;
+export type AudioOrigin = Extract<MediaOrigin, { readonly kind: "file" }>;
 
 /**
- * A video link (v18): a box showing a poster with a play mark; the flip book and PDF play / open it.
- * The canvas cannot play it.
+ * A video link (v18) or an audio file (v19): a box showing a poster (or a mark) with a play /
+ * speaker badge; the flip book and PDF play / open it. The canvas cannot play it.
  */
 export interface MediaElement extends BaseElement {
   readonly type: "media";
@@ -247,6 +257,11 @@ export interface MediaElement extends BaseElement {
   /** Video title (layers panel, link text); may be empty; at most `MEDIA_TITLE_MAX_CHARS`. */
   readonly title: string;
 }
+
+/** A media element playing a YouTube video (narrowed with `isVideoElement`, `lib/media/media-kind.ts`). */
+export type VideoElement = MediaElement & { readonly source: YouTubeOrigin };
+/** A media element playing an audio file (v19; `isAudioElement`). */
+export type AudioElement = MediaElement & { readonly source: AudioOrigin };
 
 export type CanvasElement = TextElement | ShapeElement | ImageElement | LineElement | MediaElement;
 

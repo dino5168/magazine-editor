@@ -353,13 +353,33 @@ export function isShapeImage(value: unknown): value is ShapeImage {
 /** Longest video title (characters); same as `MEDIA_TITLE_MAX_CHARS` in Rust. */
 export const MEDIA_TITLE_MAX_CHARS = 200;
 
+/** Audio formats a media element may play (v19: mp3 only); same as `MEDIA_AUDIO_EXTENSIONS` in Rust. */
+export const MEDIA_AUDIO_EXTENSIONS: readonly string[] = ["mp3"];
+
+/** Directory of project audio files; same as `AUDIO_ASSET_DIR` in Rust. */
+const AUDIO_ASSET_PREFIX = "assets/audio/";
+
 /**
- * Checks what a media element plays (same rules as Rust `validate_media_source`): a YouTube id of
- * 11 `[A-Za-z0-9_-]` characters and a whole-second start 0–`YOUTUBE_START_MAX_SECONDS`.
+ * Whether an audio `src` may go on a page: a project path must be a plain file under
+ * `assets/audio/` with an allowed extension (lower case, like the files Rust writes); anything else
+ * non-empty is a browser-mode blob URL (Rust checks again when saving).
+ */
+export function isMediaAudioSrc(src: string): boolean {
+  if (!src.startsWith("assets/")) return src.length > 0;
+  const file = src.slice(AUDIO_ASSET_PREFIX.length);
+  const extension = file.includes(".") ? file.slice(file.lastIndexOf(".") + 1) : "";
+  return src.startsWith(AUDIO_ASSET_PREFIX) && /^[^./\\:][^/\\:]*$/.test(file) && MEDIA_AUDIO_EXTENSIONS.includes(extension);
+}
+
+/**
+ * Checks what a media element plays (same rules as Rust `validate_media_origin`): a YouTube id of
+ * 11 `[A-Za-z0-9_-]` characters and a whole-second start 0–`YOUTUBE_START_MAX_SECONDS`, or an
+ * audio file (`isMediaAudioSrc`).
  */
 export function isMediaOrigin(value: unknown): value is MediaOrigin {
   if (typeof value !== "object" || value === null) return false;
-  const { kind, videoId, start } = value as Record<string, unknown>;
+  const { kind, videoId, start, src } = value as Record<string, unknown>;
+  if (kind === "file") return typeof src === "string" && isMediaAudioSrc(src);
   return (
     kind === "youtube" &&
     typeof videoId === "string" &&

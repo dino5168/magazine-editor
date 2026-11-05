@@ -37,7 +37,9 @@ pub const FORMAT_ID: &str = "magazine-editor/project";
 /// none (`docs/07-Plans-物件屬性與事件/03-圖形照片-實作.md`).
 /// v18: media elements (`type: "media"`, a YouTube video link with an optional poster). Older App
 /// versions refuse the file as newer (`docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md`).
-pub const SCHEMA_VERSION: u32 = 18;
+/// v19: media elements may play an audio file (`source: { kind: "file", src }`, mp3 only). No
+/// upgrade step (`docs/16-Plans-Audio/02-Audio-素材-實作.md`).
+pub const SCHEMA_VERSION: u32 = 19;
 pub const PROJECT_FILE_NAME: &str = "project.magproj";
 /// Largest stroke width (pt); same as `STROKE_WIDTH_MAX` in `src/lib/editor/validation.ts`.
 pub const STROKE_WIDTH_MAX: f64 = 100.0;
@@ -52,6 +54,9 @@ pub const SHAPE_IMAGE_ZOOM_MAX: f64 = 10.0;
 pub const MEDIA_TITLE_MAX_CHARS: usize = 200;
 /// Latest video start time (seconds); same as `YOUTUBE_START_MAX_SECONDS` in `src/lib/media/youtube-url.ts`.
 pub const YOUTUBE_START_MAX_SECONDS: u32 = 86_400;
+/// Audio formats a media element may play (v19: mp3 only); same as `MEDIA_AUDIO_EXTENSIONS` in
+/// `src/lib/editor/validation.ts`. The library imports more (`assets.rs`), but only these go on pages.
+pub const MEDIA_AUDIO_EXTENSIONS: &[&str] = &["mp3"];
 /// Length of a YouTube video id (characters of `[A-Za-z0-9_-]`); same as `YOUTUBE_ID_PATTERN` in TS.
 pub const YOUTUBE_ID_LENGTH: usize = 11;
 /// Largest |coordinate| of a line point (pt); same as `LINE_COORDINATE_MAX` in TS.

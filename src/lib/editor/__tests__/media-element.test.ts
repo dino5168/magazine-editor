@@ -32,6 +32,29 @@ describe("media values", () => {
     }
   });
 
+  it("accepts mp3 files under assets/audio and browser-mode blob URLs (v19, same paths as Rust)", () => {
+    const audio = (src: unknown) => ({ kind: "file", src });
+    expect(isMediaOrigin(audio("assets/audio/0123abcd.mp3"))).toBe(true);
+    // 瀏覽器模式的素材是 blob URL，Rust 不會看到
+    expect(isMediaOrigin(audio("blob:http://localhost:1420/1f2e"))).toBe(true);
+    for (const src of [
+      "assets/audio/a.wav",
+      "assets/audio/a.ogg",
+      "assets/audio/a.m4a",
+      "assets/audio/a.MP3",
+      "assets/audio/mp3",
+      "assets/audio/.mp3",
+      "assets/audio/sub/a.mp3",
+      "assets/audio/../a.mp3",
+      "assets/images/a.mp3",
+      "",
+      42,
+    ]) {
+      expect(isMediaOrigin(audio(src)), String(src)).toBe(false);
+    }
+    expect(isMediaOrigin({ kind: "url", src: "https://example.com/a.mp3" })).toBe(false);
+  });
+
   it("counts title length in characters, like Rust chars()", () => {
     expect(isMediaTitle("")).toBe(true);
     expect(isMediaTitle("影".repeat(MEDIA_TITLE_MAX_CHARS))).toBe(true);
@@ -57,6 +80,7 @@ describe("createMediaElement", () => {
   it("describes itself by title, or as a YouTube video", () => {
     expect(describeElement(createMediaElement(VIDEO, A4, { x: 0, y: 0 }))).toBe("YouTube 影片");
     expect(describeElement(createMediaElement(VIDEO, A4, { x: 0, y: 0 }, { title: "訪談" }))).toBe("訪談");
+    expect(describeElement(createMediaElement({ kind: "file", src: "assets/audio/a.mp3" }, A4, { x: 0, y: 0 }))).toBe("音訊");
   });
 
   it("has its box as bounds", () => {
@@ -88,5 +112,15 @@ describe("media in the reducer", () => {
     }
     const next = run(state, { type: "element/update", id: video.id, patch: { source: { ...VIDEO, start: 90 }, poster: POSTER, title: "訪談" } });
     expect(selectActivePage(next).elements[0]).toMatchObject({ source: { start: 90 }, poster: POSTER, title: "訪談" });
+  });
+
+  it("adds audio (v19) and refuses formats other than mp3", () => {
+    const audio = createMediaElement({ kind: "file", src: "assets/audio/a.mp3" }, A4, { x: 0, y: 0 }, { title: "訪談" });
+    expect(add(audio)).toHaveLength(1);
+    expect(add({ ...audio, source: { kind: "file", src: "assets/audio/a.wav" } })).toHaveLength(0);
+    const state = run(blankState(), { type: "element/add", element: audio });
+    expect(run(state, { type: "element/update", id: audio.id, patch: { source: { kind: "file", src: "assets/audio/b.ogg" } } })).toBe(state);
+    const next = run(state, { type: "element/update", id: audio.id, patch: { source: { kind: "file", src: "assets/audio/b.mp3" } } });
+    expect(selectActivePage(next).elements[0]).toMatchObject({ source: { kind: "file", src: "assets/audio/b.mp3" } });
   });
 });

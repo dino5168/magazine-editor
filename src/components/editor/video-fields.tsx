@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createId } from "@/lib/editor/element-factory";
-import type { ElementPatch, MediaElement } from "@/lib/editor/types";
+import type { ElementPatch, VideoElement } from "@/lib/editor/types";
 import { useLibrary, useLibraryDispatch } from "@/lib/library/library-context";
 import { videoItemFromElement } from "@/lib/library/video-item";
 import { MEDIA_TITLE_MAX_CHARS } from "@/lib/editor/validation";
@@ -82,7 +82,7 @@ function openLink(url: string): void {
  * Returns:
  *   The tab's sections.
  */
-export function VideoTab({ media, update }: { readonly media: MediaElement; readonly update: Update }) {
+export function VideoTab({ media, update }: { readonly media: VideoElement; readonly update: Update }) {
   const { videoId, start } = media.source;
   const url = youTubeWatchUrl(videoId, start);
   const [busy, setBusy] = useState(false);

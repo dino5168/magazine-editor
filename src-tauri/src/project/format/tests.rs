@@ -568,7 +568,7 @@ fn asset_paths_per_directory() {
 fn referenced_assets_includes_elements_and_asset_list() {
     let project = parse_project(FIXTURE).unwrap();
     let refs: Vec<_> = referenced_assets(&project.document, &project.assets).collect();
-    assert!(refs.iter().all(|src| src.starts_with("assets/images/") || src.starts_with("assets/fonts/")));
+    assert!(refs.iter().all(|src| ["assets/images/", "assets/fonts/", "assets/audio/"].iter().any(|dir| src.starts_with(dir))));
     assert!(refs.len() >= 2);
     // 只用在主頁上的圖片也要算進去，開檔清理才不會刪掉它
     assert!(refs.contains(&"assets/images/fedcba9876543210fedcba9876543210.png"));
@@ -709,6 +709,62 @@ fn rejects_invalid_media_elements() {
         value.pointer_mut(VIDEO).unwrap().as_object_mut().unwrap().remove(key);
         assert!(parse_project(&value.to_string()).is_err(), "missing {key}");
     }
+}
+
+const AUDIO: &str = "/document/masters/1/elements/5";
+
+#[test]
+fn reads_audio_elements_and_counts_their_files() {
+    let project = parse_project(FIXTURE).unwrap();
+    let Element::Media(audio) = &project.document.masters[1].elements[5] else { panic!("expected the audio") };
+    assert_eq!(audio.source, MediaOrigin::File { src: "assets/audio/00112233445566778899aabbccddeeff.mp3".into() });
+    assert_eq!((audio.width, audio.height, audio.title.as_str(), audio.poster.is_none()), (48.0, 48.0, "訪談片段", true));
+    // 音訊檔只有頁面在用（不在素材庫）：開檔清理要把它算進引用；有封面的音訊兩個檔案都算
+    let refs: Vec<_> = referenced_assets(&project.document, &project.assets).collect();
+    for src in ["assets/audio/00112233445566778899aabbccddeeff.mp3", "assets/audio/ffeeddccbbaa99887766554433221100.mp3"] {
+        assert!(refs.contains(&src), "{src}");
+    }
+    assert_eq!(refs.iter().filter(|src| **src == "assets/images/0123456789abcdef0123456789abcdef.jpg").count(), 2);
+    let round_trip: Value = serde_json::to_value(&project.document.masters[1].elements[5]).unwrap();
+    let original: Value = serde_json::from_str::<Value>(FIXTURE).unwrap().pointer(AUDIO).unwrap().clone();
+    assert_eq!(round_trip["source"], original["source"]);
+}
+
+#[test]
+fn rejects_invalid_audio_sources() {
+    use serde_json::json;
+    let with = |source: Value| {
+        let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+        value.pointer_mut(AUDIO).unwrap()["source"] = source;
+        parse_project(&value.to_string())
+    };
+    assert!(with(json!({ "kind": "file", "src": "assets/audio/a.mp3" })).is_ok());
+    for bad in [
+        // 只有 mp3 能放到頁面（素材庫可以匯入其他格式）
+        json!({ "kind": "file", "src": "assets/audio/a.wav" }),
+        json!({ "kind": "file", "src": "assets/audio/a.ogg" }),
+        json!({ "kind": "file", "src": "assets/audio/a.m4a" }),
+        json!({ "kind": "file", "src": "assets/audio/a.MP3" }),
+        json!({ "kind": "file", "src": "assets/audio/mp3" }),
+        json!({ "kind": "file", "src": "assets/images/a.mp3" }),
+        json!({ "kind": "file", "src": "assets/audio/../secret.mp3" }),
+        json!({ "kind": "file", "src": "assets/audio/sub/a.mp3" }),
+        json!({ "kind": "file", "src": "" }),
+        json!({ "kind": "file" }),
+        // 網址音訊還沒有（擴充選項）
+        json!({ "kind": "url", "src": "https://example.com/a.mp3" }),
+    ] {
+        assert!(with(bad.clone()).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn version_18_files_still_open() {
+    // v19 沒有升級步驟：v18 的檔案（沒有音訊）照樣讀得到
+    let mut value: Value = serde_json::from_str(FIXTURE).unwrap();
+    value["schemaVersion"] = Value::from(18);
+    value.pointer_mut("/document/masters/1/elements").unwrap().as_array_mut().unwrap().truncate(5);
+    assert!(parse_project(&value.to_string()).is_ok());
 }
 
 #[test]

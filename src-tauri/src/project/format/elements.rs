@@ -365,8 +365,9 @@ pub struct LineElement {
     pub end: LineEnd,
 }
 
-/// What a media element plays (v18); same as `MediaOrigin` in `src/lib/editor/types.ts`. Stored
-/// parsed: exports build the canonical URL from the id.
+/// What a media element plays; same as `MediaOrigin` in `src/lib/editor/types.ts`. A YouTube
+/// video (v18) is stored parsed: exports build the canonical URL from the id. An audio file (v19)
+/// is a project file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum MediaOrigin {
@@ -376,9 +377,12 @@ pub enum MediaOrigin {
         /// Seconds, 0–`YOUTUBE_START_MAX_SECONDS`.
         start: u32,
     },
+    /// v19: an mp3 under `assets/audio/` (`MEDIA_AUDIO_EXTENSIONS`).
+    File { src: String },
 }
 
-/// A video link (v18): a box with a poster; the flip book and PDF play / open the video.
+/// A video link (v18) or an audio file (v19): a box with a poster or a mark; the flip book and PDF
+/// play / open it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MediaElement {
     #[serde(flatten)]

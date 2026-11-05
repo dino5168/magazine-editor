@@ -464,6 +464,8 @@ mod tests {
             assert!(dir.join(&src).is_file(), "{src} copied");
         }
         assert!(referenced(&content).iter().any(|src| src.starts_with(FONT_ASSET_DIR)));
+        // 頁面上的音訊（v19）也跟著範本走
+        assert!(referenced(&content).iter().any(|src| src.starts_with("assets/audio/")));
         assert!(dir.join(master_image(&content)).is_file());
         // 暫存資料夾不會留下
         assert!(fs::read_dir(base.path()).unwrap().flatten().all(|e| !e.file_name().to_string_lossy().starts_with('.')));

@@ -14,7 +14,7 @@
 ## 目前在做什麼
 
 - **多媒體（影片超連結 → 音訊）**：`docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md`。影片階段（步驟 1–9）完成、使用者測試 OK；步驟 10（本機開檔改成說明層，不自動開新視窗）完成（`8fda375`，待使用者雙擊 `index.html` 驗證）。**下一步：步驟 11**（App 內預覽翻頁書）。音訊改由下一項的計畫取代 A1–A3。**網站上的書內播放**：使用者會把 `docs/15-Pland-Mp4/2-web-magazine-書內播放-建議.md` 交給 web-magazine（伺服器與閱讀頁 iframe 的 sandbox / allow）。
-- **音訊素材**：`docs/16-Plans-Audio/02-Audio-素材-實作.md`（2026-11-05 計畫定案：`media` 加 `source: file`（v19）、先只做 mp3、小喇叭按鈕、翻頁書播放列翻頁就停、顯示時間長度、「檔案 → 匯入 → 音訊...」）。步驟 1（試聽與時間長度、CSP `media-src`）完成，未 commit；**待使用者在桌面版素材管理試聽 mp3、拖進度條**。下一步：步驟 2（v19）。
+- **音訊素材**：`docs/16-Plans-Audio/02-Audio-素材-實作.md`（2026-11-05 計畫定案：`media` 加 `source: file`（v19）、先只做 mp3、小喇叭按鈕、翻頁書播放列翻頁就停、顯示時間長度、「檔案 → 匯入 → 音訊...」）。步驟 1（試聽與時間長度、CSP `media-src`）`e25387f`，**待使用者在桌面版素材管理試聽 mp3、拖進度條**；步驟 2（v19 `source: file`）完成，未 commit。下一步：步驟 3（放到頁面、畫布喇叭、屬性面板）。
 - **上傳翻頁書到網站**：`docs/13-Plans-電子書上傳/5-desktop上傳-實作-V2.md`。剩下步驟 0（另開 web-magazine 工作階段：上傳白名單加 `gif`、`txt`，同步改 `桌面上傳API.md` 與測試；沒做之前 GIF 圖片與 `page-flip.LICENSE.txt` 上傳後會被網站略過）與步驟 6（使用者的人工驗證，見下方待辦）。規則：`.claude/rules/upload.md`。
 
 ## 最近完成（全部已 commit；11-01 的還沒 push）

@@ -229,7 +229,7 @@ function elementSummary(element: CanvasElement): string {
     case "line":
       return `${describeLine(element)}，${element.points.length} 個點，線條 ${element.stroke.color}`;
     case "media":
-      return `YouTube 影片 ${element.source.videoId}${element.title !== "" ? `「${excerpt(element.title)}」` : ""}`;
+      return `${element.source.kind === "youtube" ? `YouTube 影片 ${element.source.videoId}` : `音訊 ${element.source.src}`}${element.title !== "" ? `「${excerpt(element.title)}」` : ""}`;
   }
 }
 

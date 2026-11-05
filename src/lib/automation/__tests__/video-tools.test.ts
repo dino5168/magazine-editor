@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createInitialState, selectActivePage } from "@/lib/editor/editor-reducer";
-import { createBlankDocument } from "@/lib/editor/element-factory";
+import { createInitialState, editorReducer, selectActivePage } from "@/lib/editor/editor-reducer";
+import { createBlankDocument, createMediaElement } from "@/lib/editor/element-factory";
 import type { MediaElement } from "@/lib/editor/types";
 import type { Library } from "@/lib/library/types";
 import type { YouTubeInfo } from "@/lib/project/project-types";
@@ -100,5 +100,15 @@ describe("video items and fields", () => {
     expect(session.call("update_element", { id, startSeconds: 86_401 }).error?.message).toContain("參數 startSeconds");
     const text = session.ok("add_text", { text: "x", x: 0, y: 0 });
     expect(session.call("update_element", { id: text.id, title: "x" }).error?.message).toContain("不能修改：title");
+  });
+
+  it("refuses a start time on audio (v19) but changes its title", () => {
+    const page = selectActivePage(state);
+    const audio = createMediaElement({ kind: "file", src: "assets/audio/a.mp3" }, page, { x: 100, y: 100 });
+    const session = toolSession(editorReducer(state, { type: "element/add", element: audio }), NO_COMMANDS, library);
+    expect(session.call("update_element", { id: audio.id, startSeconds: 5 }).error?.message).toContain("音訊沒有開始時間");
+    session.ok("update_element", { id: audio.id, title: "訪談" });
+    expect(selectActivePage(session.state).elements[0]).toMatchObject({ source: { kind: "file", src: "assets/audio/a.mp3" }, title: "訪談" });
+    expect(session.ok("list_elements", {}).elements[0].summary).toContain("音訊 assets/audio/a.mp3");
   });
 });
