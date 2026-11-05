@@ -76,7 +76,7 @@ type MediaOrigin =
 | 輸出 | 音訊 |
 |---|---|
 | 翻頁書 | 播放列；`file://` 也能播（檔案在書裡） |
-| EPUB | `<audio controls>`（mp3、manifest `audio/mpeg`） |
+| EPUB | **只有喇叭圖示**（2026-11-05 決定，見進度紀錄步驟 8；可以點的做法列入 §6 擴充） |
 | PDF / PPTX / `render_page` | 只有按鈕圖示；匯出完提示「N 個音訊在 PDF（PowerPoint）裡不能播放」 |
 | 上傳到網站 | 書裡的 mp3 一起上傳（白名單要先加，步驟 7） |
 
@@ -132,6 +132,7 @@ type MediaOrigin =
 | 每個音訊自己設定「翻頁要不要停」 | 新欄位（提升版本）+ 屬性面板 + `viewer.js` |
 | 播放範圍（開始 / 結束時間）、循環 | 新欄位 + 試聽 + 翻頁書 / EPUB（EPUB 用 media fragment `#t=`） |
 | 把音訊檔直接拖到畫布 | 畫布的檔案拖放加音訊分支（匯入素材庫 → 放到放開的位置） |
+| EPUB 裡可以播放 | 實測閱讀器的 `<audio controls>` 縮到按鈕大小時不能用（步驟 8）。候選：scripted EPUB（點喇叭播放 / 暫停，`properties="scripted"`，Apple Books / Thorium 可用）或按鈕旁放加寬的播放列。和 EPUB 改版（`0-Task/plan-epubv2.md`）一起設計 |
 | PowerPoint 內嵌音訊 | PPTX `p:audioFile` + 媒體關聯 |
 
 ---
@@ -153,3 +154,6 @@ type MediaOrigin =
 | 2026-11-05 | 步驟 5 完成 | Rust `render.rs`：`media_elements` 對音訊改走 `audio_elements`（不再略過），拆成既有的畫法，所以 PDF、PowerPoint、`render_page`、EPUB / 翻頁書的頁面**都不用新的繪製程式**：沒有封面（或封面檔不見，算進略過的圖片）= 填滿外框的 `Ellipse`（`#4338ca`）+ 喇叭；有封面 = 深色 `Rect`（封面是 `photo`）+ 徽章 `Ellipse` + 喇叭。喇叭 = 本體 `RenderPolygon` + 兩段聲波（扇環，Move / 外弧 / Line / 內弧 / Close）合成一個 `RenderPath`（外框座標，跟著旋轉），弧用新的 `arc_segment`（≤ 90° 一段三次曲線）。數字照抄 `speaker-mark.ts`（`cross-language.md` 已記）。**沒有連結**。前端 `export-request.ts` 的 `audioElementCount`（含主頁複本）：匯出 PDF / PowerPoint 後提示「有 N 個音訊：PDF 裡只有喇叭圖示，不能播放（翻頁電子書可以播放）」。測試：render 2 項（沒封面三個部件的位置 / 大小 / 聲波路徑在外框內與 45° 終點、沒有連結；有封面四個部件、旋轉 90° 的徽章位置、封面檔不見退回圓形並計數）、PDF 1 項（點陣化後按鈕色、喇叭本體、內外聲波白、兩圈之間與 ±45° 以外是按鈕色、沒有連結）、vitest 1 項（計數含主頁、不算影片）。**疊圖比對**（無頭 Edge 2× 截畫布 vs `export_preview` 的 2 px/pt PNG，兩個按鈕：80 × 80、96 × 64 轉 30°；各自以按鈕色外框對齊，取 41 × 41 點分類）：不同的點 41 / 1681、63 / 1681，全在反鋸齒的邊緣，形狀一致。全部：vitest 1253、cargo 339 通過，clippy 仍是原本 5 個 |
 | 2026-11-05 | 步驟 5 commit | `05bae98` |
 | 2026-11-05 | 步驟 6 完成（上傳要等步驟 7） | **Rust**：`RenderElement.audio`（`RenderAudio { src, title }`，放在按鈕的第一個部件；PDF / PPTX 不讀）。`html::collect_audio`（重用 `PageImages`：看檔頭只收 mp3（`assets::detect_audio_extension` 改成 `pub(crate)`）、`media/audio-<n>.mp3`、同一檔一次；不見 / 不是 mp3 時每個按鈕算進 `skipped_images`，按鈕照畫但不能播）。`page_div` 多一個 `audio` 參數（EPUB 傳空的，步驟 8 再接）；`audio_markup` 在頁面最上層寫透明的 `<a class="el link audio" href="media/…" data-audio role="button" aria-pressed="false" aria-label="播放音訊：標題">`（標題經 escape；圓形按鈕加 `border-radius:50%`；沒有 viewer 時點了直接開 mp3）。CSP：有音訊的書才加 `media-src 'self'`；Zip 裡 mp3 不壓縮。`PAGE_RULES` 加播放中的外圈。**viewer.js**「音訊」段：一個不放進頁面的 `<audio>` + 書上方置中的 `#audio` 播放列（播放 / 暫停鍵、標題、進度條、時間、✕；z-index 在放大檢視之上、影片層之下）；點同一個 = 暫停 / 繼續、點別的 = 換曲；**翻頁就停並收起**（`flip` 事件）、Esc 停止、✕ 停止；空白鍵在按鈕上也能按；Ctrl / Shift / ⌘ + 點擊照瀏覽器開檔。`aria-pressed` 依檔案標記：同一個檔案放在兩個按鈕時一起亮，同一跨頁上點另一個同檔的按鈕 = 暫停（同一段音訊）。**前端**：略過提示改成「圖片或音訊」（匯出與上傳對話框）。測試：翻頁書 3 項（檔案收進 `media/`、連結屬性與 escape、圓形外框、CSP、Zip 不壓縮；同一檔只收一次、檔案不見時沒有連結與 media-src 並計數；wav 內容被略過）；全部 vitest 1253、cargo 342 通過，clippy 仍是原本 5 個。**瀏覽器實測**（ffmpeg 產生兩個真的 mp3，4 頁的書，無頭 Edge，`file://` 與 `http://` 各一次）：CSP 有 `media-src 'self'`；點封面的按鈕 → 播放列出現、標題、時間走、按鈕外圈；再點 → 暫停、時間不動；翻到 2–3 頁 → 播放列收起；點 B 播放、點 A 換曲；Esc 收起；進度拉到 5 秒 → `0:05 / 0:06`；縮圖裡沒有連結；console 沒有錯誤。**還沒測**：放大檢視裡點音訊、手機寬度的版面。**上傳**：目前有音訊的書上傳會被拒絕（「網站不接受的檔案」），步驟 7 兩邊加 `mp3` 後才能上傳 |
+| 2026-11-05 | 步驟 6 commit | `03f8d39` |
+| 2026-11-05 | 步驟 7 交接（本機部分等網站） | 寫好 `03-web-magazine-音訊上傳-建議.md`（白名單加 `mp3`、檔頭規則、`Content-Type: audio/mpeg`、**`Range` / 206**（拖進度條需要）、sandbox 不用改但要實測、契約文件與測試、驗收清單、回報內容）。**順序**：網站先做並回報，本機才在 `ALLOWED_EXTENSIONS` 加 `mp3`（反過來會讓檔案被網站略過、按鈕沒聲音；現在是上傳前就拒絕，比較好）。本機剩下：加 `mp3`、檔案太大時說明音訊佔多少 |
+| 2026-11-05 | 步驟 8 決定：EPUB 只畫圖示 | 試做 `<audio controls>`（manifest `audio/mpeg`、放在按鈕外框上）：epubcheck 0 錯誤，但 **Edge 把 64 px 的控制項縮成「⋮」選單、蓋住喇叭、點了不播**。使用者決定**先只畫圖示**（同 PDF），可以點的做法列入 §6 擴充、和 EPUB 改版一起設計；試做的程式已還原。EPUB 本來就沒收音訊（`page_div` 的 `audio` 傳空的）。加測試 `audio_is_only_its_speaker_icon`（畫了喇叭、沒有 `<audio>` / 連結 / `media/` 檔、manifest 沒有 `audio/mpeg`、合法 XHTML）；`epub_preview`（4 頁、3 個音訊）+ epubcheck：0 / 0 / 0。EPUB 的匯出選單還是佔位，所以沒有「不能播放」的提示要加 |

@@ -13,7 +13,7 @@ paths:
   - `docs/13-Plans-電子書上傳/`：上傳翻頁書到 web-magazine 網站（2026-10-28 起；`4-資安評估.md`、需求 `5-desktop 上傳.md`、初版 `5-desktop上傳-實作.md`（兩邊共用）、**本系統的計畫 `5-desktop上傳-實作-V2.md`**）。後端與 API 合約在另一個 repo（web-magazine）。
   - `docs/14-Plan-ClaudeCode看見畫面/`：讓 MCP 檢查版面與看到頁面（2026-10-31 起；建議書 `App-開發建議事項.md`（來自 web-magazine 工作區）、**計畫 `1-看見畫面-實作.md`**：`check_layout`、`render_page`）。
   - `docs/15-Pland-Mp4/`：多媒體（2026-11-01 起；需求 `1-加入hyperlink-Mp4.md` → 計畫 `1-加入hyperlink-Mp4-實作.md`：先 YouTube 影片超連結、再音訊；頁面物件 `media` 一種、素材庫 `video` / `audio` 兩種；給 web-magazine 的 `2-web-magazine-書內播放-建議.md`）。
-  - `docs/16-Plans-Audio/`：音訊素材（2026-11-05 起；需求 `1-Audio-素材.md` → 評估 `01-Audio-素材-評估.md` → 使用者回覆 `01-使用者回復.md` → **計畫 `02-Audio-素材-實作.md`**：`media` 加 `source: file`（v19）、先只做 mp3、翻頁書播放列翻頁就停）。取代影片計畫的 A 階段。
+  - `docs/16-Plans-Audio/`：音訊素材（2026-11-05 起；需求 `1-Audio-素材.md` → 評估 `01-Audio-素材-評估.md` → 使用者回覆 `01-使用者回復.md` → **計畫 `02-Audio-素材-實作.md`**：`media` 加 `source: file`（v19）、先只做 mp3、翻頁書播放列翻頁就停）；給 web-magazine 的 `03-web-magazine-音訊上傳-建議.md`。取代影片計畫的 A 階段。
   - `docs/06-Plans-繪圖/`：繪圖（2026-10-15 起；`01-繪圖-評估.md`（可行性）、`01-繪圖-實作.md`（圖形庫）、`02-元素面板-Accordion-實作.md`）。
   - `docs/01-Plans/`：早期的任務檔與計畫（`03-`～`07-` 任務檔、`imp-tool-bar.md`、`imp-tldraw-bar.md`、`imp-color-picker.md`、EPUB 計畫、MCP 評估）；之後的計畫在 `docs/Plans/`。
 

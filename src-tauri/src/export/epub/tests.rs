@@ -303,6 +303,24 @@ fn videos_link_to_youtube_without_a_target() {
 }
 
 #[test]
+fn audio_is_only_its_speaker_icon() {
+    // 2026-11-05 決定：EPUB 先只畫喇叭（閱讀器的 <audio controls> 縮到按鈕大小時不能用），不收音訊檔
+    let (root, req) = crate::export::test_support::audio_request();
+    let path = root.path().join(crate::export::test_support::AUDIO_SRC);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, b"ID3\x04\0\0\0\0\0\0fake mp3 frames").unwrap();
+    let output = build_epub(root.path(), &req, &meta()).unwrap();
+    assert_eq!(output.skipped_images, 0);
+    let entries = unzip(&output.bytes);
+    let page = text_of(&entries, "OEBPS/pages/page-1.xhtml");
+    assert!(page.contains("#4338ca") && page.contains("<polygon"), "the speaker is drawn");
+    assert!(!page.contains("<audio") && !page.contains("data-audio") && !page.contains("media/"), "no player");
+    assert!(entries.iter().all(|(name, _)| !name.contains("/media/")));
+    assert!(!text_of(&entries, "OEBPS/content.opf").contains("audio/mpeg"));
+    parse(page);
+}
+
+#[test]
 fn embeds_only_used_font_families() {
     let fonts_in = |family: &str| {
         let mut document = fixture_document();
