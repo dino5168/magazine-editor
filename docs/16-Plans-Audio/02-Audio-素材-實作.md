@@ -1,7 +1,7 @@
 # 音訊素材：實作計畫
 
 > 需求：`1-Audio-素材.md`。評估：`01-Audio-素材-評估.md`。使用者回覆：`01-使用者回復.md`。日期：2026-11-05。
-> 狀態：**計畫定案，可以開始步驟 1**。一次做一步，每步可以單獨驗證與 commit（不自動 commit）。
+> 狀態：**步驟 1–6、8、9 完成（2026-11-05，`e25387f`…`ce91f23`）；步驟 7 的本機部分等 web-magazine 回報**（`03-web-magazine-音訊上傳-建議.md`）。一次做一步，每步可以單獨驗證與 commit（不自動 commit）。
 > 取代 `docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md` 的「A 階段：音訊」（A1–A3）。
 
 ---
@@ -159,3 +159,4 @@ type MediaOrigin =
 | 2026-11-05 | 步驟 8 決定：EPUB 只畫圖示 | 試做 `<audio controls>`（manifest `audio/mpeg`、放在按鈕外框上）：epubcheck 0 錯誤，但 **Edge 把 64 px 的控制項縮成「⋮」選單、蓋住喇叭、點了不播**。使用者決定**先只畫圖示**（同 PDF），可以點的做法列入 §6 擴充、和 EPUB 改版一起設計；試做的程式已還原。EPUB 本來就沒收音訊（`page_div` 的 `audio` 傳空的）。加測試 `audio_is_only_its_speaker_icon`（畫了喇叭、沒有 `<audio>` / 連結 / `media/` 檔、manifest 沒有 `audio/mpeg`、合法 XHTML）；`epub_preview`（4 頁、3 個音訊）+ epubcheck：0 / 0 / 0。EPUB 的匯出選單還是佔位，所以沒有「不能播放」的提示要加 |
 | 2026-11-05 | 步驟 7 交接、8 commit | `27389cc`（已 push） |
 | 2026-11-05 | 步驟 9 完成 | MCP（skill `add-mcp-tool`）：`place_library_item` 可以放 mp3（`mediaFromAudioItem`：48 pt 圓形按鈕、標題 = 名稱去掉副檔名；給 `width` 時是正方形；非 mp3 回「目前只有 mp3 能放到頁面；「…」不是 mp3」）；`list_library_items` 的音訊多 `placeable`；`get_element` 的音訊多 `audioItem`（同 `photoItem`：素材庫的哪一筆，已沒有時 null）；`update_element` 對音訊給了不屬於它的欄位時錯誤訊息說「音訊不能修改」（原本會說「影片」）。沒有新工具（`import_library_item` 只收圖片，音訊由使用者在 App 匯入；計畫原本就決定不做 `add_audio`）。工具說明：`update_element`（音訊可改位置、尺寸、title，沒有 startSeconds）、`startSeconds` / `title` 參數說明、`list_library_items`、`place_library_item`、`get_element`。測試：新檔 `audio-tools.test.ts` 6 項（列出 placeable、放到中央 48 pt 一筆復原、給寬度是正方形與位置、拒絕 wav 不改文件、batch 裡 `$ref` 改標題一筆復原、`audioItem` 與錯誤訊息、素材庫沒有時 null）；`edits.test.ts` 的拒絕測試改用 wav。`mcp-tools.json`、Python SDK（pytest 17）、橋接程式重編、`MCP-工具清單.md` 已更新。全部 vitest 1259、cargo 343 通過。**使用者要 `/mcp` 重新連線** |
+| 2026-11-05 | 步驟 9 commit、收尾 | `ce91f23`。剩：步驟 7 本機部分（網站回報後加 `mp3`、檔案太大的說明）；使用者的桌面版驗證清單在 `docs/progress.md` 待辦 |
