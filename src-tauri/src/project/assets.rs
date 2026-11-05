@@ -72,7 +72,7 @@ pub(crate) fn detect_extension(bytes: &[u8]) -> Option<&'static str> {
 }
 
 /// Detects the audio format from magic bytes.
-fn detect_audio_extension(bytes: &[u8]) -> Option<&'static str> {
+pub(crate) fn detect_audio_extension(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"ID3") {
         return Some("mp3");
     }

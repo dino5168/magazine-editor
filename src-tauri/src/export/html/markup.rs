@@ -8,7 +8,7 @@ use super::PageImages;
 use crate::export::document_fonts::is_project_family;
 use crate::export::fonts::{bundled_family, bundled_generic};
 use crate::export::render::{
-    rounded_rect_path, DecorationLine, PathSegment, RenderElement, RenderKind, RenderLink, RenderPage, RenderPhoto, RenderRect, RenderStroke,
+    rounded_rect_path, DecorationLine, PathSegment, RenderAudio, RenderElement, RenderKind, RenderLink, RenderPage, RenderPhoto, RenderRect, RenderStroke,
     RenderText, STROKE_MITER_LIMIT, SYNTHETIC_ITALIC_SLANT,
 };
 use crate::project::format::Align;
@@ -451,6 +451,30 @@ fn link_markup(out: &mut String, element: &RenderElement, link: &RenderLink, tar
     );
 }
 
+/// A transparent anchor over an audio button (v19), flip book only: `viewer.js` plays `data-audio`
+/// in its audio bar (outside the book: page-flip copies pages while turning). Without the viewer the
+/// link still opens the mp3. The title is user text and escaped. Round buttons (an ellipse) get a
+/// round anchor, so the "playing" ring follows the button.
+fn audio_markup(out: &mut String, element: &RenderElement, audio: &RenderAudio, href: &str) {
+    let (width, height, round) = match &element.kind {
+        RenderKind::Rect(rect) => (rect.width, rect.height, false),
+        RenderKind::Ellipse(ellipse) => (ellipse.width, ellipse.height, true),
+        _ => return,
+    };
+    let mut style = format!("left:{}px;top:{}px;width:{}px;height:{}px", num(element.x), num(element.y), num(width), num(height));
+    if round {
+        style.push_str(";border-radius:50%");
+    }
+    rotate(&mut style, element.rotation);
+    let label = if audio.title.is_empty() { "播放音訊".to_owned() } else { format!("播放音訊：{}", audio.title) };
+    let _ = writeln!(
+        out,
+        r#"<a class="el link audio" href="{href}" data-audio="{href}" role="button" aria-pressed="false" title="{label}" aria-label="{label}" style="{style}"></a>"#,
+        href = escape(href),
+        label = escape(&label),
+    );
+}
+
 /// Whether the page uses inline SVG (the manifest must then mark it with `properties="svg"`).
 pub fn has_svg(page: &RenderPage) -> bool {
     page.elements.iter().any(|element| element.photo.is_some() || match &element.kind {
@@ -468,9 +492,11 @@ pub fn has_svg(page: &RenderPage) -> bool {
 /// * `page_index` - Its position in the document (makes the photo frames' clip ids unique in a flip book).
 /// * `images` - Where each project image was placed in the output; images missing from it are not
 ///   drawn.
+/// * `audio` - Where each audio file was placed (`collect_audio`); audio buttons without an entry
+///   (and every audio button in an EPUB, `LinkTarget::ReadingSystem`, so far) are drawn but do not play.
 /// * `image_prefix` - Path from the document holding this markup to the output root, put in front
 ///   of every image href (`../` for an EPUB page in `pages/`, empty for the flip book's `index.html`).
-pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image_prefix: &str, links: LinkTarget) -> String {
+pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, audio: &PageImages, image_prefix: &str, links: LinkTarget) -> String {
     let mut body = String::new();
     for (index, element) in page.elements.iter().enumerate() {
         // 翻頁書把所有頁面放在同一份 HTML：clipPath 的 id 帶頁序，整本書不重複
@@ -481,6 +507,11 @@ pub fn page_div(page: &RenderPage, page_index: usize, images: &PageImages, image
         if let Some(link) = &element.link {
             let poster = element.photo.as_ref().and_then(|p| images.href(&p.src)).map(|href| format!("{image_prefix}{href}"));
             link_markup(&mut body, element, link, links, poster);
+        }
+        if let (Some(sound), LinkTarget::NewTab) = (&element.audio, links) {
+            if let Some(href) = audio.href(&sound.src) {
+                audio_markup(&mut body, element, sound, &format!("{image_prefix}{href}"));
+            }
         }
     }
     format!(
@@ -503,7 +534,7 @@ mod tests {
         assert_eq!(skipped, 0);
         let page = &document.pages[0];
         assert!(has_svg(page));
-        let markup = page_div(page, 3, &images, "", LinkTarget::NewTab);
+        let markup = page_div(page, 3, &images, &PageImages::default(), "", LinkTarget::NewTab);
         let href = images.href(crate::export::test_support::FRAME_PHOTO).expect("the photo is collected");
         let image = format!(
             r#"<image href="{href}" x="0" y="-5" width="120" height="90" preserveAspectRatio="none" clip-path="url(#photo-3-"#
@@ -516,7 +547,7 @@ mod tests {
         assert!(clip < filled && filled < photo && photo < outlined, "{markup}");
         // 照片讀不到（沒收錄）時照一般圖形畫
         let empty = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
-        assert!(!page_div(page, 3, &empty, "", LinkTarget::NewTab).contains("<clipPath"));
+        assert!(!page_div(page, 3, &empty, &PageImages::default(), "", LinkTarget::NewTab).contains("<clipPath"));
     }
 
     #[test]
@@ -525,7 +556,7 @@ mod tests {
         let page = &document.pages[0];
         assert!(has_svg(page));
         let images = super::super::PageImages { by_src: std::collections::HashMap::new(), order: Vec::new() };
-        let markup = page_div(page, 0, &images, "", LinkTarget::NewTab);
+        let markup = page_div(page, 0, &images, &PageImages::default(), "", LinkTarget::NewTab);
         assert!(
             markup.contains(r##"<path d="M0 0 L60 0 L60 60 L0 60 Z M100 0 L160 0 L160 60 L100 60 Z" fill="#ff0000"/>"##),
             "outline: two closed subpaths, filled, no stroke: {markup}"

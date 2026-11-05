@@ -152,6 +152,69 @@ fn videos_without_a_collected_poster_have_no_data_poster() {
     assert!(anchor.contains("data-embed=") && !anchor.contains("data-poster"), "{anchor}");
 }
 
+/// `audio_request` with a real (tiny) mp3 at `AUDIO_SRC`.
+fn audio_book_request() -> (tempfile::TempDir, ExportRequest) {
+    let (root, req) = crate::export::test_support::audio_request();
+    let path = root.path().join(crate::export::test_support::AUDIO_SRC);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, b"ID3\x04\0\0\0\0\0\0fake mp3 frames").unwrap();
+    (root, req)
+}
+
+#[test]
+fn audio_buttons_play_their_file_from_the_book() {
+    let (root, mut req) = audio_book_request();
+    let Some(crate::project::format::Element::Media(audio)) = req.document.pages[0].elements.last_mut() else { panic!("audio") };
+    audio.title = r#"<b>訪談</b> & "q""#.into();
+    let output = build_flipbook(root.path(), &req).unwrap();
+    assert_eq!(output.skipped_images, 0);
+    // 音訊檔改名放進 media/，內容不變
+    let copied = output.files.iter().find(|(name, _)| name == "media/audio-1.mp3").expect("audio file in the book");
+    assert_eq!(copied.1, std::fs::read(root.path().join(crate::export::test_support::AUDIO_SRC)).unwrap());
+    let index = file(&output, "index.html");
+    let anchor = index.lines().find(|line| line.starts_with("<a class=\"el link audio\"")).expect("audio anchor");
+    assert!(anchor.contains(r#"href="media/audio-1.mp3" data-audio="media/audio-1.mp3" role="button" aria-pressed="false""#), "{anchor}");
+    assert!(anchor.contains("播放音訊：&lt;b&gt;訪談&lt;/b&gt; &amp; &quot;q&quot;"), "{anchor}");
+    // 外框 = 按鈕，圓的
+    assert!(anchor.contains("left:300px;top:300px;width:80px;height:80px;border-radius:50%"), "{anchor}");
+    assert!(!anchor.contains("target="), "{anchor}");
+    // CSP 只多允許書裡的音訊；沒有影片就沒有 frame-src
+    assert!(index.contains("font-src 'self'; media-src 'self'\""), "CSP");
+    assert!(!index.contains("frame-src"));
+    // Zip 裡 mp3 不再壓縮
+    assert!(matches!(packing("media/audio-1.mp3"), Packing::Stored));
+}
+
+#[test]
+fn the_same_audio_is_copied_once_and_missing_files_do_not_play() {
+    let (root, mut req) = audio_book_request();
+    // 同一個檔案用兩次（第二個有封面，按鈕是方的）
+    let Some(crate::project::format::Element::Media(first)) = req.document.pages[0].elements.last().cloned() else { panic!("audio") };
+    let mut second = first.clone();
+    second.base.id = "el-audio-2".into();
+    second.base.x = 100.0;
+    req.document.pages[0].elements.push(crate::project::format::Element::Media(second));
+    let output = build_flipbook(root.path(), &req).unwrap();
+    assert_eq!(output.files.iter().filter(|(name, _)| name.starts_with("media/")).count(), 1);
+    assert_eq!(file(&output, "index.html").matches("data-audio=\"media/audio-1.mp3\"").count(), 2);
+    // 檔案不見：按鈕照畫（喇叭是 SVG）、沒有播放連結、沒有 media-src；每個按鈕算一次（同圖片）
+    std::fs::remove_file(root.path().join(crate::export::test_support::AUDIO_SRC)).unwrap();
+    let output = build_flipbook(root.path(), &req).unwrap();
+    assert_eq!(output.skipped_images, 2);
+    let index = file(&output, "index.html");
+    assert!(!index.contains("data-audio") && !index.contains("media-src"));
+    assert!(output.files.iter().all(|(name, _)| !name.starts_with("media/")));
+}
+
+#[test]
+fn audio_files_that_are_not_mp3_are_skipped() {
+    let (root, req) = audio_book_request();
+    std::fs::write(root.path().join(crate::export::test_support::AUDIO_SRC), b"RIFF\0\0\0\0WAVEfmt ").unwrap();
+    let output = build_flipbook(root.path(), &req).unwrap();
+    assert_eq!(output.skipped_images, 1);
+    assert!(!file(&output, "index.html").contains("data-audio"));
+}
+
 #[test]
 fn user_text_is_data_not_markup() {
     let hostile = r#"<script>alert(1)</script> & "q" ]]> <!--"#;

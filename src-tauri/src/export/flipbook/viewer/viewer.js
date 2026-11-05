@@ -112,6 +112,8 @@
     fitWidth: ["M3 12h18", "M7 8l-4 4 4 4", "M17 8l4 4-4 4"],
     close: ["M18 6L6 18", "M6 6l12 12"],
     contents: ["M9 6h11", "M9 12h11", "M9 18h11", "M4 6h.01", "M4 12h.01", "M4 18h.01"],
+    play: ["M7 5l12 7-12 7z"],
+    pause: ["M8 5v14", "M16 5v14"],
   };
 
   function button(label, iconName, onClick) {
@@ -973,6 +975,124 @@
     event.preventDefault();
   }
 
+  // ---- 音訊 ----
+  // 頁面上的音訊按鈕是 <a class="link audio" data-audio="media/audio-N.mp3" aria-pressed>（放大檢視裡的複本也是）。
+  // 點了在書上方的播放列播放；只有一個 <audio>，不放進頁面（page-flip 翻頁時會複製頁面）。
+  // 再點同一個 = 暫停 / 繼續，點別的 = 換曲；翻頁就停並收起播放列。檔案在書裡，本機開檔也能播
+  // （CSP 的 media-src 'self' 只在有音訊的書才加）。Ctrl / Shift / ⌘ + 點擊照瀏覽器的做法開檔案。
+  var player = new Audio();
+  player.preload = "none";
+  var audioSrc = null;
+  var seeking = false;
+
+  var audioBar = document.createElement("div");
+  audioBar.id = "audio";
+  audioBar.hidden = true;
+  audioBar.setAttribute("role", "region");
+  audioBar.setAttribute("aria-label", "音訊播放");
+  var audioToggle = button("暫停", "pause", function () {
+    if (player.paused) void player.play().catch(markAudio);
+    else player.pause();
+  });
+  var audioTitle = document.createElement("span");
+  audioTitle.className = "fb-audio-title";
+  var audioSeek = document.createElement("input");
+  audioSeek.type = "range";
+  audioSeek.className = "fb-audio-seek";
+  audioSeek.min = "0";
+  audioSeek.max = "0";
+  audioSeek.step = "0.1";
+  audioSeek.value = "0";
+  audioSeek.setAttribute("aria-label", "播放位置");
+  var audioTime = document.createElement("span");
+  audioTime.className = "fb-audio-time";
+  var audioClose = button("停止（Esc）", "close", function () { stopAudio(); });
+  [audioToggle, audioTitle, audioSeek, audioTime, audioClose].forEach(function (el) { audioBar.appendChild(el); });
+  document.body.appendChild(audioBar);
+
+  function clock(seconds) {
+    var whole = Math.max(0, Math.floor(seconds || 0));
+    var s = whole % 60;
+    return Math.floor(whole / 60) + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function showTime() {
+    var duration = isFinite(player.duration) ? player.duration : 0;
+    // 先設上限再設位置：位置超過舊的上限（0）會被夾住
+    audioSeek.max = String(duration);
+    if (!seeking) audioSeek.value = String(player.currentTime);
+    audioTime.textContent = clock(player.currentTime) + " / " + clock(duration);
+  }
+
+  /** 播放鍵的圖示與說明、頁面上哪個音訊按鈕標成「播放中」，都跟著 <audio> 的狀態。 */
+  function markAudio() {
+    var playing = audioSrc !== null && !player.paused;
+    var label = playing ? "暫停" : "播放";
+    audioToggle.replaceChildren(icon(ICONS[playing ? "pause" : "play"]));
+    audioToggle.title = label;
+    audioToggle.setAttribute("aria-label", label);
+    document.querySelectorAll("a.link[data-audio]").forEach(function (link) {
+      link.setAttribute("aria-pressed", String(playing && link.dataset.audio === audioSrc));
+    });
+  }
+
+  function playAudio(link) {
+    var src = link.dataset.audio;
+    if (src === audioSrc) {
+      if (player.paused) void player.play().catch(markAudio);
+      else player.pause();
+      return;
+    }
+    audioSrc = src;
+    player.src = src;
+    var title = (link.getAttribute("aria-label") || "").replace(/^播放音訊：?/, "");
+    audioTitle.textContent = title || "音訊";
+    audioBar.setAttribute("aria-label", "音訊播放：" + (title || "音訊"));
+    audioBar.hidden = false;
+    showTime();
+    void player.play().catch(markAudio);
+    markAudio();
+  }
+
+  /** 停止並收起播放列（翻頁、Esc、✕）。 */
+  function stopAudio() {
+    if (audioSrc === null) return;
+    var hadFocus = audioBar.contains(document.activeElement);
+    audioSrc = null;
+    player.pause();
+    // 放掉檔案（下次點同一個從頭播）
+    player.removeAttribute("src");
+    player.load();
+    audioBar.hidden = true;
+    markAudio();
+    if (hadFocus) stage.focus();
+  }
+
+  ["play", "pause", "ended"].forEach(function (name) { player.addEventListener(name, markAudio); });
+  ["timeupdate", "loadedmetadata", "durationchange"].forEach(function (name) { player.addEventListener(name, showTime); });
+  audioSeek.addEventListener("input", function () {
+    seeking = true;
+    audioTime.textContent = clock(Number(audioSeek.value)) + " / " + clock(player.duration);
+  });
+  audioSeek.addEventListener("change", function () {
+    seeking = false;
+    if (audioSrc !== null) player.currentTime = Number(audioSeek.value);
+  });
+
+  document.addEventListener("click", function (event) {
+    var link = event.target instanceof Element ? event.target.closest("a.link[data-audio]") : null;
+    if (!link || event.ctrlKey || event.shiftKey || event.metaKey) return;
+    event.preventDefault();
+    playAudio(link);
+  });
+  // 空白鍵也能按（連結預設只認 Enter；Rust 給了 role="button"）
+  document.addEventListener("keydown", function (event) {
+    var link = event.target instanceof Element ? event.target.closest("a.link[data-audio]") : null;
+    if (!link || event.key !== " ") return;
+    event.preventDefault();
+    playAudio(link);
+  });
+
   // ---- 滾輪翻頁 ----
   // 只在翻頁區（#stage）：工具列、縮圖列、目錄面板、放大檢視是另外的層，它們的滾輪照常。
   // 往下 / 觸控板往左滑 = 下一頁（兩者的 delta 都是正的），取比較大的那一軸。
@@ -1026,6 +1146,12 @@
       zoomKey(event);
       return;
     }
+    // 音訊播放列開著時 Esc 停止（影片層、放大檢視開著時由它們先處理 Esc）
+    if (event.key === "Escape" && audioSrc !== null) {
+      stopAudio();
+      event.preventDefault();
+      return;
+    }
     // Ctrl+F：用書的搜尋（瀏覽器的尋找找不到沒顯示的頁）
     if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === "KeyF") {
       setPanelOpen(true, "search");
@@ -1062,7 +1188,11 @@
 
   // ---- 事件 ----
 
-  flip.on("flip", update);
+  flip.on("flip", function () {
+    update();
+    // 翻頁就停（docs/16-Plans-Audio/02-Audio-素材-實作.md §0）
+    stopAudio();
+  });
   flip.on("changeOrientation", function () {
     rescale();
     update();

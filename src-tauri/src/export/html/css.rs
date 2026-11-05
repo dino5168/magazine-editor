@@ -19,6 +19,7 @@ pub const PAGE_RULES: &str = r#".page { position: relative; overflow: hidden; }
 img.el { display: block; }
 svg.el { overflow: visible; }
 a.link { display: block; z-index: 1; cursor: pointer; }
+a.link.audio[aria-pressed="true"] { box-shadow: 0 0 0 3px #818cf8, 0 0 14px rgba(129, 140, 248, 0.8); }
 "#;
 
 /// `@font-face` rules for the embedded fonts, each stored at `fonts/<file>` and referenced from

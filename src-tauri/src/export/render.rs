@@ -65,6 +65,18 @@ pub struct RenderElement {
     pub photo: Option<RenderPhoto>,
     /// Videos only: what the element's area opens (PDF link, EPUB / flip book anchor).
     pub link: Option<RenderLink>,
+    /// Audio only (v19), on the button's first piece: what the flip book plays when the reader
+    /// clicks it. PDF and PowerPoint ignore it (they cannot play audio).
+    pub audio: Option<RenderAudio>,
+}
+
+/// An audio file the flip book plays from the element's area.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderAudio {
+    /// Project path (`assets/audio/<file>.mp3`, validated); the exporter copies it into the book.
+    pub src: String,
+    /// The audio's title (user text: escaped wherever it is written); may be empty.
+    pub title: String,
 }
 
 /// A link area: the URL is built by Rust from the validated video id, never taken from the request.
@@ -640,6 +652,7 @@ fn shape_label(
         kind: RenderKind::Text(render_text(layout, frame_width, shape.base.rotation, &style)),
         photo: None,
         link: None,
+        audio: None,
     }))
 }
 
@@ -685,7 +698,7 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
     let at = |local_x: f64, local_y: f64| (media.base.x + local_x * cos - local_y * sin, media.base.y + local_x * sin + local_y * cos);
     let piece = |local_x: f64, local_y: f64, kind: RenderKind| {
         let (x, y) = at(local_x, local_y);
-        RenderElement { x, y, rotation: media.base.rotation, kind, photo: None, link: None }
+        RenderElement { x, y, rotation: media.base.rotation, kind, photo: None, link: None, audio: None }
     };
     let (video_id, start) = match &media.source {
         MediaOrigin::Youtube { video_id, start } => (video_id, start),
@@ -716,6 +729,7 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
                 title: media.title.clone(),
                 embed: youtube_embed_url(video_id, *start),
             }),
+            audio: None,
         },
         piece(cx - radius, cy - radius, RenderKind::Ellipse(circle)),
         piece(cx - 0.7 * t, cy - t, RenderKind::Polygon(triangle)),
@@ -785,12 +799,14 @@ fn speaker_mark(cx: f64, cy: f64, size: f64, width: f64, height: f64, piece: &dy
 /// a poster (or when its file is missing) a filled ellipse with the speaker; with one, the poster
 /// on a dark box with a round badge holding the speaker. PDF and PowerPoint cannot play it.
 fn audio_elements(media: &MediaElement, poster: Option<RenderPhoto>, piece: &dyn Fn(f64, f64, RenderKind) -> RenderElement) -> Vec<RenderElement> {
+    let MediaOrigin::File { src } = &media.source else { unreachable!("media_elements sends only audio here") };
+    let audio = Some(RenderAudio { src: src.clone(), title: media.title.clone() });
     let (width, height) = (media.width, media.height);
     let (cx, cy) = (width / 2.0, height / 2.0);
     let short = width.min(height);
     let Some(poster) = poster else {
         let button = RenderEllipse { width, height, fill: AUDIO_BACKGROUND.to_owned(), stroke: None };
-        let mut out = vec![piece(0.0, 0.0, RenderKind::Ellipse(button))];
+        let mut out = vec![RenderElement { audio, ..piece(0.0, 0.0, RenderKind::Ellipse(button)) }];
         out.extend(speaker_mark(cx, cy, short * AUDIO_MARK_RATIO, width, height, piece));
         return out;
     };
@@ -798,7 +814,7 @@ fn audio_elements(media: &MediaElement, poster: Option<RenderPhoto>, piece: &dyn
     let rect = RenderRect { width, height, corner_radii: [0.0; 4], fill: MEDIA_BACKGROUND.to_owned(), stroke: None };
     let badge = RenderEllipse { width: 2.0 * radius, height: 2.0 * radius, fill: MEDIA_BADGE_FILL.to_owned(), stroke: None };
     let mut out = vec![
-        RenderElement { photo: Some(poster), ..piece(0.0, 0.0, RenderKind::Rect(rect)) },
+        RenderElement { photo: Some(poster), audio, ..piece(0.0, 0.0, RenderKind::Rect(rect)) },
         piece(cx - radius, cy - radius, RenderKind::Ellipse(badge)),
     ];
     out.extend(speaker_mark(cx, cy, radius * AUDIO_BADGE_MARK_RATIO, width, height, piece));
@@ -840,7 +856,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                         let photo = render_photo(root, &e.base.id, e.image.as_ref(), &request.shape_photos)?;
                         // 照片檔被刪除時只畫填色，算進略過的圖片數（同圖片物件）
                         skipped += usize::from(e.image.is_some() && photo.is_none());
-                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo, link: None });
+                        elements.push(RenderElement { x: e.base.x, y: e.base.y, rotation: e.base.rotation, kind, photo, link: None, audio: None });
                     }
                     // 圖形內文字緊接在圖形上方，z 軸順序和畫布相同（同一個 Group 裡文字畫在圖形之後）
                     if let Some(label) = shape_label(e, &request.text_layouts, &request.label_frames)? {
@@ -871,7 +887,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                     )
                 }
             };
-            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind, photo: None, link: None });
+            elements.push(RenderElement { x: base.x, y: base.y, rotation: base.rotation, kind, photo: None, link: None, audio: None });
         }
         pages.push(RenderPage {
             name: page.name.clone(),

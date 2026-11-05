@@ -123,7 +123,7 @@ pub fn path_shape_document() -> RenderDocument {
             width: 200.0,
             height: 120.0,
             background: "#ffffff".into(),
-            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path), photo: None, link: None }],
+            elements: vec![RenderElement { x: 10.0, y: 10.0, rotation: 0.0, kind: RenderKind::Path(path), photo: None, link: None, audio: None }],
         }],
     }
 }

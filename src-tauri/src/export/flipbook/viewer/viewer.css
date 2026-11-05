@@ -151,6 +151,20 @@ body.fb-panel-open #thumbs { left: 336px; }
 .fb-video-notice-open:hover { background: #b91c1c; }
 .fb-video-notice-open:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 
+/* 音訊播放列：書的上方置中；疊在放大檢視之上（放大檢視裡也能點音訊）、影片層之下 */
+#audio {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
+  display: flex; align-items: center; gap: 6px; max-width: calc(100% - 24px); box-sizing: border-box;
+  padding: 4px 8px 4px 4px; border-radius: 999px; background: rgba(24, 24, 27, 0.92); color: #fafafa;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); font: 14px/1 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  user-select: none;
+}
+#audio[hidden] { display: none; }
+.fb-audio-title { min-width: 0; max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #d4d4d8; }
+.fb-audio-seek { width: 160px; accent-color: #818cf8; }
+.fb-audio-seek:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
+.fb-audio-time { color: #a1a1aa; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 @media (max-width: 720px) {
   #panel { width: 100%; }
   body.fb-panel-open #stage, body.fb-panel-open #thumbs { left: 8px; }
@@ -164,4 +178,7 @@ body.fb-panel-open #thumbs { left: 336px; }
   #thumbs { left: 8px; right: 8px; bottom: 58px; }
   body.fb-thumbs-open #stage { bottom: 210px; }
   .fb-button { width: 32px; height: 32px; }
+  #audio { top: 8px; }
+  .fb-audio-seek { width: 90px; }
+  .fb-audio-title { max-width: 7em; }
 }

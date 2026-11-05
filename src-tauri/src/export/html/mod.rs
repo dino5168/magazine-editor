@@ -7,6 +7,7 @@
 //! styles/page.css           @font-face + page rules
 //! fonts/<file>              bundled and project fonts of the families the document uses
 //! images/image-<n>.<ext>    project images, renamed
+//! media/audio-<n>.mp3       audio files (v19 audio buttons), renamed; flip book only so far
 //! ```
 
 pub mod css;
@@ -15,7 +16,7 @@ pub mod markup;
 use super::document_fonts::ProjectFace;
 use super::fonts::{bundled_family, BUNDLED_FONTS};
 use super::render::{RenderDocument, RenderKind};
-use crate::project::assets::detect_extension;
+use crate::project::assets::{detect_audio_extension, detect_extension};
 use std::collections::HashMap;
 use std::path::Path;
 use typst::foundations::Bytes;
@@ -36,10 +37,12 @@ pub fn non_empty_or(text: &str, fallback: impl FnOnce() -> String) -> String {
     }
 }
 
-/// Project images copied into the output, keyed by their project path (`assets/images/<file>`).
+/// Project images (or audio files, `collect_audio`) copied into the output, keyed by their project
+/// path (`assets/images/<file>`, `assets/audio/<file>`).
 ///
 /// Images get generated names (`images/image-<n>.<ext>`) instead of the project's file names: a
 /// crafted project may use names that are valid on disk but not in a URL (`#`, `%`, spaces).
+#[derive(Default)]
 pub struct PageImages {
     by_src: HashMap<String, PageImage>,
     /// In first-use order, so the output is deterministic.
@@ -115,6 +118,32 @@ pub fn collect_images(root: &Path, document: &RenderDocument) -> (PageImages, us
         images.order.push(src.clone());
     }
     (images, skipped)
+}
+
+/// Reads every audio file the document plays (v19 audio buttons), named `media/audio-<n>.mp3` like
+/// images (`PageImages`; the project's file names are not used in the output).
+///
+/// # Returns
+/// The files and how many buttons were skipped (each one, like images): missing, unreadable, or not an mp3 (only mp3 can be on a
+/// page; Rust validated the path when the project was read). The button is still drawn, it just
+/// does not play.
+pub fn collect_audio(root: &Path, document: &RenderDocument) -> (PageImages, usize) {
+    let mut audio = PageImages::default();
+    let mut skipped = 0;
+    for src in document.pages.iter().flat_map(|page| &page.elements).filter_map(|element| element.audio.as_ref().map(|a| &a.src)) {
+        if audio.by_src.contains_key(src) {
+            continue;
+        }
+        let data = std::fs::read(root.join(src)).ok().filter(|data| detect_audio_extension(data) == Some("mp3"));
+        let Some(data) = data else {
+            skipped += 1;
+            continue;
+        };
+        let href = format!("media/audio-{}.mp3", audio.order.len() + 1);
+        audio.by_src.insert(src.clone(), PageImage { href, media_type: "audio/mpeg", data });
+        audio.order.push(src.clone());
+    }
+    (audio, skipped)
 }
 
 /// One embedded font face: a bundled font or a face of a project font.

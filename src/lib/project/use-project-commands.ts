@@ -199,7 +199,7 @@ export function useProjectCommands(
         action: { label: "開啟", onClick: () => void openLastExport() },
       });
       if (exported.data.skippedImages > 0) {
-        toast.warning(`有 ${exported.data.skippedImages} 張圖片找不到檔案或無法輸出（例如 SVG 連結了外部檔案），已略過`);
+        toast.warning(`有 ${exported.data.skippedImages} 個圖片或音訊找不到檔案或無法輸出（例如 SVG 連結了外部檔案、音訊不是 mp3），已略過`);
       }
       const skippedShapes = skippedShapeCount(request);
       if (skippedShapes > 0) {

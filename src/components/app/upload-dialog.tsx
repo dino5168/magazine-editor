@@ -386,7 +386,7 @@ function UploadFlow({ onLockChange, onClose, confirmFontLicense }: UploadFlowPro
       </DialogHeader>
       {result && !result.data.coverUploaded && <p className="text-sm text-muted-foreground">封面圖沒有產生成功，網站保留原本的封面。</p>}
       {result && result.data.skippedImages > 0 && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">有 {result.data.skippedImages} 張圖片找不到檔案或無法輸出，已略過。</p>
+        <p className="text-sm text-amber-600 dark:text-amber-400">有 {result.data.skippedImages} 個圖片或音訊找不到檔案或無法輸出，已略過。</p>
       )}
       {errorLine}
       <DialogFooter>

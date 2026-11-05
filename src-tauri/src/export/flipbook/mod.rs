@@ -11,6 +11,7 @@
 //! styles/page.css             @font-face + page rules (shared with EPUB)
 //! fonts/<file>                bundled and project fonts of the families the document uses
 //! images/image-<n>.<ext>      project images, renamed
+//! media/audio-<n>.mp3         audio files of the audio buttons (v19), renamed
 //! ```
 //!
 //! The book's structure lives in `index.html` itself (no separate JSON): browsers block `fetch()`
@@ -19,7 +20,7 @@
 use super::archive::{write_zip, Packing};
 use super::html::markup::{escape, num, page_div, LinkTarget};
 use super::document_fonts;
-use super::html::{collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
+use super::html::{collect_audio, collect_images, css, font_files, non_empty_or, used_fonts, LANGUAGE, UNTITLED_DOCUMENT};
 use super::render::{build_render, RenderDocument, RenderPage};
 use crate::media::YOUTUBE_EMBED_ORIGIN;
 use super::ExportRequest;
@@ -38,14 +39,18 @@ const CONTENT_SECURITY_POLICY: &str =
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'";
 
 /// The policy of a book: books with videos may also frame YouTube's player (the only outside
-/// origin, and only as a frame); books without keep the closed policy.
-fn content_security_policy(document: &RenderDocument) -> String {
+/// origin, and only as a frame); books with audio may play their own `media/` files. Books without
+/// either keep the closed policy.
+fn content_security_policy(document: &RenderDocument, has_audio: bool) -> String {
     let has_video = document.pages.iter().flat_map(|page| &page.elements).any(|element| element.link.is_some());
+    let mut policy = CONTENT_SECURITY_POLICY.to_owned();
     if has_video {
-        format!("{CONTENT_SECURITY_POLICY}; frame-src {YOUTUBE_EMBED_ORIGIN}")
-    } else {
-        CONTENT_SECURITY_POLICY.to_owned()
+        let _ = write!(policy, "; frame-src {YOUTUBE_EMBED_ORIGIN}");
     }
+    if has_audio {
+        policy.push_str("; media-src 'self'");
+    }
+    policy
 }
 
 /// Pages whose size differs from the book by less than this (pt) are drawn as they are.
@@ -58,7 +63,8 @@ pub struct FlipbookOutput {
     pub files: Vec<(String, Vec<u8>)>,
     pub pages: usize,
     /// Images skipped because their file no longer exists in the project, or it is not a format
-    /// browsers show.
+    /// browsers show; audio files that are missing or not an mp3 count here too (their button is
+    /// drawn but does not play).
     pub skipped_images: usize,
 }
 
@@ -98,6 +104,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
     };
     let (book_width, book_height) = (first.width, first.height);
     let (images, skipped_unreadable) = collect_images(root, &document);
+    let (audio, skipped_audio) = collect_audio(root, &document);
     let fonts = used_fonts(&document, &document_fonts::load(root, &request.document.fonts, &document));
     let title = non_empty_or(&document.title, || UNTITLED_DOCUMENT.to_owned());
 
@@ -115,7 +122,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
             r#"<div class="{class}" data-name="{name}"{toc}><div class="fb-scale"{fit}>{markup}</div></div>"#,
             name = escape(&name),
             // 頁面標記在 index.html 裡，圖片在同一層的 images/
-            markup = page_div(page, n, &images, "", LinkTarget::NewTab),
+            markup = page_div(page, n, &images, &audio, "", LinkTarget::NewTab),
         );
     }
     let index = format!(
@@ -138,7 +145,7 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
 </html>
 "#,
         lang = LANGUAGE,
-        csp = content_security_policy(&document),
+        csp = content_security_policy(&document, audio.iter().next().is_some()),
         title = escape(&title),
         w = num(book_width),
         h = num(book_height),
@@ -156,8 +163,10 @@ pub fn build_flipbook(root: &Path, request: &ExportRequest) -> AppResult<Flipboo
     ];
     files.extend(font_files(&fonts).into_iter().map(|font| (format!("fonts/{}", font.file), font.data.as_slice().to_vec())));
     files.extend(images.iter().map(|image| (image.href.clone(), image.data.clone())));
+    files.extend(audio.iter().map(|file| (file.href.clone(), file.data.clone())));
 
-    Ok(FlipbookOutput { files, pages: document.pages.len(), skipped_images: skipped_missing + skipped_unreadable })
+    let skipped_images = skipped_missing + skipped_unreadable + skipped_audio;
+    Ok(FlipbookOutput { files, pages: document.pages.len(), skipped_images })
 }
 
 /// Packs the book as one ZIP with `index.html` at its root, as a web host (and the web-magazine
@@ -174,7 +183,7 @@ pub fn zip_book(files: &[(String, Vec<u8>)]) -> AppResult<Vec<u8>> {
 fn packing(name: &str) -> Packing {
     let extension = name.rsplit_once('.').map(|(_, ext)| ext.to_ascii_lowercase()).unwrap_or_default();
     match extension.as_str() {
-        "png" | "jpg" | "jpeg" | "gif" | "webp" | "woff2" => Packing::Stored,
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "woff2" | "mp3" => Packing::Stored,
         _ => Packing::Deflated,
     }
 }
