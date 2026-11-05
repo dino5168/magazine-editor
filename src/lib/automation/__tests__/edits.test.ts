@@ -194,15 +194,17 @@ describe("place_library_item", () => {
     expect(session.error("place_library_item", { item: "i-illustration", pageId: "nope" })).toContain("list_pages");
   });
 
-  it("rejects text, audio, trashed, unknown and ambiguous items without changing anything", () => {
+  it("rejects text, non-mp3 audio, trashed, unknown and ambiguous items without changing anything", () => {
     const duplicated: Library = {
       ...library,
       items: [...library.items, { ...library.items[0], id: "i-copy", src: "assets/images/55555555555555555555555555555555.png" }],
     };
+    const interview = library.items.find((item) => item.id === "i-interview")!;
+    const withWav: Library = { ...library, items: [...library.items, { ...interview, id: "i-wav", name: "原始錄音.wav", src: "assets/audio/33333333333333333333333333333333.wav" }] };
     const { session } = withLibrary();
     const before = session.state;
     expect(session.error("place_library_item", { item: "i-editorial" })).toContain("add_text");
-    expect(session.error("place_library_item", { item: "訪談錄音.mp3" })).toContain("音訊");
+    expect(toolSession(before, NO_COMMANDS, withWav).error("place_library_item", { item: "i-wav" })).toContain("mp3");
     expect(session.error("place_library_item", { item: "舊封面試排.jpg" })).toContain("垃圾桶");
     expect(session.error("place_library_item", { item: "nope" })).toContain("list_library_items");
     const ambiguous = toolSession(before, NO_COMMANDS, duplicated).error("place_library_item", { item: "封面照片.png" });

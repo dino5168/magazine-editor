@@ -20,6 +20,7 @@ import { folderPath } from "@/lib/library/library-tree";
 import type { Library, LibraryItem } from "@/lib/library/types";
 import { measuredTextHeight, type MeasureText } from "./layout";
 import type { ToolArgs } from "./tool-definitions";
+import { isPlaceableAudio } from "@/lib/library/audio-item";
 
 /** Longest text excerpt in element lists (characters, not UTF-16 units). */
 export const TEXT_EXCERPT_LENGTH = 80;
@@ -143,6 +144,8 @@ export interface LibraryItemSummary {
   /** Videos: the YouTube video id and start time (seconds). */
   readonly videoId?: string;
   readonly start?: number;
+  /** Audio: whether it can go on a page (mp3 only, `isPlaceableAudio`). */
+  readonly placeable?: boolean;
 }
 
 export interface ElementDetail {
@@ -155,11 +158,13 @@ export interface ElementDetail {
   readonly photoItem?: { readonly id: string; readonly name: string } | null;
   /** Text elements: the height measured from their wrapped lines (pt; not stored). */
   readonly textHeight?: number;
+  /** Audio elements (v19): the library item playing (null when the library no longer lists it). */
+  readonly audioItem?: { readonly id: string; readonly name: string } | null;
 }
 
 /**
- * Tool `get_element`: `getElement` plus, for a text element, its measured height and, for an image
- * frame, which library image its photo is.
+ * Tool `get_element`: `getElement` plus, for a text element, its measured height, for an image
+ * frame, which library image its photo is, and for audio, which library item plays.
  *
  * Args:
  *   state: Editor state.
@@ -175,6 +180,11 @@ export function getElementDetail(state: EditorState, library: Library, measure: 
   if (found.error) return found;
   const { element } = found.data;
   if (element.type === "text") return { data: { ...found.data, textHeight: round(measuredTextHeight(element, measure)) }, error: null };
+  if (element.type === "media" && element.source.kind === "file") {
+    const { src } = element.source;
+    const item = library.items.find((candidate) => candidate.kind === "audio" && candidate.src === src);
+    return { data: { ...found.data, audioItem: item ? { id: item.id, name: item.name } : null }, error: null };
+  }
   if (element.type !== "shape" || !element.image) return found;
   const { src } = element.image;
   const item = library.items.find((candidate) => candidate.kind === "image" && candidate.src === src);
@@ -562,7 +572,7 @@ export function itemSummary(library: Library, item: LibraryItem): LibraryItemSum
     case "text":
       return { ...base, excerpt: excerpt(item.excerpt) };
     case "audio":
-      return base;
+      return { ...base, placeable: isPlaceableAudio(item) };
     case "video":
       return { ...base, videoId: item.videoId, start: item.start };
   }

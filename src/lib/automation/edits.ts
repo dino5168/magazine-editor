@@ -15,6 +15,7 @@ import type { EditorAction, EditorState } from "@/lib/editor/editor-reducer";
 import {
   builtInTextStyle,
   choiceGeometry,
+  AUDIO_BUTTON_SIZE_PT,
   createId,
   createMasterPage,
   createImageElement,
@@ -60,6 +61,8 @@ import { DOCUMENT_NAME_MAX_LENGTH, PAGE_NAME_MAX_LENGTH, validateName, type Resu
 import type { Library, LibraryItem } from "@/lib/library/types";
 import { getElement } from "./queries";
 import { SHAPE_KINDS, type ColorInput, type PageColorInput, type ToolArgs, type TextStyleInput } from "./tool-definitions";
+import { AUDIO_FORMAT_NOTICE, isPlaceableAudio, mediaFromAudioItem } from "@/lib/library/audio-item";
+import { mediaKindName } from "@/lib/media/media-kind";
 
 /** Width of text added without one (pt); the body text preset. */
 export const DEFAULT_TEXT_WIDTH = 280;
@@ -326,7 +329,7 @@ export function resolveShapeImage(library: Library, current: ShapeImage | null, 
   });
 }
 
-/** Tool `place_library_item` (images only). */
+/** Tool `place_library_item`: images, videos and mp3 audio (not text files). */
 export function placeLibraryItem(
   state: EditorState,
   library: Library,
@@ -339,11 +342,19 @@ export function placeLibraryItem(
   if (found.error) return found;
   const item = found.data;
   if (item.trashed) return fail(`素材「${item.name}」在垃圾桶裡，請使用者先在素材管理還原`);
-  if (item.kind === "audio") return fail("音訊不能放到頁面");
+  if (item.kind === "audio" && !isPlaceableAudio(item)) return fail(`${AUDIO_FORMAT_NOTICE}；「${item.name}」不是 mp3`);
   if (item.kind === "text") {
     return fail(`目前只能放圖片；文字檔「${item.name}」請用 list_library_items 的摘錄（或使用者提供的內容）以 add_text 加入`);
   }
   const sheet = findSheet(state.history.present, sheetId.data)!;
+  if (item.kind === "audio") {
+    // 和素材面板放到頁面相同（48 pt 的圓形按鈕、標題 = 名稱去掉副檔名）；給寬度時保持正方形
+    const size = args.width ?? AUDIO_BUTTON_SIZE_PT;
+    const audio = mediaFromAudioItem(item, pageCenter(sheet));
+    const element = { ...audio, width: size, height: size, x: args.x ?? (sheet.width - size) / 2, y: args.y ?? (sheet.height - size) / 2 };
+    const added = addElement(apply, element, sheetId.data);
+    return added.error ? added : ok({ ...added.data, width: size, height: size });
+  }
   if (item.kind === "video") {
     // 和素材面板放到頁面相同（封面、開始、標題 = 素材名稱）；給寬度時保持 16:9
     const video = mediaFromVideoItem(item, sheet, pageCenter(sheet));
@@ -510,7 +521,8 @@ function elementPatch(state: EditorState, library: Library, element: CanvasEleme
   const rejected = given.filter((key) => !UPDATABLE[element.type].includes(key));
   if (rejected.length > 0) {
     const hint = element.type === "text" && rejected.includes("fill") ? "（文字顏色用 textColor）" : "";
-    return fail(`${TYPE_NAMES[element.type]}不能修改：${rejected.join("、")}${hint}`);
+    const name = element.type === "media" ? mediaKindName(element) : TYPE_NAMES[element.type];
+    return fail(`${name}不能修改：${rejected.join("、")}${hint}`);
   }
   const position = {
     ...(x !== undefined && { x }),

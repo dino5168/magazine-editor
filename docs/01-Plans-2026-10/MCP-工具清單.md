@@ -6,7 +6,7 @@
 > 2026-10-29 `run_command` 多一個指令 `file.exportFlipbookZip`（計畫 `../13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` 步驟 3）；同日步驟 5 再加 `file.uploadFlipbook`（只打開上傳對話框，密碼要使用者自己輸入，沒有上傳工具）。
 > 2026-10-31 `list_elements` 的文字物件回傳量出來的 `height`、`get_element` 多 `textHeight`（計畫 `../14-Plan-ClaudeCode看見畫面/1-看見畫面-實作.md` 步驟 1）；同日加入 `check_layout`（步驟 2）與 `render_page`（步驟 3–4，回傳圖片）。
 > 2026-11-01 加入 `add_video`（YouTube 影片，非同步、不能進 `batch`）；`place_library_item` 可以放影片素材、`list_library_items` 的 `kind` 多 `video`、`update_element` 的影片可改 `startSeconds` / `title`；`run_command` 多 `file.insertVideo`（計畫 `../15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md` 步驟 4、9）。
-> 2026-11-05 `run_command` 多 `file.importAudio`（計畫 `../16-Plans-Audio/02-Audio-素材-實作.md` 步驟 4）。
+> 2026-11-05 `run_command` 多 `file.importAudio`（計畫 `../16-Plans-Audio/02-Audio-素材-實作.md` 步驟 4）；同日步驟 9：`place_library_item` 可以放 mp3 音訊（喇叭按鈕）、`list_library_items` 的音訊多 `placeable`、`get_element` 的音訊多 `audioItem`、`update_element` 的音訊可改 `title`。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -65,7 +65,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | `list_shapes`        | 所有圖形：id、名稱、分類、預設大小；圖形庫圖形的參數（名稱、說明、`ratio` 0–1 比例或 `pt` 固定長度、範圍、預設）        | —                                                                                   |
 | `list_fonts`         | 內建 4 套 + 專案字型：id、名稱、缺字時用的內建字型、有沒有粗體檔、授權、使用數                               | —                                                                                   |
 | `list_swatches`      | 色票：id、名稱、`#rrggbb`、連到它的顏色數                                                | —                                                                                   |
-| `list_library_items` | 素材庫：資料夾清單（id 給 `folderId` 用）與素材（id、名稱、種類、所在資料夾、檔案大小、是否在垃圾桶、圖片寬高、文字檔摘錄、影片的 `videoId` / `start`）    | `kind`（`image` / `text` / `audio` / `video`）、`query`（名稱包含）、`folderId`（含子資料夾）、`includeTrashed` |
+| `list_library_items` | 素材庫：資料夾清單（id 給 `folderId` 用）與素材（id、名稱、種類、所在資料夾、檔案大小、是否在垃圾桶、圖片寬高、文字檔摘錄、影片的 `videoId` / `start`、音訊的 `placeable`（只有 mp3 是 true））    | `kind`（`image` / `text` / `audio` / `video`）、`query`（名稱包含）、`folderId`（含子資料夾）、`includeTrashed` |
 | `list_commands`      | `run_command` 能用的選單指令（選單順序）：id、名稱、選單位置、快捷鍵、勾選狀態（勾選項目才有）、能不能執行（不能時附原因）     | —                                                                                   |
 
 ---
@@ -79,7 +79,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | `add_line` | 新增線條或箭頭（最上層），回傳 id（2026-10-15，`../06-Plans-繪圖/03-自由繪圖-實作.md` 步驟 13） | `points*`（**頁面座標**，2–500 個 `{ x, y }`）、`path`（`straight` 直線 / 折線（預設）、`smooth` 穿過每點的曲線）、`compound`（`single` / `double` 雙線，只給 straight）、`color`（預設 `#171717` 連「文字」色票）、`width`（預設 1）、`dash`（`solid` / `dashed` / `dotted` / `dashDot`）、`start` / `end`（`{ arrowhead: none / open / triangle, scale? 0.5–5 }`，預設沒有箭頭）、`pageId` |
 | `update_element` | 修改一個物件，只改有給的欄位，回傳是否有變更 | `id*`；見下表 |
 | `delete_elements` | 刪除同一頁（或同一主頁）的物件，回傳數量 | `ids*`（1–500 個） |
-| `place_library_item` | 把素材庫的**圖片或影片**放到頁面（最上層），回傳 id 與尺寸；影片變成影片物件（封面、開始時間、標題 = 素材名稱） | `item*`（素材 id 或完全相符的名稱）、`x`、`y`（省略的那一軸置中）、`width`（省略 = 和素材面板相同的大小；給了時高度依原圖比例，影片 16:9）、`pageId` |
+| `place_library_item` | 把素材庫的**圖片、影片或 mp3 音訊**放到頁面（最上層），回傳 id 與尺寸；影片變成影片物件（封面、開始時間、標題 = 素材名稱），音訊變成 48 × 48 pt 的喇叭按鈕（標題 = 名稱去掉副檔名） | `item*`（素材 id 或完全相符的名稱）、`x`、`y`（省略的那一軸置中）、`width`（省略 = 和素材面板相同的大小；給了時高度依原圖比例，影片 16:9、音訊正方形）、`pageId` |
 | `add_video` | 放一支 **YouTube 影片**到頁面（最上層）：App 先向 YouTube 取得封面（存成專案圖片）與標題。回傳 `id`、`pageId`、`width` / `height`、`title`、`hasPoster`、`availability`（`ok` / `notEmbeddable` = 翻頁書只能開新分頁 / `unknown` = 沒有網路）；影片不存在時回錯誤 | `url*`（watch?v= / youtu.be / shorts / embed；`t=` 是開始時間）、`x`、`y`（省略的那一軸置中）、`width`（高 = 寬 × 9/16；省略 = 最寬 320 pt 且不超過頁寬一半）、`title`（省略 = YouTube 的標題）、`pageId` |
 | `import_library_item` | 把這台電腦上的**圖片檔**匯入素材庫（和使用者在 App 匯入相同），回傳 `itemId`、名稱、資料夾路徑、像素寬高與 `status`（`new` / `duplicate`：已經在素材庫，資料夾與名稱不變 / `restored`：從垃圾桶還原）；之後用 `place_library_item` 或 `image` 放到頁面 | `path*`（**絕對路徑**；PNG / JPEG / WebP / GIF / SVG，≤ 20 MB）、`folderId`（省略 = 未分類）、`name`（省略 = 檔名，含副檔名） |
 
@@ -101,9 +101,10 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 | 圖形 | `height`、`fill`、`stroke`、`cornerRadius`（只有矩形：一個數字，或 `[左上, 右上, 右下, 左下]`）、`shape`（換成另一個圖形，位置 / 大小 / 樣式 / 文字不變，參數用新圖形的預設）、`params`（圖形庫圖形，只改有給的）、`text`（圖形內文字，空字串 = 移除）、`verticalAlign`、文字樣式欄位（套用在圖形內文字）、`image`（圖片框的照片：給 `item` 換照片、只給其他欄位調整、`null` = 移除） |
 | 圖片 | `height` |
 | 影片 | `height`、`startSeconds`（從第幾秒開始，0–86400）、`title`（空字串 = 沒有標題） |
+| 音訊 | `height`、`title`（空字串 = 沒有標題）；沒有 `startSeconds` |
 | 線條 | `points`（換掉所有點，頁面座標；不能和 `x` / `y` 同時給）、`path`、`compound`、`stroke`（不能是 `null`）、`start`、`end`（箭頭；只給 `arrowhead` 時保留原本的大小） |
 
-`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對文字物件另外回 `textHeight`（依目前字型與換行量出來的高度，沒有存在檔案裡）。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。
+`get_element` 對線條另外回 `pagePoints`（頁面座標，和 `add_line` / `update_element` 的 `points` 同一套）；`element.points` 是相對於 `x / y` 的座標。對文字物件另外回 `textHeight`（依目前字型與換行量出來的高度，沒有存在檔案裡）。對圖片框另外回 `photoItem`（照片是素材庫的哪一張：`{ id, name }`；素材庫已沒有時 `null`）。對音訊另外回 `audioItem`（同 `photoItem`，播放的是素材庫的哪一筆）。
 
 `check_layout` 回 `{ pageId, pageName, checked, issues, truncated }`；`issues` 的 `type` 是 `textOverflow`（`direction: height | width`、`overflowPt`；矩形的文字只吃掉內距時 `severity: "warning"`）、`overlap`（`ids`、`areaPt2`）、`outOfPage` / `outOfMargin`（`overflowPt: { top?, right?, bottom?, left? }`）。主頁物件、跨頁物件、頁碼也會檢查，牽涉到它們時附 `sources`（`master` / `facingPage` / `pageNumber`），id 是原物件的。文字的外框只算字實際畫到的範圍（依對齊與縮排）。排除規則：相鄰（重疊 ≤ 1 pt²）、文字完全在圖形 / 圖片裡、線條、雙頁越過中縫、蓋滿整頁的背景、碰到頁緣的物件（不算超出邊界）。最多 50 筆。
 
