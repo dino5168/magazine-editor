@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Circle,
   Clapperboard,
+  Music,
   Image,
   Minus,
   MoveHorizontal,
@@ -24,6 +25,7 @@ import { selectActivePage } from "@/lib/editor/editor-reducer";
 import { describeElement } from "@/lib/editor/element-factory";
 import type { CanvasElement, GeometryKind, LineElement } from "@/lib/editor/types";
 import { IconButton } from "../icon-button";
+import { isAudioElement } from "@/lib/media/media-kind";
 
 const GEOMETRY_ICONS: { readonly [K in GeometryKind]: LucideIcon } = {
   rect: Square,
@@ -53,7 +55,7 @@ function elementIcon(element: CanvasElement): LucideIcon {
     case "line":
       return lineIcon(element);
     case "media":
-      return Clapperboard;
+      return isAudioElement(element) ? Music : Clapperboard;
     default: {
       const exhaustive: never = element;
       return exhaustive;

@@ -17,7 +17,7 @@ import { fetchVideoInfo } from "@/lib/media/video-info";
 
 type Update = (patch: ElementPatch) => void;
 
-function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+export function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2 border-b px-3 py-3 last:border-b-0">
       <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
@@ -30,7 +30,7 @@ function Section({ title, children }: { readonly title: string; readonly childre
  * A text field written on Enter or blur (one undo step), like `NumberField`. The parent gives it a
  * `key` from the stored value, so undo / redo resets the draft.
  */
-function CommitField({
+export function CommitField({
   label,
   value,
   onCommit,

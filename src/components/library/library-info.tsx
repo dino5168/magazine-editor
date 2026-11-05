@@ -10,6 +10,7 @@ import { formatVideoTime } from "@/lib/media/media-insert";
 import { youTubeWatchUrl } from "@/lib/media/youtube-url";
 import { kindBadge, LibraryThumb } from "./library-card";
 import { useAudioDuration } from "./use-audio-duration";
+import { AUDIO_FORMAT_NOTICE, isPlaceableAudio } from "@/lib/library/audio-item";
 
 const KIND_LABELS: { readonly [K in LibraryItem["kind"]]: string } = { image: "圖片", text: "文字檔", audio: "音訊", video: "影片" };
 
@@ -147,7 +148,7 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
   }
 
   const [item] = items;
-  const canPlace = !item.trashed && item.kind !== "audio";
+  const canPlace = !item.trashed && (item.kind !== "audio" || isPlaceableAudio(item));
   const videoUrl = item.kind === "video" ? youTubeWatchUrl(item.videoId, item.start) : null;
   const isMarkdown = kindBadge(item) === "MD";
   const folderName =
@@ -219,7 +220,9 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
         </p>
       )}
       {item.kind === "audio" && !item.trashed && (
-        <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">音訊目前只能匯入與分類，不能放到頁面。</p>
+        <p className="rounded-md bg-muted px-2.5 py-2 text-xs text-muted-foreground">
+          {canPlace ? "放到頁面時是一個喇叭按鈕；匯出的翻頁書裡點了可以播放。" : `${AUDIO_FORMAT_NOTICE}；這個檔案可以試聽與分類。`}
+        </p>
       )}
       {item.trashed && <TrashActions ids={[item.id]} onRestore={onRestore} onPurge={onPurge} />}
       {!item.trashed && (

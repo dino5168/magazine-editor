@@ -44,7 +44,7 @@ paths:
 - 每個專案一個素材庫。`library.json`：**Rust 是權威**，TS `lib/library/types.ts` 手寫對應，共用 fixture `tests/fixtures/sample-library.json`。驗證規則 TS `libraryProblem` 與 Rust 同；**同一個 `src` 只能一筆**。比 App 新的 `libraryVersion` 拒絕開啟專案；主檔與 `.bak` 都壞時改名 `.damaged` 並重建。
 - **立即寫入、不進復原、不算未存檔**：`LibraryProvider` 每次變更 `library_write`（帶 `projectId`，一次一個、合併）。**換專案、另存、關閉視窗前都要 `flush()`**（`use-project-commands.ts`、`use-close-guard.ts`）。
 - `EditorState.assets` 已移除；`project.magproj` 的 `assets` 在存檔時由素材庫算出（`projectAssets`：**所有圖片，含垃圾桶**——舊版 App 的開檔清理只看它）。
-- 匯入 `library_import`：raw body，header `x-asset-kind` / `x-asset-extension`；內容由 Rust 檢查（圖片 / 音訊看檔頭；文字 UTF-8、無 NUL、≤ 200 KB）。音訊只能匯入與分類，不能放到頁面。
+- 匯入 `library_import`：raw body，header `x-asset-kind` / `x-asset-extension`；內容由 Rust 檢查（圖片 / 音訊看檔頭；文字 UTF-8、無 NUL、≤ 200 KB）。音訊照樣能匯入 mp3 / wav / ogg / m4a，但**只有 mp3 能放到頁面**（`lib/library/audio-item.ts` 的 `isPlaceableAudio`；v19 的喇叭按鈕，計畫 `docs/16-Plans-Audio/02-Audio-素材-實作.md`）。
 - 「內建範例」**不寫進 `library.json`**：放到頁面時才 `importBundled`，之後和一般素材同一條路（`usePlaceLibraryItem`）。
 - 管理視窗處理的按鍵要 **`stopPropagation`**：否則編輯器快捷鍵判斷不出焦點在視窗裡，會刪掉畫布上的物件。確認框關閉時焦點放回視窗。視窗有 `transform`，拖曳標籤 portal 到 `document.body`。拖曳規則在純函式 `libraryDropResult`；拖已選取的卡片時**開始拖曳才改選取**。
 - 永久刪除只移除清單，檔案在下次開檔清理時才刪。

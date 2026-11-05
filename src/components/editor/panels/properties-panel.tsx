@@ -37,11 +37,12 @@ import { SHAPE_OPTION_GROUPS } from "../shape-options";
 import { Row, StrokeFields, TextStyleFields } from "../style-controls";
 import { TextStyleLink } from "../text-style-link";
 import { VideoTab } from "../video-fields";
-import { isVideoElement, mediaKindName } from "@/lib/media/media-kind";
+import { isAudioElement, isVideoElement, mediaKindName } from "@/lib/media/media-kind";
+import { AudioTab } from "../audio-fields";
 
-type TabId = "style" | "text" | "line" | "video" | "arrange";
+type TabId = "style" | "text" | "line" | "video" | "audio" | "arrange";
 
-const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", line: "線條", video: "影片", arrange: "調整" };
+const TAB_LABELS: { readonly [K in TabId]: string } = { style: "樣式", text: "文字", line: "線條", video: "影片", audio: "音訊", arrange: "調整" };
 
 // 各物件有哪些分頁
 function tabsOf(element: CanvasElement): readonly TabId[] {
@@ -53,8 +54,7 @@ function tabsOf(element: CanvasElement): readonly TabId[] {
     case "image":
       return ["arrange"];
     case "media":
-      // 音訊的分頁在步驟 3（docs/16-Plans-Audio/02-Audio-素材-實作.md）
-      return isVideoElement(element) ? ["video", "arrange"] : ["arrange"];
+      return isVideoElement(element) ? ["video", "arrange"] : ["audio", "arrange"];
     case "line":
       return ["line", "arrange"];
     default: {
@@ -555,6 +555,11 @@ function SelectedProperties({ element }: { readonly element: CanvasElement }) {
       {element.type === "media" && isVideoElement(element) && (
         <TabsContent value="video">
           <VideoTab media={element} update={update} />
+        </TabsContent>
+      )}
+      {element.type === "media" && isAudioElement(element) && (
+        <TabsContent value="audio">
+          <AudioTab media={element} update={update} />
         </TabsContent>
       )}
       <TabsContent value="arrange">

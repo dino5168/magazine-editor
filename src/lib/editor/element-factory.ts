@@ -9,6 +9,7 @@ import { BUILT_IN_SWATCH_IDS, defaultSwatches } from "./swatches";
 import { DEFAULT_TEXT_FILL } from "./text-style";
 import { PAGE_SIZE_PRESETS, mmToPt, presetToPt } from "./units";
 import type {
+  AudioElement,
   Bounds,
   CanvasElement,
   EditorDocument,
@@ -513,6 +514,41 @@ export function createMediaElement<S extends MediaOrigin>(
     width,
     height,
     source,
+    poster: null,
+    title: "",
+    ...options,
+  };
+}
+
+/** A new audio button's size (pt): a small round speaker (`docs/16-Plans-Audio/02-Audio-素材-實作.md` §0). */
+export const AUDIO_BUTTON_SIZE_PT = 48;
+
+/**
+ * Creates an audio element (v19): a `AUDIO_BUTTON_SIZE_PT` square centered on `center`.
+ *
+ * Args:
+ *   src: The mp3 (`assets/audio/…`, or a blob URL in browser mode).
+ *   center: Center position in pt.
+ *   options: Poster and title; default none / empty.
+ *
+ * Returns:
+ *   New media element playing the file.
+ */
+export function createAudioElement(
+  src: string,
+  center: Point,
+  options: Partial<Pick<MediaElement, "poster" | "title">> = {},
+): AudioElement {
+  const size = AUDIO_BUTTON_SIZE_PT;
+  return {
+    id: createId(),
+    type: "media",
+    x: center.x - size / 2,
+    y: center.y - size / 2,
+    rotation: 0,
+    width: size,
+    height: size,
+    source: { kind: "file", src },
     poster: null,
     title: "",
     ...options,

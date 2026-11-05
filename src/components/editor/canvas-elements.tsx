@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type Konva from "konva";
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Circle, Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text } from "react-konva";
+import { Arc, Circle, Ellipse, Group, Image as KonvaImage, Line, Path, Rect, Text } from "react-konva";
 import useImage from "use-image";
 import { konvaCornerRadius } from "@/lib/editor/corner-radius";
 import { MIN_ELEMENT_SIZE_PT as MIN_SIZE_PT, snapPointToGrid } from "@/lib/editor/geometry";
@@ -28,6 +28,8 @@ import type {
   TextElement,
 } from "@/lib/editor/types";
 import { measureTextLayout } from "@/lib/export/text-layout";
+import { isAudioElement } from "@/lib/media/media-kind";
+import { AUDIO_BACKGROUND, AUDIO_BADGE_MARK_RATIO, AUDIO_BADGE_RADIUS, AUDIO_MARK_RATIO, speakerMark } from "@/lib/media/speaker-mark";
 import { useResolveSrc } from "./asset-src";
 
 export const ELEMENT_NODE_NAME = "element";
@@ -158,15 +160,49 @@ const MEDIA_BACKGROUND = "#262626";
 const MEDIA_BADGE_FILL = "rgba(0, 0, 0, 0.6)";
 const MEDIA_MARK_FILL = "rgba(255, 255, 255, 0.95)";
 
+/** The speaker of an audio element (`speaker-mark.ts`, same numbers as the exports). */
+function SpeakerMark({ cx, cy, size }: { readonly cx: number; readonly cy: number; readonly size: number }) {
+  const { body, waves } = speakerMark(cx, cy, size);
+  return (
+    <>
+      <Line points={[...body]} closed fill={MEDIA_MARK_FILL} listening={false} />
+      {waves.map((wave, index) => (
+        <Arc key={index} {...wave} fill={MEDIA_MARK_FILL} listening={false} />
+      ))}
+    </>
+  );
+}
+
 function MediaNode({ element, common }: { readonly element: MediaElement; readonly common: CommonNodeProps | StaticNodeProps }) {
   const { width, height, poster } = element;
   const resolveSrc = useResolveSrc();
   const [image, status] = useImage(poster ? resolveSrc(poster.src) : "", IMAGE_CROSS_ORIGIN);
   const placement = useMemo(() => (poster ? photoPlacement(width, height, poster) : null), [poster, width, height]);
   const posterAttrs = image && status === "loaded" && placement ? { fillPatternImage: image, ...photoPatternAttrs(placement, image) } : null;
-  // 播放圖示：圓形底 + 三角形，直徑是短邊的 28%（視覺重心讓三角形往右偏一點）
-  const radius = Math.min(width, height) * 0.14;
   const [cx, cy] = [width / 2, height / 2];
+  const short = Math.min(width, height);
+  if (isAudioElement(element)) {
+    // 音訊：沒有封面是圓形按鈕 + 喇叭；有封面是封面 + 中央的圓形喇叭徽章（同影片的播放圖示）
+    if (!posterAttrs) {
+      return (
+        <Group {...common}>
+          <Ellipse x={cx} y={cy} radiusX={width / 2} radiusY={height / 2} fill={AUDIO_BACKGROUND} />
+          <SpeakerMark cx={cx} cy={cy} size={short * AUDIO_MARK_RATIO} />
+        </Group>
+      );
+    }
+    const badge = short * AUDIO_BADGE_RADIUS;
+    return (
+      <Group {...common}>
+        <Rect width={width} height={height} fill={MEDIA_BACKGROUND} />
+        <Rect width={width} height={height} {...posterAttrs} listening={false} />
+        <Circle x={cx} y={cy} radius={badge} fill={MEDIA_BADGE_FILL} listening={false} />
+        <SpeakerMark cx={cx} cy={cy} size={badge * AUDIO_BADGE_MARK_RATIO} />
+      </Group>
+    );
+  }
+  // 播放圖示：圓形底 + 三角形，直徑是短邊的 28%（視覺重心讓三角形往右偏一點）
+  const radius = short * 0.14;
   const t = radius * 0.5;
   return (
     <Group {...common}>

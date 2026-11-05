@@ -8,6 +8,7 @@ import type { PageId, Point } from "@/lib/editor/types";
 import { normalizeText } from "@/lib/library/library-files";
 import type { LibraryItem } from "@/lib/library/types";
 import { mediaFromVideoItem } from "@/lib/library/video-item";
+import { AUDIO_FORMAT_NOTICE, isPlaceableAudio, mediaFromAudioItem } from "@/lib/library/audio-item";
 import { describeCommandError, isDesktop, projectApi } from "@/lib/project/project-api";
 
 /** Full text of a text item: from Rust on the desktop (the CSP blocks fetching asset URLs), from the blob URL in the browser. */
@@ -31,8 +32,8 @@ async function readItemText(src: string): Promise<string | null> {
 /**
  * Returns a function that puts a library item on the active page: an image becomes an image
  * element, a text file a text element with its content as is (Markdown marks stay), a video a
- * video element (poster, start and title from the item). Audio cannot
- * be placed. One `element/add` = one undo step; the new element is selected.
+ * video element (poster, start and title from the item), an mp3 an audio button (other audio formats
+ * cannot be placed yet). One `element/add` = one undo step; the new element is selected.
  *
  * Returns:
  *   `place(item, center?, pageId?)` resolving to true when something was added. `center` is in
@@ -47,8 +48,8 @@ export function usePlaceLibraryItem(): (item: LibraryItem, center?: Point, pageI
 
   return useCallback(
     async (item: LibraryItem, center?: Point, pageId?: PageId) => {
-      if (item.kind === "audio") {
-        toast.info("音訊目前不能放到頁面");
+      if (item.kind === "audio" && !isPlaceableAudio(item)) {
+        toast.info(AUDIO_FORMAT_NOTICE);
         return false;
       }
       const page = (pageId && findSheet(document, pageId)) || active;
@@ -63,7 +64,9 @@ export function usePlaceLibraryItem(): (item: LibraryItem, center?: Point, pageI
           ? createImageElement(item.src, item, page, at)
           : item.kind === "video"
             ? mediaFromVideoItem(item, page, at)
-            : createTextFromFile(normalizeText(text ?? ""), page, at);
+            : item.kind === "audio"
+              ? mediaFromAudioItem(item, at)
+              : createTextFromFile(normalizeText(text ?? ""), page, at);
       dispatch({ type: "element/add", element });
       return true;
     },

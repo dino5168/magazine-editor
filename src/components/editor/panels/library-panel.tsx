@@ -19,6 +19,7 @@ import { BUNDLED_PHOTOS, type BundledPhoto } from "@/lib/library/bundled-photos"
 import { useLibrary, useLibraryControl } from "@/lib/library/library-context";
 import type { LibraryItem } from "@/lib/library/types";
 import { LIBRARY_ACCEPT } from "@/lib/library/library-files";
+import { AUDIO_FORMAT_NOTICE, isPlaceableAudio } from "@/lib/library/audio-item";
 import { ALL_VIEW, importFolderOf, libraryCounts, visibleItems, type LibraryView } from "@/lib/library/library-selectors";
 import { treeRows } from "@/lib/library/library-tree";
 import { useLibraryImport } from "@/lib/library/use-library-import";
@@ -262,19 +263,19 @@ export function LibraryPanel() {
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {items.map((item) => {
-                const placeable = item.kind !== "audio";
+                const placeable = item.kind !== "audio" || isPlaceableAudio(item);
                 return (
                   <button
                     key={item.id}
                     type="button"
                     data-library-panel-item={item.id}
-                    title={placeable ? `${item.name}（點一下放到頁面中央，或拖到頁面上）` : `${item.name}（音訊不能放到頁面）`}
+                    title={placeable ? `${item.name}（點一下放到頁面中央，或拖到頁面上）` : `${item.name}（${AUDIO_FORMAT_NOTICE}）`}
                     aria-disabled={!placeable}
                     onPointerDown={(event) => {
                       if (placeable) startDrag(itemTarget(item), event);
                     }}
                     onClick={() => {
-                      if (!placeable) return toast.info("音訊目前不能放到頁面");
+                      if (!placeable) return toast.info(AUDIO_FORMAT_NOTICE);
                       void placeItem(item);
                     }}
                     className={tileClass(item.id, placeable)}
@@ -283,7 +284,7 @@ export function LibraryPanel() {
                     {!placeable && (
                       // 放在右上角，不蓋住音訊卡片下方的檔名
                       <span className="absolute top-1.5 right-1.5 rounded bg-black/55 px-1.5 py-px text-[10px] text-white">
-                        不能放到頁面
+                        只能用 mp3
                       </span>
                     )}
                   </button>
