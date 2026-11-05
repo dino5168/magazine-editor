@@ -110,6 +110,67 @@ fn videos_without_poster_or_with_a_missing_one_keep_the_dark_box() {
 }
 
 #[test]
+fn audio_without_poster_is_a_round_button_with_a_speaker() {
+    let (root, req) = crate::export::test_support::audio_request();
+    let (document, skipped) = build_render(root.path(), &req).unwrap();
+    assert_eq!(skipped, 0);
+    let elements = &document.pages[0].elements;
+    let [button, body, waves] = &elements[elements.len() - 3..] else { panic!("three pieces") };
+    assert!(matches!(&button.kind, RenderKind::Ellipse(e) if (e.width, e.height) == (80.0, 80.0) && e.fill == "#4338ca"));
+    assert_eq!((button.x, button.y), (300.0, 300.0));
+    // 喇叭：size = 短邊 80 × 0.3 = 24，中心 (40, 40)；本體外框左上 (40 − 0.9 × 24, 40 − 0.75 × 24)
+    let RenderKind::Polygon(polygon) = &body.kind else { panic!("speaker body") };
+    assert!((body.x - (300.0 + 40.0 - 21.6)).abs() < 1e-9 && (body.y - (300.0 + 40.0 - 18.0)).abs() < 1e-9);
+    assert_eq!(polygon.points.len(), 6);
+    assert!((polygon.width - 22.8).abs() < 1e-9 && (polygon.height - 36.0).abs() < 1e-9);
+    // 兩段聲波：各一個封閉的扇環（Move、外弧、Line、內弧、Close），在外框座標裡、不超出外框
+    let RenderKind::Path(path) = &waves.kind else { panic!("waves") };
+    assert_eq!((waves.x, waves.y, path.width, path.height), (300.0, 300.0, 80.0, 80.0));
+    assert_eq!(path.outline.len(), 10);
+    assert!(path.stroke.is_none() && path.details.is_empty() && path.fill == "#fffffff2");
+    let ends: Vec<(f64, f64)> = path
+        .outline
+        .iter()
+        .filter_map(|segment| match *segment {
+            PathSegment::Move(x, y) | PathSegment::Line(x, y) | PathSegment::Cubic(_, _, _, _, x, y) => Some((x, y)),
+            PathSegment::Close => None,
+        })
+        .collect();
+    assert!(ends.iter().all(|&(x, y)| (0.0..=80.0).contains(&x) && (0.0..=80.0).contains(&y)), "{ends:?}");
+    // 外圈聲波的外半徑 (0.75 + 0.07) × 24，圓心 (40 + 0.05 × 24, 40)：弧的終點在 45°
+    let outer = 0.82 * 24.0;
+    let (x, y) = ends[5];
+    assert!((x - (41.2 + outer * std::f64::consts::FRAC_1_SQRT_2)).abs() < 1e-9 && (y - (40.0 + outer * std::f64::consts::FRAC_1_SQRT_2)).abs() < 1e-9);
+    // PDF 裡不能播放：沒有連結
+    assert!(elements[elements.len() - 3..].iter().all(|e| e.link.is_none()));
+}
+
+#[test]
+fn audio_with_poster_is_the_poster_with_a_speaker_badge() {
+    use crate::export::test_support::{audio_request, FRAME_PHOTO, VIDEO_ID};
+    use crate::project::format::{ShapeImage, ShapeImageFit};
+    let (root, mut req) = audio_request();
+    let Some(Element::Media(audio)) = req.document.pages[0].elements.last_mut() else { panic!("audio") };
+    audio.poster = Some(ShapeImage { src: FRAME_PHOTO.into(), image_width: 200.0, image_height: 150.0, fit: ShapeImageFit::Cover, focus_x: 0.5, focus_y: 0.5, zoom: 1.0 });
+    audio.base.rotation = 90.0;
+    req.shape_photos.insert(VIDEO_ID.into(), PhotoPlacement { x: -13.3, y: 0.0, width: 106.6, height: 80.0 });
+    let (document, _) = build_render(root.path(), &req).unwrap();
+    let elements = &document.pages[0].elements;
+    let [frame, badge, _, waves] = &elements[elements.len() - 4..] else { panic!("four pieces") };
+    assert!(matches!(&frame.kind, RenderKind::Rect(r) if r.fill == "#262626") && frame.photo.is_some() && frame.link.is_none());
+    // 徽章半徑 = 80 × 0.2 = 16，左上角在外框內 (24, 24)；轉 90° 後是 (300 − 24, 300 + 24)
+    assert!(matches!(&badge.kind, RenderKind::Ellipse(e) if (e.width - 32.0).abs() < 1e-9 && e.fill == "#00000099"));
+    assert!((badge.x - 276.0).abs() < 1e-9 && (badge.y - 324.0).abs() < 1e-9 && badge.rotation == 90.0);
+    assert_eq!((waves.x, waves.y, waves.rotation), (300.0, 300.0, 90.0));
+    // 封面檔不見：退回圓形按鈕，算進略過的圖片（圖片框也用同一張，一起算）
+    std::fs::remove_file(root.path().join(FRAME_PHOTO)).unwrap();
+    let (document, skipped) = build_render(root.path(), &req).unwrap();
+    assert_eq!(skipped, 2);
+    let elements = &document.pages[0].elements;
+    assert!(matches!(&elements[elements.len() - 3].kind, RenderKind::Ellipse(e) if e.fill == "#4338ca"));
+}
+
+#[test]
 fn video_posters_need_their_placement_from_the_editor() {
     let (root, mut req) = crate::export::test_support::video_request();
     req.shape_photos.remove(crate::export::test_support::VIDEO_ID);

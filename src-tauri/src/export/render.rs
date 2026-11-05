@@ -679,10 +679,6 @@ const MEDIA_BADGE_RADIUS: f64 = 0.14;
 /// link), then the play badge's circle and triangle on top, all rotated with the video. Same
 /// drawing as the canvas's `MediaNode`, made of kinds every format already draws.
 fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<RenderElement> {
-    let MediaOrigin::Youtube { video_id, start } = &media.source else {
-        // build_render 先略過音訊（步驟 5 才畫）
-        return Vec::new();
-    };
     let (width, height) = (media.width, media.height);
     let (sin, cos) = media.base.rotation.to_radians().sin_cos();
     // 外框內的一點（左上角為原點）旋轉後在頁面上的位置：和圖形內文字相同的換算
@@ -690,6 +686,10 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
     let piece = |local_x: f64, local_y: f64, kind: RenderKind| {
         let (x, y) = at(local_x, local_y);
         RenderElement { x, y, rotation: media.base.rotation, kind, photo: None, link: None }
+    };
+    let (video_id, start) = match &media.source {
+        MediaOrigin::Youtube { video_id, start } => (video_id, start),
+        MediaOrigin::File { .. } => return audio_elements(media, poster, &piece),
     };
     let radius = width.min(height) * MEDIA_BADGE_RADIUS;
     let (cx, cy) = (width / 2.0, height / 2.0);
@@ -720,6 +720,89 @@ fn media_elements(media: &MediaElement, poster: Option<RenderPhoto>) -> Vec<Rend
         piece(cx - radius, cy - radius, RenderKind::Ellipse(circle)),
         piece(cx - 0.7 * t, cy - t, RenderKind::Polygon(triangle)),
     ]
+}
+
+// 音訊（v19）的喇叭：和 `src/lib/media/speaker-mark.ts` 同一組數字（單位方塊 −1…1，以 size = 圖示高度的一半縮放）
+/// Speaker body, clockwise from the top left; same as `SPEAKER_BODY`.
+const SPEAKER_BODY: [[f64; 2]; 6] = [[-0.9, -0.3], [-0.45, -0.3], [0.05, -0.75], [0.05, 0.75], [-0.45, 0.3], [-0.9, 0.3]];
+/// Centre and radii (to the middle of the stroke) of the two sound waves; same as `SPEAKER_WAVE_*`.
+const SPEAKER_WAVE_CENTER: [f64; 2] = [0.05, 0.0];
+const SPEAKER_WAVE_RADII: [f64; 2] = [0.4, 0.75];
+const SPEAKER_WAVE_WIDTH: f64 = 0.14;
+/// Each wave spans this many degrees around the x axis (pointing right).
+const SPEAKER_WAVE_ANGLE: f64 = 90.0;
+/// Round button without a poster; same as `AUDIO_BACKGROUND`.
+const AUDIO_BACKGROUND: &str = "#4338ca";
+/// Mark half height ÷ shorter side (no poster); badge radius ÷ shorter side and mark ÷ radius (poster).
+const AUDIO_MARK_RATIO: f64 = 0.3;
+const AUDIO_BADGE_RADIUS: f64 = 0.2;
+const AUDIO_BADGE_MARK_RATIO: f64 = 0.55;
+
+/// One cubic Bézier for a circular arc of at most 90° (centre `(cx, cy)`, angles in radians,
+/// clockwise on screen); the start point is where the path already is.
+fn arc_segment(cx: f64, cy: f64, radius: f64, from: f64, to: f64) -> PathSegment {
+    let k = 4.0 / 3.0 * ((to - from) / 4.0).tan() * radius;
+    let (s0, c0) = from.sin_cos();
+    let (s1, c1) = to.sin_cos();
+    PathSegment::Cubic(
+        cx + radius * c0 - k * s0,
+        cy + radius * s0 + k * c0,
+        cx + radius * c1 + k * s1,
+        cy + radius * s1 - k * c1,
+        cx + radius * c1,
+        cy + radius * s1,
+    )
+}
+
+/// The speaker centred on `(cx, cy)` (box coordinates) as a polygon (body) and a filled path (both
+/// waves as ring sectors, like Konva's `Arc`), each placed by `piece`.
+fn speaker_mark(cx: f64, cy: f64, size: f64, width: f64, height: f64, piece: &dyn Fn(f64, f64, RenderKind) -> RenderElement) -> [RenderElement; 2] {
+    let (left, top) = (cx - 0.9 * size, cy - 0.75 * size);
+    let body = RenderPolygon {
+        width: 0.95 * size,
+        height: 1.5 * size,
+        points: SPEAKER_BODY.iter().map(|[x, y]| [cx + x * size - left, cy + y * size - top]).collect(),
+        fill: MEDIA_MARK_FILL.to_owned(),
+        stroke: None,
+    };
+    let (wx, wy) = (cx + SPEAKER_WAVE_CENTER[0] * size, cy + SPEAKER_WAVE_CENTER[1] * size);
+    let (from, to) = ((-SPEAKER_WAVE_ANGLE / 2.0).to_radians(), (SPEAKER_WAVE_ANGLE / 2.0).to_radians());
+    let mut outline = Vec::new();
+    for radius in SPEAKER_WAVE_RADII {
+        let (inner, outer) = ((radius - SPEAKER_WAVE_WIDTH / 2.0) * size, (radius + SPEAKER_WAVE_WIDTH / 2.0) * size);
+        outline.push(PathSegment::Move(wx + outer * from.cos(), wy + outer * from.sin()));
+        outline.push(arc_segment(wx, wy, outer, from, to));
+        outline.push(PathSegment::Line(wx + inner * to.cos(), wy + inner * to.sin()));
+        outline.push(arc_segment(wx, wy, inner, to, from));
+        outline.push(PathSegment::Close);
+    }
+    // 路徑用整個外框當座標系（左上角為原點），旋轉跟著外框
+    let waves = RenderPath { width, height, outline, fill: MEDIA_MARK_FILL.to_owned(), stroke: None, details: Vec::new(), detail_stroke: None };
+    [piece(left, top, RenderKind::Polygon(body)), piece(0.0, 0.0, RenderKind::Path(waves))]
+}
+
+/// An audio element (v19) as render elements, the same drawing as the canvas's `MediaNode`: without
+/// a poster (or when its file is missing) a filled ellipse with the speaker; with one, the poster
+/// on a dark box with a round badge holding the speaker. PDF and PowerPoint cannot play it.
+fn audio_elements(media: &MediaElement, poster: Option<RenderPhoto>, piece: &dyn Fn(f64, f64, RenderKind) -> RenderElement) -> Vec<RenderElement> {
+    let (width, height) = (media.width, media.height);
+    let (cx, cy) = (width / 2.0, height / 2.0);
+    let short = width.min(height);
+    let Some(poster) = poster else {
+        let button = RenderEllipse { width, height, fill: AUDIO_BACKGROUND.to_owned(), stroke: None };
+        let mut out = vec![piece(0.0, 0.0, RenderKind::Ellipse(button))];
+        out.extend(speaker_mark(cx, cy, short * AUDIO_MARK_RATIO, width, height, piece));
+        return out;
+    };
+    let radius = short * AUDIO_BADGE_RADIUS;
+    let rect = RenderRect { width, height, corner_radii: [0.0; 4], fill: MEDIA_BACKGROUND.to_owned(), stroke: None };
+    let badge = RenderEllipse { width: 2.0 * radius, height: 2.0 * radius, fill: MEDIA_BADGE_FILL.to_owned(), stroke: None };
+    let mut out = vec![
+        RenderElement { photo: Some(poster), ..piece(0.0, 0.0, RenderKind::Rect(rect)) },
+        piece(cx - radius, cy - radius, RenderKind::Ellipse(badge)),
+    ];
+    out.extend(speaker_mark(cx, cy, radius * AUDIO_BADGE_MARK_RATIO, width, height, piece));
+    out
 }
 
 /// Turns the editor's document and line breaks into the render model.
@@ -768,8 +851,7 @@ pub fn build_render(root: &Path, request: &ExportRequest) -> AppResult<(RenderDo
                 // 編輯器匯出前把線條換成路徑圖形（buildExportRequest），匯出請求裡不該有線條
                 Element::Line(_) => return Err(AppError::invalid_input("匯出資料有誤：線條沒有先換成路徑")),
                 // 影片：封面（深色底 + 照片，和圖片框同一條路）+ 播放圖示，整個外框是連結
-                // 音訊（v19）：步驟 5 才畫（docs/16-Plans-Audio/02-Audio-素材-實作.md），先略過
-                Element::Media(MediaElement { source: MediaOrigin::File { .. }, .. }) => continue,
+                // 影片與音訊（v19）共用：音訊沒有封面是圓形按鈕 + 喇叭，有封面是封面 + 喇叭徽章
                 Element::Media(e) => {
                     let poster = render_photo(root, &e.base.id, e.poster.as_ref(), &request.shape_photos)?;
                     // 封面檔被刪除時只畫深色底，算進略過的圖片數（同圖片框）

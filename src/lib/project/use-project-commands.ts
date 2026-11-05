@@ -4,7 +4,7 @@ import { fontsToCheckBeforePublishing } from "@/lib/editor/font-catalog";
 import type { PageSetup } from "@/lib/editor/page-setup";
 import type { Margins } from "@/lib/editor/types";
 import { useLibraryControl } from "@/lib/library/library-context";
-import { buildExportRequest, skippedShapeCount, type ExportRequest } from "@/lib/export/export-request";
+import { audioElementCount, buildExportRequest, skippedShapeCount, type ExportRequest } from "@/lib/export/export-request";
 import { pptxExportProblem } from "@/lib/export/pptx-export";
 import { measureLineWidth, measureTextLayout } from "@/lib/export/text-layout";
 import { useProject } from "./project-context";
@@ -204,6 +204,11 @@ export function useProjectCommands(
       const skippedShapes = skippedShapeCount(request);
       if (skippedShapes > 0) {
         toast.warning(`有 ${skippedShapes} 個圖形是這個版本不認得的圖形庫圖形，已略過`);
+      }
+      // PDF / PowerPoint 只畫喇叭按鈕；翻頁電子書可以播放
+      const audio = format === "pdf" || format === "pptx" ? audioElementCount(request) : 0;
+      if (audio > 0) {
+        toast.info(`有 ${audio} 個音訊：${name}裡只有喇叭圖示，不能播放（翻頁電子書可以播放）`);
       }
       return true;
     },

@@ -193,3 +193,18 @@ pub fn video_request() -> (tempfile::TempDir, ExportRequest) {
     req.shape_photos.insert(VIDEO_ID.into(), super::PhotoPlacement { x: 0.0, y: -15.0, width: 160.0, height: 120.0 });
     (root, req)
 }
+
+/// File of the audio `audio_request` adds (the file itself is not needed to draw it).
+pub const AUDIO_SRC: &str = "assets/audio/00112233445566778899aabbccddeeff.mp3";
+
+/// `video_request` with the video turned into an 80 × 80 audio button without poster (v19), still
+/// `el-video` at (300, 300) on top of the first page.
+pub fn audio_request() -> (tempfile::TempDir, ExportRequest) {
+    use crate::project::format::MediaOrigin;
+    let (root, mut req) = video_request();
+    let Some(Element::Media(media)) = req.document.pages[0].elements.last_mut() else { unreachable!("video_request adds the video last") };
+    media.source = MediaOrigin::File { src: AUDIO_SRC.into() };
+    (media.width, media.height, media.poster, media.title) = (80.0, 80.0, None, "訪談".into());
+    req.shape_photos.remove(VIDEO_ID);
+    (root, req)
+}

@@ -244,3 +244,17 @@ export function skippedShapeCount(request: ExportRequest): number {
     .flatMap((page) => page.elements)
     .filter((element) => element.type === "shape" && element.geometry.kind === "preset" && !(element.id in request.shapePaths)).length;
 }
+
+/**
+ * How many audio elements (v19) the export contains: PDF and PowerPoint only draw their speaker
+ * button, so the editor tells the user they will not play there.
+ *
+ * Args:
+ *   request: Export request from `buildExportRequest`.
+ *
+ * Returns:
+ *   Number of audio elements, counted on every page (master and spread copies included).
+ */
+export function audioElementCount(request: ExportRequest): number {
+  return request.document.pages.flatMap((page) => page.elements).filter((element) => element.type === "media" && element.source.kind === "file").length;
+}

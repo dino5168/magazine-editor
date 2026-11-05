@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MARGINS,
+  createAudioElement,
   createMasterPage,
+  createMediaElement,
   createPage,
   createPresetShapeElement,
   createShapeElement,
@@ -12,7 +14,7 @@ import { LABEL_PADDING_PT, createLabel, labelFrame } from "@/lib/editor/shape-la
 import { detailStroke, findShapePreset, presetPath } from "@/lib/editor/shape-presets";
 import type { EditorDocument, ShapeGeometry } from "@/lib/editor/types";
 import { photoPlacement, shapeImageOf } from "@/lib/editor/shape-image";
-import { buildExportRequest, masterCopyId, skippedShapeCount, spilloverCopyId } from "../export-request";
+import { audioElementCount, buildExportRequest, masterCopyId, skippedShapeCount, spilloverCopyId } from "../export-request";
 
 // 假的量測：每個字寬 = 字級的一半
 const measureWidth = (text: string, style: { fontSize: number }) => Array.from(text).length * style.fontSize * 0.5;
@@ -267,5 +269,26 @@ describe("buildExportRequest / image frames", () => {
       [masterCopyId(0, 0)]: photoPlacement(band.width, band.height, band.image),
       [frame.id]: photoPlacement(frame.width, frame.height, frame.image),
     });
+  });
+});
+
+describe("audioElementCount", () => {
+  it("counts audio on pages and master copies, not videos", () => {
+    const size = { width: 595, height: 842 };
+    const master = createMasterPage("Master A", size, "#ffffff", null);
+    const page = createPage("封面", size, "#ffffff", master.id);
+    const audio = createAudioElement("assets/audio/a.mp3", { x: 100, y: 100 });
+    const video = createMediaElement({ kind: "youtube", videoId: "C5fjrag2Fcg", start: 0 }, size, { x: 300, y: 300 });
+    const document: EditorDocument = {
+      name: "測試",
+      margins: DEFAULT_MARGINS,
+      textStyles: [],
+      swatches: [],
+      fonts: [],
+      pageNumberRules: [],
+      masters: [{ ...master, elements: [{ ...audio, id: "on-master" }] }],
+      pages: [{ ...page, elements: [audio, video] }],
+    };
+    expect(audioElementCount(buildExportRequest(document, () => ({ lines: [], baseline: 0, lineWidths: [] }), measureWidth))).toBe(2);
   });
 });

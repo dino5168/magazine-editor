@@ -343,6 +343,33 @@ mod tests {
         assert!(r < 120, "badge darkens the red quadrant: {r}");
     }
 
+    #[test]
+    fn audio_draws_a_round_speaker_button_without_a_link() {
+        let (root, req) = crate::export::test_support::audio_request();
+        let compiled = compiled_pages(root.path(), &req);
+        let mut found = Vec::new();
+        links(&compiled.pages()[0].frame, typst::layout::Point::zero(), &mut found);
+        assert!(found.is_empty(), "PDF 裡不能播放音訊，不該有連結：{found:?}");
+        let pixmap =
+            typst_render::render(&compiled.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 2.0.into(), ..Default::default() });
+        let at = |x: f64, y: f64| {
+            let p = pixmap.pixel(((300.0 + x) * 2.0) as u32, ((300.0 + y) * 2.0) as u32).unwrap();
+            (p.red(), p.green(), p.blue())
+        };
+        let white = |(r, g, b): (u8, u8, u8)| r > 230 && g > 230 && b > 230;
+        let indigo = |(r, g, b): (u8, u8, u8)| (r, g, b) == (0x43, 0x38, 0xca);
+        // 80 × 80 的圓、喇叭 size 24、中心 (40, 40)、聲波圓心 (41.2, 40)
+        assert!(indigo(at(40.0, 8.0)), "按鈕上緣 {:?}", at(40.0, 8.0));
+        assert!(!indigo(at(4.0, 4.0)), "圓的外面不是按鈕的顏色 {:?}", at(4.0, 4.0));
+        assert!(white(at(35.0, 40.0)), "喇叭本體 {:?}", at(35.0, 40.0));
+        assert!(white(at(41.2 + 0.4 * 24.0, 40.0)), "內圈聲波 {:?}", at(50.8, 40.0));
+        assert!(white(at(41.2 + 0.75 * 24.0, 40.0)), "外圈聲波 {:?}", at(59.2, 40.0));
+        assert!(indigo(at(41.2 + 0.575 * 24.0, 40.0)), "兩圈之間 {:?}", at(55.0, 40.0));
+        // 聲波只有 ±45°：外圈半徑上、−80° 的地方（不在喇叭本體上）沒有聲波
+        let (dx, dy) = (0.75 * 24.0 * (-80f64).to_radians().cos(), 0.75 * 24.0 * (-80f64).to_radians().sin());
+        assert!(indigo(at(41.2 + dx, 40.0 + dy)), "聲波範圍外 {:?}", at(41.2 + dx, 40.0 + dy));
+    }
+
     fn compiled_pages(root: &Path, request: &ExportRequest) -> PagedDocument {
         let (document, _) = build_render(root, request).unwrap();
         let project = document_fonts::load(root, &request.document.fonts, &document);
