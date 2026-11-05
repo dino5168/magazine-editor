@@ -10,6 +10,7 @@ import {
   MousePointer2,
   MoveHorizontal,
   MoveRight,
+  Music,
   Pencil,
   Spline,
   Waypoints,
@@ -159,6 +160,8 @@ interface BottomToolbarProps {
   readonly onImportImage: () => void;
   /** Opens 「插入 YouTube 影片」 (same as 檔案 → 匯入 → YouTube 影片連結). */
   readonly onInsertVideo: () => void;
+  /** Opens the mp3 file picker and adds the chosen audio (same as 檔案 → 匯入 → 音訊). */
+  readonly onImportAudio: () => void;
   readonly className?: string;
 }
 
@@ -169,12 +172,13 @@ interface BottomToolbarProps {
  * Args:
  *   props.onImportImage: Handler of the image button.
  *   props.onInsertVideo: Handler of the video button.
+ *   props.onImportAudio: Handler of the audio button.
  *   props.className: Extra classes for placement.
  *
  * Returns:
  *   Toolbar overlay (pointer events only on the bars themselves).
  */
-export function BottomToolbar({ onImportImage, onInsertVideo, className }: BottomToolbarProps) {
+export function BottomToolbar({ onImportImage, onInsertVideo, onImportAudio, className }: BottomToolbarProps) {
   const { tool, shapeKind, lineKind } = useEditorState();
   const dispatch = useEditorDispatch();
   // 選了工具之後到畫布上點擊或拖曳建立（圖片除外：直接開選檔對話框）
@@ -222,6 +226,9 @@ export function BottomToolbar({ onImportImage, onInsertVideo, className }: Botto
           </IconButton>
           <IconButton label="YouTube 影片" size="icon-lg" onClick={onInsertVideo}>
             <Clapperboard className="size-5" strokeWidth={1.75} />
+          </IconButton>
+          <IconButton label="音訊（mp3）" size="icon-lg" onClick={onImportAudio}>
+            <Music className="size-5" strokeWidth={1.75} />
           </IconButton>
           <Separator orientation="vertical" className="mx-0.5 h-6" />
           <MenuIconButton

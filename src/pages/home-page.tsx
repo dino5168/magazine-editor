@@ -22,6 +22,8 @@ import { PageDialogsProvider } from "@/components/editor/page-dialogs";
 import { EditorPageBar } from "@/components/editor/editor-page-bar";
 import { EditorTopBar } from "@/components/editor/editor-top-bar";
 import { useAddImage } from "@/components/editor/panels/use-add-image";
+import { usePlaceLibraryItem } from "@/components/library/use-place-library-item";
+import { AUDIO_PICK_ACCEPT } from "@/lib/library/audio-item";
 import {
   CANVAS_MIN_WIDTH,
   DEFAULT_DOCK_LAYOUT,
@@ -42,7 +44,7 @@ import { PANEL_IDS, type PanelId } from "@/lib/dock/panels";
 import { EditorProvider } from "@/lib/editor/editor-context";
 import { createInitialState } from "@/lib/editor/editor-reducer";
 import { createBlankDocument, createSampleDocument } from "@/lib/editor/element-factory";
-import { pickImageFiles } from "@/lib/editor/image";
+import { pickFiles, pickImageFiles } from "@/lib/editor/image";
 import { useEditorShortcuts } from "@/lib/editor/use-editor-shortcuts";
 import { commandDisabledReason, type CommandDisabledReason } from "@/lib/menu/command-availability";
 import {
@@ -98,6 +100,17 @@ function EditorLayout() {
       })(),
     [importFiles, addImage],
   );
+  // 「檔案 → 匯入 → 音訊」與底部工具列的音訊按鈕共用：只選 mp3，匯入素材庫的未分類，再放到頁面中央
+  // （內容由 Rust 看檔頭；副檔名是 mp3 但其實是別的格式時，放置那一步會提示只能用 mp3）
+  const placeLibraryItem = usePlaceLibraryItem();
+  const importAudio = useCallback(
+    () =>
+      void (async () => {
+        const items = await importFiles(await pickFiles(AUDIO_PICK_ACCEPT), null, ["audio"]);
+        for (const item of items) await placeLibraryItem(item);
+      })(),
+    [importFiles, placeLibraryItem],
+  );
   const preferences = usePreferences();
   const { showRulers } = preferences;
   const setPreferences = useSetPreferences();
@@ -145,6 +158,7 @@ function EditorLayout() {
       "file.uploadFlipbook": () => (isDesktop ? setUploadOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       "file.importImage": importImage,
       "file.insertVideo": openVideo,
+      "file.importAudio": importAudio,
       "project.library": () => openLibrary(),
       "project.templates": () => (isDesktop ? setTemplatesOpen(true) : toast.info(DESKTOP_ONLY_MESSAGE)),
       ...Object.fromEntries(VIEW_TOGGLES.map((toggle) => [viewCommandId(toggle.id), () => setPreferences(toggle.toggle)])),
@@ -152,7 +166,7 @@ function EditorLayout() {
       ...Object.fromEntries(PANEL_IDS.map((id) => [panelCommandId(id), () => updateDock(togglePanel)(id)])),
       "panel.resetLayout": () => setDockLayout(DEFAULT_DOCK_LAYOUT),
     }),
-    [project, importImage, openVideo, updateDock, setPreferences, openLibrary],
+    [project, importImage, openVideo, importAudio, updateDock, setPreferences, openLibrary],
   );
 
   const onDropPanel = useCallback(
@@ -206,7 +220,7 @@ function EditorLayout() {
             <EditorCanvas />
             {/* 開尺規時往下移，不蓋住上方尺規（top-8 = 尺規 20 px + 12 px） */}
             <MasterEditBanner className={cn("absolute inset-x-0 z-10", showRulers ? "top-8" : "top-3")} />
-            <BottomToolbar onImportImage={importImage} onInsertVideo={openVideo} className="absolute inset-x-0 bottom-6 z-10" />
+            <BottomToolbar onImportImage={importImage} onInsertVideo={openVideo} onImportAudio={importAudio} className="absolute inset-x-0 bottom-6 z-10" />
           </div>
         </div>
         <DockArea

@@ -4,6 +4,9 @@ import { MEDIA_AUDIO_EXTENSIONS, MEDIA_TITLE_MAX_CHARS } from "@/lib/editor/vali
 import { fileExtension } from "./library-files";
 import type { AudioItem, LibraryItem } from "./types";
 
+/** File picker filter of 檔案 → 匯入 → 音訊 (the formats that can go on pages). */
+export const AUDIO_PICK_ACCEPT = MEDIA_AUDIO_EXTENSIONS.map((extension) => `.${extension}`).join(",");
+
 /** Shown when an audio item in another format is placed (`docs/16-Plans-Audio/02-Audio-素材-實作.md` §0). */
 export const AUDIO_FORMAT_NOTICE = "目前只有 mp3 能放到頁面";
 

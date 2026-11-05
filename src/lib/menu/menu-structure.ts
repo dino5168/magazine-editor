@@ -39,6 +39,7 @@ export const MENUS = [
         children: [
           { kind: "item", command: "file.importImage" },
           { kind: "item", command: "file.insertVideo" },
+          { kind: "item", command: "file.importAudio" },
           { kind: "item", command: "file.importPages" },
         ],
       },

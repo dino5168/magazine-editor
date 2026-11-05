@@ -48,7 +48,7 @@ paths:
 
 ## 工具（`bottom-toolbar.tsx` / `tools.ts`）
 
-- `tool` / `shapeKind` 是 UI 狀態，不進復原。`tools.ts` 是工具與工具快捷鍵的單一資料來源。圖片按鈕直接開選檔（同 `home-page.tsx` 的 `importImage`）。
+- `tool` / `shapeKind` 是 UI 狀態，不進復原。`tools.ts` 是工具與工具快捷鍵的單一資料來源。圖片按鈕直接開選檔（同 `home-page.tsx` 的 `importImage`）；音訊按鈕同理（`importAudio`，只選 mp3，匯入素材庫後放到頁面中央）。
 - 平移（`use-canvas-pan`）與建立（`use-canvas-create`）在捲動容器的 **capture 階段**攔 `pointerdown`（`preventDefault` + `stopPropagation`），不會到 Konva；平移優先。只攔左鍵與中鍵。
 - 建立只在放開時 dispatch 一次 `element/add`；預覽框直接改 DOM style。不到 4px 是點擊。
 - **文字工具的新文字是草稿**（`draftText`），輸入完成才 `element/add`。

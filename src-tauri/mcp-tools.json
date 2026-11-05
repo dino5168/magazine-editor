@@ -173,6 +173,7 @@
             "file.importImage",
             "file.importPages",
             "file.insertVideo",
+            "file.importAudio",
             "file.exportPng",
             "file.exportJpeg",
             "file.exportPdf",

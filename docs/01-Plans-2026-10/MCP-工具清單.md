@@ -6,6 +6,7 @@
 > 2026-10-29 `run_command` 多一個指令 `file.exportFlipbookZip`（計畫 `../13-Plans-電子書上傳/5-desktop上傳-實作-V2.md` 步驟 3）；同日步驟 5 再加 `file.uploadFlipbook`（只打開上傳對話框，密碼要使用者自己輸入，沒有上傳工具）。
 > 2026-10-31 `list_elements` 的文字物件回傳量出來的 `height`、`get_element` 多 `textHeight`（計畫 `../14-Plan-ClaudeCode看見畫面/1-看見畫面-實作.md` 步驟 1）；同日加入 `check_layout`（步驟 2）與 `render_page`（步驟 3–4，回傳圖片）。
 > 2026-11-01 加入 `add_video`（YouTube 影片，非同步、不能進 `batch`）；`place_library_item` 可以放影片素材、`list_library_items` 的 `kind` 多 `video`、`update_element` 的影片可改 `startSeconds` / `title`；`run_command` 多 `file.insertVideo`（計畫 `../15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md` 步驟 4、9）。
+> 2026-11-05 `run_command` 多 `file.importAudio`（計畫 `../16-Plans-Audio/02-Audio-素材-實作.md` 步驟 4）。
 > 架構與決定見 `07-軟體增加McpServer-實作.md`、流程圖 `Claude-McpServer-System.html`；素材庫工具見 `11-mcpserver-addimage-實作.md`；圖形庫工具見 `../06-Plans-繪圖/01-繪圖-實作.md` 步驟 8。
 
 ---
@@ -176,7 +177,7 @@ App 沒開或沒允許連線時，每個工具都回「連不到雜誌編輯軟�
 
 | 類別 | 指令 |
 |---|---|
-| 檔案 | `file.new` 新增、`file.open` 開啟、`file.save` 儲存、`file.saveAs` 另存新檔、`file.importImage` 匯入圖片、`file.insertVideo` 插入 YouTube 影片（只打開對話框）、`file.exportPdf` 匯出 PDF、`file.exportFlipbook` 匯出翻頁電子書、`file.exportFlipbookZip` 匯出翻頁電子書（Zip）、`file.uploadFlipbook` 上傳到網站（只打開對話框）、`file.exportPptx` 匯出 PowerPoint（只有簡報尺寸的文件；其他文件 `list_commands` 回報不能執行與原因） |
+| 檔案 | `file.new` 新增、`file.open` 開啟、`file.save` 儲存、`file.saveAs` 另存新檔、`file.importImage` 匯入圖片、`file.insertVideo` 插入 YouTube 影片（只打開對話框）、`file.importAudio` 匯入音訊（打開選檔對話框，mp3 放到目前頁面中央）、`file.exportPdf` 匯出 PDF、`file.exportFlipbook` 匯出翻頁電子書、`file.exportFlipbookZip` 匯出翻頁電子書（Zip）、`file.uploadFlipbook` 上傳到網站（只打開對話框）、`file.exportPptx` 匯出 PowerPoint（只有簡報尺寸的文件；其他文件 `list_commands` 回報不能執行與原因） |
 | 專案管理 | `project.library` 素材管理、`project.templates` 文件範本（桌面版） |
 | 設定對話框 | `settings.pageSetup` 頁面設定、`settings.pageNumbers` 頁碼管理、`settings.swatches` 色票、`settings.fonts` 字型、`settings.grid` 格線與參考線、`settings.mcp` Claude Code 連線 |
 | 視圖開關 | `view.rulers` 尺規、`view.grid` 格線、`view.contentGuides` 內容區對齊線、`view.margins` 邊界參考線、`view.snap` 吸附格線 |
