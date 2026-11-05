@@ -1,3 +1,4 @@
+import { createLimiter } from "@/lib/concurrency";
 import { isDesktop, projectApi } from "@/lib/project/project-api";
 import type { LibraryItem } from "./types";
 
@@ -9,19 +10,7 @@ import type { LibraryItem } from "./types";
 const MAX_CONCURRENT = 2;
 
 let cache = new Map<string, Promise<string | null>>();
-let running = 0;
-const waiting: (() => void)[] = [];
-
-async function slot<T>(run: () => Promise<T>): Promise<T> {
-  if (running >= MAX_CONCURRENT) await new Promise<void>((resolve) => waiting.push(resolve));
-  running += 1;
-  try {
-    return await run();
-  } finally {
-    running -= 1;
-    waiting.shift()?.();
-  }
-}
+const slot = createLimiter(MAX_CONCURRENT);
 
 /**
  * Whether an item's card should wait for a thumbnail instead of showing the original.

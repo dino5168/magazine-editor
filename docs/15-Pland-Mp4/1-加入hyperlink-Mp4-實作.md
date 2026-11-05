@@ -158,6 +158,8 @@ interface MediaElement extends BaseElement {
 
 ### A 階段：音訊
 
+> **2026-11-05 起改由 `docs/16-Plans-Audio/02-Audio-素材-實作.md` 取代**（先只做 mp3、翻頁就停、網址音訊列入擴充）。下表保留當時的構想。
+
 | # | 步驟 | 內容 | 驗證 |
 |---|---|---|---|
 | A1 | 本機音訊放到頁面 | `source: { kind: "file", src: "assets/audio/…" }`（`MediaOrigin` 加一種，**提升到 v19**，照 skill `bump-file-format`）；素材庫移除「不能放到頁面」；畫布是喇叭圖示按鈕（可換封面）；屬性面板試聽（`<audio>` 用 asset URL，要加 CSP `media-src asset:`） | vitest + `ui-verify` |

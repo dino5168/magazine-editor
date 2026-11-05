@@ -32,5 +32,5 @@ paths:
 ## CSP（`tauri.conf.json`）
 
 - `dangerousDisableAssetCspModification: ["style-src"]` **不可移除**：Radix / sonner 在 runtime 注入 `<style>`，Tauri 的 nonce 會讓 `'unsafe-inline'` 失效。
-- `img-src`：`'self'`、`data:`、`blob:`、`asset:`（專案圖片走 asset protocol `http://asset.localhost`）；`font-src`：`'self'`、`data:`、asset protocol（專案字型用 asset URL 建 `FontFace`）。Vite 會把 < 4 KB 的 SVG 內嵌成 `data:`。
+- `img-src`：`'self'`、`data:`、`blob:`、`asset:`（專案圖片走 asset protocol `http://asset.localhost`）；`font-src`：`'self'`、`data:`、asset protocol（專案字型用 asset URL 建 `FontFace`）。Vite 會把 < 4 KB 的 SVG 內嵌成 `data:`。`media-src`：`'self'`、asset protocol、`blob:`（素材的音訊試聽與讀時間長度，`lib/media/audio-duration.ts`）。
 - 載入外部資源（遠端圖片、字型、API）前必須更新 CSP，否則被靜默阻擋。

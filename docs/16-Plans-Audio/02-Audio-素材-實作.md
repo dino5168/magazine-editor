@@ -1,0 +1,145 @@
+# 音訊素材：實作計畫
+
+> 需求：`1-Audio-素材.md`。評估：`01-Audio-素材-評估.md`。使用者回覆：`01-使用者回復.md`。日期：2026-11-05。
+> 狀態：**計畫定案，可以開始步驟 1**。一次做一步，每步可以單獨驗證與 commit（不自動 commit）。
+> 取代 `docs/15-Pland-Mp4/1-加入hyperlink-Mp4-實作.md` 的「A 階段：音訊」（A1–A3）。
+
+---
+
+## 0. 決定（2026-11-05，使用者回覆）
+
+| # | 問題 | 決定 | 對計畫的影響 |
+|---|---|---|---|
+| 1 | 頁面上的外觀 | **小喇叭按鈕** | 預設 48 × 48 pt 圓形按鈕；可以換封面（封面 + 喇叭） |
+| 2 | 翻頁時要不要停 | **翻頁就停** | 翻頁書 `flip` 事件 → 暫停並收起播放列；不需要新欄位 |
+| 3 | 自動播放 / 循環 | **不做** | 播放範圍也不做（沒有要求），列入 §6 擴充 |
+| 4 | 網址音訊 | **先不做，列入擴充** | `source` 只加 `file` |
+| 5 | wav / ogg | **不處理，先只做 mp3，列入擴充** | 見下方「mp3 only 的做法」 |
+| 6 | 素材卡片顯示時間長度 | **要** | 顯示時才讀（`<audio preload="metadata">`），不存檔、不提升 `libraryVersion` |
+| 7 | 選單「插入音訊」 | **要** | 實際位置是「檔案 → 匯入 → 音訊...」（和「圖片...」「YouTube 影片連結...」放一起） |
+
+### mp3 only 的做法（由決定 5 推出，**請確認**）
+
+- **匯入不改**：素材庫照樣可以匯入 wav / ogg / m4a（已經能匯入的不拿掉，舊專案裡已有的素材不受影響），但**只有 mp3 能放到頁面**；其他格式的卡片維持「不能放到頁面」，提示改成「目前只支援 mp3」。
+- **m4a 也算在「先不做」裡**：使用者只說 wav / ogg，但 m4a 和它們一樣要另外驗證（EPUB 型別、上傳白名單），一起列入擴充比較一致。
+- 「檔案 → 匯入 → 音訊...」的選檔只收 `.mp3`。
+- 檔案格式（v19）驗證：音訊物件的 `src` 必須是 `assets/audio/*.mp3`。之後加格式時放寬驗證（要再提升版本，舊版 App 才會說「檔案比較新」）。
+- 好處：EPUB（`audio/mpeg` 是核心媒體類型）、上傳白名單（只加 `mp3`）、瀏覽器相容性都不用分格式處理。
+
+---
+
+## 1. 資料模型（步驟 2，v19）
+
+```ts
+type MediaOrigin =
+  | { kind: "youtube"; videoId: string; start: number }
+  | { kind: "file"; src: string };   // assets/audio/<sha256 前 32 碼>.mp3
+
+// MediaElement 不變：width / height / source / poster / title
+```
+
+- **不新增物件類型**：音訊是 `media` 的另一種 `source`（影片計畫 §1.1 的決定）。
+- 預設尺寸 48 × 48 pt、「限制寬高比」預設開；`title` 預設 = 素材名稱去掉副檔名（上限 `MEDIA_TITLE_MAX_CHARS`）。
+- `referenced_assets`：`media` 現在回傳一個檔案（封面），改成 **封面 + 音訊檔兩個**（`flat_map`）。沒改的話，開檔清理會刪掉只用在頁面上的音訊檔。
+- 範本：`copy_assets` 依 `referenced_assets` 複製，音訊應該自動帶上；步驟 2 用測試確認 `assets/audio/` 會被建立。
+- 所有 `switch (source.kind)` / Rust `match` 不寫 `default` / `_`：漏改的地方由編譯器抓（Rust `media_elements` 現在是 `let MediaOrigin::Youtube {..} = …`，加了變體會編譯失敗，這是預期的）。
+
+---
+
+## 2. 各處的樣子
+
+### 2.1 編輯器
+
+- **畫布**：沒有封面 = 深色圓形 + 白色喇叭（喇叭本體多邊形 + 兩段聲波弧線）；有封面 = 封面（`photoPlacement`，同圖片框）+ 中央的半透明圓形喇叭（同影片的播放圖示比例）。
+- **圖層面板**圖示：lucide `Music`（和素材卡片同一個）；`describeElement`：「音訊：標題」。
+- **屬性面板**新分頁「音訊」（`audio-fields.tsx`，影片是 `video-fields.tsx`）：試聽（`<audio controls>`）、時間長度、標題、檔名 / 大小、「換成別的音訊」（從素材庫選 mp3）、「在素材管理中顯示」；「封面」區塊重用 `PhotoFields`。
+- **素材卡片**：音訊卡片多顯示時間長度（例：`3:40`）。讀取方式見 §3 檢核 3。
+
+### 2.2 翻頁書播放列（步驟 6）
+
+```
+┌──────────────── 翻頁書 ────────────────┐
+│   [頁面 ……  (🔊) ……]                    │
+├─────────────────────────────────────────┤
+│ ⏸  訪談：王小明   ━━━●──── 01:12 / 03:40  ✕ │  ← #audio（書之外，固定在下方）
+└─────────────────────────────────────────┘
+```
+
+- 點頁面上的喇叭 → 出現播放列並播放；再點同一個 = 暫停 / 繼續；點另一個 = 換曲。
+- **翻頁就停**：`flip.on("flip")` → 暫停、收起播放列（從縮圖跳頁、方向鍵、拖曳翻頁都會觸發同一個事件）。
+- 只有一個 `<audio>`，放在 `#book` 之外（page-flip 翻頁時會複製頁面）。
+- 鍵盤：播放列的按鈕可以 Tab 到；Esc 停止並收起；空白鍵在按鈕上 = 播放 / 暫停。開著時方向鍵**照常翻頁**（翻頁就停，不用擋）。
+- 播放中按喇叭的樣子：喇叭連結加 `aria-pressed`，CSS 讓它有外框提示「正在播放」。
+
+### 2.3 輸出
+
+| 輸出 | 音訊 |
+|---|---|
+| 翻頁書 | 播放列；`file://` 也能播（檔案在書裡） |
+| EPUB | `<audio controls>`（mp3、manifest `audio/mpeg`） |
+| PDF / PPTX / `render_page` | 只有按鈕圖示；匯出完提示「N 個音訊在 PDF（PowerPoint）裡不能播放」 |
+| 上傳到網站 | 書裡的 mp3 一起上傳（白名單要先加，步驟 7） |
+
+---
+
+## 3. 規劃檢核
+
+1. **App 的 CSP 沒有 `media-src`**（`tauri.conf.json` 只有 `default-src 'self'`）：試聽會被靜默擋掉。→ 步驟 1 加 `media-src 'self' asset: http://asset.localhost blob:`。
+2. **WebView2 + asset protocol 能不能播、能不能拖進度條**（需要 Range 請求）：唯一的技術未知數，放在步驟 1 驗證。不行的話改成 Rust 讀檔、前端用 blob URL（50 MB 以內），後面的步驟不受影響。
+3. **讀時間長度的成本**：素材面板一次可能有很多音訊卡片。→ `audio-duration.ts`：依 `src` 快取在記憶體、最多同時 2 個（同縮圖）、卡片進入畫面才讀；讀不到顯示「—」。VBR 沒有 Xing 標頭的 mp3 瀏覽器會用估的，可以接受。
+4. **`referenced_assets` 只回傳一個檔案** → §1，步驟 2 加測試（音訊只用在頁面、已從素材庫永久刪除，開檔清理後檔案仍在）。
+5. **翻頁書要複製音訊檔**：現在只有 `images/`。→ 新增 `media/audio-<n>.mp3`（同圖片改名）；同一個檔案用在多處只複製一次。
+6. **翻頁書 CSP**：`default-src 'none'`，要加 `media-src 'self'`，**只在有音訊的書加**（同影片的 `frame-src`）。
+7. **縮圖列的頁面複本**已經拿掉 `<a>`（影片步驟 7），音訊連結自然也不在縮圖裡；測試確認一次。
+8. **page-flip 吃掉 `mousedown`**：影片步驟 6 已驗證「每頁最上層的透明 `<a>`」可以點、不會被當成翻頁；音訊用同一種連結（`data-audio`），不另外處理。
+9. **上傳**：`ALLOWED_EXTENSIONS` 沒有 `mp3`，網站會靜默略過。→ 本 repo 加 `mp3`；**另開 web-magazine 工作階段**加白名單（同 gif / txt）。上限 100 MB：音訊佔大部分時，錯誤訊息要說是音訊太大。
+10. **網站 sandbox**（不透明來源）：同源 `<audio>` 不走 CORS，理論上能播；上傳後實測。
+11. **瀏覽器模式**：素材是 blob URL，試聽、時間長度、放到頁面都能測；匯出用 `flipbook_preview` / `epub_preview` 測。
+12. **新增指令**（`file.insertAudio`）：`menu-structure.test.ts` 會檢查有沒有放進選單；MCP `run_command` 讀同一份指令表，`list_commands` 自動出現（要不要重產 `mcp-tools.json` 看工具說明有沒有列舉指令，步驟 4 確認）。
+
+---
+
+## 4. 步驟
+
+| # | 步驟 | 內容 | 驗證 |
+|---|---|---|---|
+| 1 | 試聽與時間長度（技術驗證，**不改檔案格式**） | CSP 加 `media-src`（§3-1）；`lib/media/audio-duration.ts`（快取、同時 2 個、`formatVideoTime` 改名或共用成 `formatMediaTime`）；素材卡片顯示時間長度；素材管理資訊欄加 `<audio controls>` 與時間長度。wav / ogg / m4a 照樣能試聽（只是不能放到頁面） | vitest（時間格式、快取）+ 瀏覽器模式 `ui-verify` + **桌面版使用者實測**：能播、能拖進度條、卡片時間正確 |
+| 2 | 文件模型 `source: file`（v19，沒有 UI） | skill `bump-file-format`：`types.ts`、`validation.ts`（`isMediaOrigin` 收 `file`、只收 `assets/audio/*.mp3`）、Rust `format/elements.rs` + `validate.rs`、`referenced_assets` 兩個檔案（§3-4）、範本複製測試、fixture 加一個音訊（有封面 / 沒封面各一）、`types.html`、`cross-language.md`、`project-files.md`。Rust `build_render` 先略過音訊（步驟 5 才畫） | vitest + `cargo test` |
+| 3 | 放到頁面、畫布、屬性面板 | `lib/library/audio-item.ts`（`isPlaceableAudio`：mp3；`mediaFromAudioItem`：48 × 48、標題）；`usePlaceLibraryItem`、素材面板、素材管理「放到目前頁面」接上（非 mp3 提示「目前只支援 mp3」）；畫布 renderer（§2.1）、`localBounds`、圖層圖示、`describeElement`、版面檢查；屬性面板「音訊」分頁 | vitest + `ui-verify`（點一下放中央、拖到畫布、試聽、換封面、換音訊、復原一筆） |
+| 4 | 選單「檔案 → 匯入 → 音訊...」 | 指令 `file.insertAudio`：選 `.mp3` → `importFiles(files, null, ["audio"])`（加到未分類）→ 放到目前頁面中央（同 `importImage`）；底部工具列在影片按鈕旁加音訊按鈕（**請確認要不要**） | `menu-structure.test.ts` + `ui-verify` |
+| 5 | PDF / PPTX / `render_page` | Rust `media_elements` 依 `source` 分支：音訊 = 圓形底（或封面）+ 喇叭（`RenderPolygon` + 兩段 `RenderPath` 弧線），**不包 `link`**；匯出結果多 `skippedAudio`，前端提示 | `cargo test` + `export_preview` 疊圖（畫布 vs PDF） |
+| 6 | 翻頁書播放列 | `markup.rs`：音訊連結 `data-audio`（書裡的 `media/` 檔）+ `data-title`；複製音訊檔（§3-5）；有音訊才加 CSP（§3-6）。`viewer.js` / `viewer.css` 的 `#audio` 播放列（§2.2：播放 / 暫停 / 換曲 / 進度 / ✕ / 翻頁就停 / Esc） | `cargo test` + `flipbook_preview` + 無頭 Edge（`file://` 與 `http://` 各一次：播放、暫停、換曲、翻頁就停、拖進度、縮圖沒有連結、console 沒有錯誤） |
+| 7 | 上傳 | 本 repo `ALLOWED_EXTENSIONS` 加 `mp3`、大小錯誤訊息（§3-9）；**另開 web-magazine 工作階段**加白名單；上傳後網站實測（§3-10） | `cargo test` + 使用者實測 |
+| 8 | EPUB | `<audio controls src="…">` + manifest `audio/mpeg`，按鈕圖示當作後備 | `epub_preview` + epubcheck |
+| 9 | MCP | `place_library_item` 收 mp3 音訊（其他格式回「目前只支援 mp3」）；`list_elements` / `get_element` 顯示音訊與 `src`；`update_element` 改 `title`；說明文字更新（skill `add-mcp-tool`）；新增 `add_audio`？→ 不做，用 `import_library_item` + `place_library_item` 就夠 | `npx vitest run mcp-tools` + Python SDK pytest |
+
+**順序理由**：步驟 1 先排除唯一的技術未知數，而且不動檔案格式，做壞了容易回頭。步驟 2 只有資料，測完再接 UI。步驟 3、4 完成後使用者就能在編輯器裡放音訊並存檔；匯出（5–8）再一種一種接，每一步都能單獨驗證。
+
+每一步做完：更新本文件的「進度紀錄」、問使用者要不要 commit。
+
+---
+
+## 5. 不做（這次）
+
+錄音、剪輯、音量、淡入淡出；轉檔；自動播放、循環、播放範圍；PDF / PPTX 內嵌音訊；在畫布上播放；把音訊檔直接拖到畫布。
+
+## 6. 擴充選項（之後再做）
+
+| 擴充 | 要做的事 |
+|---|---|
+| 網址音訊（Podcast、`https://…mp3`） | `source: { kind: "url" }`、只收 `https:`、PDF 是連結、翻頁書 CSP `media-src https:`、提升版本 |
+| wav / ogg / m4a 放到頁面 | 放寬驗證（提升版本）；EPUB：m4a 是 `audio/mp4`、ogg 只有 Opus 是核心型別、wav 不是（只畫圖示並提示）；上傳白名單加副檔名；或匯入時轉成 mp3 |
+| 每個音訊自己設定「翻頁要不要停」 | 新欄位（提升版本）+ 屬性面板 + `viewer.js` |
+| 播放範圍（開始 / 結束時間）、循環 | 新欄位 + 試聽 + 翻頁書 / EPUB（EPUB 用 media fragment `#t=`） |
+| 把音訊檔直接拖到畫布 | 畫布的檔案拖放加音訊分支（匯入素材庫 → 放到放開的位置） |
+| PowerPoint 內嵌音訊 | PPTX `p:audioFile` + 媒體關聯 |
+
+---
+
+## 7. 進度紀錄
+
+| 日期 | 步驟 | 結果 |
+|---|---|---|
+| 2026-11-05 | 計畫定案 | 依使用者回覆（§0）建立 |
+| 2026-11-05 | 確認 | 使用者同意 §0 的「mp3 only 的做法」（匯入不改、只有 mp3 能放到頁面、m4a 一起列入擴充）；步驟 4 **底部工具列也加音訊按鈕** |
+| 2026-11-05 | 步驟 1 完成（桌面版待使用者驗證） | App CSP 加 `media-src 'self' asset: http://asset.localhost blob:`（`ipc.md` 已更新）。**共用**：`lib/concurrency.ts` 的 `createLimiter`（從 `thumbnails.ts` 抽出，縮圖與音訊共用）。`lib/media/audio-duration.ts`：`loadAudioDuration`（不掛到 DOM 的 `<audio preload="metadata">`，15 秒逾時，`Infinity` / 錯誤回 null，讀完放掉連線）、`createDurationCache`（依 `src` 快取：`src` 是內容的 hash，換專案不用清）、`requestAudioDuration`（同時 2 個）。`components/library/use-audio-duration.ts`。**素材卡片**：`library-card.tsx` 把「接近畫面才開始」抽成 `useNearScreen`（縮圖與音訊共用），音訊卡片檔名右邊顯示長度（讀不到不顯示）。**素材管理資訊欄**：`<audio controls>` 試聽（換選取的素材時停止；按鍵不往外傳，Esc 除外）+「長度」列（讀取中… / 無法讀取）。時間格式沿用 `formatVideoTime`（不改名）。wav / ogg / m4a 照樣能試聽。測試：`audio-duration.test.ts` 2 項（limiter 依序、失敗也釋放；快取同 key 一次、同時 2 個），全部 1244 項通過、`tsc` 通過。**瀏覽器實測**（無頭 Edge，丟一個 3.5 秒的 WAV 進素材面板）：卡片顯示 `0:03`、資訊欄長度 `0:03`、`<audio>` duration 3.5、可以播放、跳到 3 秒成功、沒有 console 錯誤。**桌面版待使用者驗證**：asset protocol 能播 mp3、能拖進度條（§3 檢核 2） |

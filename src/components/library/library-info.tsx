@@ -9,6 +9,7 @@ import type { LibraryFolder, LibraryItem } from "@/lib/library/types";
 import { formatVideoTime } from "@/lib/media/media-insert";
 import { youTubeWatchUrl } from "@/lib/media/youtube-url";
 import { kindBadge, LibraryThumb } from "./library-card";
+import { useAudioDuration } from "./use-audio-duration";
 
 const KIND_LABELS: { readonly [K in LibraryItem["kind"]]: string } = { image: "圖片", text: "文字檔", audio: "音訊", video: "影片" };
 
@@ -59,6 +60,17 @@ function NameField({ item, onRename }: { readonly item: LibraryItem; readonly on
         className="h-8 text-sm text-foreground"
       />
     </label>
+  );
+}
+
+/** 「長度」 row of an audio item: read with `<audio preload="metadata">`, not stored in `library.json`. */
+function AudioDurationRow({ src, resolveSrc }: { readonly src: string; readonly resolveSrc: (src: string) => string }) {
+  const duration = useAudioDuration(src, resolveSrc);
+  return (
+    <>
+      <dt className="text-muted-foreground">長度</dt>
+      <dd className="text-right tabular-nums">{duration === undefined ? "讀取中…" : duration === null ? "無法讀取" : formatVideoTime(duration)}</dd>
+    </>
   );
 }
 
@@ -146,6 +158,21 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
       {/* 固定高度、整張圖放得下：直式圖片不會把下面的欄位與按鈕擠出去 */}
       <LibraryThumb key={`preview:${item.id}`} item={item} resolveSrc={resolveSrc} fit="contain" className="h-44 w-full shrink-0" />
       {/* key：換選取的素材時重新開始輸入框的草稿 */}
+      {item.kind === "audio" && (
+        // 試聽：換選取的素材時（key）停止上一個。按鍵不往外傳，否則空白鍵 / 方向鍵也會被編輯器的快捷鍵處理；Esc 照樣關閉視窗
+        <audio
+          key={`audio:${item.id}`}
+          controls
+          preload="metadata"
+          src={resolveSrc(item.src)}
+          aria-label={`試聽「${item.name}」`}
+          data-library-audio-preview
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") event.stopPropagation();
+          }}
+          className="h-9 w-full shrink-0"
+        />
+      )}
       <NameField key={item.id} item={item} onRename={(name) => onRename(item.id, name)} />
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
         <dt className="text-muted-foreground">種類</dt>
@@ -158,6 +185,7 @@ export function LibraryInfo({ items, folders, resolveSrc, onRename, onTrash, onP
             </dd>
           </>
         )}
+        {item.kind === "audio" && <AudioDurationRow src={item.src} resolveSrc={resolveSrc} />}
         {item.kind === "video" ? (
           <>
             <dt className="text-muted-foreground">開始</dt>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Clapperboard, ImageOff, Music, Play } from "lucide-react";
 import { fileExtension } from "@/lib/library/library-files";
+import { formatVideoTime } from "@/lib/media/media-insert";
+import { useAudioDuration } from "./use-audio-duration";
 import { requestThumbnail, usesThumbnail } from "@/lib/library/thumbnails";
 import type { LibraryItem } from "@/lib/library/types";
 import { cn } from "@/lib/utils";
@@ -40,32 +42,41 @@ interface LibraryThumbProps {
 const THUMB_PRELOAD_MARGIN = "300px";
 
 /**
- * Which file a card shows: the thumbnail once it is known (null = the original), or undefined
- * while waiting. Asks only when the card is near the screen, so a large library does not make
- * every thumbnail at once.
+ * Whether a card has come near the screen (stays true afterwards). Cards wait for this before
+ * asking for a thumbnail or an audio duration, so a large library does not start them all at once.
  */
-function useCardImage(item: LibraryItem, element: HTMLElement | null): string | null | undefined {
-  const wanted = usesThumbnail(item);
-  const [resolved, setResolved] = useState<{ readonly src: string; readonly thumb: string | null } | null>(null);
+function useNearScreen(element: HTMLElement | null, enabled: boolean): boolean {
+  const [near, setNear] = useState(false);
   useEffect(() => {
-    if (!wanted || !element) return;
-    let cancelled = false;
+    if (!enabled || !element || near) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         observer.disconnect();
-        void requestThumbnail(item.src).then((thumb) => {
-          if (!cancelled) setResolved({ src: item.src, thumb });
-        });
+        setNear(true);
       },
       { rootMargin: THUMB_PRELOAD_MARGIN },
     );
     observer.observe(element);
+    return () => observer.disconnect();
+  }, [enabled, element, near]);
+  return near;
+}
+
+/** Which file a card shows: the thumbnail once it is known (null = the original), or undefined while waiting. */
+function useCardImage(item: LibraryItem, near: boolean): string | null | undefined {
+  const wanted = usesThumbnail(item);
+  const [resolved, setResolved] = useState<{ readonly src: string; readonly thumb: string | null } | null>(null);
+  useEffect(() => {
+    if (!wanted || !near) return;
+    let cancelled = false;
+    void requestThumbnail(item.src).then((thumb) => {
+      if (!cancelled) setResolved({ src: item.src, thumb });
+    });
     return () => {
       cancelled = true;
-      observer.disconnect();
     };
-  }, [wanted, element, item.src]);
+  }, [wanted, near, item.src]);
   if (!wanted) return null;
   return resolved?.src === item.src ? resolved.thumb : undefined;
 }
@@ -84,7 +95,9 @@ function useCardImage(item: LibraryItem, element: HTMLElement | null): string | 
 export function LibraryThumb({ item, resolveSrc, className, fit = "cover" }: LibraryThumbProps) {
   const [missing, setMissing] = useState(false);
   const [element, setElement] = useState<HTMLDivElement | null>(null);
-  const shown = useCardImage(item, element);
+  const near = useNearScreen(element, usesThumbnail(item) || item.kind === "audio");
+  const shown = useCardImage(item, near);
+  const duration = useAudioDuration(item.kind === "audio" ? item.src : null, resolveSrc, near);
   // 縮圖讀不到（例如被刪掉）先退回原圖，原圖也讀不到才是「檔案遺失」
   const [thumbFailed, setThumbFailed] = useState(false);
   const badge = kindBadge(item);
@@ -117,7 +130,11 @@ export function LibraryThumb({ item, resolveSrc, className, fit = "cover" }: Lib
       {item.kind === "audio" && (
         <div className="flex size-full flex-col justify-end gap-1 bg-linear-to-br from-indigo-900 to-violet-700 p-3 pt-7 text-white">
           <Music className="size-5 opacity-80" />
-          <span className="truncate text-xs font-medium">{item.name}</span>
+          <span className="flex items-baseline gap-2 text-xs">
+            <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+            {/* 讀不到（檔案遺失、格式 WebView 不支援）時不顯示，不擋檔名 */}
+            {typeof duration === "number" && <span className="shrink-0 tabular-nums opacity-80">{formatVideoTime(duration)}</span>}
+          </span>
         </div>
       )}
       {item.kind === "video" && (
