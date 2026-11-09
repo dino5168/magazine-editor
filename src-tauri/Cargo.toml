@@ -67,6 +67,12 @@ tempfile = "3"
 [profile.dev.package."*"]
 debug = false
 
+# 開發版本專案自己的程式碼也不產生除錯資訊，進一步縮小 target/debug
+# 代價：無法用除錯器設中斷點、看變數；panic 的堆疊追蹤沒有檔名與行號
+# 需要除錯時改成 "line-tables-only"（保留行號）或刪掉這段
+[profile.dev]
+debug = 0
+
 # 開發版（tauri dev / cargo test）也最佳化解碼圖片的套件：沒有最佳化時一張 24 MP 照片的縮圖要約 8 秒
 # 只列這幾個，不用 "*"（全部最佳化會讓開發版第一次編譯很久、也更吃記憶體）
 [profile.dev.package.image]
