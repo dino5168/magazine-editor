@@ -35,3 +35,6 @@ dist-ssr
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+# Obsidian（用來瀏覽 docs/ 的本機設定）
+.obsidian/
